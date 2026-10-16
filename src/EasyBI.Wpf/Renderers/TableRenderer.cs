@@ -7,7 +7,7 @@ using EasyBI.Abstractions;
 
 namespace EasyBI.Wpf.Renderers;
 
-/// <summary>Renderer intégré : affiche le ResultSet brut dans une DataGrid.</summary>
+/// <summary>Built-in renderer: shows the raw ResultSet in a DataGrid.</summary>
 public sealed class TableRenderer : IVisualRenderer
 {
     public string Name => "EasyBI Table";
@@ -52,6 +52,15 @@ public sealed class TableRenderer : IVisualRenderer
                 ElementStyle = style,
                 Width = new DataGridLength(1, DataGridLengthUnitType.Star),
             });
+        }
+        if (request.Select is { } select)
+        {
+            grid.Cursor = System.Windows.Input.Cursors.Hand;
+            grid.PreviewMouseLeftButtonUp += (_, e) =>
+            {
+                if (ItemsControl.ContainerFromElement(grid, (DependencyObject)e.OriginalSource) is DataGridRow row)
+                    select(new RowSelection(row.GetIndex()));
+            };
         }
         return grid;
     }

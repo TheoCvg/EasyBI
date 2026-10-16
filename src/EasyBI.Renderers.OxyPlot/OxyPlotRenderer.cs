@@ -10,7 +10,7 @@ using OxyPlot.Wpf;
 
 namespace EasyBI.Renderers.OxyPlot;
 
-/// <summary>Connecteur OxyPlot : traduit un <see cref="RenderRequest"/> en PlotModel.</summary>
+/// <summary>OxyPlot connector: translates a <see cref="RenderRequest"/> into a PlotModel.</summary>
 public sealed class OxyPlotRenderer : IVisualRenderer
 {
     public string Name => "OxyPlot";
@@ -24,11 +24,46 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         {
             MarkType.Pie => BuildPie(request),
             MarkType.Bar or MarkType.Line => BuildCartesian(request),
-            _ => throw new NotSupportedException($"OxyPlotRenderer ne gère pas '{request.Visual.Mark}'."),
+            _ => throw new NotSupportedException($"OxyPlotRenderer does not support '{request.Visual.Mark}'."),
         };
         model.PlotAreaBorderThickness = new OxyThickness(0);
         model.TextColor = OxyColor.FromRgb(0x37, 0x41, 0x51);
-        return new PlotView { Model = model, Background = System.Windows.Media.Brushes.Transparent };
+        var view = new PlotView { Model = model, Background = System.Windows.Media.Brushes.Transparent };
+        if (request.Select is { } select)
+            view.Controller = SelectionController(model, select);
+        return view;
+    }
+
+    /// <summary>Left click: shows the tracker as usual, and selects the element that was hit.</summary>
+    private static PlotController SelectionController(PlotModel model, Action<DataSelection> select)
+    {
+        var controller = new PlotController();
+        controller.BindMouseDown(OxyMouseButton.Left, new DelegatePlotCommand<OxyMouseDownEventArgs>((view, ctl, args) =>
+        {
+            global::OxyPlot.PlotCommands.SnapTrack.Execute(view, ctl, args);
+            if (HitTest(model, args.Position) is { } selection) select(selection);
+        }));
+        return controller;
+    }
+
+    private static DataSelection? HitTest(PlotModel model, ScreenPoint position)
+    {
+        const double tolerance = 12;
+        for (var s = 0; s < model.Series.Count; s++)
+        {
+            var hit = model.Series[s].GetNearestPoint(position, false);
+            if (hit is null) continue;
+            switch (model.Series[s])
+            {
+                case PieSeries pie when hit.Item is PieSlice slice && pie.Tag is int[] categories:
+                    return new CategorySelection(categories[pie.Slices.IndexOf(slice)]);
+                case BarSeries:
+                    return new CategorySelection((int)hit.Index, s);
+                case LineSeries when hit.Position.DistanceTo(position) <= tolerance:
+                    return new CategorySelection((int)Math.Round(hit.DataPoint.X), s);
+            }
+        }
+        return null;
     }
 
     private static PlotModel BuildCartesian(RenderRequest request)
@@ -75,13 +110,13 @@ public sealed class OxyPlotRenderer : IVisualRenderer
                     MarkerFill = color,
                     TrackerFormatString = "{0}\n{2}: {4:" + (format ?? "#,##0.##") + "}",
                 };
-                // DataPoint.Undefined = point absent : OxyPlot coupe la ligne.
+                // DataPoint.Undefined = missing point: OxyPlot breaks the line.
                 line.Points.AddRange(source.Values.Select((v, x) => v is null ? DataPoint.Undefined : new DataPoint(x, v.Value)));
                 model.Series.Add(line);
             }
             else
             {
-                // Depuis OxyPlot 2.1, BarSeries s'oriente selon ses axes : catégories en bas = colonnes.
+                // Since OxyPlot 2.1, BarSeries follows its axes: categories at the bottom = columns.
                 var bars = new BarSeries
                 {
                     Title = source.Name,
@@ -117,11 +152,15 @@ public sealed class OxyPlotRenderer : IVisualRenderer
             StartAngle = -90,
             TrackerFormatString = "{1}: {2:" + (source.Format ?? "#,##0.##") + "}",
         };
+        var categories = new List<int>();
         for (var i = 0; i < chart.Categories.Count; i++)
         {
-            if (source.Values[i] is { } value)
-                pie.Slices.Add(new PieSlice(chart.Categories[i], value) { Fill = Color(request.Theme, i) });
+            if (source.Values[i] is not { } value) continue;
+            pie.Slices.Add(new PieSlice(chart.Categories[i], value) { Fill = Color(request.Theme, i) });
+            categories.Add(i);
         }
+        // Categories without a value have no slice: slice index → category index
+        pie.Tag = categories.ToArray();
         var model = new PlotModel();
         model.Series.Add(pie);
         return model;

@@ -10,8 +10,8 @@ using EasyBI.Abstractions;
 namespace EasyBI.Wpf.Designer;
 
 /// <summary>
-/// Designer self-service : l'utilisateur glisse des champs sur des étagères,
-/// choisit un type de visuel et voit l'aperçu en direct.
+/// Self-service designer: the user drags fields onto shelves,
+/// picks a visual type and sees a live preview.
 /// </summary>
 public partial class ReportDesigner : UserControl
 {
@@ -46,7 +46,7 @@ public partial class ReportDesigner : UserControl
         set => SetValue(ContextProperty, value);
     }
 
-    /// <summary>Le visuel en cours de conception (lecture seule).</summary>
+    /// <summary>The visual being designed (read-only).</summary>
     public VisualDefinition? Visual => (VisualDefinition?)GetValue(VisualProperty);
 
     public DesignerViewModel? ViewModel => LayoutRoot.DataContext as DesignerViewModel;

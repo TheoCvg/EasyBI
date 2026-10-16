@@ -17,7 +17,7 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-        // --- Tout ce que le développeur WPF a à écrire : un modèle + des renderers ---
+        // --- All the WPF developer has to write: a model + renderers ---
         Context = EasyBIContext.Create()
             .AddModel(SalesData.CreateModel(SalesData.Generate()))
             .UseRenderer(new LiveCharts2Renderer())
@@ -32,6 +32,9 @@ public partial class MainWindow : Window
     }
 
     public EasyBIContext Context { get; }
+
+    /// <summary>Global filters and cross-filtering of the dashboard.</summary>
+    public FilterContext Filters { get; } = new();
 
     private void OnRendererChanged(object sender, SelectionChangedEventArgs e) =>
         Context.ActiveRenderer = (IVisualRenderer?)RendererPicker.SelectedItem;
@@ -65,14 +68,18 @@ public partial class MainWindow : Window
         Tabs.SelectedIndex = 1;
     }
 
-    private void OnRemoveVisual(object sender, RoutedEventArgs e) =>
-        _visuals.Remove((VisualDefinition)((FrameworkElement)sender).DataContext);
+    private void OnRemoveVisual(object sender, RoutedEventArgs e)
+    {
+        var visual = (VisualDefinition)((FrameworkElement)sender).DataContext;
+        _visuals.Remove(visual);
+        if (Filters.Selection?.SourceVisualId == visual.Id) Filters.ClearSelection();
+    }
 
     private void OnSave(object sender, RoutedEventArgs e)
     {
         var dialog = new SaveFileDialog { Filter = "Rapport EasyBI (*.easybi.json)|*.easybi.json", FileName = "rapport.easybi.json" };
         if (dialog.ShowDialog(this) != true) return;
-        var report = new ReportDefinition { Title = "Tableau de bord", Visuals = _visuals.ToArray() };
+        var report = new ReportDefinition { Title = "Tableau de bord", Visuals = _visuals.ToArray(), Filters = Filters.Filters.ToArray() };
         File.WriteAllText(dialog.FileName, ReportSerializer.Serialize(report));
     }
 
@@ -83,8 +90,14 @@ public partial class MainWindow : Window
         try
         {
             var report = ReportSerializer.Deserialize(File.ReadAllText(dialog.FileName));
+            if (Context.Validate(report) is { Count: > 0 } problems)
+            {
+                MessageBox.Show(this, "Le rapport référence des éléments inconnus ; les visuels concernés afficheront une erreur.\n\n• "
+                    + string.Join("\n• ", problems), "Rapport incomplet", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
             _visuals.Clear();
             foreach (var visual in report.Visuals) _visuals.Add(visual);
+            Filters.Load(report.Filters);
             Tabs.SelectedIndex = 0;
         }
         catch (Exception ex)

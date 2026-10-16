@@ -3,7 +3,7 @@ using EasyBI.Abstractions;
 
 namespace EasyBI.Core;
 
-/// <summary>Enchaîne : définition du visuel → requête → exécution → données pivotées.</summary>
+/// <summary>Chains: visual definition → query → execution → pivoted data.</summary>
 public static class VisualPipeline
 {
     public static AnalyticQuery ToQuery(this VisualDefinition visual)
@@ -36,43 +36,66 @@ public static class ChartDataBuilder
         var legend = visual.Legend is null ? -1 : result.IndexOf(visual.Legend.Key);
         var measures = visual.Values.Select(v => result.IndexOf(v.Key)).ToArray();
 
-        var categories = new List<string>();
-        var categoryIndex = new Dictionary<string, int>();
-        var series = new List<(string Name, string? Format, Dictionary<int, double?> Values)>();
-        var seriesIndex = new Dictionary<string, int>();
+        // Categories and series are identified by their raw values, not by their label:
+        // two distinct values with the same display text do not merge.
+        var categories = new List<object?[]>();
+        var categoryIndex = new Dictionary<object?[], int>(ValuesComparer.Instance);
+        var series = new List<(string Name, string? Format, object? LegendValue, Dictionary<int, double?> Values)>();
+        var seriesIndex = new Dictionary<object?[], int>(ValuesComparer.Instance);
 
         foreach (var row in result.Rows)
         {
-            var category = axis.Length == 0 ? "Total" : string.Join(" / ", axis.Select(i => ValueFormatter.Display(row[i])));
+            var category = axis.Select(i => row[i]).ToArray();
             if (!categoryIndex.TryGetValue(category, out var c))
             {
                 categoryIndex[category] = c = categories.Count;
                 categories.Add(category);
             }
 
-            foreach (var m in measures)
+            for (var m = 0; m < measures.Length; m++)
             {
-                var column = result.Columns[m];
-                var name = legend < 0 ? column.Caption
-                    : measures.Length == 1 ? ValueFormatter.Display(row[legend])
-                    : $"{ValueFormatter.Display(row[legend])} · {column.Caption}";
-                if (!seriesIndex.TryGetValue(name, out var s))
+                var column = result.Columns[measures[m]];
+                var legendValue = legend < 0 ? null : row[legend];
+                object?[] seriesKey = [legendValue, m];
+                if (!seriesIndex.TryGetValue(seriesKey, out var s))
                 {
-                    seriesIndex[name] = s = series.Count;
-                    series.Add((name, column.Format, []));
+                    var name = legend < 0 ? column.Caption
+                        : measures.Length == 1 ? ValueFormatter.Display(legendValue)
+                        : $"{ValueFormatter.Display(legendValue)} · {column.Caption}";
+                    seriesIndex[seriesKey] = s = series.Count;
+                    series.Add((name, column.Format, legendValue, []));
                 }
-                series[s].Values[c] = row[m] is null ? null : Convert.ToDouble(row[m], CultureInfo.InvariantCulture);
+                var value = row[measures[m]];
+                series[s].Values[c] = value is null ? null : Convert.ToDouble(value, CultureInfo.InvariantCulture);
             }
         }
 
         var caption = axis.Length == 0 ? null : string.Join(" / ", axis.Select(i => result.Columns[i].Caption));
         return new ChartData(
             caption,
-            categories,
+            categories.Select(c => c.Length == 0 ? "Total" : string.Join(" / ", c.Select(ValueFormatter.Display))).ToArray(),
             series.Select(s => new ChartSeries(
                 s.Name,
                 Enumerable.Range(0, categories.Count).Select(i => s.Values.GetValueOrDefault(i)).ToArray(),
-                s.Format)).ToArray());
+                s.Format) { LegendValue = s.LegendValue }).ToArray())
+        {
+            CategoryValues = categories,
+        };
+    }
+
+    private sealed class ValuesComparer : IEqualityComparer<object?[]>
+    {
+        public static ValuesComparer Instance { get; } = new();
+
+        public bool Equals(object?[]? x, object?[]? y) =>
+            ReferenceEquals(x, y) || (x is not null && y is not null && x.SequenceEqual(y));
+
+        public int GetHashCode(object?[] values)
+        {
+            var hash = new HashCode();
+            foreach (var value in values) hash.Add(value);
+            return hash.ToHashCode();
+        }
     }
 }
 
@@ -82,6 +105,8 @@ public static class ValueFormatter
     {
         null => "(vide)",
         DateTime d => d.ToString("d", CultureInfo.CurrentCulture),
+        DateTimeOffset d => d.ToString("d", CultureInfo.CurrentCulture),
+        DateOnly d => d.ToString("d", CultureInfo.CurrentCulture),
         bool b => b ? "Oui" : "Non",
         IFormattable f => f.ToString(null, CultureInfo.CurrentCulture),
         _ => value.ToString() ?? "",

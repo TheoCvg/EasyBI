@@ -1,35 +1,36 @@
 # EasyBI
 
-Bibliothèque de **self-service BI pour WPF**. Le développeur déclare *ce qui est analysable*,
-l'utilisateur final construit ses visuels par glisser-déposer, et le rendu est délégué à des
-**connecteurs** interchangeables (LiveCharts2, OxyPlot, ...).
+A **self-service BI library for WPF**. The developer declares *what can be analyzed*,
+end users build their visuals by drag-and-drop, and rendering is delegated to interchangeable
+**connectors** (LiveCharts2, OxyPlot, ...).
 
 ```
- Source (IQueryable) ─▶ Modèle sémantique ─▶ AnalyticQuery ─▶ ResultSet ─▶ ChartData ─▶ IVisualRenderer
-                         (dev)                (utilisateur)    (moteur)     (pivot)      (connecteur)
+ Source (IQueryable) ─▶ Semantic model ─▶ AnalyticQuery ─▶ ResultSet ─▶ ChartData ─▶ IVisualRenderer
+                         (developer)       (end user)       (engine)     (pivot)      (connector)
 ```
 
-## Projets
+## Projects
 
-| Projet | Rôle | Dépendances |
+| Project | Role | Dependencies |
 |---|---|---|
-| `EasyBI.Abstractions` | **La norme** : modèle, requête, `ResultSet`, `VisualDefinition`, `ReportDefinition` | aucune |
-| `EasyBI.Core` | Builder de modèle, moteur de requête sur `IQueryable` (arbres d'expressions), pivot, JSON | Abstractions |
-| `EasyBI.Wpf` | `IVisualRenderer`, `EasyBIContext`, `VisualView`, `ReportDesigner`, renderers KPI et Table intégrés | Core |
-| `EasyBI.Renderers.LiveCharts2` | Connecteur LiveCharts2 (barres, courbes, secteurs) | Wpf + LiveCharts2 |
-| `EasyBI.Renderers.OxyPlot` | Connecteur OxyPlot (barres, courbes, secteurs) | Wpf + OxyPlot |
-| `samples/EasyBI.Sample` | Démo : tableau de bord + designer + bascule de renderer + sauvegarde JSON | |
-| `tests/EasyBI.Core.Tests` | Tests du moteur et de la sérialisation | |
+| `EasyBI.Abstractions` | **The contract**: model, query, `ResultSet`, `VisualDefinition`, `ReportDefinition` | none |
+| `EasyBI.Core` | Model builder, query engine over `IQueryable` (expression trees), pivot, filtering, JSON | Abstractions |
+| `EasyBI.Wpf` | `IVisualRenderer`, `EasyBIContext`, `VisualView`, `ReportDesigner`, `FilterBar`, built-in KPI and Table renderers | Core |
+| `EasyBI.Renderers.LiveCharts2` | LiveCharts2 connector (bars, lines, pies) | Wpf + LiveCharts2 |
+| `EasyBI.Renderers.OxyPlot` | OxyPlot connector (bars, lines, pies) | Wpf + OxyPlot |
+| `samples/EasyBI.Sample` | Demo: dashboard + designer + renderer switch + JSON save/load | |
+| `tests/EasyBI.Core.Tests` | Engine, filtering and serialization tests | |
+| `tests/EasyBI.Wpf.Tests` | Designer tests | |
 
-## Côté développeur WPF
+## For the WPF developer
 
 ```csharp
-var model = SemanticModel.For(dbContext.Sales, "sales", "Ventes")
+var model = SemanticModel.For(dbContext.Sales, "sales", "Sales")
     .Dimension(s => s.Date, "Date")
-    .Dimension(s => s.Region, "Région")
-    .Dimension(s => s.Product.Category, "Catégorie")
-    .Measure(s => s.Amount, "Chiffre d'affaires", format: "#,##0 €")
-    .Count("Nombre de ventes");
+    .Dimension(s => s.Region, "Region")
+    .Dimension(s => s.Product.Category, "Category")
+    .Measure(s => s.Amount, "Revenue", format: "#,##0 €")
+    .Count("Number of sales");
 
 Context = EasyBIContext.Create()
     .AddModel(model)
@@ -37,37 +38,70 @@ Context = EasyBIContext.Create()
     .UseRenderer(new OxyPlotRenderer());
 ```
 
-```xml
-<designer:ReportDesigner Context="{Binding Context}" />                       <!-- conception -->
-<bi:VisualView Context="{Binding Context}" Definition="{Binding Visual}" />   <!-- affichage -->
+With EF Core, prefer a context factory: each query opens its own `DbContext`, and the visuals of a
+dashboard run in parallel. On a shared `IQueryable` (other than LINQ to objects), queries run one
+after another, because a `DbContext` does not support concurrent operations.
+
+```csharp
+var model = SemanticModel.For(() => dbFactory.CreateDbContext(), db => db.Sales, "sales", "Sales")
+    .Dimension(s => s.Region, "Region") /* ... */;
 ```
 
-## Écrire un connecteur
+```xml
+<designer:ReportDesigner Context="{Binding Context}" />                       <!-- design -->
+<bi:VisualView Context="{Binding Context}" Definition="{Binding Visual}" />   <!-- display -->
+```
 
-Un connecteur implémente une seule interface. Il reçoit des données **déjà requêtées et pivotées**
-(`request.Chart` : catégories + séries) et le `ResultSet` brut si besoin :
+## Filtering: global filters and cross-filtering
+
+A `FilterContext` holds the filtering state of a dashboard. Set once on the container (it is an
+inherited property), it is used by the `FilterBar` and by every `VisualView`:
+
+```xml
+<DockPanel bi:VisualView.FilterContext="{Binding Filters}">
+    <bi:FilterBar DockPanel.Dock="Top" Context="{Binding Context}" />
+    <!-- ... the dashboard's VisualViews ... -->
+</DockPanel>
+```
+
+- **Global filters** (slicers): added from the `FilterBar`, they apply to every visual of the same
+  model and are saved with the report (`ReportDefinition.Filters`).
+- **Cross-filtering**: clicking a bar, a point, a slice or a table row filters the other visuals of
+  the same model on the element's dimensions (axis, plus legend for a bar). Clicking the same element
+  again clears the selection. The source visual is not filtered and shows the current selection.
+  Periods (quarter, month...) filter through `FilterSpec.Grain`.
+
+A connector only has to call `request.Select?.Invoke(new CategorySelection(category, series))` on
+click (or `RowSelection` for a table): `Select` is null when interactivity is disabled, for example
+in the designer preview.
+
+## Writing a connector
+
+A connector implements a single interface. It receives **already queried and pivoted** data
+(`request.Chart`: categories + series) and the raw `ResultSet` if needed:
 
 ```csharp
 public sealed class MyRenderer : IVisualRenderer
 {
-    public string Name => "MaLib";
+    public string Name => "MyLib";
     public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType> { MarkType.Bar });
     public FrameworkElement Render(RenderRequest request) { /* request.Chart.Categories, request.Chart.Series */ }
 }
 ```
 
-`EasyBIContext.ResolveRenderer` négocie les capacités : renderer actif s'il gère le type de visuel,
-sinon un autre renderer branché, sinon un renderer intégré. Le designer grise les types que personne ne sait dessiner.
+`EasyBIContext.ResolveRenderer` negotiates capabilities: the active renderer if it supports the
+visual type, otherwise another plugged-in renderer, otherwise a built-in one. The designer disables
+the types that no renderer can draw.
 
-## Format de rapport (`easybi/v1`)
+## Report format (`easybi/v1`)
 
 ```json
 {
   "schema": "easybi/v1",
-  "title": "Tableau de bord",
+  "title": "Dashboard",
   "visuals": [
     {
-      "title": "CA par région et canal",
+      "title": "Revenue by region and channel",
       "model": "sales",
       "mark": "Bar",
       "axis": [ { "field": "Region", "grain": "None" } ],
@@ -75,25 +109,40 @@ sinon un autre renderer branché, sinon un renderer intégré. Le designer grise
       "values": [ { "measure": "Amount" } ],
       "filters": [ { "field": "Product.Category", "operator": "In", "values": [ "Services" ] } ]
     }
+  ],
+  "filters": [
+    { "model": "sales", "filter": { "field": "Region", "operator": "In", "values": [ "North", null ] } }
   ]
 }
 ```
 
-Le même fichier s'affiche à l'identique avec n'importe quel connecteur.
+`null` in `values` means a missing value. `EasyBIContext.Validate(report)` reports the unknown
+models and fields of a loaded report.
 
-## Lancer
+The same file renders identically with any connector.
+
+## Run
 
 ```
 dotnet test
 dotnet run --project samples/EasyBI.Sample
 ```
 
-## Limites connues du MVP / pistes
+The user interface (designer, filter bar, messages) is currently in French; it will move to
+`.resx` resources.
 
-- Interactivité : pas encore de filtrage croisé (clic sur une barre → filtre les autres visuels).
-- Filtres : uniquement « valeur parmi » sur les dimensions non-date ; pas de plage de dates.
-- `Top` s'applique aux lignes agrégées, pas aux catégories quand une légende est présente.
-- Le moteur exécute la requête via `Task.Run` + `ToList()` ; un provider EF Core dédié utiliserait `ToListAsync`.
-  La traduction SQL d'EF Core (GroupBy sur clé composite + projection en `object[]`) reste à valider.
-- Au plus 4 dimensions de regroupement (axe + légende).
-- Pas de thème sombre, pas de mise en page libre du tableau de bord.
+## Contributing
+
+See [AGENTS.md](AGENTS.md) for the code style, language rules and Git workflow.
+
+## Known limitations / roadmap
+
+- Cross-filtering: one selection at a time; the selected element is not yet highlighted in the
+  source chart (a "Sélection : ..." banner shows it).
+- Designer and `FilterBar` filters: "one of" only, on non-date dimensions; no date ranges.
+- `Top` applies to aggregated rows, not to categories when a legend is present.
+- Grouping, sorting and `Top` are pushed down to the provider, and execution is asynchronous when the
+  source implements `IAsyncEnumerable` (EF Core). EF Core's SQL translation (GroupBy on a composite
+  key, sort on an aggregate, projection to `object[]`) still has to be validated against a real database.
+- At most 4 grouping dimensions (axis + legend).
+- No dark theme, no free-form dashboard layout.

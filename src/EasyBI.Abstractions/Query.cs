@@ -1,13 +1,13 @@
 namespace EasyBI.Abstractions;
 
-/// <summary>Référence à une dimension, avec une granularité optionnelle pour les dates.</summary>
+/// <summary>Reference to a dimension, with an optional granularity for dates.</summary>
 public sealed record FieldRef(string Field, DateGrain Grain = DateGrain.None)
 {
-    /// <summary>Nom de la colonne produite dans le <see cref="ResultSet"/>.</summary>
+    /// <summary>Name of the column produced in the <see cref="ResultSet"/>.</summary>
     public string Key => Grain == DateGrain.None ? Field : $"{Field}.{Grain}";
 }
 
-/// <summary>Référence à une mesure ; l'agrégation par défaut du modèle peut être surchargée.</summary>
+/// <summary>Reference to a measure; the model's default aggregation can be overridden.</summary>
 public sealed record MeasureRef(string Measure, Aggregation? Aggregation = null)
 {
     public string Key => Aggregation is null ? Measure : $"{Measure}.{Aggregation}";
@@ -15,14 +15,18 @@ public sealed record MeasureRef(string Measure, Aggregation? Aggregation = null)
 
 public enum FilterOperator { In, NotIn }
 
-/// <summary>Filtre sur une dimension. Les valeurs sont stockées sous forme invariante pour rester sérialisables.</summary>
-public sealed record FilterSpec(string Field, FilterOperator Operator, IReadOnlyList<string> Values);
+/// <summary>
+/// Filter on a dimension. Values are stored in invariant form so they stay serializable
+/// (<c>null</c> = missing value). With a granularity, the date is first reduced to its period
+/// (<see cref="DatePeriod.Key"/>: 2024, 20241, 202403...) before the comparison.
+/// </summary>
+public sealed record FilterSpec(string Field, FilterOperator Operator, IReadOnlyList<string?> Values, DateGrain Grain = DateGrain.None);
 
 public sealed record SortSpec(string Key, bool Descending = false);
 
 /// <summary>
-/// Requête analytique abstraite : "grouper par ... et agréger ...".
-/// Elle ne connaît ni la source de données ni le rendu.
+/// Abstract analytic query: "group by ... and aggregate ...".
+/// It knows neither the data source nor the rendering.
 /// </summary>
 public sealed record AnalyticQuery(
     IReadOnlyList<FieldRef> GroupBy,

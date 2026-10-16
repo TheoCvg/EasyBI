@@ -7,43 +7,42 @@ using EasyBI.Abstractions;
 namespace EasyBI.Core;
 
 /// <summary>
-/// Traduit une <see cref="AnalyticQuery"/> en arbre d'expressions LINQ :
-/// source.Where(filtres).GroupBy(clé).Select(g => new object[] { clés..., agrégats... }).
-/// Le GroupBy et les agrégats restent dans l'IQueryable : un provider comme EF Core
-/// peut donc les pousser en SQL.
+/// Translates an <see cref="AnalyticQuery"/> into a LINQ expression tree:
+/// source.Where(filters).GroupBy(key).OrderBy(sort).Take(top).Select(g => new object[] { keys..., aggregates... }).
+/// Everything stays inside the IQueryable, so a provider such as EF Core can push
+/// grouping, aggregates, sorting and Top N down to SQL.
 /// </summary>
 internal static class QueryEngine<T>
 {
     private const int MaxGroupFields = 4;
     private const int MaxDistinctValues = 1000;
 
-    public static ResultSet Execute(
+    public static async Task<ResultSet> ExecuteAsync(
         IQueryable<T> source,
         ModelMetadata metadata,
         IReadOnlyDictionary<string, LambdaExpression> selectors,
-        AnalyticQuery query)
+        AnalyticQuery query,
+        CancellationToken cancellationToken)
     {
         if (query.GroupBy.Count > MaxGroupFields)
-            throw new NotSupportedException($"Au plus {MaxGroupFields} dimensions de regroupement sont supportées.");
+            throw new NotSupportedException($"At most {MaxGroupFields} grouping dimensions are supported.");
 
         var parameter = Expression.Parameter(typeof(T), "x");
-        var filtered = ApplyFilters(source, metadata, selectors, query.Filters ?? [], parameter);
+        var filtered = ApplyFilters(Cancellable(source, cancellationToken), metadata, selectors, query.Filters ?? [], parameter);
         var columns = new List<ResultColumn>();
 
-        // Clés de regroupement
+        // Grouping keys
         var keyBodies = new List<Expression>();
         foreach (var fieldRef in query.GroupBy)
         {
             var field = RequireKind(metadata.GetField(fieldRef.Field), FieldKind.Dimension);
-            var body = Rebind(selectors[field.Name], parameter);
-            var dataType = field.DataType;
-            if (fieldRef.Grain != DateGrain.None)
+            var body = ApplyGrain(field, Rebind(selectors[field.Name], parameter), fieldRef.Grain);
+            var dataType = fieldRef.Grain switch
             {
-                if (field.DataType != DataType.Date)
-                    throw new InvalidOperationException($"La granularité '{fieldRef.Grain}' exige une dimension date ('{field.Name}').");
-                body = DateGrains.Apply(body, fieldRef.Grain);
-                dataType = fieldRef.Grain == DateGrain.Day ? DataType.Date : DataType.Text;
-            }
+                DateGrain.None => field.DataType,
+                DateGrain.Day => DataType.Date,
+                _ => DataType.Text,
+            };
             keyBodies.Add(body);
             var caption = fieldRef.Grain == DateGrain.None ? field.Caption : $"{field.Caption} ({DateGrains.Caption(fieldRef.Grain)})";
             columns.Add(new ResultColumn(fieldRef.Key, caption, FieldKind.Dimension, dataType));
@@ -58,43 +57,120 @@ internal static class QueryEngine<T>
             i < keyBodies.Count ? keyBodies[i] : Expression.Constant(0)));
         var keySelector = Expression.Lambda(Expression.MemberInit(Expression.New(keyType), bindings), parameter);
 
-        // Projection : clés puis agrégats
-        var group = Expression.Parameter(typeof(IGrouping<,>).MakeGenericType(keyType, typeof(T)), "g");
+        // Projection: keys then aggregates. The same expressions are reused for sorting.
+        var groupType = typeof(IGrouping<,>).MakeGenericType(keyType, typeof(T));
+        var group = Expression.Parameter(groupType, "g");
         var key = Expression.Property(group, "Key");
         var cells = new List<Expression>();
         for (var i = 0; i < keyBodies.Count; i++)
-            cells.Add(Expression.Convert(Expression.Property(key, $"K{i + 1}"), typeof(object)));
+            cells.Add(Expression.Property(key, $"K{i + 1}"));
 
         foreach (var measureRef in query.Measures)
         {
             var field = RequireKind(metadata.GetField(measureRef.Measure), FieldKind.Measure);
             var aggregation = measureRef.Aggregation ?? field.DefaultAggregation ?? Aggregation.Sum;
-            cells.Add(Expression.Convert(Aggregate(group, selectors[field.Name], aggregation), typeof(object)));
+            cells.Add(Aggregate(group, selectors[field.Name], aggregation));
             var caption = measureRef.Aggregation is null ? field.Caption : $"{field.Caption} ({aggregation})";
             columns.Add(new ResultColumn(measureRef.Key, caption, FieldKind.Measure, DataType.Number, field.Format));
         }
-        var rowSelector = Expression.Lambda(Expression.NewArrayInit(typeof(object), cells), group);
 
-        var rows = (List<object?[]>)Invoke(nameof(Run), [keyType], filtered, keySelector, rowSelector);
+        var grouped = CallQueryable(filtered, nameof(Queryable.GroupBy), [typeof(T), keyType], keySelector);
+        var ordered = ApplySort(grouped, groupType, group, columns, cells, query);
+        if (query.Top is { } top)
+        {
+            ordered = ordered.Provider.CreateQuery(Expression.Call(
+                typeof(Queryable), nameof(Queryable.Take), [groupType], ordered.Expression, Expression.Constant(top)));
+        }
+        var rowSelector = Expression.Lambda(
+            Expression.NewArrayInit(typeof(object), cells.Select(c => Expression.Convert(c, typeof(object)))), group);
+        var projected = (IQueryable<object?[]>)CallQueryable(ordered, nameof(Queryable.Select), [groupType, typeof(object[])], rowSelector);
 
-        var ordered = Order(rows, columns, query);
-        if (query.Top is { } top) ordered = ordered.Take(top).ToList();
-        FormatGrainLabels(ordered, query.GroupBy);
-        return new ResultSet(columns, ordered);
+        var rows = await ToListAsync(projected, cancellationToken).ConfigureAwait(false);
+        ToDatePeriods(rows, query.GroupBy);
+        return new ResultSet(columns, rows);
     }
 
-    public static IReadOnlyList<object?> DistinctValues(IQueryable<T> source, LambdaExpression selector) =>
-        (IReadOnlyList<object?>)Invoke(nameof(Distinct), [selector.ReturnType], source, selector);
+    public static Task<IReadOnlyList<object?>> DistinctValuesAsync(
+        IQueryable<T> source, LambdaExpression selector, CancellationToken cancellationToken) =>
+        (Task<IReadOnlyList<object?>>)Invoke(nameof(DistinctAsync), [selector.ReturnType], source, selector, cancellationToken);
 
-    private static List<object?[]> Run<TKey>(
-        IQueryable<T> source,
-        Expression<Func<T, TKey>> keySelector,
-        Expression<Func<IGrouping<TKey, T>, object?[]>> rowSelector) =>
-        source.GroupBy(keySelector).Select(rowSelector).ToList();
+    private static async Task<IReadOnlyList<object?>> DistinctAsync<TValue>(
+        IQueryable<T> source, Expression<Func<T, TValue>> selector, CancellationToken cancellationToken)
+    {
+        var values = Cancellable(source, cancellationToken).Select(selector).Distinct().OrderBy(v => v).Take(MaxDistinctValues);
+        return (await ToListAsync(values, cancellationToken).ConfigureAwait(false)).Select(v => (object?)v).ToList();
+    }
 
-    private static IReadOnlyList<object?> Distinct<TValue>(IQueryable<T> source, Expression<Func<T, TValue>> selector) =>
-        source.Select(selector).Distinct().OrderBy(v => v).Take(MaxDistinctValues)
-            .AsEnumerable().Select(v => (object?)v).ToList();
+    /// <summary>
+    /// Materializes the query: asynchronously when the provider supports it (EF Core implements
+    /// IAsyncEnumerable), otherwise checking for cancellation on every row.
+    /// </summary>
+    private static async Task<List<TRow>> ToListAsync<TRow>(IQueryable<TRow> query, CancellationToken cancellationToken)
+    {
+        var rows = new List<TRow>();
+        if (query is IAsyncEnumerable<TRow> asyncRows)
+        {
+            await foreach (var row in asyncRows.WithCancellation(cancellationToken).ConfigureAwait(false))
+                rows.Add(row);
+            return rows;
+        }
+        foreach (var row in query)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            rows.Add(row);
+        }
+        return rows;
+    }
+
+    /// <summary>In memory, GroupBy consumes the whole source at once: inject a cancellation check into it.</summary>
+    private static IQueryable<T> Cancellable(IQueryable<T> source, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return source is EnumerableQuery && cancellationToken.CanBeCanceled
+            ? WithCancellation(source, cancellationToken).AsQueryable()
+            : source;
+    }
+
+    private static IEnumerable<T> WithCancellation(IEnumerable<T> source, CancellationToken cancellationToken)
+    {
+        foreach (var item in source)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return item;
+        }
+    }
+
+    private static IQueryable ApplySort(
+        IQueryable grouped,
+        Type groupType,
+        ParameterExpression group,
+        List<ResultColumn> columns,
+        List<Expression> cells,
+        AnalyticQuery query)
+    {
+        var sorts = query.Sort is { Count: > 0 } ? query.Sort : query.GroupBy.Select(g => new SortSpec(g.Key)).ToList();
+        var result = grouped;
+        var first = true;
+        foreach (var sort in sorts)
+        {
+            var index = columns.FindIndex(c => c.Key == sort.Key);
+            if (index < 0) throw new KeyNotFoundException($"Sort on a missing column: '{sort.Key}'.");
+            var method = (first, sort.Descending) switch
+            {
+                (true, false) => nameof(Queryable.OrderBy),
+                (true, true) => nameof(Queryable.OrderByDescending),
+                (false, false) => nameof(Queryable.ThenBy),
+                (false, true) => nameof(Queryable.ThenByDescending),
+            };
+            result = CallQueryable(result, method, [groupType, cells[index].Type], Expression.Lambda(cells[index], group));
+            first = false;
+        }
+        return result;
+    }
+
+    private static IQueryable CallQueryable(IQueryable source, string method, Type[] typeArguments, LambdaExpression lambda) =>
+        source.Provider.CreateQuery(Expression.Call(
+            typeof(Queryable), method, typeArguments, source.Expression, Expression.Quote(lambda)));
 
     private static IQueryable<T> ApplyFilters(
         IQueryable<T> source,
@@ -106,20 +182,32 @@ internal static class QueryEngine<T>
         foreach (var filter in filters)
         {
             var field = RequireKind(metadata.GetField(filter.Field), FieldKind.Dimension);
-            var selector = selectors[field.Name];
-            var valueType = selector.ReturnType;
+            var selector = ApplyGrain(field, Rebind(selectors[field.Name], parameter), filter.Grain);
+            var valueType = selector.Type;
+            var acceptsNull = !valueType.IsValueType || Nullable.GetUnderlyingType(valueType) is not null;
             var values = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(valueType))!;
             foreach (var text in filter.Values)
-                values.Add(InvariantValue.Parse(text, valueType));
+            {
+                var value = InvariantValue.Parse(text, valueType);
+                if (value is not null || acceptsNull) values.Add(value);
+            }
 
             Expression body = Expression.Call(
                 typeof(Enumerable), nameof(Enumerable.Contains), [valueType],
-                Expression.Constant(values), Rebind(selector, parameter));
+                Expression.Constant(values), selector);
             if (filter.Operator == FilterOperator.NotIn)
                 body = Expression.Not(body);
             source = source.Where(Expression.Lambda<Func<T, bool>>(body, parameter));
         }
         return source;
+    }
+
+    private static Expression ApplyGrain(FieldDescriptor field, Expression body, DateGrain grain)
+    {
+        if (grain == DateGrain.None) return body;
+        if (field.DataType != DataType.Date)
+            throw new InvalidOperationException($"Granularity '{grain}' requires a date dimension ('{field.Name}').");
+        return DateGrains.Apply(body, grain);
     }
 
     private static Expression Aggregate(Expression group, LambdaExpression selector, Aggregation aggregation)
@@ -137,49 +225,30 @@ internal static class QueryEngine<T>
         };
         try
         {
-            // Surcharges numériques spécialisées (Sum(Func<T, decimal>), ...)
+            // Specialized numeric overloads (Sum(Func<T, decimal>), ...)
             return Expression.Call(typeof(Enumerable), method, [typeof(T)], group, selector);
         }
         catch (InvalidOperationException) when (aggregation is Aggregation.Min or Aggregation.Max)
         {
-            // Min/Max génériques (dates, etc.)
+            // Generic Min/Max (dates, etc.)
             return Expression.Call(typeof(Enumerable), method, [typeof(T), selector.ReturnType], group, selector);
         }
     }
 
-    private static List<object?[]> Order(List<object?[]> rows, List<ResultColumn> columns, AnalyticQuery query)
-    {
-        var sorts = query.Sort is { Count: > 0 } ? query.Sort : query.GroupBy.Select(g => new SortSpec(g.Key)).ToList();
-        IOrderedEnumerable<object?[]>? ordered = null;
-        foreach (var sort in sorts)
-        {
-            var index = columns.FindIndex(c => c.Key == sort.Key);
-            if (index < 0) throw new KeyNotFoundException($"Tri sur une colonne absente : '{sort.Key}'.");
-            Func<object?[], object?> keyOf = row => row[index];
-            ordered = (ordered, sort.Descending) switch
-            {
-                (null, false) => rows.OrderBy(keyOf, Comparer<object?>.Default),
-                (null, true) => rows.OrderByDescending(keyOf, Comparer<object?>.Default),
-                (_, false) => ordered.ThenBy(keyOf, Comparer<object?>.Default),
-                (_, true) => ordered.ThenByDescending(keyOf, Comparer<object?>.Default),
-            };
-        }
-        return ordered?.ToList() ?? rows;
-    }
-
-    private static void FormatGrainLabels(List<object?[]> rows, IReadOnlyList<FieldRef> groupBy)
+    /// <summary>Integer granularity keys become <see cref="DatePeriod"/> values (label + filter key).</summary>
+    private static void ToDatePeriods(List<object?[]> rows, IReadOnlyList<FieldRef> groupBy)
     {
         for (var i = 0; i < groupBy.Count; i++)
         {
             var grain = groupBy[i].Grain;
             if (grain is DateGrain.None or DateGrain.Day) continue;
             foreach (var row in rows)
-                row[i] = DateGrains.Label((int)row[i]!, grain);
+                row[i] = new DatePeriod(grain, (int)row[i]!);
         }
     }
 
     private static FieldDescriptor RequireKind(FieldDescriptor field, FieldKind kind) =>
-        field.Kind == kind ? field : throw new InvalidOperationException($"'{field.Name}' n'est pas une {(kind == FieldKind.Dimension ? "dimension" : "mesure")}.");
+        field.Kind == kind ? field : throw new InvalidOperationException($"'{field.Name}' is not a {(kind == FieldKind.Dimension ? "dimension" : "measure")}.");
 
     private static Expression Rebind(LambdaExpression lambda, ParameterExpression parameter) =>
         new ParameterReplacer(lambda.Parameters[0], parameter).Visit(lambda.Body);
@@ -206,7 +275,7 @@ internal static class QueryEngine<T>
     }
 }
 
-/// <summary>Clé de regroupement composite (les emplacements inutilisés contiennent une constante).</summary>
+/// <summary>Composite grouping key (unused slots hold a constant).</summary>
 internal sealed class GroupKey<T1, T2, T3, T4> : IEquatable<GroupKey<T1, T2, T3, T4>>
 {
     public T1 K1 { get; set; } = default!;

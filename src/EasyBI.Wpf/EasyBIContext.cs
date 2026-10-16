@@ -1,11 +1,12 @@
 using EasyBI.Abstractions;
+using EasyBI.Core;
 using EasyBI.Wpf.Renderers;
 
 namespace EasyBI.Wpf;
 
 /// <summary>
-/// Configuration partagée par le designer et les visuels : modèles disponibles,
-/// renderers branchés et thème.
+/// Configuration shared by the designer and the visuals: available models,
+/// plugged-in renderers and theme.
 /// </summary>
 public sealed class EasyBIContext
 {
@@ -18,7 +19,7 @@ public sealed class EasyBIContext
 
     public static EasyBIContext Create() => new();
 
-    /// <summary>Déclenché quand le renderer actif ou le thème change : les visuels se redessinent.</summary>
+    /// <summary>Raised when the active renderer or the theme changes: visuals redraw.</summary>
     public event EventHandler? Changed;
 
     public IReadOnlyList<ISemanticModel> Models => _models;
@@ -61,11 +62,15 @@ public sealed class EasyBIContext
 
     public ISemanticModel GetModel(string name) =>
         _models.FirstOrDefault(m => m.Metadata.Name == name)
-        ?? throw new KeyNotFoundException($"Modèle '{name}' non enregistré.");
+        ?? throw new KeyNotFoundException($"Model '{name}' is not registered.");
+
+    /// <summary>Checks that a loaded report only references registered models and fields.</summary>
+    public IReadOnlyList<string> Validate(ReportDefinition report) =>
+        ReportValidator.Validate(report, _models.Select(m => m.Metadata));
 
     /// <summary>
-    /// Négociation des capacités : renderer actif s'il sait faire, sinon un autre renderer branché,
-    /// sinon un renderer intégré (KPI, table).
+    /// Capability negotiation: the active renderer if it can draw the mark, otherwise another
+    /// plugged-in renderer, otherwise a built-in one (KPI, table).
     /// </summary>
     public IVisualRenderer? ResolveRenderer(MarkType mark)
     {

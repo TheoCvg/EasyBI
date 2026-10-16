@@ -3,8 +3,8 @@ namespace EasyBI.Abstractions;
 public enum MarkType { Bar, Line, Pie, Kpi, Table }
 
 /// <summary>
-/// Définition d'un visuel, indépendante de toute librairie graphique.
-/// C'est ce que l'utilisateur construit dans le designer et ce qui est sauvegardé en JSON.
+/// Definition of a visual, independent of any charting library.
+/// This is what the user builds in the designer and what is saved as JSON.
 /// </summary>
 public sealed record VisualDefinition
 {
@@ -12,15 +12,15 @@ public sealed record VisualDefinition
 
     public string Title { get; init; } = "";
 
-    /// <summary>Nom du modèle sémantique interrogé.</summary>
+    /// <summary>Name of the queried semantic model.</summary>
     public required string Model { get; init; }
 
     public MarkType Mark { get; init; } = MarkType.Bar;
 
-    /// <summary>Catégories (axe X d'un graphique, lignes d'une table).</summary>
+    /// <summary>Categories (X axis of a chart, rows of a table).</summary>
     public IReadOnlyList<FieldRef> Axis { get; init; } = [];
 
-    /// <summary>Dimension qui éclate les valeurs en plusieurs séries.</summary>
+    /// <summary>Dimension that splits the values into several series.</summary>
     public FieldRef? Legend { get; init; }
 
     public IReadOnlyList<MeasureRef> Values { get; init; } = [];
@@ -31,11 +31,14 @@ public sealed record VisualDefinition
 
     public int? Top { get; init; }
 
-    /// <summary>Options propres à un renderer donné (clé = nom du renderer), pour ne pas brider la norme.</summary>
+    /// <summary>Options specific to a given renderer (key = renderer name), so the contract does not limit them.</summary>
     public IReadOnlyDictionary<string, string>? Extensions { get; init; }
 }
 
-/// <summary>Un rapport = un ensemble de visuels. Le schéma est versionné.</summary>
+/// <summary>Report filter: applies to every visual querying the model <paramref name="Model"/>.</summary>
+public sealed record ReportFilter(string Model, FilterSpec Filter);
+
+/// <summary>A report = a set of visuals and global filters. The schema is versioned.</summary>
 public sealed record ReportDefinition
 {
     public const string CurrentSchema = "easybi/v1";
@@ -45,4 +48,7 @@ public sealed record ReportDefinition
     public string Title { get; init; } = "Rapport";
 
     public IReadOnlyList<VisualDefinition> Visuals { get; init; } = [];
+
+    /// <summary>Global filters (slicers) applied to every visual of the same model.</summary>
+    public IReadOnlyList<ReportFilter> Filters { get; init; } = [];
 }
