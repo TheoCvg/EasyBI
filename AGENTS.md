@@ -115,8 +115,10 @@ Branches:
 - CI (`.github/workflows/ci.yml`) builds, tests and packs every pull request and every push to
   `develop` and `main`.
 - Releasing: merge `develop` into `main`, then tag `main` with `vX.Y.Z` (or `vX.Y.Z-beta.N`).
-  The `Release` workflow builds, tests, publishes the packages to nuget.org (`NUGET_API_KEY` secret)
-  and creates the GitHub release. Versions follow [SemVer](https://semver.org/); while in `0.x`,
+  The `Release` workflow builds, tests, publishes the packages to nuget.org and creates the GitHub
+  release. Publishing uses nuget.org **Trusted Publishing** (OIDC, no stored API key): it needs the
+  nuget.org policy for `TheoCvg/EasyBI` / `release.yml` and the `NUGET_USER` secret (nuget.org
+  profile name). Never add a long-lived NuGet API key to the repository. Versions follow [SemVer](https://semver.org/); while in `0.x`,
   breaking changes bump the minor version.
 
 ## Pull requests
