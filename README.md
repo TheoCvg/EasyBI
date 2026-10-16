@@ -89,6 +89,27 @@ A connector only has to call `request.Select?.Invoke(new CategorySelection(categ
 click (or `RowSelection` for a table): `Select` is null when interactivity is disabled, for example
 in the designer preview.
 
+## Dashboard layout
+
+`DashboardPanel` shows a report as rows of visuals that end users arrange themselves:
+
+- hovering the left or right edge of a visual shows a **+** that adds a slot to the row; the top or
+  bottom edge, a **+** that adds a row. An empty slot offers **+ Add a visual**;
+- the **⠿** grip moves a visual: drop it left or right of another visual, or on its top or bottom
+  quarter to put it in a new row;
+- dragging the gap between two visuals resizes them, and the gap below a row changes its height;
+- each row (**⋮** menu) fits its width (default), scrolls horizontally or wraps;
+- **✎** edits a visual, **✕** removes it; Ctrl+Z / Ctrl+Y undo and redo.
+
+```xml
+<bi:DashboardPanel Context="{Binding Context}" Report="{Binding Report}" />
+```
+
+The arrangement is stored in the report (`ReportDefinition.Layout`), so saving and reloading the
+report restores the dashboard. Reports without a layout get a default grid. `IsLayoutEditable="False"`
+shows a read-only dashboard. Editing opens the designer in a dialog; handle `EditVisualRequested`
+and set `Handled` to use your own editor, then call `Complete(visual)`.
+
 ## Localization
 
 EasyBI's own texts (designer, filter bar, messages, granularity and aggregation names, blank and
@@ -191,4 +212,4 @@ See [AGENTS.md](AGENTS.md) for the code style, language rules and Git workflow.
   source implements `IAsyncEnumerable` (EF Core). EF Core's SQL translation (GroupBy on a composite
   key, sort on an aggregate, projection to `object[]`) still has to be validated against a real database.
 - At most 4 grouping dimensions (axis + legend).
-- No dark theme, no free-form dashboard layout.
+- No dark theme. The dashboard layout is row-based (no free-form positioning or spanning several rows).

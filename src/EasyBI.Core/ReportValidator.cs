@@ -48,6 +48,17 @@ public static class ReportValidator
             else
                 CheckDimension(model, filter.Filter.Field, filter.Filter.Grain, Strings.ReportFilter, problems);
         }
+
+        // Layout: ReportLayout.Normalize repairs these on load, but the user should know something was lost
+        var visualIds = report.Visuals.Select(v => v.Id).ToHashSet();
+        var placed = new HashSet<string>();
+        foreach (var id in report.Layout?.Rows.SelectMany(r => r.Slots).Select(s => s.VisualId).OfType<string>() ?? [])
+        {
+            if (!visualIds.Contains(id))
+                problems.Add(Strings.Format(Strings.ReportLayoutUnknownVisual, id));
+            else if (!placed.Add(id))
+                problems.Add(Strings.Format(Strings.ReportLayoutDuplicateVisual, id));
+        }
         return problems;
     }
 

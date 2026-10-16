@@ -5,4 +5,5 @@ using System.Windows.Markup;
 [assembly: XmlnsDefinition("https://github.com/TheoCvg/EasyBI", "EasyBI.Wpf")]
 [assembly: XmlnsDefinition("https://github.com/TheoCvg/EasyBI", "EasyBI.Wpf.Designer")]
 [assembly: XmlnsDefinition("https://github.com/TheoCvg/EasyBI", "EasyBI.Wpf.Renderers")]
+[assembly: XmlnsDefinition("https://github.com/TheoCvg/EasyBI", "EasyBI.Wpf.Dashboard")]
 [assembly: XmlnsPrefix("https://github.com/TheoCvg/EasyBI", "bi")]

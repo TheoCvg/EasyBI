@@ -45,10 +45,13 @@ public sealed record ReportDefinition
 
     public string Schema { get; init; } = CurrentSchema;
 
-    public string Title { get; init; } = "Rapport";
+    public string Title { get; init; } = "Report";
 
     public IReadOnlyList<VisualDefinition> Visuals { get; init; } = [];
 
     /// <summary>Global filters (slicers) applied to every visual of the same model.</summary>
     public IReadOnlyList<ReportFilter> Filters { get; init; } = [];
+
+    /// <summary>Dashboard arrangement of the visuals; null when the report has none (a default one is derived).</summary>
+    public DashboardLayout? Layout { get; init; }
 }

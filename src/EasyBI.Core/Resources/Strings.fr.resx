@@ -96,4 +96,10 @@
   <data name="ReportNotAMeasure" xml:space="preserve">
     <value>{0} : '{1}' n'est pas une mesure.</value>
   </data>
+  <data name="ReportLayoutUnknownVisual" xml:space="preserve">
+    <value>Mise en page : visuel '{0}' inconnu.</value>
+  </data>
+  <data name="ReportLayoutDuplicateVisual" xml:space="preserve">
+    <value>Mise en page : le visuel '{0}' est placé plusieurs fois.</value>
+  </data>
 </root>

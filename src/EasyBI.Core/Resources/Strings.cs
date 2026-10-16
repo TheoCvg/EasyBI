@@ -36,6 +36,8 @@ internal static class Strings
     public static string ReportMissingField => Get();
     public static string ReportNotADimension => Get();
     public static string ReportNotAMeasure => Get();
+    public static string ReportLayoutUnknownVisual => Get();
+    public static string ReportLayoutDuplicateVisual => Get();
 
     public static string Format(string format, params object?[] args) =>
         string.Format(EasyBILocalization.FormatCulture, format, args);

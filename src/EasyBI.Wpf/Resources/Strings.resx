@@ -87,4 +87,52 @@
   <data name="LabelSuffix" xml:space="preserve">
     <value>:</value>
   </data>
+  <data name="AddVisual" xml:space="preserve">
+    <value>+ Add a visual</value>
+  </data>
+  <data name="EditVisual" xml:space="preserve">
+    <value>Edit visual</value>
+  </data>
+  <data name="RemoveSlot" xml:space="preserve">
+    <value>Remove this slot and its visual</value>
+  </data>
+  <data name="MoveSlot" xml:space="preserve">
+    <value>Drag to move</value>
+  </data>
+  <data name="AddSlot" xml:space="preserve">
+    <value>Add a slot here</value>
+  </data>
+  <data name="AddRow" xml:space="preserve">
+    <value>Add a row here</value>
+  </data>
+  <data name="ResizeSlot" xml:space="preserve">
+    <value>Drag to resize</value>
+  </data>
+  <data name="ResizeRow" xml:space="preserve">
+    <value>Drag to change the row height</value>
+  </data>
+  <data name="RowOptions" xml:space="preserve">
+    <value>Row options</value>
+  </data>
+  <data name="RowFit" xml:space="preserve">
+    <value>Fit to width</value>
+  </data>
+  <data name="RowScroll" xml:space="preserve">
+    <value>Scroll horizontally</value>
+  </data>
+  <data name="RowWrap" xml:space="preserve">
+    <value>Wrap</value>
+  </data>
+  <data name="RemoveRow" xml:space="preserve">
+    <value>Remove row</value>
+  </data>
+  <data name="EditorTitle" xml:space="preserve">
+    <value>Visual</value>
+  </data>
+  <data name="Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
 </root>

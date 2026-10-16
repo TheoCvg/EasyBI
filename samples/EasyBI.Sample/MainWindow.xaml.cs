@@ -1,5 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using System.Globalization;
+﻿using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -15,8 +14,6 @@ namespace EasyBI.Sample;
 
 public partial class MainWindow : Window
 {
-    private readonly ObservableCollection<VisualDefinition> _visuals = [];
-
     public MainWindow()
     {
         // --- All the WPF developer has to write: a model + renderers ---
@@ -27,23 +24,12 @@ public partial class MainWindow : Window
 
         InitializeComponent();
         DataContext = this;
-        Dashboard.ItemsSource = _visuals;
         RendererPicker.ItemsSource = Context.Renderers;
         RendererPicker.SelectedItem = Context.ActiveRenderer;
         LanguagePicker.ItemsSource = App.Languages;
         LanguagePicker.SelectedItem = App.Languages.FirstOrDefault(l => l.Equals(EasyBILocalization.Culture));
-        SetPublishLabel("AddToDashboard");
-        foreach (var visual in DefaultVisuals()) _visuals.Add(visual);
-    }
-
-    private static string Text(string key) => App.Texts[key];
-
-    private void SetPublishLabel(string key) =>
-        PublishButton.SetBinding(ContentProperty, new Binding($"[{key}]") { Source = App.Texts });
-
-    private void OnLanguageChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (LanguagePicker.SelectedItem is CultureInfo culture) App.SetLanguage(culture);
+        PublishButton.SetBinding(ContentProperty, new Binding("[AddToDashboard]") { Source = App.Texts });
+        Dashboard.Report = DefaultReport();
     }
 
     public EasyBIContext Context { get; }
@@ -51,15 +37,19 @@ public partial class MainWindow : Window
     /// <summary>Global filters and cross-filtering of the dashboard.</summary>
     public FilterContext Filters { get; } = new();
 
+    private static string Text(string key) => App.Texts[key];
+
+    private void OnLanguageChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (LanguagePicker.SelectedItem is CultureInfo culture) App.SetLanguage(culture);
+    }
+
     private void OnRendererChanged(object sender, SelectionChangedEventArgs e) =>
         Context.ActiveRenderer = (IVisualRenderer?)RendererPicker.SelectedItem;
 
-    private void OnNewVisual(object sender, RoutedEventArgs e)
-    {
-        Designer.Clear();
-        SetPublishLabel("AddToDashboard");
-    }
+    private void OnNewVisual(object sender, RoutedEventArgs e) => Designer.Clear();
 
+    /// <summary>The designer tab adds visuals at the end of the dashboard; editing happens on the dashboard itself.</summary>
     private void OnPublishVisual(object sender, RoutedEventArgs e)
     {
         if (Designer.Visual is not { } visual) return;
@@ -68,33 +58,18 @@ public partial class MainWindow : Window
             MessageBox.Show(this, problem, Text("IncompleteVisual"), MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var index = _visuals.ToList().FindIndex(v => v.Id == visual.Id);
-        if (index >= 0) _visuals[index] = visual;
-        else _visuals.Add(visual);
+        var report = Dashboard.Report ?? new ReportDefinition();
+        Dashboard.Report = ReportLayout.Normalize(report with { Visuals = [.. report.Visuals.Where(v => v.Id != visual.Id), visual] });
         Designer.Clear();
-        SetPublishLabel("AddToDashboard");
         Tabs.SelectedIndex = 0;
-    }
-
-    private void OnEditVisual(object sender, RoutedEventArgs e)
-    {
-        Designer.Edit((VisualDefinition)((FrameworkElement)sender).DataContext);
-        SetPublishLabel("UpdateDashboard");
-        Tabs.SelectedIndex = 1;
-    }
-
-    private void OnRemoveVisual(object sender, RoutedEventArgs e)
-    {
-        var visual = (VisualDefinition)((FrameworkElement)sender).DataContext;
-        _visuals.Remove(visual);
-        if (Filters.Selection?.SourceVisualId == visual.Id) Filters.ClearSelection();
     }
 
     private void OnSave(object sender, RoutedEventArgs e)
     {
         var dialog = new SaveFileDialog { Filter = Text("ReportFileFilter"), FileName = Text("DefaultFileName") };
         if (dialog.ShowDialog(this) != true) return;
-        var report = new ReportDefinition { Title = Text("ReportTitle"), Visuals = _visuals.ToArray(), Filters = Filters.Filters.ToArray() };
+        // The dashboard's report holds the visuals and their layout; the filters live in the FilterContext
+        var report = (Dashboard.Report ?? new ReportDefinition()) with { Title = Text("ReportTitle"), Filters = Filters.Filters.ToArray() };
         File.WriteAllText(dialog.FileName, ReportSerializer.Serialize(report));
     }
 
@@ -110,8 +85,7 @@ public partial class MainWindow : Window
                 MessageBox.Show(this, Text("ReportIncompleteMessage") + "\n\n• " + string.Join("\n• ", problems),
                     Text("ReportIncomplete"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
-            _visuals.Clear();
-            foreach (var visual in report.Visuals) _visuals.Add(visual);
+            Dashboard.Report = report;
             Filters.Load(report.Filters);
             Tabs.SelectedIndex = 0;
         }
@@ -122,24 +96,24 @@ public partial class MainWindow : Window
     }
 
     // Visual titles are user content: they are written once, in the language active at startup
-    private static IEnumerable<VisualDefinition> DefaultVisuals() =>
-    [
-        new()
+    private static ReportDefinition DefaultReport()
+    {
+        VisualDefinition kpis = new()
         {
             Title = Text("KeyIndicators"),
             Model = "sales",
             Mark = MarkType.Kpi,
             Values = [new("Amount"), new("Margin"), new("Count")],
-        },
-        new()
+        };
+        VisualDefinition byQuarter = new()
         {
             Title = Text("RevenueByQuarter"),
             Model = "sales",
             Mark = MarkType.Line,
             Axis = [new("Date", DateGrain.Quarter)],
             Values = [new("Amount")],
-        },
-        new()
+        };
+        VisualDefinition byRegion = new()
         {
             Title = Text("RevenueByRegionAndChannel"),
             Model = "sales",
@@ -148,14 +122,28 @@ public partial class MainWindow : Window
             Legend = new("Channel"),
             Values = [new("Amount")],
             Sort = new("Region"),
-        },
-        new()
+        };
+        VisualDefinition byCategory = new()
         {
             Title = Text("RevenueByCategory"),
             Model = "sales",
             Mark = MarkType.Pie,
             Axis = [new("Product.Category")],
             Values = [new("Amount")],
-        },
-    ];
+        };
+
+        static LayoutSlot Slot(VisualDefinition visual, double width = LayoutSlot.DefaultWidth) => new() { VisualId = visual.Id, Width = width };
+        return new ReportDefinition
+        {
+            Visuals = [kpis, byQuarter, byRegion, byCategory],
+            Layout = new DashboardLayout
+            {
+                Rows =
+                [
+                    new LayoutRow { Height = 200, Slots = [Slot(kpis)] },
+                    new LayoutRow { Slots = [Slot(byQuarter, 600), Slot(byRegion, 600), Slot(byCategory, 400)] },
+                ],
+            },
+        };
+    }
 }
