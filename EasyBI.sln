@@ -1,0 +1,73 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{42EC9E24-41F5-47EA-9848-1605B3673803}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyBI.Sample", "samples\EasyBI.Sample\EasyBI.Sample.csproj", "{958F7BEA-2F5B-4051-9168-629BC2664F6E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{FBA71136-F2E4-40B9-836D-9C603A6E7CA3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyBI.Abstractions", "src\EasyBI.Abstractions\EasyBI.Abstractions.csproj", "{E8B3541D-AA4B-47C2-934D-BF3AA9672840}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyBI.Core", "src\EasyBI.Core\EasyBI.Core.csproj", "{6E9D871A-E2ED-45C4-9794-DD75CD5523F7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyBI.Renderers.LiveCharts2", "src\EasyBI.Renderers.LiveCharts2\EasyBI.Renderers.LiveCharts2.csproj", "{75DA99AB-C475-45D5-A680-433149DF7C03}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyBI.Renderers.OxyPlot", "src\EasyBI.Renderers.OxyPlot\EasyBI.Renderers.OxyPlot.csproj", "{CBF10545-FA26-4A0B-88FA-5F4DFAA37BE7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyBI.Wpf", "src\EasyBI.Wpf\EasyBI.Wpf.csproj", "{7573281B-1D10-4B5A-88D2-810C31799C6B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{23986510-1BB3-4511-9716-69F2A3D5B2CE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyBI.Core.Tests", "tests\EasyBI.Core.Tests\EasyBI.Core.Tests.csproj", "{A567486D-422E-48A0-9E90-B1C24AEE79CE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{958F7BEA-2F5B-4051-9168-629BC2664F6E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{958F7BEA-2F5B-4051-9168-629BC2664F6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{958F7BEA-2F5B-4051-9168-629BC2664F6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{958F7BEA-2F5B-4051-9168-629BC2664F6E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E8B3541D-AA4B-47C2-934D-BF3AA9672840}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E8B3541D-AA4B-47C2-934D-BF3AA9672840}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E8B3541D-AA4B-47C2-934D-BF3AA9672840}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E8B3541D-AA4B-47C2-934D-BF3AA9672840}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6E9D871A-E2ED-45C4-9794-DD75CD5523F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E9D871A-E2ED-45C4-9794-DD75CD5523F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E9D871A-E2ED-45C4-9794-DD75CD5523F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E9D871A-E2ED-45C4-9794-DD75CD5523F7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{75DA99AB-C475-45D5-A680-433149DF7C03}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{75DA99AB-C475-45D5-A680-433149DF7C03}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{75DA99AB-C475-45D5-A680-433149DF7C03}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{75DA99AB-C475-45D5-A680-433149DF7C03}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CBF10545-FA26-4A0B-88FA-5F4DFAA37BE7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CBF10545-FA26-4A0B-88FA-5F4DFAA37BE7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CBF10545-FA26-4A0B-88FA-5F4DFAA37BE7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CBF10545-FA26-4A0B-88FA-5F4DFAA37BE7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7573281B-1D10-4B5A-88D2-810C31799C6B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7573281B-1D10-4B5A-88D2-810C31799C6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7573281B-1D10-4B5A-88D2-810C31799C6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7573281B-1D10-4B5A-88D2-810C31799C6B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A567486D-422E-48A0-9E90-B1C24AEE79CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A567486D-422E-48A0-9E90-B1C24AEE79CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A567486D-422E-48A0-9E90-B1C24AEE79CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A567486D-422E-48A0-9E90-B1C24AEE79CE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{958F7BEA-2F5B-4051-9168-629BC2664F6E} = {42EC9E24-41F5-47EA-9848-1605B3673803}
+		{E8B3541D-AA4B-47C2-934D-BF3AA9672840} = {FBA71136-F2E4-40B9-836D-9C603A6E7CA3}
+		{6E9D871A-E2ED-45C4-9794-DD75CD5523F7} = {FBA71136-F2E4-40B9-836D-9C603A6E7CA3}
+		{75DA99AB-C475-45D5-A680-433149DF7C03} = {FBA71136-F2E4-40B9-836D-9C603A6E7CA3}
+		{CBF10545-FA26-4A0B-88FA-5F4DFAA37BE7} = {FBA71136-F2E4-40B9-836D-9C603A6E7CA3}
+		{7573281B-1D10-4B5A-88D2-810C31799C6B} = {FBA71136-F2E4-40B9-836D-9C603A6E7CA3}
+		{A567486D-422E-48A0-9E90-B1C24AEE79CE} = {23986510-1BB3-4511-9716-69F2A3D5B2CE}
+	EndGlobalSection
+EndGlobal

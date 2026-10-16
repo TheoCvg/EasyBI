@@ -1,0 +1,78 @@
+﻿<Window x:Class="EasyBI.Sample.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:bi="clr-namespace:EasyBI.Wpf;assembly=EasyBI.Wpf"
+        xmlns:designer="clr-namespace:EasyBI.Wpf.Designer;assembly=EasyBI.Wpf"
+        Title="EasyBI – démo" Width="1280" Height="860" WindowStartupLocation="CenterScreen"
+        Background="#F3F4F6" FontFamily="Segoe UI" FontSize="13">
+    <Window.Resources>
+        <Style x:Key="ToolbarButton" TargetType="Button">
+            <Setter Property="Padding" Value="12,5" />
+            <Setter Property="Margin" Value="6,0,0,0" />
+        </Style>
+        <Style x:Key="LinkButton" TargetType="Button">
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- Barre d'outils -->
+        <Border DockPanel.Dock="Top" Background="White" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="18,10">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <TextBlock Text="Renderer :" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#6B7280" />
+                    <ComboBox x:Name="RendererPicker" Width="140" DisplayMemberPath="Name" SelectionChanged="OnRendererChanged" />
+                    <Button Content="Ouvrir…" Style="{StaticResource ToolbarButton}" Margin="18,0,0,0" Click="OnOpen" />
+                    <Button Content="Enregistrer…" Style="{StaticResource ToolbarButton}" Click="OnSave" />
+                </StackPanel>
+                <TextBlock VerticalAlignment="Center" FontSize="18" FontWeight="SemiBold">
+                    <Run Text="EasyBI" Foreground="#2E6BE6" /><Run Text=" · self-service BI pour WPF" Foreground="#374151" />
+                </TextBlock>
+            </DockPanel>
+        </Border>
+
+        <TabControl x:Name="Tabs" Margin="12" Padding="0" Background="White">
+            <TabItem Header="  Tableau de bord  ">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl x:Name="Dashboard" Margin="10">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="2" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="8" Padding="14" Height="330" Background="White" CornerRadius="8"
+                                        BorderBrush="#E5E7EB" BorderThickness="1">
+                                    <DockPanel>
+                                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                                            <Button Content="Modifier" Style="{StaticResource LinkButton}" Click="OnEditVisual" />
+                                            <Button Content="Supprimer" Style="{StaticResource LinkButton}" Click="OnRemoveVisual" />
+                                        </StackPanel>
+                                        <bi:VisualView Definition="{Binding}"
+                                                       Context="{Binding DataContext.Context, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="  Designer  ">
+                <DockPanel>
+                    <Border DockPanel.Dock="Bottom" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0" Padding="12,8">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="Nouveau visuel" Style="{StaticResource ToolbarButton}" Click="OnNewVisual" />
+                            <Button x:Name="PublishButton" Content="Ajouter au tableau de bord" Style="{StaticResource ToolbarButton}"
+                                    Click="OnPublishVisual" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Border>
+                    <designer:ReportDesigner x:Name="Designer" Context="{Binding Context}" Background="White" />
+                </DockPanel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>
