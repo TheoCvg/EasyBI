@@ -18,7 +18,7 @@
     </Window.Resources>
 
     <DockPanel>
-        <!-- Barre d'outils -->
+        <!-- Toolbar -->
         <Border DockPanel.Dock="Top" Background="White" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="18,10">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
@@ -35,6 +35,15 @@
 
         <TabControl x:Name="Tabs" Margin="12" Padding="0" Background="White">
             <TabItem Header="  Tableau de bord  ">
+                <!-- The FilterContext set here is inherited by the filter bar and by every visual -->
+                <DockPanel bi:VisualView.FilterContext="{Binding Filters}">
+                <Border DockPanel.Dock="Top" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="18,10">
+                    <StackPanel>
+                        <bi:FilterBar Context="{Binding Context}" />
+                        <TextBlock Text="Astuce : cliquez sur une barre, une part ou une ligne de table pour filtrer les autres visuels ; recliquez pour annuler."
+                                   Foreground="#9CA3AF" FontSize="11" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <ItemsControl x:Name="Dashboard" Margin="10">
                         <ItemsControl.ItemsPanel>
@@ -59,6 +68,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
+                </DockPanel>
             </TabItem>
 
             <TabItem Header="  Designer  ">

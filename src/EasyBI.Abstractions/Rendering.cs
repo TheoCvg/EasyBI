@@ -1,15 +1,23 @@
 namespace EasyBI.Abstractions;
 
-/// <summary>Une série prête à dessiner : une valeur (éventuellement absente) par catégorie.</summary>
-public sealed record ChartSeries(string Name, IReadOnlyList<double?> Values, string? Format);
+/// <summary>A series ready to draw: one (possibly missing) value per category.</summary>
+public sealed record ChartSeries(string Name, IReadOnlyList<double?> Values, string? Format)
+{
+    /// <summary>Value of the Legend dimension that produced this series (null without a legend).</summary>
+    public object? LegendValue { get; init; }
+}
 
 /// <summary>
-/// Données pré-pivotées pour les graphiques catégoriels. Tous les renderers reçoivent
-/// exactement la même forme, ce qui garantit un rendu cohérent d'une librairie à l'autre.
+/// Pre-pivoted data for categorical charts. Every renderer receives exactly the
+/// same shape, which keeps rendering consistent from one library to another.
 /// </summary>
-public sealed record ChartData(string? CategoryCaption, IReadOnlyList<string> Categories, IReadOnlyList<ChartSeries> Series);
+public sealed record ChartData(string? CategoryCaption, IReadOnlyList<string> Categories, IReadOnlyList<ChartSeries> Series)
+{
+    /// <summary>Raw values of the axis dimensions for each category (same order as <see cref="Categories"/>).</summary>
+    public IReadOnlyList<IReadOnlyList<object?>> CategoryValues { get; init; } = [];
+}
 
-/// <summary>Palette commune à tous les renderers (couleurs hexadécimales #RRGGBB).</summary>
+/// <summary>Palette shared by all renderers (hexadecimal #RRGGBB colors).</summary>
 public sealed record BiTheme(IReadOnlyList<string> Palette)
 {
     public static BiTheme Default { get; } = new([
@@ -19,8 +27,24 @@ public sealed record BiTheme(IReadOnlyList<string> Palette)
     public string ColorAt(int index) => Palette[index % Palette.Count];
 }
 
-/// <summary>Ce qu'un renderer sait faire. Le designer s'en sert pour griser les options indisponibles.</summary>
+/// <summary>What a renderer can draw. The designer uses it to disable unavailable options.</summary>
 public sealed record RendererCapabilities(IReadOnlySet<MarkType> Marks);
 
-/// <summary>Tout ce dont un renderer a besoin pour dessiner un visuel.</summary>
-public sealed record RenderRequest(VisualDefinition Visual, ResultSet Result, ChartData Chart, BiTheme Theme);
+/// <summary>Element picked by the user in a visual (click), source of a cross-filter.</summary>
+public abstract record DataSelection;
+
+/// <summary>A category of <see cref="ChartData"/>, optionally narrowed to one series (legend).</summary>
+public sealed record CategorySelection(int Category, int? Series = null) : DataSelection;
+
+/// <summary>A row of the <see cref="ResultSet"/> (table).</summary>
+public sealed record RowSelection(int Row) : DataSelection;
+
+/// <summary>Everything a renderer needs to draw a visual.</summary>
+public sealed record RenderRequest(VisualDefinition Visual, ResultSet Result, ChartData Chart, BiTheme Theme)
+{
+    /// <summary>
+    /// Called by the renderer when the user clicks a data element.
+    /// Null when interactivity is disabled (designer preview, export...).
+    /// </summary>
+    public Action<DataSelection>? Select { get; init; }
+}

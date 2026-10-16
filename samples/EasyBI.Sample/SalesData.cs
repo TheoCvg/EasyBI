@@ -6,7 +6,7 @@ public sealed record Product(string Name, string Category, decimal UnitPrice);
 
 public sealed record Sale(DateTime Date, string Region, string Channel, Product Product, int Quantity, decimal Amount, decimal Margin);
 
-/// <summary>Jeu de données fictif et le modèle sémantique que le développeur expose.</summary>
+/// <summary>Fake dataset and the semantic model the developer exposes.</summary>
 public static class SalesData
 {
     private static readonly Product[] Products =
@@ -32,7 +32,7 @@ public static class SalesData
             var channel = Channels[random.Next(10) switch { < 5 => 0, < 8 => 1, _ => 2 }];
             var product = Products[random.Next(Products.Length)];
             var quantity = 1 + random.Next(product.Category == "Vélos" ? 2 : 5);
-            // Croissance annuelle + saisonnalité estivale
+            // Yearly growth + summer seasonality
             var trend = 1 + (date.Year - 2023) * 0.12 + Math.Sin((date.Month - 3) / 12.0 * Math.PI * 2) * 0.15;
             var amount = Math.Round(product.UnitPrice * quantity * (decimal)trend, 2);
             var margin = Math.Round(amount * (product.Category == "Services" ? 0.55m : 0.28m), 2);

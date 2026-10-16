@@ -20,8 +20,8 @@ public sealed class MarkOptionViewModel(MarkType mark, string label) : Observabl
 }
 
 /// <summary>
-/// État du designer. Chaque modification des étagères reconstruit une <see cref="VisualDefinition"/>,
-/// seul objet transmis à l'aperçu (et sauvegardé).
+/// Designer state. Every shelf change rebuilds a <see cref="VisualDefinition"/>,
+/// the only object passed to the preview (and saved).
 /// </summary>
 public sealed class DesignerViewModel : ObservableObject
 {
@@ -33,6 +33,12 @@ public sealed class DesignerViewModel : ObservableObject
     private VisualDefinition? _visual;
     private string _visualId = NewId();
     private bool _suspended;
+
+    // Visual settings the designer does not edit (yet): kept as-is when editing
+    private SortSpec? _sort;
+    private int? _top;
+    private IReadOnlyDictionary<string, string>? _extensions;
+    private IReadOnlyList<FilterSpec> _hiddenFilters = [];
 
     public DesignerViewModel(EasyBIContext context)
     {
@@ -95,7 +101,7 @@ public sealed class DesignerViewModel : ObservableObject
         set { if (SetProperty(ref _selectedMark, value)) Rebuild(); }
     }
 
-    /// <summary>Le visuel courant, ou null tant qu'aucun modèle n'est sélectionné.</summary>
+    /// <summary>The current visual, or null while no model is selected.</summary>
     public VisualDefinition? Visual
     {
         get => _visual;
@@ -124,7 +130,7 @@ public sealed class DesignerViewModel : ObservableObject
         Rebuild();
     }
 
-    /// <summary>Double-clic : dimension → Axe, mesure → Valeurs.</summary>
+    /// <summary>Double-click: dimension → Axis, measure → Values.</summary>
     public void AddToDefaultShelf(FieldDescriptor field) =>
         Drop(field, field.Kind == FieldKind.Measure ? Shelf.Values : Shelf.Axis);
 
@@ -138,11 +144,15 @@ public sealed class DesignerViewModel : ObservableObject
         _title = "";
         OnPropertyChanged(nameof(Title));
         _visualId = NewId();
+        _sort = null;
+        _top = null;
+        _extensions = null;
+        _hiddenFilters = [];
         _suspended = false;
         Rebuild();
     }
 
-    /// <summary>Recharge un visuel existant dans le designer pour l'éditer.</summary>
+    /// <summary>Loads an existing visual into the designer to edit it.</summary>
     public void Load(VisualDefinition visual)
     {
         var model = Context.GetModel(visual.Model);
@@ -153,6 +163,9 @@ public sealed class DesignerViewModel : ObservableObject
         _visualId = visual.Id;
         _title = visual.Title;
         _selectedMark = visual.Mark;
+        _sort = visual.Sort;
+        _top = visual.Top;
+        _extensions = visual.Extensions;
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(SelectedMark));
         foreach (var a in visual.Axis)
@@ -165,7 +178,13 @@ public sealed class DesignerViewModel : ObservableObject
             Values.Add(new(field, Shelf.Values, Rebuild) { Aggregation = v.Aggregation ?? field.DefaultAggregation ?? Aggregation.Sum });
         }
         foreach (var f in visual.Filters)
-            Filters.Add(new(metadata.GetField(f.Field), model, Rebuild, f.Values));
+        {
+            // Period filters (with a granularity) have no shelf: they are kept without being shown
+            if (f.Grain == DateGrain.None)
+                Filters.Add(new(metadata.GetField(f.Field), model, Rebuild, f.Values, f.Operator));
+            else
+                _hiddenFilters = [.. _hiddenFilters, f];
+        }
         _suspended = false;
         Rebuild();
     }
@@ -185,16 +204,24 @@ public sealed class DesignerViewModel : ObservableObject
     private void Rebuild()
     {
         if (_suspended) return;
+        var axis = Axis.Select(a => a.ToFieldRef()).ToArray();
+        var legend = Legend.FirstOrDefault()?.ToFieldRef();
+        var values = Values.Select(v => v.ToMeasureRef()).ToArray();
+        // The sort only makes sense while the sorted column is still displayed
+        var keys = axis.Append(legend).OfType<FieldRef>().Select(f => f.Key).Concat(values.Select(v => v.Key));
         Visual = _selectedModel is null ? null : new VisualDefinition
         {
             Id = _visualId,
             Title = Title,
             Model = _selectedModel.Metadata.Name,
             Mark = SelectedMark,
-            Axis = Axis.Select(a => a.ToFieldRef()).ToArray(),
-            Legend = Legend.FirstOrDefault()?.ToFieldRef(),
-            Values = Values.Select(v => v.ToMeasureRef()).ToArray(),
-            Filters = Filters.Select(f => f.ToFilterSpec()).OfType<FilterSpec>().ToArray(),
+            Axis = axis,
+            Legend = legend,
+            Values = values,
+            Filters = [.. Filters.Select(f => f.ToFilterSpec()).OfType<FilterSpec>(), .. _hiddenFilters],
+            Sort = _sort is not null && keys.Contains(_sort.Key) ? _sort : null,
+            Top = _top,
+            Extensions = _extensions,
         };
     }
 

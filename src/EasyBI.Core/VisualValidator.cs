@@ -2,10 +2,10 @@ using EasyBI.Abstractions;
 
 namespace EasyBI.Core;
 
-/// <summary>Règles de cohérence entre un type de visuel et les champs déposés.</summary>
+/// <summary>Consistency rules between a visual type and the dropped fields.</summary>
 public static class VisualValidator
 {
-    /// <returns>Un message destiné à l'utilisateur, ou null si le visuel est affichable.</returns>
+    /// <returns>A message for the end user, or null when the visual can be displayed.</returns>
     public static string? Validate(VisualDefinition visual) => visual.Mark switch
     {
         MarkType.Table when visual.Axis.Count == 0 && visual.Legend is null && visual.Values.Count == 0 =>

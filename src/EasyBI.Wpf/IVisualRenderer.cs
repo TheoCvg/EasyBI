@@ -4,8 +4,8 @@ using EasyBI.Abstractions;
 namespace EasyBI.Wpf;
 
 /// <summary>
-/// Contrat qu'implémente un connecteur graphique (LiveCharts2, OxyPlot, ScottPlot...).
-/// Il reçoit des données déjà requêtées et pivotées : son seul travail est de dessiner.
+/// Contract implemented by a charting connector (LiveCharts2, OxyPlot, ScottPlot...).
+/// It receives data that is already queried and pivoted: its only job is to draw.
 /// </summary>
 public interface IVisualRenderer
 {

@@ -8,7 +8,7 @@ public partial class App : Application
 {
     protected override void OnStartup(StartupEventArgs e)
     {
-        // Les bindings WPF utilisent en-US par défaut : on aligne sur la culture de l'utilisateur.
+        // WPF bindings default to en-US: align them with the user's culture.
         FrameworkElement.LanguageProperty.OverrideMetadata(
             typeof(FrameworkElement),
             new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag)));

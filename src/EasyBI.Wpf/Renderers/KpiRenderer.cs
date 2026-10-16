@@ -6,7 +6,7 @@ using EasyBI.Core;
 
 namespace EasyBI.Wpf.Renderers;
 
-/// <summary>Renderer intégré : une carte par mesure. Aucune librairie graphique nécessaire.</summary>
+/// <summary>Built-in renderer: one card per measure. No charting library needed.</summary>
 public sealed class KpiRenderer : IVisualRenderer
 {
     public string Name => "EasyBI KPI";

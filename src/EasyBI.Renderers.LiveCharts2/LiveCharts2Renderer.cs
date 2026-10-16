@@ -12,7 +12,7 @@ using SkiaSharp;
 
 namespace EasyBI.Renderers.LiveCharts2;
 
-/// <summary>Connecteur LiveCharts2 : traduit un <see cref="RenderRequest"/> en CartesianChart / PieChart.</summary>
+/// <summary>LiveCharts2 connector: translates a <see cref="RenderRequest"/> into a CartesianChart / PieChart.</summary>
 public sealed class LiveCharts2Renderer : IVisualRenderer
 {
     public string Name => "LiveCharts2";
@@ -24,7 +24,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
     {
         MarkType.Pie => RenderPie(request),
         MarkType.Bar or MarkType.Line => RenderCartesian(request),
-        _ => throw new NotSupportedException($"LiveCharts2Renderer ne gère pas '{request.Visual.Mark}'."),
+        _ => throw new NotSupportedException($"LiveCharts2Renderer does not support '{request.Visual.Mark}'."),
     };
 
     private static CartesianChart RenderCartesian(RenderRequest request)
@@ -33,7 +33,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         var series = chart.Series.Select((s, i) => CreateSeries(request.Visual.Mark, s, Color(request.Theme, i))).ToArray();
         var format = chart.Series.FirstOrDefault()?.Format;
 
-        return new CartesianChart
+        var view = new CartesianChart
         {
             Series = series,
             XAxes =
@@ -58,11 +58,26 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
             ],
             LegendPosition = chart.Series.Count > 1 ? LegendPosition.Right : LegendPosition.Hidden,
         };
+
+        if (request.Select is { } select)
+        {
+            // Bars: only the clicked bar is picked (category + legend series).
+            // Lines: the point closest to the clicked X position.
+            view.FindingStrategy = request.Visual.Mark == MarkType.Bar ? FindingStrategy.ExactMatch : FindingStrategy.CompareOnlyXTakeClosest;
+            view.Cursor = System.Windows.Input.Cursors.Hand;
+            view.DataPointerDown += (_, points) =>
+            {
+                if (points?.FirstOrDefault() is not { } point) return;
+                var index = Array.IndexOf(series, point.Context.Series);
+                select(new CategorySelection(point.Index, index < 0 ? null : index));
+            };
+        }
+        return view;
     }
 
     private static ISeries CreateSeries(MarkType mark, ChartSeries source, SKColor color)
     {
-        // ObservableValue(null) = point absent : LiveCharts2 le dessine comme un trou.
+        // ObservableValue(null) = missing point: LiveCharts2 draws it as a gap.
         var values = source.Values.Select(v => new ObservableValue(v)).ToArray();
         if (mark == MarkType.Line)
         {
@@ -92,20 +107,32 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
     {
         var chart = request.Chart;
         var source = chart.Series[0];
-        var series = chart.Categories
-            .Select((category, i) => (category, value: source.Values[i], i))
-            .Where(x => x.value is not null)
-            .Select(x => (ISeries)new PieSeries<double>
+        // One series per slice: keep each slice's category index for selection
+        var slices = new Dictionary<ISeries, int>();
+        foreach (var (category, i) in chart.Categories.Select((category, i) => (category, i)))
+        {
+            if (source.Values[i] is not { } value) continue;
+            slices[new PieSeries<double>
             {
-                Name = x.category,
-                Values = [x.value!.Value],
-                Fill = new SolidColorPaint(Color(request.Theme, x.i)),
+                Name = category,
+                Values = [value],
+                Fill = new SolidColorPaint(Color(request.Theme, i)),
                 InnerRadius = 60,
                 ToolTipLabelFormatter = p => ValueFormatter.Format(p.Coordinate.PrimaryValue, source.Format),
-            })
-            .ToArray();
+            }] = i;
+        }
 
-        return new PieChart { Series = series, LegendPosition = LegendPosition.Right };
+        var view = new PieChart { Series = slices.Keys.ToArray(), LegendPosition = LegendPosition.Right };
+        if (request.Select is { } select)
+        {
+            view.Cursor = System.Windows.Input.Cursors.Hand;
+            view.DataPointerDown += (_, points) =>
+            {
+                if (points?.FirstOrDefault() is { } point && slices.TryGetValue(point.Context.Series, out var category))
+                    select(new CategorySelection(category));
+            };
+        }
+        return view;
     }
 
     private static SKColor Color(BiTheme theme, int index) => SKColor.Parse(theme.ColorAt(index));
