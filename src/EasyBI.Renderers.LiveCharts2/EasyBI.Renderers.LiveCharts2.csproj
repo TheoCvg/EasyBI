@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\EasyBI.Wpf\EasyBI.Wpf.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.5" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Description>LiveCharts2 connector for EasyBI.Wpf: bar, line and pie charts.</Description>
+    <PackageTags>$(PackageTags);livecharts2</PackageTags>
+  </PropertyGroup>
+
+</Project>

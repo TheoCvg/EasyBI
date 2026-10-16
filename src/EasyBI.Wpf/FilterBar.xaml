@@ -1,0 +1,87 @@
+<UserControl x:Class="EasyBI.Wpf.FilterBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:bi="clr-namespace:EasyBI.Wpf"
+             xmlns:designer="clr-namespace:EasyBI.Wpf.Designer"
+>
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="LineBrush" Color="#DDE1E7" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#6B7280" />
+
+        <Style x:Key="ChipButton" TargetType="Button">
+            <Setter Property="Content" Value="✕" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="Transparent" CornerRadius="9">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#22000000" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <DataTemplate x:Key="SlicerTemplate" DataType="{x:Type bi:SlicerViewModel}">
+            <Border Background="#FDF0E3" BorderBrush="#F5D3B0" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock VerticalAlignment="Center"><Run Text="{Binding Caption, Mode=OneWay}" /><Run Text="{bi:Localize LabelSuffix}" /></TextBlock>
+                    <ToggleButton x:Name="Toggle" Margin="6,0,0,0" Padding="6,1" FontSize="11"
+                                  Content="{Binding Filter.Summary}"
+                                  IsEnabled="{Binding Filter.IsLoading, Converter={x:Static designer:InverseBooleanConverter.Instance}}" />
+                    <Popup IsOpen="{Binding IsChecked, ElementName=Toggle}" StaysOpen="False"
+                           PlacementTarget="{Binding ElementName=Toggle}" Placement="Bottom" AllowsTransparency="True">
+                        <Border Background="White" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
+                                CornerRadius="6" Padding="8" MaxHeight="300" MinWidth="160">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding Filter.Values}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}" Margin="0,2" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </Popup>
+                    <Button Style="{StaticResource ChipButton}" Click="OnRemoveSlicer" ToolTip="{bi:Localize RemoveFilter}" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <DockPanel>
+        <!-- Current cross-filter -->
+        <Border x:Name="SelectionChip" DockPanel.Dock="Right" Visibility="Collapsed" VerticalAlignment="Center"
+                Background="#E3ECFD" BorderBrush="#C3D5FA" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="SelectionText" VerticalAlignment="Center" MaxWidth="360" TextTrimming="CharacterEllipsis" />
+                <Button Style="{StaticResource ChipButton}" Click="OnClearSelection" ToolTip="{bi:Localize ClearSelection}" />
+            </StackPanel>
+        </Border>
+
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Text="{bi:Localize Filters}" Foreground="{StaticResource MutedBrush}" FontWeight="SemiBold"
+                       VerticalAlignment="Center" Margin="0,0,6,0" />
+            <ItemsControl x:Name="SlicerList" ItemTemplate="{StaticResource SlicerTemplate}" VerticalAlignment="Center">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+            <Button x:Name="AddButton" Content="{bi:Localize AddFilter}" Click="OnAddFilter" Margin="6,0,0,0" Padding="8,2"
+                    VerticalAlignment="Center" Cursor="Hand" />
+        </StackPanel>
+    </DockPanel>
+</UserControl>

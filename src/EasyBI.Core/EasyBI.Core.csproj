@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\EasyBI.Abstractions\EasyBI.Abstractions.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Description>EasyBI query engine: semantic models over IQueryable (EF Core, LINQ to objects), expression-tree query translation, pivot, cross-filtering and JSON reports.</Description>
+  </PropertyGroup>
+
+</Project>

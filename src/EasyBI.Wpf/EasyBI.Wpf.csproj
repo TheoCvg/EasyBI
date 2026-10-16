@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\EasyBI.Core\EasyBI.Core.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Description>Self-service BI for WPF: drag-and-drop report designer, visual view, filter bar with cross-filtering, built-in KPI and table renderers, pluggable chart connectors.</Description>
+  </PropertyGroup>
+
+</Project>
