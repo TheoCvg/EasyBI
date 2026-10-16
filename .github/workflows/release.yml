@@ -42,8 +42,16 @@ jobs:
         with:
           user: ${{ secrets.NUGET_USER }}
 
+      # dotnet nuget push does not expand wildcards on Windows: push each package explicitly
+      # (the matching .snupkg next to it is pushed automatically)
       - name: Publish to nuget.org
-        run: dotnet nuget push "artifacts/*.nupkg" --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        shell: bash
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          for package in artifacts/*.nupkg; do
+            dotnet nuget push "$package" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
 
       - name: GitHub release
         shell: bash
