@@ -88,43 +88,67 @@
     <value> :</value>
   </data>
   <data name="AddVisual" xml:space="preserve">
-    <value>+ Ajouter un visuel</value>
+    <value>+ Visuel</value>
+  </data>
+  <data name="AddText" xml:space="preserve">
+    <value>+ Texte</value>
+  </data>
+  <data name="AddImage" xml:space="preserve">
+    <value>+ Image</value>
   </data>
   <data name="EditVisual" xml:space="preserve">
     <value>Modifier le visuel</value>
   </data>
-  <data name="RemoveSlot" xml:space="preserve">
-    <value>Supprimer cet emplacement et son visuel</value>
+  <data name="EditText" xml:space="preserve">
+    <value>Modifier le texte</value>
   </data>
-  <data name="MoveSlot" xml:space="preserve">
+  <data name="ChangeImage" xml:space="preserve">
+    <value>Changer l'image</value>
+  </data>
+  <data name="RemoveItem" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="MoveItem" xml:space="preserve">
     <value>Glisser pour déplacer</value>
   </data>
-  <data name="AddSlot" xml:space="preserve">
-    <value>Ajouter un emplacement ici</value>
-  </data>
-  <data name="AddRow" xml:space="preserve">
-    <value>Ajouter une ligne ici</value>
-  </data>
-  <data name="ResizeSlot" xml:space="preserve">
+  <data name="ResizeItem" xml:space="preserve">
     <value>Glisser pour redimensionner</value>
   </data>
-  <data name="ResizeRow" xml:space="preserve">
-    <value>Glisser pour changer la hauteur de la ligne</value>
+  <data name="AddRight" xml:space="preserve">
+    <value>Ajouter un élément à droite</value>
   </data>
-  <data name="RowOptions" xml:space="preserve">
-    <value>Options de la ligne</value>
+  <data name="AddBelow" xml:space="preserve">
+    <value>Ajouter un élément en dessous</value>
   </data>
-  <data name="RowFit" xml:space="preserve">
-    <value>Ajuster à la largeur</value>
+  <data name="AddAtEnd" xml:space="preserve">
+    <value>+ Ajouter un élément</value>
   </data>
-  <data name="RowScroll" xml:space="preserve">
-    <value>Défilement horizontal</value>
+  <data name="TextSmaller" xml:space="preserve">
+    <value>Texte plus petit</value>
   </data>
-  <data name="RowWrap" xml:space="preserve">
-    <value>Retour à la ligne</value>
+  <data name="TextLarger" xml:space="preserve">
+    <value>Texte plus grand</value>
   </data>
-  <data name="RemoveRow" xml:space="preserve">
-    <value>Supprimer la ligne</value>
+  <data name="TextBold" xml:space="preserve">
+    <value>Gras</value>
+  </data>
+  <data name="TextAlignment" xml:space="preserve">
+    <value>Alignement</value>
+  </data>
+  <data name="TextPlaceholder" xml:space="preserve">
+    <value>Double-cliquez pour écrire</value>
+  </data>
+  <data name="ImageFit" xml:space="preserve">
+    <value>Ajustement : contenir, couvrir ou étirer</value>
+  </data>
+  <data name="ImageFilter" xml:space="preserve">
+    <value>Images|*.png;*.jpg;*.jpeg;*.gif;*.bmp</value>
+  </data>
+  <data name="ImageTooLarge" xml:space="preserve">
+    <value>L'image dépasse {0} Mo.</value>
+  </data>
+  <data name="ImageUnreadable" xml:space="preserve">
+    <value>Ce fichier n'est pas une image lisible.</value>
   </data>
   <data name="EditorTitle" xml:space="preserve">
     <value>Visuel</value>

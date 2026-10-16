@@ -2,161 +2,220 @@ using EasyBI.Abstractions;
 
 namespace EasyBI.Core;
 
+/// <summary>Where a new item goes relative to an existing one.</summary>
+public enum ItemSide { Right, Below }
+
 /// <summary>
-/// Dashboard layout operations. Each one returns a new <see cref="ReportDefinition"/> whose visuals and
-/// layout stay consistent: every visual is placed in exactly one slot, slots only reference existing
-/// visuals, there is always at least one row with one slot, and removing a slot removes its visual.
+/// Dashboard grid operations. Each one returns a new <see cref="ReportDefinition"/> whose visuals and layout
+/// stay consistent: items stay inside the grid and never overlap (an item moved or resized pushes the others
+/// down, then everything floats up into free space), every visual is shown by exactly one item, items only
+/// reference existing visuals, removing an item removes its visual, and there is always at least one item.
 /// </summary>
 public static class ReportLayout
 {
-    public const double MinWidth = 160;
-    public const double MinHeight = 120;
+    public const int DefaultColumnSpan = 6;
+    public const int DefaultRowSpan = 3;
+    public const double MinRowHeight = 40;
 
     /// <summary>
-    /// Makes the layout consistent: derives one when missing (<paramref name="columns"/> visuals per row),
-    /// appends unplaced visuals, empties slots that reference unknown or already placed visuals,
-    /// drops empty rows and clamps sizes.
+    /// Makes the layout consistent: derives one when missing, places unplaced visuals at the bottom, empties
+    /// items that reference unknown or already shown visuals, keeps one content per item, clamps positions
+    /// and spans to the grid, resolves overlaps and floats items up.
     /// </summary>
-    public static ReportDefinition Normalize(ReportDefinition report, int columns = 2)
+    public static ReportDefinition Normalize(ReportDefinition report)
     {
+        var layout = report.Layout ?? new DashboardLayout();
+        var columns = Math.Max(1, layout.Columns);
         var visualIds = report.Visuals.Select(v => v.Id).ToHashSet();
-        var placed = new HashSet<string>();
-        var rows = new List<LayoutRow>();
-        foreach (var row in report.Layout?.Rows ?? [])
+        var shown = new HashSet<string>();
+        var items = new List<LayoutItem>();
+        foreach (var source in layout.Items)
         {
-            var slots = row.Slots
-                .Select(s => s.VisualId is { } id && (!visualIds.Contains(id) || !placed.Add(id)) ? s with { VisualId = null } : s)
-                .Select(s => s.Width < MinWidth ? s with { Width = MinWidth } : s)
-                .ToArray();
-            if (slots.Length > 0)
-                rows.Add(row with { Slots = slots, Height = Math.Max(MinHeight, row.Height) });
+            var item = source;
+            if (item.VisualId is { } id && (!visualIds.Contains(id) || !shown.Add(id)))
+                item = item with { VisualId = null };
+            // One content per item: a visual wins over a text, a text over an image
+            if (item.VisualId is not null) item = item with { Text = null, Image = null };
+            else if (item.Text is not null) item = item with { Image = null };
+            items.Add(Clamp(item, columns));
         }
 
-        foreach (var chunk in report.Visuals.Where(v => !placed.Contains(v.Id)).Chunk(Math.Max(1, columns)))
-            rows.Add(new LayoutRow { Slots = chunk.Select(v => new LayoutSlot { VisualId = v.Id }).ToArray() });
-        if (rows.Count == 0)
-            rows.Add(EmptyRow());
-
-        return report with { Layout = new DashboardLayout { Rows = rows } };
-    }
-
-    /// <summary>The visual displayed in a slot, if any.</summary>
-    public static VisualDefinition? VisualOf(ReportDefinition report, LayoutSlot slot) =>
-        slot.VisualId is { } id ? report.Visuals.FirstOrDefault(v => v.Id == id) : null;
-
-    /// <summary>Inserts an empty slot in a row; in a <see cref="RowOverflow.Fit"/> row it gets an average share.</summary>
-    public static ReportDefinition InsertSlot(ReportDefinition report, string rowId, int index) =>
-        UpdateRows(report, rows => rows.Select(row =>
+        var span = Math.Min(DefaultColumnSpan, columns);
+        var perRow = Math.Max(1, columns / span);
+        var bottom = Bottom(items);
+        var index = 0;
+        foreach (var visual in report.Visuals.Where(v => !shown.Contains(v.Id)))
         {
-            if (row.Id != rowId) return row;
-            var width = row.Overflow == RowOverflow.Fit && row.Slots.Count > 0 ? row.Slots.Average(s => s.Width) : LayoutSlot.DefaultWidth;
-            return row with { Slots = Insert(row.Slots, index, new LayoutSlot { Width = width }) };
-        }));
+            items.Add(new LayoutItem
+            {
+                VisualId = visual.Id,
+                Column = index % perRow * span,
+                Row = bottom + index / perRow * DefaultRowSpan,
+                ColumnSpan = span,
+                RowSpan = DefaultRowSpan,
+            });
+            index++;
+        }
+        if (items.Count == 0)
+            items.Add(new LayoutItem { ColumnSpan = span, RowSpan = DefaultRowSpan });
 
-    /// <summary>Inserts a row holding one empty slot at <paramref name="index"/>.</summary>
-    public static ReportDefinition InsertRow(ReportDefinition report, int index) =>
-        UpdateRows(report, rows => Insert(rows.ToArray(), index, EmptyRow()));
-
-    /// <summary>Removes a slot and the visual it displays.</summary>
-    public static ReportDefinition RemoveSlot(ReportDefinition report, string slotId)
-    {
-        report = Normalize(report);
-        var visualId = Slots(report).FirstOrDefault(s => s.Id == slotId)?.VisualId;
-        return UpdateRows(WithoutVisual(report, visualId), rows => rows.Select(row => row with
+        return report with
         {
-            Slots = row.Slots.Where(s => s.Id != slotId).ToArray(),
-        }));
+            Layout = layout with
+            {
+                Columns = columns,
+                RowHeight = Math.Max(MinRowHeight, layout.RowHeight),
+                Items = Arrange(items, priorityId: null),
+            },
+        };
     }
 
-    /// <summary>Removes a row and the visuals it displays.</summary>
-    public static ReportDefinition RemoveRow(ReportDefinition report, string rowId)
+    /// <summary>The visual shown by an item, if any.</summary>
+    public static VisualDefinition? VisualOf(ReportDefinition report, LayoutItem item) =>
+        item.VisualId is { } id ? report.Visuals.FirstOrDefault(v => v.Id == id) : null;
+
+    /// <summary>Adds <paramref name="item"/> where it asks to be; the items it overlaps move down.</summary>
+    public static ReportDefinition AddItem(ReportDefinition report, LayoutItem item)
     {
         report = Normalize(report);
-        var visualIds = report.Layout!.Rows.Where(r => r.Id == rowId).SelectMany(r => r.Slots).Select(s => s.VisualId).ToHashSet();
-        report = report with { Visuals = report.Visuals.Where(v => !visualIds.Contains(v.Id)).ToArray() };
-        return UpdateRows(report, rows => rows.Where(r => r.Id != rowId));
+        return WithItems(report, [.. report.Layout!.Items, Clamp(item, report.Layout.Columns)], item.Id);
     }
 
-    /// <summary>
-    /// Moves a slot to position <paramref name="index"/> of a row. The index refers to the row as it is
-    /// before the move, so "insert before the slot at index i" works the same within one row and across rows.
-    /// </summary>
-    public static ReportDefinition MoveSlot(ReportDefinition report, string slotId, string targetRowId, int index)
+    /// <summary>Adds an empty item to the right of (or below) another one, with the same height (or width).</summary>
+    public static ReportDefinition AddItemNextTo(ReportDefinition report, string itemId, ItemSide side, string? newItemId = null)
     {
         report = Normalize(report);
-        if (Slots(report).FirstOrDefault(s => s.Id == slotId) is not { } moved) return report;
-        return UpdateRows(report, rows => rows.Select(row =>
+        var layout = report.Layout!;
+        if (layout.Items.FirstOrDefault(i => i.Id == itemId) is not { } anchor) return report;
+
+        var right = anchor.Column + anchor.ColumnSpan;
+        var item = side == ItemSide.Right && layout.Columns - right >= 2
+            ? new LayoutItem { Column = right, Row = anchor.Row, ColumnSpan = Math.Min(DefaultColumnSpan, layout.Columns - right), RowSpan = anchor.RowSpan }
+            // Below, or to the right without room: start a new line under the anchor
+            : new LayoutItem { Column = anchor.Column, Row = anchor.Row + anchor.RowSpan, ColumnSpan = anchor.ColumnSpan, RowSpan = DefaultRowSpan };
+        return AddItem(report, newItemId is null ? item : item with { Id = newItemId });
+    }
+
+    /// <summary>Adds an empty item under all the others.</summary>
+    public static ReportDefinition AddItemAtEnd(ReportDefinition report, string? newItemId = null)
+    {
+        report = Normalize(report);
+        var item = new LayoutItem
         {
-            // The moved slot is first replaced by a placeholder so that indexes stay those of the original row
-            var slots = row.Slots.Select(s => s.Id == slotId ? null : s).ToList();
-            if (row.Id == targetRowId) slots.Insert(Math.Clamp(index, 0, slots.Count), moved);
-            return row with { Slots = slots.OfType<LayoutSlot>().ToArray() };
-        }));
+            Row = Bottom(report.Layout!.Items),
+            ColumnSpan = Math.Min(DefaultColumnSpan, report.Layout.Columns),
+            RowSpan = DefaultRowSpan,
+        };
+        return AddItem(report, newItemId is null ? item : item with { Id = newItemId });
     }
 
-    /// <summary>Moves a slot into a new row inserted at <paramref name="rowIndex"/> (index before the move).</summary>
-    public static ReportDefinition MoveSlotToNewRow(ReportDefinition report, string slotId, int rowIndex)
+    /// <summary>Moves an item to a cell; the items it lands on move down.</summary>
+    public static ReportDefinition MoveItem(ReportDefinition report, string itemId, int column, int row) =>
+        UpdateItem(report, itemId, i => i with { Column = column, Row = row });
+
+    /// <summary>Changes the number of columns and rows an item covers; the items it now overlaps move down.</summary>
+    public static ReportDefinition ResizeItem(ReportDefinition report, string itemId, int columnSpan, int rowSpan) =>
+        UpdateItem(report, itemId, i => i with { ColumnSpan = columnSpan, RowSpan = rowSpan });
+
+    /// <summary>Removes an item and the visual it shows.</summary>
+    public static ReportDefinition RemoveItem(ReportDefinition report, string itemId)
     {
         report = Normalize(report);
-        if (Slots(report).FirstOrDefault(s => s.Id == slotId) is not { } moved) return report;
-        return UpdateRows(report, rows =>
-        {
-            var remaining = rows.Select(r => r with { Slots = r.Slots.Where(s => s.Id != slotId).ToArray() }).ToArray();
-            return Insert(remaining, rowIndex, new LayoutRow { Slots = [moved] });
-        });
+        var visualId = report.Layout!.Items.FirstOrDefault(i => i.Id == itemId)?.VisualId;
+        report = report with { Visuals = report.Visuals.Where(v => v.Id != visualId).ToArray() };
+        return WithItems(report, report.Layout!.Items.Where(i => i.Id != itemId).ToList(), null);
     }
 
-    /// <summary>Displays <paramref name="visual"/> in a slot, replacing (and removing) the visual it showed.</summary>
-    public static ReportDefinition SetVisual(ReportDefinition report, string slotId, VisualDefinition visual)
+    /// <summary>Shows <paramref name="visual"/> in an item, replacing (and removing) what it showed.</summary>
+    public static ReportDefinition SetVisual(ReportDefinition report, string itemId, VisualDefinition visual)
     {
         report = Normalize(report);
-        if (Slots(report).FirstOrDefault(s => s.Id == slotId) is not { } slot) return report;
-        if (slot.VisualId is { } previous && previous != visual.Id)
-            report = WithoutVisual(report, previous);
+        if (report.Layout!.Items.FirstOrDefault(i => i.Id == itemId) is not { } item) return report;
+        if (item.VisualId is { } previous && previous != visual.Id)
+            report = report with { Visuals = report.Visuals.Where(v => v.Id != previous).ToArray() };
 
         var visuals = report.Visuals.Any(v => v.Id == visual.Id)
             ? report.Visuals.Select(v => v.Id == visual.Id ? visual : v).ToArray()
             : [.. report.Visuals, visual];
-        // Visuals and slot change together: normalizing in between would place the new visual elsewhere
-        var rows = report.Layout!.Rows.Select(row => row with
-        {
-            Slots = row.Slots.Select(s => s.Id == slotId ? s with { VisualId = visual.Id }
-                : s.VisualId == visual.Id ? s with { VisualId = null }
-                : s).ToArray(),
-        }).ToArray();
-        return Normalize(report with { Visuals = visuals, Layout = new DashboardLayout { Rows = rows } });
+        // Visuals and item change together: normalizing in between would place the new visual elsewhere
+        var items = report.Layout.Items.Select(i =>
+            i.Id == itemId ? i with { VisualId = visual.Id, Text = null, Image = null }
+            : i.VisualId == visual.Id ? i with { VisualId = null }
+            : i).ToList();
+        return WithItems(report with { Visuals = visuals }, items, null);
     }
 
-    public static ReportDefinition SetRowHeight(ReportDefinition report, string rowId, double height) =>
-        UpdateRows(report, rows => rows.Select(r => r.Id == rowId ? r with { Height = Math.Max(MinHeight, height) } : r));
+    /// <summary>Shows a text in an item, replacing (and removing) what it showed.</summary>
+    public static ReportDefinition SetText(ReportDefinition report, string itemId, TextContent text) =>
+        SetContent(report, itemId, i => i with { VisualId = null, Text = text, Image = null });
 
-    public static ReportDefinition SetRowOverflow(ReportDefinition report, string rowId, RowOverflow overflow) =>
-        UpdateRows(report, rows => rows.Select(r => r.Id == rowId ? r with { Overflow = overflow } : r));
+    /// <summary>Shows an image in an item, replacing (and removing) what it showed.</summary>
+    public static ReportDefinition SetImage(ReportDefinition report, string itemId, ImageContent image) =>
+        SetContent(report, itemId, i => i with { VisualId = null, Text = null, Image = image });
 
-    /// <summary>Sets the width of some slots of a row (missing ids keep their width).</summary>
-    public static ReportDefinition SetSlotWidths(ReportDefinition report, string rowId, IReadOnlyDictionary<string, double> widths) =>
-        UpdateRows(report, rows => rows.Select(row => row.Id != rowId ? row : row with
-        {
-            Slots = row.Slots.Select(s => widths.TryGetValue(s.Id, out var w) ? s with { Width = Math.Max(MinWidth, w) } : s).ToArray(),
-        }));
-
-    private static LayoutRow EmptyRow() => new() { Slots = [new LayoutSlot()] };
-
-    private static IEnumerable<LayoutSlot> Slots(ReportDefinition report) => report.Layout!.Rows.SelectMany(r => r.Slots);
-
-    private static ReportDefinition WithoutVisual(ReportDefinition report, string? visualId) =>
-        visualId is null ? report : report with { Visuals = report.Visuals.Where(v => v.Id != visualId).ToArray() };
-
-    private static ReportDefinition UpdateRows(ReportDefinition report, Func<IReadOnlyList<LayoutRow>, IEnumerable<LayoutRow>> update)
+    private static ReportDefinition SetContent(ReportDefinition report, string itemId, Func<LayoutItem, LayoutItem> change)
     {
         report = Normalize(report);
-        return Normalize(report with { Layout = new DashboardLayout { Rows = update(report.Layout!.Rows).ToArray() } });
+        var visualId = report.Layout!.Items.FirstOrDefault(i => i.Id == itemId)?.VisualId;
+        report = report with { Visuals = report.Visuals.Where(v => v.Id != visualId).ToArray() };
+        return WithItems(report, report.Layout!.Items.Select(i => i.Id == itemId ? change(i) : i).ToList(), null);
     }
 
-    private static T[] Insert<T>(IReadOnlyList<T> items, int index, T item)
+    private static ReportDefinition UpdateItem(ReportDefinition report, string itemId, Func<LayoutItem, LayoutItem> change)
     {
-        var list = items.ToList();
-        list.Insert(Math.Clamp(index, 0, list.Count), item);
-        return list.ToArray();
+        report = Normalize(report);
+        var columns = report.Layout!.Columns;
+        var items = report.Layout.Items.Select(i => i.Id == itemId ? Clamp(change(i), columns) : i).ToList();
+        return WithItems(report, items, itemId);
+    }
+
+    private static ReportDefinition WithItems(ReportDefinition report, List<LayoutItem> items, string? priorityId) =>
+        Normalize(report with { Layout = report.Layout! with { Items = Arrange(items, priorityId) } });
+
+    /// <summary>
+    /// Removes overlaps and gaps. The priority item (just moved, resized or added) keeps its place first;
+    /// the others, from top to bottom, are pushed below what they overlap. Then every item floats up as long
+    /// as nothing is above it, without ever jumping over another item.
+    /// </summary>
+    private static IReadOnlyList<LayoutItem> Arrange(List<LayoutItem> items, string? priorityId)
+    {
+        var placed = new List<LayoutItem>();
+        var priority = priorityId is null ? null : items.FirstOrDefault(i => i.Id == priorityId);
+        if (priority is not null) placed.Add(priority);
+        foreach (var item in items.Where(i => !ReferenceEquals(i, priority)).OrderBy(i => i.Row).ThenBy(i => i.Column))
+        {
+            var row = item.Row;
+            while (Collides(item with { Row = row }, placed)) row++;
+            placed.Add(item with { Row = row });
+        }
+
+        var compacted = new List<LayoutItem>();
+        foreach (var item in placed.OrderBy(i => i.Row).ThenBy(i => i.Column))
+        {
+            var row = item.Row;
+            while (row > 0 && !Collides(item with { Row = row - 1 }, compacted)) row--;
+            compacted.Add(item with { Row = row });
+        }
+        // Keep the original order of the items (it is the save order)
+        return items.Select(i => compacted.First(c => c.Id == i.Id)).ToArray();
+    }
+
+    private static bool Collides(LayoutItem item, IEnumerable<LayoutItem> others) => others.Any(o =>
+        o.Id != item.Id
+        && item.Column < o.Column + o.ColumnSpan && o.Column < item.Column + item.ColumnSpan
+        && item.Row < o.Row + o.RowSpan && o.Row < item.Row + item.RowSpan);
+
+    private static int Bottom(IEnumerable<LayoutItem> items) => items.Select(i => i.Row + i.RowSpan).DefaultIfEmpty(0).Max();
+
+    private static LayoutItem Clamp(LayoutItem item, int columns)
+    {
+        var span = Math.Clamp(item.ColumnSpan, 1, columns);
+        return item with
+        {
+            ColumnSpan = span,
+            RowSpan = Math.Max(1, item.RowSpan),
+            Column = Math.Clamp(item.Column, 0, columns - span),
+            Row = Math.Max(0, item.Row),
+        };
     }
 }

@@ -1,52 +1,82 @@
 namespace EasyBI.Abstractions;
 
-/// <summary>How a dashboard row lays out slots that do not fit its width.</summary>
-public enum RowOverflow
-{
-    /// <summary>Slots share the row width in proportion to their <see cref="LayoutSlot.Width"/>.</summary>
-    Fit,
-
-    /// <summary>Slots keep their width; the row scrolls horizontally.</summary>
-    Scroll,
-
-    /// <summary>Slots keep their width and wrap onto additional lines.</summary>
-    Wrap,
-}
-
-/// <summary>Arrangement of a report's visuals on a dashboard: rows of slots.</summary>
+/// <summary>
+/// Arrangement of a dashboard on a grid: <see cref="Columns"/> columns sharing the width, rows of
+/// <see cref="RowHeight"/>. Each item covers a rectangle of cells and shows a visual, a text or an image.
+/// </summary>
 public sealed record DashboardLayout
 {
-    public IReadOnlyList<LayoutRow> Rows { get; init; } = [];
+    public const int DefaultColumns = 12;
+    public const double DefaultRowHeight = 110;
+
+    public int Columns { get; init; } = DefaultColumns;
+
+    /// <summary>Height of one grid row, in device-independent pixels.</summary>
+    public double RowHeight { get; init; } = DefaultRowHeight;
+
+    public IReadOnlyList<LayoutItem> Items { get; init; } = [];
 }
 
-/// <summary>A dashboard row.</summary>
-public sealed record LayoutRow
+/// <summary>
+/// A rectangle of the grid. It shows <see cref="VisualId"/>, <see cref="Text"/> or <see cref="Image"/>
+/// (at most one of them); with none, it is an empty placeholder waiting for content.
+/// </summary>
+public sealed record LayoutItem
 {
-    public const double DefaultHeight = 320;
-
     public string Id { get; init; } = Guid.NewGuid().ToString("N");
 
-    /// <summary>Height of the row (of each line when it wraps), in device-independent pixels.</summary>
-    public double Height { get; init; } = DefaultHeight;
+    /// <summary>First column (0-based).</summary>
+    public int Column { get; init; }
 
-    public RowOverflow Overflow { get; init; } = RowOverflow.Fit;
+    /// <summary>First row (0-based).</summary>
+    public int Row { get; init; }
 
-    public IReadOnlyList<LayoutSlot> Slots { get; init; } = [];
-}
+    public int ColumnSpan { get; init; } = 6;
 
-/// <summary>A place for one visual in a row; empty while <see cref="VisualId"/> is null.</summary>
-public sealed record LayoutSlot
-{
-    public const double DefaultWidth = 480;
+    public int RowSpan { get; init; } = 3;
 
-    public string Id { get; init; } = Guid.NewGuid().ToString("N");
-
-    /// <summary>Id of the displayed <see cref="VisualDefinition"/>, or null for an empty slot.</summary>
+    /// <summary>Id of the displayed <see cref="VisualDefinition"/>.</summary>
     public string? VisualId { get; init; }
 
-    /// <summary>
-    /// Preferred width in device-independent pixels. <see cref="RowOverflow.Fit"/> rows use it as a
-    /// proportion of the row width; <see cref="RowOverflow.Scroll"/> and <see cref="RowOverflow.Wrap"/> rows as is.
-    /// </summary>
-    public double Width { get; init; } = DefaultWidth;
+    public TextContent? Text { get; init; }
+
+    public ImageContent? Image { get; init; }
+}
+
+public enum TextAlign { Left, Center, Right }
+
+/// <summary>Free text placed on the dashboard (title, comment...).</summary>
+public sealed record TextContent
+{
+    public string Text { get; init; } = "";
+
+    public double FontSize { get; init; } = 16;
+
+    public bool IsBold { get; init; }
+
+    public TextAlign Alignment { get; init; } = TextAlign.Left;
+}
+
+public enum ImageFit
+{
+    /// <summary>Whole image visible, proportions kept.</summary>
+    Contain,
+
+    /// <summary>Fills the item, proportions kept, edges cropped.</summary>
+    Cover,
+
+    /// <summary>Fills the item, proportions not kept.</summary>
+    Stretch,
+}
+
+/// <summary>Image embedded in the report, so that the report file stays self-contained.</summary>
+public sealed record ImageContent
+{
+    /// <summary>Image bytes, base64-encoded.</summary>
+    public required string Data { get; init; }
+
+    /// <summary>Media type of <see cref="Data"/>, e.g. "image/png".</summary>
+    public string MediaType { get; init; } = "image/png";
+
+    public ImageFit Fit { get; init; } = ImageFit.Contain;
 }

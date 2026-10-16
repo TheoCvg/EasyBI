@@ -9,18 +9,6 @@
         <SolidColorBrush x:Key="AccentBrush" Color="#2E6BE6" />
         <SolidColorBrush x:Key="LineBrush" Color="#E5E7EB" />
         <SolidColorBrush x:Key="MutedBrush" Color="#6B7280" />
-        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
-
-        <!-- Gap between slots and rows: resize by dragging, "+" to insert -->
-        <Style x:Key="Splitter" TargetType="Thumb">
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Thumb">
-                        <Border Background="Transparent" />
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
 
         <Style x:Key="PlusButton" TargetType="Button">
             <Setter Property="Width" Value="22" />
@@ -45,20 +33,21 @@
         </Style>
 
         <Style x:Key="IconButton" TargetType="Button">
-            <Setter Property="Width" Value="22" />
+            <Setter Property="MinWidth" Value="22" />
             <Setter Property="Height" Value="22" />
-            <Setter Property="Margin" Value="2,0,0,0" />
+            <Setter Property="Padding" Value="4,0" />
+            <Setter Property="Margin" Value="1,0,0,0" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bg" Background="Transparent" CornerRadius="4">
+                        <Border x:Name="Bg" Background="#F2FFFFFF" CornerRadius="4" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="#14000000" />
+                                <Setter TargetName="Bg" Property="Background" Value="#E5E7EB" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -66,287 +55,210 @@
             </Setter>
         </Style>
 
-        <Style x:Key="DropBar" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
-            <Setter Property="CornerRadius" Value="2" />
-            <Setter Property="Visibility" Value="Collapsed" />
-            <Setter Property="IsHitTestVisible" Value="False" />
+        <Style x:Key="ChoiceButton" TargetType="Button">
+            <Setter Property="Margin" Value="4" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Cursor" Value="Hand" />
         </Style>
 
-        <!-- One slot: [first-slot left zone] [card] [right gap] -->
-        <DataTemplate x:Key="SlotTemplate" DataType="{x:Type local:DashboardSlotViewModel}">
-            <Grid x:Name="SlotRoot" AllowDrop="True" Background="Transparent" SizeChanged="OnSlotSizeChanged"
-                  DragEnter="OnSlotDragOver" DragOver="OnSlotDragOver" DragLeave="OnSlotDragLeave" Drop="OnSlotDrop">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="14" />
-                </Grid.ColumnDefinitions>
+        <Style x:Key="ResizeGrip" TargetType="Thumb">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Grid Background="Transparent">
+                            <TextBlock Text="◢" FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                       HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,3,1" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                <Grid x:Name="LeftZone" Width="14" Background="Transparent" Visibility="Collapsed">
-                    <Canvas Width="0" Height="0" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Button Canvas.Left="-11" Canvas.Top="-11" x:Name="LeftPlus" Style="{StaticResource PlusButton}" Click="OnInsertSlotBefore" ToolTip="{bi:Localize AddSlot}" />
-                    </Canvas>
-                </Grid>
-
-                <Border x:Name="Card" Grid.Column="1" Background="White" CornerRadius="8"
-                        BorderBrush="{StaticResource LineBrush}" BorderThickness="1" Padding="12,22,12,12">
+        <DataTemplate x:Key="ItemTemplate" DataType="{x:Type local:DashboardItemViewModel}">
+            <Grid x:Name="Root" Background="Transparent">
+                <Border x:Name="Card" Background="White" CornerRadius="8" BorderBrush="{StaticResource LineBrush}"
+                        BorderThickness="1" Padding="12,22,12,12" ClipToBounds="True">
                     <Grid>
-                        <bi:VisualView x:Name="View" Definition="{Binding Visual}"
+                        <!-- Visual -->
+                        <bi:VisualView x:Name="View" Definition="{Binding Visual}" Visibility="Collapsed"
                                        Context="{Binding Context, RelativeSource={RelativeSource AncestorType=local:DashboardPanel}}" />
-                        <Button x:Name="AddVisual" Content="{bi:Localize AddVisual}" Visibility="Collapsed"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" Padding="14,6"
-                                Cursor="Hand" Click="OnEditSlot" />
+
+                        <!-- Text: shown, or edited in place -->
+                        <TextBlock x:Name="TextDisplay" Visibility="Collapsed" TextWrapping="Wrap"
+                                   Text="{Binding Text.Text}" FontSize="{Binding Text.FontSize}"
+                                   Background="Transparent" MouseLeftButtonDown="OnTextMouseDown" />
+                        <TextBlock x:Name="TextPlaceholder" Visibility="Collapsed" Text="{bi:Localize TextPlaceholder}"
+                                   Foreground="#9CA3AF" FontStyle="Italic" IsHitTestVisible="False" />
+                        <TextBox x:Name="TextEditor" Visibility="Collapsed" AcceptsReturn="True" TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto" BorderThickness="0" Background="#F9FAFB"
+                                 Text="{Binding EditText, UpdateSourceTrigger=PropertyChanged}" FontSize="{Binding Text.FontSize}"
+                                 IsVisibleChanged="OnTextEditorVisibleChanged" LostKeyboardFocus="OnTextEditorLostFocus"
+                                 PreviewKeyDown="OnTextEditorKeyDown" />
+
+                        <!-- Image -->
+                        <Image x:Name="Picture" Visibility="Collapsed" Source="{Binding ImageSource}" Stretch="Uniform" />
+
+                        <!-- Empty item: choose its content -->
+                        <WrapPanel x:Name="Choices" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Button Content="{bi:Localize AddVisual}" Style="{StaticResource ChoiceButton}" Click="OnAddVisual" />
+                            <Button Content="{bi:Localize AddText}" Style="{StaticResource ChoiceButton}" Click="OnAddText" />
+                            <Button Content="{bi:Localize AddImage}" Style="{StaticResource ChoiceButton}" Click="OnAddImage" />
+                        </WrapPanel>
                     </Grid>
                 </Border>
 
-                <!-- Hover toolbar of the card: drag grip on the left, actions on the right -->
-                <TextBlock x:Name="Grip" Grid.Column="1" Text="⠿" FontSize="16" Margin="8,2,0,0" Cursor="SizeAll"
+                <!-- Hover toolbar: drag grip on the left, actions on the right -->
+                <TextBlock x:Name="Grip" Text="⠿" FontSize="16" Margin="8,2,0,0" Cursor="SizeAll"
                            HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="{StaticResource MutedBrush}"
-                           Visibility="Hidden" ToolTip="{bi:Localize MoveSlot}"
+                           Visibility="Hidden" ToolTip="{bi:Localize MoveItem}" Background="Transparent"
                            PreviewMouseLeftButtonDown="OnGripMouseDown" PreviewMouseMove="OnGripMouseMove"
                            PreviewMouseLeftButtonUp="OnGripMouseUp" />
-                <StackPanel x:Name="Toolbar" Grid.Column="1" Orientation="Horizontal" Margin="0,1,6,0"
+                <StackPanel x:Name="Toolbar" Orientation="Horizontal" Margin="0,1,6,0"
                             HorizontalAlignment="Right" VerticalAlignment="Top" Visibility="Hidden">
-                    <Button x:Name="EditButton" Style="{StaticResource IconButton}" Content="✎" Click="OnEditSlot"
-                            ToolTip="{bi:Localize EditVisual}" />
-                    <Button Style="{StaticResource IconButton}" Content="✕" FontSize="10" Click="OnRemoveSlot"
-                            ToolTip="{bi:Localize RemoveSlot}" />
+                    <StackPanel x:Name="TextTools" Orientation="Horizontal" Visibility="Collapsed">
+                        <Button Style="{StaticResource IconButton}" Content="A−" Click="OnTextSmaller" ToolTip="{bi:Localize TextSmaller}" />
+                        <Button Style="{StaticResource IconButton}" Content="A+" Click="OnTextLarger" ToolTip="{bi:Localize TextLarger}" />
+                        <Button Style="{StaticResource IconButton}" Content="B" FontWeight="Bold" Click="OnTextBold" ToolTip="{bi:Localize TextBold}" />
+                        <Button Style="{StaticResource IconButton}" Content="≡" Click="OnTextAlignment" ToolTip="{bi:Localize TextAlignment}" />
+                    </StackPanel>
+                    <Button x:Name="FitButton" Style="{StaticResource IconButton}" Content="⤢" Visibility="Collapsed"
+                            Click="OnImageFit" ToolTip="{bi:Localize ImageFit}" />
+                    <Button x:Name="EditButton" Style="{StaticResource IconButton}" Content="✎" Visibility="Collapsed"
+                            Click="OnEditItem" ToolTip="{bi:Localize EditVisual}" />
+                    <Button Style="{StaticResource IconButton}" Content="✕" FontSize="10" Click="OnRemoveItem"
+                            ToolTip="{bi:Localize RemoveItem}" />
                 </StackPanel>
 
-                <!-- Drop indicators -->
-                <Border x:Name="HintLeft" Grid.Column="1" Width="4" HorizontalAlignment="Left" Margin="-9,0,0,0" Style="{StaticResource DropBar}" />
-                <Border x:Name="HintRight" Grid.Column="1" Width="4" HorizontalAlignment="Right" Margin="0,0,-9,0" Style="{StaticResource DropBar}" />
-                <Border x:Name="HintTop" Grid.Column="1" Height="4" VerticalAlignment="Top" Margin="0,-9,0,0" Style="{StaticResource DropBar}" />
-                <Border x:Name="HintBottom" Grid.Column="1" Height="4" VerticalAlignment="Bottom" Margin="0,0,0,-9" Style="{StaticResource DropBar}" />
-
-                <Grid x:Name="RightGap" Grid.Column="2" Background="Transparent">
-                    <Thumb x:Name="SlotSplitter" Style="{StaticResource Splitter}" Cursor="SizeWE" ToolTip="{bi:Localize ResizeSlot}"
-                           DragStarted="OnSlotResizeStarted" DragDelta="OnSlotResizeDelta" DragCompleted="OnSlotResizeCompleted" />
-                    <Canvas Width="0" Height="0" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Button Canvas.Left="-11" Canvas.Top="-11" x:Name="RightPlus" Style="{StaticResource PlusButton}" Click="OnInsertSlotAfter" ToolTip="{bi:Localize AddSlot}" />
+                <!-- Edge zones: hovering shows a "+" centred on the edge -->
+                <Grid x:Name="RightZone" Width="16" HorizontalAlignment="Right" Margin="0,30,0,24" Background="Transparent">
+                    <Canvas Width="0" Height="0" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button x:Name="RightPlus" Canvas.Left="-4" Canvas.Top="-11" Style="{StaticResource PlusButton}"
+                                Click="OnAddRight" ToolTip="{bi:Localize AddRight}" />
                     </Canvas>
                 </Grid>
+                <Grid x:Name="BottomZone" Height="16" VerticalAlignment="Bottom" Margin="24,0,24,0" Background="Transparent">
+                    <Canvas Width="0" Height="0" HorizontalAlignment="Center" VerticalAlignment="Bottom">
+                        <Button x:Name="BottomPlus" Canvas.Left="-11" Canvas.Top="-4" Style="{StaticResource PlusButton}"
+                                Click="OnAddBelow" ToolTip="{bi:Localize AddBelow}" />
+                    </Canvas>
+                </Grid>
+
+                <Thumb x:Name="Resizer" Width="18" Height="18" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                       Style="{StaticResource ResizeGrip}" Cursor="SizeNWSE" Visibility="Hidden" ToolTip="{bi:Localize ResizeItem}"
+                       DragStarted="OnResizeStarted" DragDelta="OnResizeDelta" DragCompleted="OnResizeCompleted" />
             </Grid>
             <DataTemplate.Triggers>
-                <DataTrigger Binding="{Binding IsFirst}" Value="True">
-                    <Setter TargetName="LeftZone" Property="Visibility" Value="Visible" />
+                <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:DashboardItemKind.Visual}">
+                    <Setter TargetName="View" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="EditButton" Property="Visibility" Value="Visible" />
                 </DataTrigger>
-                <DataTrigger Binding="{Binding CanResize}" Value="False">
-                    <Setter TargetName="SlotSplitter" Property="Visibility" Value="Collapsed" />
+                <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:DashboardItemKind.Text}">
+                    <Setter TargetName="TextDisplay" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="TextTools" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="EditButton" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="EditButton" Property="ToolTip" Value="{bi:Localize EditText}" />
                 </DataTrigger>
-                <!-- In a wrapping row every line starts at the row padding: no left zone on the first slot -->
-                <DataTrigger Binding="{Binding Row.Overflow}" Value="{x:Static core:RowOverflow.Wrap}">
-                    <Setter TargetName="LeftZone" Property="Visibility" Value="Collapsed" />
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding Kind}" Value="{x:Static local:DashboardItemKind.Text}" />
+                        <Condition Binding="{Binding IsTextEmpty}" Value="True" />
+                        <Condition Binding="{Binding IsEditingText}" Value="False" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="TextPlaceholder" Property="Visibility" Value="Visible" />
+                </MultiDataTrigger>
+                <DataTrigger Binding="{Binding IsEditingText}" Value="True">
+                    <Setter TargetName="TextDisplay" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="TextEditor" Property="Visibility" Value="Visible" />
                 </DataTrigger>
-                <DataTrigger Binding="{Binding IsEmpty}" Value="True">
-                    <Setter TargetName="View" Property="Visibility" Value="Collapsed" />
-                    <Setter TargetName="AddVisual" Property="Visibility" Value="Visible" />
-                    <Setter TargetName="EditButton" Property="Visibility" Value="Collapsed" />
+                <DataTrigger Binding="{Binding Text.IsBold}" Value="True">
+                    <Setter TargetName="TextDisplay" Property="FontWeight" Value="Bold" />
+                    <Setter TargetName="TextEditor" Property="FontWeight" Value="Bold" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Text.Alignment}" Value="{x:Static core:TextAlign.Center}">
+                    <Setter TargetName="TextDisplay" Property="TextAlignment" Value="Center" />
+                    <Setter TargetName="TextEditor" Property="TextAlignment" Value="Center" />
+                    <Setter TargetName="TextPlaceholder" Property="HorizontalAlignment" Value="Center" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Text.Alignment}" Value="{x:Static core:TextAlign.Right}">
+                    <Setter TargetName="TextDisplay" Property="TextAlignment" Value="Right" />
+                    <Setter TargetName="TextEditor" Property="TextAlignment" Value="Right" />
+                    <Setter TargetName="TextPlaceholder" Property="HorizontalAlignment" Value="Right" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:DashboardItemKind.Image}">
+                    <Setter TargetName="Picture" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="FitButton" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="EditButton" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="EditButton" Property="ToolTip" Value="{bi:Localize ChangeImage}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Image.Fit}" Value="{x:Static core:ImageFit.Cover}">
+                    <Setter TargetName="Picture" Property="Stretch" Value="UniformToFill" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Image.Fit}" Value="{x:Static core:ImageFit.Stretch}">
+                    <Setter TargetName="Picture" Property="Stretch" Value="Fill" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:DashboardItemKind.Empty}">
+                    <Setter TargetName="Choices" Property="Visibility" Value="Visible" />
                     <Setter TargetName="Card" Property="BorderBrush" Value="#C9CED6" />
                     <Setter TargetName="Card" Property="Background" Value="#FAFBFC" />
                 </DataTrigger>
-                <Trigger SourceName="Card" Property="IsMouseOver" Value="True">
+                <Trigger SourceName="Root" Property="IsMouseOver" Value="True">
                     <Setter TargetName="Grip" Property="Visibility" Value="Visible" />
                     <Setter TargetName="Toolbar" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="Resizer" Property="Visibility" Value="Visible" />
                 </Trigger>
-                <Trigger SourceName="Grip" Property="IsMouseOver" Value="True">
-                    <Setter TargetName="Grip" Property="Visibility" Value="Visible" />
-                    <Setter TargetName="Toolbar" Property="Visibility" Value="Visible" />
-                </Trigger>
-                <Trigger SourceName="Toolbar" Property="IsMouseOver" Value="True">
-                    <Setter TargetName="Grip" Property="Visibility" Value="Visible" />
-                    <Setter TargetName="Toolbar" Property="Visibility" Value="Visible" />
-                </Trigger>
-                <Trigger SourceName="LeftZone" Property="IsMouseOver" Value="True">
-                    <Setter TargetName="LeftPlus" Property="Visibility" Value="Visible" />
-                </Trigger>
-                <Trigger SourceName="RightGap" Property="IsMouseOver" Value="True">
+                <Trigger SourceName="RightZone" Property="IsMouseOver" Value="True">
                     <Setter TargetName="RightPlus" Property="Visibility" Value="Visible" />
                 </Trigger>
-                <DataTrigger Binding="{Binding DropHint}" Value="{x:Static local:DropHint.Left}">
-                    <Setter TargetName="HintLeft" Property="Visibility" Value="Visible" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding DropHint}" Value="{x:Static local:DropHint.Right}">
-                    <Setter TargetName="HintRight" Property="Visibility" Value="Visible" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding DropHint}" Value="{x:Static local:DropHint.Top}">
-                    <Setter TargetName="HintTop" Property="Visibility" Value="Visible" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding DropHint}" Value="{x:Static local:DropHint.Bottom}">
-                    <Setter TargetName="HintBottom" Property="Visibility" Value="Visible" />
-                </DataTrigger>
+                <Trigger SourceName="BottomZone" Property="IsMouseOver" Value="True">
+                    <Setter TargetName="BottomPlus" Property="Visibility" Value="Visible" />
+                </Trigger>
                 <!-- Read-only dashboard: no editing affordance at all -->
                 <DataTrigger Binding="{Binding IsLayoutEditable, RelativeSource={RelativeSource AncestorType=local:DashboardPanel}}" Value="False">
-                    <Setter TargetName="LeftZone" Property="Visibility" Value="Collapsed" />
-                    <Setter TargetName="RightGap" Property="Visibility" Value="Hidden" />
                     <Setter TargetName="Grip" Property="Opacity" Value="0" />
                     <Setter TargetName="Grip" Property="IsHitTestVisible" Value="False" />
                     <Setter TargetName="Toolbar" Property="Opacity" Value="0" />
                     <Setter TargetName="Toolbar" Property="IsHitTestVisible" Value="False" />
-                    <Setter TargetName="SlotRoot" Property="AllowDrop" Value="False" />
-                </DataTrigger>
-            </DataTemplate.Triggers>
-        </DataTemplate>
-
-        <!-- Slots of a row, laid out according to its overflow mode -->
-        <Style x:Key="SlotList" TargetType="ItemsControl">
-            <Setter Property="ItemTemplate" Value="{StaticResource SlotTemplate}" />
-            <!-- Fit: proportional widths over the row width -->
-            <Setter Property="ItemsPanel">
-                <Setter.Value>
-                    <ItemsPanelTemplate>
-                        <local:ProportionalPanel />
-                    </ItemsPanelTemplate>
-                </Setter.Value>
-            </Setter>
-            <Setter Property="ItemContainerStyle">
-                <Setter.Value>
-                    <Style TargetType="ContentPresenter">
-                        <Setter Property="local:ProportionalPanel.Weight" Value="{Binding Width}" />
-                        <Style.Triggers>
-                            <!-- The hovered slot draws over its neighbours, so its "+" is never hidden -->
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Panel.ZIndex" Value="1" />
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Overflow}" Value="{x:Static core:RowOverflow.Scroll}">
-                    <Setter Property="ItemsPanel">
-                        <Setter.Value>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" />
-                            </ItemsPanelTemplate>
-                        </Setter.Value>
-                    </Setter>
-                    <Setter Property="ItemContainerStyle">
-                        <Setter.Value>
-                            <Style TargetType="ContentPresenter">
-                                <Setter Property="Width" Value="{Binding Width}" />
-                                <Style.Triggers>
-                                    <!-- The hovered slot draws over its neighbours, so its "+" is never hidden -->
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Panel.ZIndex" Value="1" />
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Setter.Value>
-                    </Setter>
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="ItemsControl">
-                                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                                    <ItemsPresenter />
-                                </ScrollViewer>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Overflow}" Value="{x:Static core:RowOverflow.Wrap}">
-                    <Setter Property="Margin" Value="14,0,0,0" />
-                    <Setter Property="ItemsPanel">
-                        <Setter.Value>
-                            <ItemsPanelTemplate>
-                                <WrapPanel />
-                            </ItemsPanelTemplate>
-                        </Setter.Value>
-                    </Setter>
-                    <Setter Property="ItemContainerStyle">
-                        <Setter.Value>
-                            <Style TargetType="ContentPresenter">
-                                <Setter Property="Width" Value="{Binding Width}" />
-                                <Setter Property="Height" Value="{Binding Row.Height}" />
-                                <!-- Same spacing between wrapped lines as between slots -->
-                                <Setter Property="Margin" Value="0,0,0,14" />
-                                <Style.Triggers>
-                                    <!-- The hovered slot draws over its neighbours, so its "+" is never hidden -->
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Panel.ZIndex" Value="1" />
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Setter.Value>
-                    </Setter>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-
-        <!-- One row: [options gutter] [first-row top zone / slots / bottom gap] -->
-        <DataTemplate x:Key="RowTemplate" DataType="{x:Type local:DashboardRowViewModel}">
-            <Grid x:Name="RowRoot" Background="Transparent">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="24" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition x:Name="ContentRow" Height="{Binding Height}" />
-                    <RowDefinition Height="14" />
-                </Grid.RowDefinitions>
-
-                <Button x:Name="RowOptions" Grid.Row="1" Style="{StaticResource IconButton}" Content="⋮" FontSize="14"
-                        VerticalAlignment="Top" Margin="0,4,0,0" Visibility="Hidden" Click="OnRowOptions"
-                        ToolTip="{bi:Localize RowOptions}" />
-
-                <Grid x:Name="TopZone" Grid.Column="1" Height="14" Background="Transparent" Visibility="Collapsed">
-                    <Canvas Width="0" Height="0" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Button Canvas.Left="-11" Canvas.Top="-11" x:Name="TopPlus" Style="{StaticResource PlusButton}" Click="OnInsertRowBefore" ToolTip="{bi:Localize AddRow}" />
-                    </Canvas>
-                </Grid>
-
-                <ItemsControl Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Slots}" Style="{StaticResource SlotList}"
-                              PreviewMouseWheel="OnRowMouseWheel" />
-
-                <Grid x:Name="BottomGap" Grid.Row="2" Grid.Column="1" Background="Transparent">
-                    <Thumb x:Name="RowSplitter" Style="{StaticResource Splitter}" Cursor="SizeNS" ToolTip="{bi:Localize ResizeRow}"
-                           DragStarted="OnRowResizeStarted" DragDelta="OnRowResizeDelta" DragCompleted="OnRowResizeCompleted" />
-                    <Canvas Width="0" Height="0" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Button Canvas.Left="-11" Canvas.Top="-11" x:Name="BottomPlus" Style="{StaticResource PlusButton}" Click="OnInsertRowAfter" ToolTip="{bi:Localize AddRow}" />
-                    </Canvas>
-                </Grid>
-            </Grid>
-            <DataTemplate.Triggers>
-                <DataTrigger Binding="{Binding IsFirst}" Value="True">
-                    <Setter TargetName="TopZone" Property="Visibility" Value="Visible" />
-                </DataTrigger>
-                <!-- A wrapping row grows with its lines -->
-                <DataTrigger Binding="{Binding Overflow}" Value="{x:Static core:RowOverflow.Wrap}">
-                    <Setter TargetName="ContentRow" Property="Height" Value="Auto" />
-                </DataTrigger>
-                <Trigger SourceName="RowRoot" Property="IsMouseOver" Value="True">
-                    <Setter TargetName="RowOptions" Property="Visibility" Value="Visible" />
-                </Trigger>
-                <Trigger SourceName="TopZone" Property="IsMouseOver" Value="True">
-                    <Setter TargetName="TopPlus" Property="Visibility" Value="Visible" />
-                </Trigger>
-                <Trigger SourceName="BottomGap" Property="IsMouseOver" Value="True">
-                    <Setter TargetName="BottomPlus" Property="Visibility" Value="Visible" />
-                </Trigger>
-                <DataTrigger Binding="{Binding IsLayoutEditable, RelativeSource={RelativeSource AncestorType=local:DashboardPanel}}" Value="False">
-                    <Setter TargetName="RowOptions" Property="Opacity" Value="0" />
-                    <Setter TargetName="RowOptions" Property="IsHitTestVisible" Value="False" />
-                    <Setter TargetName="TopZone" Property="Visibility" Value="Collapsed" />
-                    <Setter TargetName="BottomGap" Property="Visibility" Value="Hidden" />
+                    <Setter TargetName="Resizer" Property="Opacity" Value="0" />
+                    <Setter TargetName="Resizer" Property="IsHitTestVisible" Value="False" />
+                    <Setter TargetName="RightZone" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="BottomZone" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="Choices" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="TextDisplay" Property="IsHitTestVisible" Value="False" />
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
     </UserControl.Resources>
 
     <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <ItemsControl x:Name="RowList" ItemTemplate="{StaticResource RowTemplate}" Margin="0,0,14,0">
-            <ItemsControl.ItemContainerStyle>
-                <Style TargetType="ContentPresenter">
-                    <Style.Triggers>
-                        <!-- Same for rows: the hovered row's "+" draws over the next row -->
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Panel.ZIndex" Value="1" />
-                        </Trigger>
-                    </Style.Triggers>
-                </Style>
-            </ItemsControl.ItemContainerStyle>
-        </ItemsControl>
+        <StackPanel Margin="16,8,16,16">
+            <!-- The whole surface accepts drops: the target cell follows the pointer -->
+            <Grid x:Name="Surface" AllowDrop="True" Background="Transparent"
+                  DragEnter="OnSurfaceDragOver" DragOver="OnSurfaceDragOver" Drop="OnSurfaceDrop">
+                <ItemsControl x:Name="ItemList" ItemTemplate="{StaticResource ItemTemplate}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <local:DashboardGridPanel Columns="{Binding Columns}" RowHeight="{Binding RowHeight}" Gap="14"
+                                                      Loaded="OnGridLoaded" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="local:DashboardGridPanel.Column" Value="{Binding Column}" />
+                            <Setter Property="local:DashboardGridPanel.Row" Value="{Binding Row}" />
+                            <Setter Property="local:DashboardGridPanel.ColumnSpan" Value="{Binding ColumnSpan}" />
+                            <Setter Property="local:DashboardGridPanel.RowSpan" Value="{Binding RowSpan}" />
+                            <Style.Triggers>
+                                <!-- The hovered item draws over its neighbours, so its "+" is never hidden -->
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Panel.ZIndex" Value="1" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                </ItemsControl>
+            </Grid>
+            <Button x:Name="AddAtEnd" Content="{bi:Localize AddAtEnd}" HorizontalAlignment="Center" Margin="0,16,0,0"
+                    Padding="14,6" Cursor="Hand" Click="OnAddAtEnd" />
+        </StackPanel>
     </ScrollViewer>
 </UserControl>

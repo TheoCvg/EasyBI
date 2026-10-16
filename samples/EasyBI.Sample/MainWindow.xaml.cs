@@ -132,16 +132,26 @@ public partial class MainWindow : Window
             Values = [new("Amount")],
         };
 
-        static LayoutSlot Slot(VisualDefinition visual, double width = LayoutSlot.DefaultWidth) => new() { VisualId = visual.Id, Width = width };
+        static LayoutItem Show(VisualDefinition visual, int column, int row, int columnSpan, int rowSpan) =>
+            new() { VisualId = visual.Id, Column = column, Row = row, ColumnSpan = columnSpan, RowSpan = rowSpan };
         return new ReportDefinition
         {
             Visuals = [kpis, byQuarter, byRegion, byCategory],
             Layout = new DashboardLayout
             {
-                Rows =
+                Items =
                 [
-                    new LayoutRow { Height = 200, Slots = [Slot(kpis)] },
-                    new LayoutRow { Slots = [Slot(byQuarter, 600), Slot(byRegion, 600), Slot(byCategory, 400)] },
+                    new LayoutItem
+                    {
+                        ColumnSpan = 12,
+                        RowSpan = 1,
+                        Text = new TextContent { Text = Text("DashboardHeading"), FontSize = 22, IsBold = true },
+                    },
+                    Show(kpis, 0, 1, 12, 2),
+                    // The quarterly trend covers two rows of the grid, next to the category split
+                    Show(byQuarter, 0, 3, 8, 4),
+                    Show(byCategory, 8, 3, 4, 4),
+                    Show(byRegion, 0, 7, 12, 3),
                 ],
             },
         };

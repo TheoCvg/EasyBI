@@ -33,20 +33,17 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         var series = chart.Series.Select((s, i) => CreateSeries(request.Visual.Mark, s, Color(request.Theme, i))).ToArray();
         var format = chart.Series.FirstOrDefault()?.Format;
 
+        var categoryAxis = new Axis
+        {
+            Labels = chart.Categories.ToArray(),
+            Name = chart.CategoryCaption,
+            NameTextSize = 13,
+            TextSize = 12,
+        };
         var view = new CartesianChart
         {
             Series = series,
-            XAxes =
-            [
-                new Axis
-                {
-                    Labels = chart.Categories.ToArray(),
-                    LabelsRotation = chart.Categories.Count > 8 ? -45 : 0,
-                    Name = chart.CategoryCaption,
-                    NameTextSize = 13,
-                    TextSize = 12,
-                },
-            ],
+            XAxes = [categoryAxis],
             YAxes =
             [
                 new Axis
@@ -56,8 +53,10 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                     SeparatorsPaint = new SolidColorPaint(new SKColor(0xE5, 0xE7, 0xEB)),
                 },
             ],
-            LegendPosition = chart.Series.Count > 1 ? LegendPosition.Right : LegendPosition.Hidden,
         };
+        // The legend and the axis labels adapt to the room the chart actually gets
+        view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, chart);
+        FitCartesian(view, categoryAxis, chart);
 
         if (request.Select is { } select)
         {
@@ -117,12 +116,13 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                 Name = category,
                 Values = [value],
                 Fill = new SolidColorPaint(Color(request.Theme, i)),
-                InnerRadius = 60,
                 ToolTipLabelFormatter = p => ValueFormatter.Format(p.Coordinate.PrimaryValue, source.Format),
             }] = i;
         }
 
-        var view = new PieChart { Series = slices.Keys.ToArray(), LegendPosition = LegendPosition.Right };
+        var view = new PieChart { Series = slices.Keys.ToArray() };
+        view.SizeChanged += (_, _) => FitPie(view, slices.Keys);
+        FitPie(view, slices.Keys);
         if (request.Select is { } select)
         {
             view.Cursor = System.Windows.Input.Cursors.Hand;
@@ -133,6 +133,60 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
             };
         }
         return view;
+    }
+
+    private const double LegendWidth = 170;
+    private const double LabelLineHeight = 16;
+
+    /// <summary>
+    /// Legend on the right when there is room, below when the chart is narrow, hidden when it is small.
+    /// Category labels stay horizontal when they fit, rotate otherwise, and only every n-th label is
+    /// shown when even rotated labels would overlap.
+    /// </summary>
+    private static void FitCartesian(CartesianChart view, Axis categoryAxis, ChartData chart)
+    {
+        double width = view.ActualWidth, height = view.ActualHeight;
+        if (width <= 0) return;
+
+        var legend = chart.Series.Count <= 1 ? LegendPosition.Hidden
+            : width >= 3 * LegendWidth ? LegendPosition.Right
+            : height >= 260 ? LegendPosition.Bottom
+            : LegendPosition.Hidden;
+        if (view.LegendPosition != legend) view.LegendPosition = legend;
+
+        var plotWidth = Math.Max(40, width - 80 - (legend == LegendPosition.Right ? LegendWidth : 0));
+        var perLabel = plotWidth / Math.Max(1, chart.Categories.Count);
+        var longest = chart.Categories.Select(c => c.Length).DefaultIfEmpty(1).Max() * 7.0;
+        double rotation = 0, step = 1;
+        if (perLabel < longest + 8)
+        {
+            rotation = -45;
+            step = Math.Max(1, Math.Ceiling(LabelLineHeight / perLabel));
+        }
+        if (categoryAxis.LabelsRotation != rotation) categoryAxis.LabelsRotation = rotation;
+        if (categoryAxis.MinStep != step)
+        {
+            categoryAxis.MinStep = step;
+            categoryAxis.ForceStepToMin = step > 1;
+        }
+    }
+
+    /// <summary>Legend placed like for cartesian charts; the donut hole keeps the same proportion at any size.</summary>
+    private static void FitPie(PieChart view, IEnumerable<ISeries> slices)
+    {
+        double width = view.ActualWidth, height = view.ActualHeight;
+        if (width <= 0) return;
+
+        var legend = width >= 2.4 * LegendWidth && width >= height ? LegendPosition.Right
+            : height >= 280 ? LegendPosition.Bottom
+            : LegendPosition.Hidden;
+        if (view.LegendPosition != legend) view.LegendPosition = legend;
+
+        var pieWidth = width - (legend == LegendPosition.Right ? LegendWidth : 0);
+        var pieHeight = height - (legend == LegendPosition.Bottom ? 60 : 0);
+        var innerRadius = Math.Max(0, Math.Min(pieWidth, pieHeight) / 2 * 0.5);
+        foreach (var slice in slices.OfType<PieSeries<double>>())
+            if (Math.Abs(slice.InnerRadius - innerRadius) > 1) slice.InnerRadius = innerRadius;
     }
 
     private static SKColor Color(BiTheme theme, int index) => SKColor.Parse(theme.ColorAt(index));

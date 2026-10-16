@@ -15,41 +15,57 @@ public class DashboardViewModelTests
         return dashboard;
     }
 
-    private static string[][] Shape(DashboardViewModel dashboard) =>
-        dashboard.Rows.Select(r => r.Slots.Select(s => s.Visual?.Id ?? "_").ToArray()).ToArray();
+    private static DashboardItemViewModel ItemOf(DashboardViewModel dashboard, string visualId) =>
+        dashboard.Items.Single(i => i.Visual?.Id == visualId);
 
     [Fact]
-    public void Moving_a_slot_keeps_its_view_model()
+    public void Moving_an_item_keeps_the_view_models()
     {
         var dashboard = Dashboard();
-        var c = dashboard.Rows[1].Slots[0];
+        var a = ItemOf(dashboard, "a");
+        var c = ItemOf(dashboard, "c");
 
-        dashboard.Apply(r => ReportLayout.MoveSlot(r, c.Id, dashboard.Rows[0].Id, 0));
+        dashboard.Apply(r => ReportLayout.MoveItem(r, c.Id, 0, 0));
 
-        Assert.Equal([["c", "a", "b"]], Shape(dashboard));
-        Assert.Same(c, dashboard.Rows[0].Slots[0]);
-        Assert.Same(dashboard.Rows[0], c.Row);
+        Assert.Same(c, ItemOf(dashboard, "c"));
+        Assert.Equal((0, 0), (c.Column, c.Row));
+        Assert.Equal((0, 3), (a.Column, a.Row)); // pushed below c
+    }
+
+    [Fact]
+    public void Preview_moves_items_without_changing_the_report()
+    {
+        var dashboard = Dashboard();
+        var c = ItemOf(dashboard, "c");
+        var report = dashboard.Report;
+
+        dashboard.Preview(r => ReportLayout.MoveItem(r, c.Id, 6, 0));
+        Assert.Equal((6, 0), (c.Column, c.Row));
+        Assert.Same(report, dashboard.Report);
+        Assert.False(dashboard.CanUndo);
+
+        dashboard.EndPreview();
+        Assert.Equal((0, 3), (c.Column, c.Row));
     }
 
     [Fact]
     public void Changes_can_be_undone_and_redone()
     {
         var dashboard = Dashboard();
-        var a = dashboard.Rows[0].Slots[0];
+        var a = ItemOf(dashboard, "a");
         var changes = 0;
         dashboard.ReportChanged += (_, _) => changes++;
 
-        dashboard.Apply(r => ReportLayout.RemoveSlot(r, a.Id));
-        Assert.Equal([["b"], ["c"]], Shape(dashboard));
-        Assert.True(dashboard.CanUndo);
+        dashboard.Apply(r => ReportLayout.RemoveItem(r, a.Id));
+        Assert.DoesNotContain(dashboard.Items, i => i.Visual?.Id == "a");
 
         dashboard.Undo();
-        Assert.Equal([["a", "b"], ["c"]], Shape(dashboard));
         Assert.Contains(dashboard.Report.Visuals, v => v.Id == "a");
+        Assert.Contains(dashboard.Items, i => i.Visual?.Id == "a");
         Assert.True(dashboard.CanRedo);
 
         dashboard.Redo();
-        Assert.Equal([["b"], ["c"]], Shape(dashboard));
+        Assert.DoesNotContain(dashboard.Items, i => i.Visual?.Id == "a");
         Assert.Equal(3, changes);
     }
 
@@ -57,28 +73,35 @@ public class DashboardViewModelTests
     public void A_new_change_clears_redo_and_loading_clears_history()
     {
         var dashboard = Dashboard();
-        dashboard.Apply(r => ReportLayout.InsertRow(r, 0));
+        dashboard.Apply(r => ReportLayout.AddItemAtEnd(r));
         dashboard.Undo();
 
-        dashboard.Apply(r => ReportLayout.InsertRow(r, 2));
+        dashboard.Apply(r => ReportLayout.AddItemAtEnd(r));
         Assert.False(dashboard.CanRedo);
 
         dashboard.Load(new ReportDefinition());
         Assert.False(dashboard.CanUndo);
-        Assert.Equal([["_"]], Shape(dashboard));
+        Assert.Equal(DashboardItemKind.Empty, Assert.Single(dashboard.Items).Kind);
     }
 
     [Fact]
-    public void Slot_flags_follow_the_row()
+    public void Item_kind_follows_its_content()
     {
-        var dashboard = Dashboard();
-        var row = dashboard.Rows[0];
+        var dashboard = new DashboardViewModel();
+        var item = Assert.Single(dashboard.Items);
+        Assert.Equal(DashboardItemKind.Empty, item.Kind);
 
-        Assert.True(row.Slots[0].IsFirst);
-        Assert.True(row.Slots[0].CanResize);
-        Assert.False(row.Slots[1].CanResize); // last slot of a Fit row
+        dashboard.Apply(r => ReportLayout.SetText(r, item.Id, new TextContent { Text = "Hi" }));
+        Assert.Equal(DashboardItemKind.Text, item.Kind);
+        Assert.False(item.IsTextEmpty);
 
-        dashboard.Apply(r => ReportLayout.SetRowOverflow(r, row.Id, RowOverflow.Scroll));
-        Assert.True(row.Slots[1].CanResize);
+        // 1x1 transparent PNG
+        const string png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+        dashboard.Apply(r => ReportLayout.SetImage(r, item.Id, new ImageContent { Data = png }));
+        Assert.Equal(DashboardItemKind.Image, item.Kind);
+        Assert.NotNull(item.ImageSource);
+
+        dashboard.Apply(r => ReportLayout.SetImage(r, item.Id, new ImageContent { Data = "not an image" }));
+        Assert.Null(item.ImageSource);
     }
 }

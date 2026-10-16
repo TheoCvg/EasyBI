@@ -88,43 +88,67 @@
     <value>:</value>
   </data>
   <data name="AddVisual" xml:space="preserve">
-    <value>+ Add a visual</value>
+    <value>+ Visual</value>
+  </data>
+  <data name="AddText" xml:space="preserve">
+    <value>+ Text</value>
+  </data>
+  <data name="AddImage" xml:space="preserve">
+    <value>+ Image</value>
   </data>
   <data name="EditVisual" xml:space="preserve">
     <value>Edit visual</value>
   </data>
-  <data name="RemoveSlot" xml:space="preserve">
-    <value>Remove this slot and its visual</value>
+  <data name="EditText" xml:space="preserve">
+    <value>Edit text</value>
   </data>
-  <data name="MoveSlot" xml:space="preserve">
+  <data name="ChangeImage" xml:space="preserve">
+    <value>Change image</value>
+  </data>
+  <data name="RemoveItem" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="MoveItem" xml:space="preserve">
     <value>Drag to move</value>
   </data>
-  <data name="AddSlot" xml:space="preserve">
-    <value>Add a slot here</value>
-  </data>
-  <data name="AddRow" xml:space="preserve">
-    <value>Add a row here</value>
-  </data>
-  <data name="ResizeSlot" xml:space="preserve">
+  <data name="ResizeItem" xml:space="preserve">
     <value>Drag to resize</value>
   </data>
-  <data name="ResizeRow" xml:space="preserve">
-    <value>Drag to change the row height</value>
+  <data name="AddRight" xml:space="preserve">
+    <value>Add an item to the right</value>
   </data>
-  <data name="RowOptions" xml:space="preserve">
-    <value>Row options</value>
+  <data name="AddBelow" xml:space="preserve">
+    <value>Add an item below</value>
   </data>
-  <data name="RowFit" xml:space="preserve">
-    <value>Fit to width</value>
+  <data name="AddAtEnd" xml:space="preserve">
+    <value>+ Add an item</value>
   </data>
-  <data name="RowScroll" xml:space="preserve">
-    <value>Scroll horizontally</value>
+  <data name="TextSmaller" xml:space="preserve">
+    <value>Smaller text</value>
   </data>
-  <data name="RowWrap" xml:space="preserve">
-    <value>Wrap</value>
+  <data name="TextLarger" xml:space="preserve">
+    <value>Larger text</value>
   </data>
-  <data name="RemoveRow" xml:space="preserve">
-    <value>Remove row</value>
+  <data name="TextBold" xml:space="preserve">
+    <value>Bold</value>
+  </data>
+  <data name="TextAlignment" xml:space="preserve">
+    <value>Alignment</value>
+  </data>
+  <data name="TextPlaceholder" xml:space="preserve">
+    <value>Double-click to write</value>
+  </data>
+  <data name="ImageFit" xml:space="preserve">
+    <value>Fit: contain, cover or stretch</value>
+  </data>
+  <data name="ImageFilter" xml:space="preserve">
+    <value>Images|*.png;*.jpg;*.jpeg;*.gif;*.bmp</value>
+  </data>
+  <data name="ImageTooLarge" xml:space="preserve">
+    <value>The image is larger than {0} MB.</value>
+  </data>
+  <data name="ImageUnreadable" xml:space="preserve">
+    <value>This file is not a readable image.</value>
   </data>
   <data name="EditorTitle" xml:space="preserve">
     <value>Visual</value>

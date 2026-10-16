@@ -67,7 +67,7 @@
     <value>  Designer  </value>
   </data>
   <data name="Tip" xml:space="preserve">
-    <value>Astuce : cliquez sur une barre, une part ou une ligne de table pour filtrer les autres visuels. Survolez les bords d'un visuel pour ajouter un emplacement ou une ligne, glissez ⠿ pour le déplacer, tirez les espaces pour redimensionner.</value>
+    <value>Astuce : cliquez sur une barre, une part ou une ligne de table pour filtrer les autres visuels. Survolez le bord droit ou bas d'un élément pour en ajouter un, glissez ⠿ pour le déplacer, tirez ◢ pour le redimensionner.</value>
   </data>
   <data name="NewVisual" xml:space="preserve">
     <value>Nouveau visuel</value>
@@ -110,5 +110,8 @@
   </data>
   <data name="RevenueByCategory" xml:space="preserve">
     <value>Répartition du CA par catégorie</value>
+  </data>
+  <data name="DashboardHeading" xml:space="preserve">
+    <value>Ventes 2023–2025 : vue d'ensemble</value>
   </data>
 </root>

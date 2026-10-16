@@ -91,22 +91,25 @@ in the designer preview.
 
 ## Dashboard layout
 
-`DashboardPanel` shows a report as rows of visuals that end users arrange themselves:
+`DashboardPanel` shows a report on a 12-column grid that end users arrange themselves. Each item
+shows a **visual**, a **free text** or an **image**, and can cover several rows and columns:
 
-- hovering the left or right edge of a visual shows a **+** that adds a slot to the row; the top or
-  bottom edge, a **+** that adds a row. An empty slot offers **+ Add a visual**;
-- the **⠿** grip moves a visual: drop it left or right of another visual, or on its top or bottom
-  quarter to put it in a new row;
-- dragging the gap between two visuals resizes them, and the gap below a row changes its height;
-- each row (**⋮** menu) fits its width (default), scrolls horizontally or wraps;
-- **✎** edits a visual, **✕** removes it; Ctrl+Z / Ctrl+Y undo and redo.
+- hovering the right or bottom edge of an item shows a **+** that adds an item next to it;
+  **+ Add an item** adds one at the end. An empty item offers **+ Visual**, **+ Text** and **+ Image**;
+- the **⠿** grip moves an item: it follows the pointer cell by cell and the other items make room
+  live (items it lands on move down, then everything floats up into free space);
+- the **◢** handle resizes an item, snapping to whole cells;
+- texts are edited in place (double-click or **✎**; Ctrl+Enter or a click elsewhere validates, Escape
+  cancels), with size, bold and alignment buttons; images are embedded in the report (2 MB at most by
+  default, `MaxImageBytes`) and can contain, cover or stretch;
+- **✎** edits a visual in the designer, **✕** removes an item; Ctrl+Z / Ctrl+Y undo and redo.
 
 ```xml
 <bi:DashboardPanel Context="{Binding Context}" Report="{Binding Report}" />
 ```
 
 The arrangement is stored in the report (`ReportDefinition.Layout`), so saving and reloading the
-report restores the dashboard. Reports without a layout get a default grid. `IsLayoutEditable="False"`
+report restores the dashboard. Reports without a layout get a default grid (two visuals per line). `IsLayoutEditable="False"`
 shows a read-only dashboard. Editing opens the designer in a dialog; handle `EditVisualRequested`
 and set `Handled` to use your own editor, then call `Complete(visual)`.
 
@@ -212,4 +215,4 @@ See [AGENTS.md](AGENTS.md) for the code style, language rules and Git workflow.
   source implements `IAsyncEnumerable` (EF Core). EF Core's SQL translation (GroupBy on a composite
   key, sort on an aggregate, projection to `object[]`) still has to be validated against a real database.
 - At most 4 grouping dimensions (axis + legend).
-- No dark theme. The dashboard layout is row-based (no free-form positioning or spanning several rows).
+- No dark theme. Dashboard items snap to a 12-column grid (no free pixel positioning) and float up into free space.

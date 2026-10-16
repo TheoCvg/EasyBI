@@ -1,34 +1,37 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using System.Windows.Media;
+using System.Windows.Threading;
 using EasyBI.Abstractions;
 using EasyBI.Core;
 using EasyBI.Wpf.Resources;
+using Microsoft.Win32;
 
 namespace EasyBI.Wpf.Dashboard;
 
-/// <summary>Raised when the user asks to fill or edit a slot; set <see cref="Handled"/> to replace the built-in editor.</summary>
-public sealed class EditVisualRequestedEventArgs(string slotId, VisualDefinition? visual, Action<VisualDefinition> complete) : EventArgs
+/// <summary>Raised when the user asks to fill or edit a visual; set <see cref="Handled"/> to replace the built-in editor.</summary>
+public sealed class EditVisualRequestedEventArgs(string itemId, VisualDefinition? visual, Action<VisualDefinition> complete) : EventArgs
 {
-    public string SlotId { get; } = slotId;
+    public string ItemId { get; } = itemId;
 
-    /// <summary>The visual being edited, or null for an empty slot.</summary>
+    /// <summary>The visual being edited, or null for a new one.</summary>
     public VisualDefinition? Visual { get; } = visual;
 
     /// <summary>True when the application handles the edit: the built-in designer window is not opened.</summary>
     public bool Handled { get; set; }
 
-    /// <summary>Places the edited visual in the slot. Can be called later, once the application's editor closes.</summary>
+    /// <summary>Shows the edited visual in the item. Can be called later, once the application's editor closes.</summary>
     public void Complete(VisualDefinition visual) => complete(visual);
 }
 
 /// <summary>
-/// Dashboard made of rows of visuals that the user arranges: "+" buttons appear near the edges of a slot
-/// to add a slot or a row, slots move by their drag grip and resize by dragging the gaps, each row
-/// fits, scrolls or wraps. The arrangement is part of <see cref="Report"/> (<see cref="ReportDefinition.Layout"/>),
-/// so saving and restoring the report saves and restores the dashboard.
+/// Dashboard laid out on a grid that end users arrange: items show a visual, a text or an image and can cover
+/// several rows and columns. Items move with their grip (the others make room live), resize with the corner
+/// handle, and "+" buttons on their right and bottom edges add new items. The arrangement is part of
+/// <see cref="Report"/> (<see cref="ReportDefinition.Layout"/>), so saving and restoring the report saves and
+/// restores the dashboard.
 /// </summary>
 public partial class DashboardPanel : UserControl
 {
@@ -41,57 +44,52 @@ public partial class DashboardPanel : UserControl
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
             (d, e) => ((DashboardPanel)d).OnReportChanged((ReportDefinition?)e.NewValue)));
 
-    /// <summary>False shows the dashboard read-only: no grip, no "+", no splitter, no edit buttons.</summary>
+    /// <summary>False shows the dashboard read-only: no grip, no "+", no resize handle, no toolbar.</summary>
     public static readonly DependencyProperty IsLayoutEditableProperty = DependencyProperty.Register(
-        nameof(IsLayoutEditable), typeof(bool), typeof(DashboardPanel), new PropertyMetadata(true));
+        nameof(IsLayoutEditable), typeof(bool), typeof(DashboardPanel),
+        new PropertyMetadata(true, (d, e) => ((DashboardPanel)d).AddAtEnd.Visibility = (bool)e.NewValue ? Visibility.Visible : Visibility.Collapsed));
+
+    private const double MinFontSize = 8;
+    private const double MaxFontSize = 96;
 
     private readonly DashboardViewModel _viewModel = new();
+    private DashboardGridPanel? _grid;
     private bool _pushing;
+
+    // Dragging
     private Point? _dragStart;
-    private DashboardSlotViewModel? _hinted;
-    private Dictionary<DashboardSlotViewModel, double>? _resizeStart;
-    private double _resizeDelta;
-    private double _rowResizeStart;
+    private Point _grabOffset;
+    private DashboardItemViewModel? _dragged;
+    private (int Column, int Row)? _dropCell;
+
+    // Resizing
+    private (int ColumnSpan, int RowSpan) _resizeStart;
+    private (int ColumnSpan, int RowSpan)? _resizeTarget;
+    private Vector _resizeDelta;
 
     public DashboardPanel()
     {
         InitializeComponent();
-        RowList.ItemsSource = _viewModel.Rows;
+        ItemList.DataContext = _viewModel;
+        ItemList.ItemsSource = _viewModel.Items;
         // Keep the keyboard focus after a change, even when the clicked button disappeared, so Ctrl+Z works
         Focusable = true;
         FocusVisualStyle = null;
         _viewModel.ReportChanged += (_, _) =>
         {
             PushReport();
-            // The removed button only loses the focus once its container is unloaded: check afterwards
+            // A removed button only loses the focus once its container is unloaded: check afterwards
             Dispatcher.BeginInvoke(() =>
             {
                 if (!IsKeyboardFocusWithin) Focus();
-            }, System.Windows.Threading.DispatcherPriority.Input);
+            }, DispatcherPriority.Input);
         };
         PushReport();
         CommandBindings.Add(new CommandBinding(ApplicationCommands.Undo, (_, _) => Undo(), (_, e) => e.CanExecute = CanUndo));
         CommandBindings.Add(new CommandBinding(ApplicationCommands.Redo, (_, _) => Redo(), (_, e) => e.CanExecute = CanRedo));
     }
 
-    /// <summary>True when a layout or visual change can be undone (Ctrl+Z).</summary>
-    public bool CanUndo => IsLayoutEditable && _viewModel.CanUndo;
-
-    public bool CanRedo => IsLayoutEditable && _viewModel.CanRedo;
-
-    /// <summary>Undoes the last change made through the dashboard (also Ctrl+Z).</summary>
-    public void Undo()
-    {
-        if (CanUndo) _viewModel.Undo();
-    }
-
-    /// <summary>Redoes the last undone change (also Ctrl+Y).</summary>
-    public void Redo()
-    {
-        if (CanRedo) _viewModel.Redo();
-    }
-
-    /// <summary>Raised before a slot is filled or edited.</summary>
+    /// <summary>Raised before a visual is created or edited.</summary>
     public event EventHandler<EditVisualRequestedEventArgs>? EditVisualRequested;
 
     public EasyBIContext? Context
@@ -110,6 +108,26 @@ public partial class DashboardPanel : UserControl
     {
         get => (bool)GetValue(IsLayoutEditableProperty);
         set => SetValue(IsLayoutEditableProperty, value);
+    }
+
+    /// <summary>Largest image that can be embedded in the report, in bytes (2 MB by default).</summary>
+    public int MaxImageBytes { get; set; } = 2 * 1024 * 1024;
+
+    /// <summary>True when a change can be undone (Ctrl+Z).</summary>
+    public bool CanUndo => IsLayoutEditable && _viewModel.CanUndo;
+
+    public bool CanRedo => IsLayoutEditable && _viewModel.CanRedo;
+
+    /// <summary>Undoes the last change made through the dashboard (also Ctrl+Z).</summary>
+    public void Undo()
+    {
+        if (CanUndo) _viewModel.Undo();
+    }
+
+    /// <summary>Redoes the last undone change (also Ctrl+Y).</summary>
+    public void Redo()
+    {
+        if (CanRedo) _viewModel.Redo();
     }
 
     private void OnReportChanged(ReportDefinition? report)
@@ -133,101 +151,175 @@ public partial class DashboardPanel : UserControl
         }
     }
 
-    private static T Item<T>(object sender) => (T)((FrameworkElement)sender).DataContext;
+    private void OnGridLoaded(object sender, RoutedEventArgs e) => _grid = (DashboardGridPanel)sender;
 
-    private int IndexOf(DashboardSlotViewModel slot) => slot.Row.Slots.IndexOf(slot);
-
-    private int IndexOf(DashboardRowViewModel row) => _viewModel.Rows.IndexOf(row);
+    private static DashboardItemViewModel Item(object sender) => (DashboardItemViewModel)((FrameworkElement)sender).DataContext;
 
     // --- Adding ---
 
-    private void OnInsertSlotBefore(object sender, RoutedEventArgs e)
+    private void OnAddRight(object sender, RoutedEventArgs e) =>
+        _viewModel.Apply(r => ReportLayout.AddItemNextTo(r, Item(sender).Id, ItemSide.Right));
+
+    private void OnAddBelow(object sender, RoutedEventArgs e) =>
+        _viewModel.Apply(r => ReportLayout.AddItemNextTo(r, Item(sender).Id, ItemSide.Below));
+
+    private void OnAddAtEnd(object sender, RoutedEventArgs e) => _viewModel.Apply(r => ReportLayout.AddItemAtEnd(r));
+
+    private void OnAddVisual(object sender, RoutedEventArgs e) => EditVisual(Item(sender));
+
+    private void OnAddText(object sender, RoutedEventArgs e)
     {
-        var slot = Item<DashboardSlotViewModel>(sender);
-        _viewModel.Apply(r => ReportLayout.InsertSlot(r, slot.Row.Id, IndexOf(slot)));
+        var item = Item(sender);
+        _viewModel.Apply(r => ReportLayout.SetText(r, item.Id, new TextContent()));
+        BeginTextEdit(item);
     }
 
-    private void OnInsertSlotAfter(object sender, RoutedEventArgs e)
-    {
-        var slot = Item<DashboardSlotViewModel>(sender);
-        _viewModel.Apply(r => ReportLayout.InsertSlot(r, slot.Row.Id, IndexOf(slot) + 1));
-    }
-
-    private void OnInsertRowBefore(object sender, RoutedEventArgs e)
-    {
-        var row = Item<DashboardRowViewModel>(sender);
-        _viewModel.Apply(r => ReportLayout.InsertRow(r, IndexOf(row)));
-    }
-
-    private void OnInsertRowAfter(object sender, RoutedEventArgs e)
-    {
-        var row = Item<DashboardRowViewModel>(sender);
-        _viewModel.Apply(r => ReportLayout.InsertRow(r, IndexOf(row) + 1));
-    }
+    private void OnAddImage(object sender, RoutedEventArgs e) => PickImage(Item(sender), ImageFit.Contain);
 
     // --- Editing and removing ---
 
-    private void OnEditSlot(object sender, RoutedEventArgs e)
+    private void OnEditItem(object sender, RoutedEventArgs e)
     {
-        var slot = Item<DashboardSlotViewModel>(sender);
-        var slotId = slot.Id;
-        var args = new EditVisualRequestedEventArgs(slotId, slot.Visual,
-            visual => _viewModel.Apply(r => ReportLayout.SetVisual(r, slotId, visual)));
+        var item = Item(sender);
+        switch (item.Kind)
+        {
+            case DashboardItemKind.Text: BeginTextEdit(item); break;
+            case DashboardItemKind.Image: PickImage(item, item.Image!.Fit); break;
+            default: EditVisual(item); break;
+        }
+    }
+
+    private void EditVisual(DashboardItemViewModel item)
+    {
+        var itemId = item.Id;
+        var args = new EditVisualRequestedEventArgs(itemId, item.Visual,
+            visual => _viewModel.Apply(r => ReportLayout.SetVisual(r, itemId, visual)));
         EditVisualRequested?.Invoke(this, args);
         if (args.Handled || Context is not { } context) return;
 
-        var editor = new VisualEditorWindow(context, slot.Visual) { Owner = Window.GetWindow(this) };
+        var editor = new VisualEditorWindow(context, item.Visual) { Owner = Window.GetWindow(this) };
         if (editor.ShowDialog() == true && editor.Visual is { } visual)
             args.Complete(visual);
     }
 
-    private void OnRemoveSlot(object sender, RoutedEventArgs e)
+    private void OnRemoveItem(object sender, RoutedEventArgs e)
     {
-        var slot = Item<DashboardSlotViewModel>(sender);
-        ClearSelectionOf([slot]);
-        _viewModel.Apply(r => ReportLayout.RemoveSlot(r, slot.Id));
+        var item = Item(sender);
+        if (VisualView.GetFilterContext(this) is { Selection: { } selection } filters && item.Visual?.Id == selection.SourceVisualId)
+            filters.ClearSelection(); // a removed visual can no longer filter the others
+        _viewModel.Apply(r => ReportLayout.RemoveItem(r, item.Id));
     }
 
-    private void OnRowOptions(object sender, RoutedEventArgs e)
+    // --- Text ---
+
+    private void OnTextMouseDown(object sender, MouseButtonEventArgs e)
     {
-        var row = Item<DashboardRowViewModel>(sender);
-        var menu = new ContextMenu { PlacementTarget = (UIElement)sender };
-        foreach (var (overflow, label) in new[]
-                 {
-                     (RowOverflow.Fit, Strings.RowFit),
-                     (RowOverflow.Scroll, Strings.RowScroll),
-                     (RowOverflow.Wrap, Strings.RowWrap),
-                 })
+        if (e.ClickCount == 2 && IsLayoutEditable) BeginTextEdit(Item(sender));
+    }
+
+    private void BeginTextEdit(DashboardItemViewModel item)
+    {
+        item.EditText = item.Text?.Text ?? "";
+        item.IsEditingText = true;
+    }
+
+    private void OnTextEditorVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is not true) return;
+        var editor = (TextBox)sender;
+        Dispatcher.BeginInvoke(() =>
         {
-            var item = new MenuItem { Header = label, IsCheckable = true, IsChecked = row.Overflow == overflow };
-            item.Click += (_, _) => _viewModel.Apply(r => ReportLayout.SetRowOverflow(r, row.Id, overflow));
-            menu.Items.Add(item);
+            editor.Focus();
+            editor.CaretIndex = editor.Text.Length;
+        }, DispatcherPriority.Input);
+    }
+
+    private void OnTextEditorKeyDown(object sender, KeyEventArgs e)
+    {
+        var item = Item(sender);
+        if (e.Key == Key.Escape)
+        {
+            item.IsEditingText = false;
+            e.Handled = true;
         }
-        menu.Items.Add(new Separator());
-        var remove = new MenuItem { Header = Strings.RemoveRow };
-        remove.Click += (_, _) =>
+        else if (e.Key == Key.Enter && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
         {
-            ClearSelectionOf(row.Slots);
-            _viewModel.Apply(r => ReportLayout.RemoveRow(r, row.Id));
-        };
-        menu.Items.Add(remove);
-        menu.IsOpen = true;
+            CommitText(item);
+            e.Handled = true;
+        }
     }
 
-    /// <summary>A removed visual can no longer filter the others.</summary>
-    private void ClearSelectionOf(IEnumerable<DashboardSlotViewModel> slots)
+    private void OnTextEditorLostFocus(object sender, KeyboardFocusChangedEventArgs e) => CommitText(Item(sender));
+
+    private void CommitText(DashboardItemViewModel item)
     {
-        if (VisualView.GetFilterContext(this) is { Selection: { } selection } filters
-            && slots.Any(s => s.Visual?.Id == selection.SourceVisualId))
-            filters.ClearSelection();
+        if (!item.IsEditingText) return;
+        item.IsEditingText = false;
+        var text = item.Text ?? new TextContent();
+        if (text.Text != item.EditText)
+            _viewModel.Apply(r => ReportLayout.SetText(r, item.Id, text with { Text = item.EditText }));
     }
 
-    // --- Drag and drop ---
+    private void OnTextSmaller(object sender, RoutedEventArgs e) =>
+        ChangeText(Item(sender), t => t with { FontSize = Math.Max(MinFontSize, t.FontSize - 2) });
+
+    private void OnTextLarger(object sender, RoutedEventArgs e) =>
+        ChangeText(Item(sender), t => t with { FontSize = Math.Min(MaxFontSize, t.FontSize + 2) });
+
+    private void OnTextBold(object sender, RoutedEventArgs e) => ChangeText(Item(sender), t => t with { IsBold = !t.IsBold });
+
+    private void OnTextAlignment(object sender, RoutedEventArgs e) =>
+        ChangeText(Item(sender), t => t with { Alignment = (TextAlign)(((int)t.Alignment + 1) % 3) });
+
+    private void ChangeText(DashboardItemViewModel item, Func<TextContent, TextContent> change)
+    {
+        if (item.Text is { } text) _viewModel.Apply(r => ReportLayout.SetText(r, item.Id, change(text)));
+    }
+
+    // --- Image ---
+
+    private void PickImage(DashboardItemViewModel item, ImageFit fit)
+    {
+        var dialog = new OpenFileDialog { Filter = Strings.ImageFilter };
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+
+        var bytes = File.ReadAllBytes(dialog.FileName);
+        string? problem = null;
+        if (bytes.Length > MaxImageBytes)
+            problem = Strings.Format(Strings.ImageTooLarge, MaxImageBytes / (1024 * 1024));
+        var image = new ImageContent { Data = Convert.ToBase64String(bytes), MediaType = MediaType(dialog.FileName), Fit = fit };
+        if (problem is null && DashboardItemViewModel.Decode(image) is null)
+            problem = Strings.ImageUnreadable;
+        if (problem is not null)
+        {
+            MessageBox.Show(Window.GetWindow(this), problem, Strings.ChangeImage, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        _viewModel.Apply(r => ReportLayout.SetImage(r, item.Id, image));
+    }
+
+    private void OnImageFit(object sender, RoutedEventArgs e)
+    {
+        var item = Item(sender);
+        if (item.Image is { } image)
+            _viewModel.Apply(r => ReportLayout.SetImage(r, item.Id, image with { Fit = (ImageFit)(((int)image.Fit + 1) % 3) }));
+    }
+
+    private static string MediaType(string path) => Path.GetExtension(path).ToLowerInvariant() switch
+    {
+        ".jpg" or ".jpeg" => "image/jpeg",
+        ".gif" => "image/gif",
+        ".bmp" => "image/bmp",
+        _ => "image/png",
+    };
+
+    // --- Moving: the item follows the pointer cell by cell and the others make room live ---
 
     private void OnGripMouseDown(object sender, MouseButtonEventArgs e)
     {
         _dragStart = e.GetPosition(this);
-        // The grip is small: keep receiving moves even when the pointer leaves it before the drag starts
+        // Where the item was grabbed, so that it does not jump under the pointer
+        _grabOffset = e.GetPosition(ItemContainer(sender));
         ((UIElement)sender).CaptureMouse();
     }
 
@@ -245,135 +337,72 @@ public partial class DashboardPanel : UserControl
             && Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance) return;
         _dragStart = null;
         ((UIElement)sender).ReleaseMouseCapture();
-        var slot = Item<DashboardSlotViewModel>(sender);
-        DragDrop.DoDragDrop((DependencyObject)sender, new DataObject(typeof(DashboardSlotViewModel), slot), DragDropEffects.Move);
-        SetHint(null, DropHint.None);
+
+        _dragged = Item(sender);
+        _dropCell = null;
+        var result = DragDrop.DoDragDrop((DependencyObject)sender, new DataObject(typeof(DashboardItemViewModel), _dragged), DragDropEffects.Move);
+        if (result == DragDropEffects.None) _viewModel.EndPreview();
+        _dragged = null;
     }
 
-    private void OnSlotDragOver(object sender, DragEventArgs e)
+    private UIElement ItemContainer(object sender) => (UIElement)ItemList.ItemContainerGenerator.ContainerFromItem(Item(sender));
+
+    private void OnSurfaceDragOver(object sender, DragEventArgs e)
     {
-        var hint = HintAt(sender, e);
-        e.Effects = hint == DropHint.None ? DragDropEffects.None : DragDropEffects.Move;
-        SetHint(Item<DashboardSlotViewModel>(sender), hint);
         e.Handled = true;
-    }
-
-    private void OnSlotDragLeave(object sender, DragEventArgs e)
-    {
-        if (ReferenceEquals(_hinted, Item<DashboardSlotViewModel>(sender))) SetHint(null, DropHint.None);
-    }
-
-    private void OnSlotDrop(object sender, DragEventArgs e)
-    {
-        var hint = HintAt(sender, e);
-        SetHint(null, DropHint.None);
-        if (hint == DropHint.None || e.Data.GetData(typeof(DashboardSlotViewModel)) is not DashboardSlotViewModel moved) return;
-
-        var target = Item<DashboardSlotViewModel>(sender);
-        var rowIndex = IndexOf(target.Row);
-        _viewModel.Apply(hint switch
+        if (!IsLayoutEditable || _grid is null || _dragged is not { } item
+            || !e.Data.GetDataPresent(typeof(DashboardItemViewModel)))
         {
-            DropHint.Left => r => ReportLayout.MoveSlot(r, moved.Id, target.Row.Id, IndexOf(target)),
-            DropHint.Right => r => ReportLayout.MoveSlot(r, moved.Id, target.Row.Id, IndexOf(target) + 1),
-            DropHint.Top => r => ReportLayout.MoveSlotToNewRow(r, moved.Id, rowIndex),
-            _ => r => ReportLayout.MoveSlotToNewRow(r, moved.Id, rowIndex + 1),
-        });
-        e.Handled = true;
-    }
-
-    /// <summary>Top and bottom quarters create a new row; the left and right halves insert into the row.</summary>
-    private DropHint HintAt(object sender, DragEventArgs e)
-    {
-        if (!IsLayoutEditable || !e.Data.GetDataPresent(typeof(DashboardSlotViewModel))) return DropHint.None;
-        var element = (FrameworkElement)sender;
-        var position = e.GetPosition(element);
-        if (position.Y < element.ActualHeight * 0.25) return DropHint.Top;
-        if (position.Y > element.ActualHeight * 0.75) return DropHint.Bottom;
-        return position.X < element.ActualWidth / 2 ? DropHint.Left : DropHint.Right;
-    }
-
-    private void SetHint(DashboardSlotViewModel? slot, DropHint hint)
-    {
-        if (_hinted is not null && !ReferenceEquals(_hinted, slot)) _hinted.DropHint = DropHint.None;
-        _hinted = slot;
-        if (slot is not null) slot.DropHint = hint;
-    }
-
-    // --- Resizing ---
-
-    private void OnSlotSizeChanged(object sender, SizeChangedEventArgs e) =>
-        Item<DashboardSlotViewModel>(sender).ActualWidth = e.NewSize.Width;
-
-    private void OnSlotResizeStarted(object sender, DragStartedEventArgs e)
-    {
-        var row = Item<DashboardSlotViewModel>(sender).Row;
-        _resizeStart = row.Slots.ToDictionary(s => s, s => s.ActualWidth > 0 ? s.ActualWidth : s.Width);
-        _resizeDelta = 0;
-    }
-
-    private void OnSlotResizeDelta(object sender, DragDeltaEventArgs e)
-    {
-        if (_resizeStart is null) return;
-        var slot = Item<DashboardSlotViewModel>(sender);
-        _resizeDelta += e.HorizontalChange;
-        var start = _resizeStart[slot];
-        if (slot.Row.Overflow != RowOverflow.Fit)
-        {
-            slot.Width = Math.Max(ReportLayout.MinWidth, start + _resizeDelta);
+            e.Effects = DragDropEffects.None;
             return;
         }
+        e.Effects = DragDropEffects.Move;
 
-        // Fit: the gap moves between this slot and the next one; the others keep their current share
-        var next = slot.Row.Slots[IndexOf(slot) + 1];
-        var pair = start + _resizeStart[next];
-        var width = Math.Clamp(start + _resizeDelta, ReportLayout.MinWidth, pair - ReportLayout.MinWidth);
-        foreach (var (other, otherStart) in _resizeStart) other.Width = otherStart;
-        slot.Width = width;
-        next.Width = pair - width;
+        var position = e.GetPosition(_grid);
+        var column = (int)Math.Round((position.X - _grabOffset.X) / _grid.ColumnPitch(_grid.ActualWidth));
+        var row = (int)Math.Round((position.Y - _grabOffset.Y) / _grid.RowPitch);
+        var cell = (Math.Clamp(column, 0, Math.Max(0, _viewModel.Columns - item.ColumnSpan)), Math.Max(0, row));
+        if (cell == _dropCell) return;
+        _dropCell = cell;
+        _viewModel.Preview(r => ReportLayout.MoveItem(r, item.Id, cell.Item1, cell.Item2));
     }
 
-    private void OnSlotResizeCompleted(object sender, DragCompletedEventArgs e)
+    private void OnSurfaceDrop(object sender, DragEventArgs e)
     {
-        if (_resizeStart is null) return;
-        var row = Item<DashboardSlotViewModel>(sender).Row;
-        var widths = row.Slots.ToDictionary(s => s.Id, s => s.Width);
-        _resizeStart = null;
-        _viewModel.Apply(r => ReportLayout.SetSlotWidths(r, row.Id, widths));
-    }
-
-    private void OnRowResizeStarted(object sender, DragStartedEventArgs e)
-    {
-        _rowResizeStart = Item<DashboardRowViewModel>(sender).Height;
-        _resizeDelta = 0;
-    }
-
-    private void OnRowResizeDelta(object sender, DragDeltaEventArgs e)
-    {
-        _resizeDelta += e.VerticalChange;
-        Item<DashboardRowViewModel>(sender).Height = Math.Max(ReportLayout.MinHeight, _rowResizeStart + _resizeDelta);
-    }
-
-    private void OnRowResizeCompleted(object sender, DragCompletedEventArgs e)
-    {
-        var row = Item<DashboardRowViewModel>(sender);
-        _viewModel.Apply(r => ReportLayout.SetRowHeight(r, row.Id, row.Height));
-    }
-
-    /// <summary>
-    /// A horizontally scrolling row must not swallow the vertical wheel of the dashboard:
-    /// the wheel scrolls the dashboard, Shift + wheel scrolls the row.
-    /// </summary>
-    private void OnRowMouseWheel(object sender, MouseWheelEventArgs e)
-    {
-        var slots = (ItemsControl)sender;
-        if (Item<DashboardRowViewModel>(sender).Overflow != RowOverflow.Scroll
-            || VisualTreeHelper.GetChildrenCount(slots) == 0
-            || VisualTreeHelper.GetChild(slots, 0) is not ScrollViewer row) return;
-
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
-            row.ScrollToHorizontalOffset(row.HorizontalOffset - e.Delta);
-        else
-            Scroller.ScrollToVerticalOffset(Scroller.VerticalOffset - e.Delta);
         e.Handled = true;
+        if (_dragged is not { } item || _dropCell is not { } cell) return;
+        _viewModel.Apply(r => ReportLayout.MoveItem(r, item.Id, cell.Column, cell.Row));
+    }
+
+    // --- Resizing: the corner handle snaps to whole cells ---
+
+    private void OnResizeStarted(object sender, DragStartedEventArgs e)
+    {
+        var item = Item(sender);
+        _resizeStart = (item.ColumnSpan, item.RowSpan);
+        _resizeTarget = null;
+        _resizeDelta = default;
+    }
+
+    private void OnResizeDelta(object sender, DragDeltaEventArgs e)
+    {
+        if (_grid is null) return;
+        var item = Item(sender);
+        _resizeDelta += new Vector(e.HorizontalChange, e.VerticalChange);
+        var columnSpan = Math.Max(1, _resizeStart.ColumnSpan + (int)Math.Round(_resizeDelta.X / _grid.ColumnPitch(_grid.ActualWidth)));
+        var rowSpan = Math.Max(1, _resizeStart.RowSpan + (int)Math.Round(_resizeDelta.Y / _grid.RowPitch));
+        if ((columnSpan, rowSpan) == (_resizeTarget ?? _resizeStart)) return;
+        _resizeTarget = (columnSpan, rowSpan);
+        _viewModel.Preview(r => ReportLayout.ResizeItem(r, item.Id, columnSpan, rowSpan));
+    }
+
+    private void OnResizeCompleted(object sender, DragCompletedEventArgs e)
+    {
+        var item = Item(sender);
+        if (_resizeTarget is { } target && target != _resizeStart)
+            _viewModel.Apply(r => ReportLayout.ResizeItem(r, item.Id, target.ColumnSpan, target.RowSpan));
+        else
+            _viewModel.EndPreview();
+        _resizeTarget = null;
     }
 }

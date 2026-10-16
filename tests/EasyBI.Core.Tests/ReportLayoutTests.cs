@@ -7,159 +7,203 @@ public class ReportLayoutTests
 {
     private static VisualDefinition Visual(string id) => new() { Id = id, Title = id, Model = "sales", Values = [new("Amount")] };
 
-    private static string[][] Shape(ReportDefinition report) =>
-        report.Layout!.Rows.Select(r => r.Slots.Select(s => s.VisualId ?? "_").ToArray()).ToArray();
-
-    private static ReportDefinition Report(params string[][] rows) => new()
+    /// <summary>Report whose items are given as (id, column, row, columnSpan, rowSpan); the item id is also its visual id.</summary>
+    private static ReportDefinition Report(params (string Id, int Column, int Row, int ColumnSpan, int RowSpan)[] items) => new()
     {
-        Visuals = rows.SelectMany(r => r).Where(id => id != "_").Select(Visual).ToArray(),
+        Visuals = items.Select(i => Visual(i.Id)).ToArray(),
         Layout = new DashboardLayout
         {
-            Rows = rows.Select((r, i) => new LayoutRow
+            Items = items.Select(i => new LayoutItem
             {
-                Id = $"r{i}",
-                Slots = r.Select(id => new LayoutSlot { Id = $"s-{id}", VisualId = id == "_" ? null : id }).ToArray(),
+                Id = i.Id,
+                VisualId = i.Id,
+                Column = i.Column,
+                Row = i.Row,
+                ColumnSpan = i.ColumnSpan,
+                RowSpan = i.RowSpan,
             }).ToArray(),
         },
     };
 
-    [Fact]
-    public void Empty_report_gets_one_empty_slot()
-    {
-        var report = ReportLayout.Normalize(new ReportDefinition());
+    private static (int Column, int Row, int ColumnSpan, int RowSpan) Box(ReportDefinition report, string id) =>
+        report.Layout!.Items.Single(i => i.Id == id) is var i ? (i.Column, i.Row, i.ColumnSpan, i.RowSpan) : default;
 
-        Assert.Equal([["_"]], Shape(report));
+    [Fact]
+    public void Empty_report_gets_one_empty_item()
+    {
+        var item = Assert.Single(ReportLayout.Normalize(new ReportDefinition()).Layout!.Items);
+
+        Assert.Null(item.VisualId);
+        Assert.Equal((0, 0, 6, 3), (item.Column, item.Row, item.ColumnSpan, item.RowSpan));
     }
 
     [Fact]
-    public void Report_without_layout_gets_a_default_grid()
+    public void Report_without_layout_gets_two_visuals_per_line()
     {
         var report = ReportLayout.Normalize(new ReportDefinition { Visuals = [Visual("a"), Visual("b"), Visual("c")] });
 
-        Assert.Equal([["a", "b"], ["c"]], Shape(report));
+        Assert.Equal([(0, 0, 6, 3), (6, 0, 6, 3), (0, 3, 6, 3)],
+            report.Layout!.Items.Select(i => (i.Column, i.Row, i.ColumnSpan, i.RowSpan)));
     }
 
     [Fact]
-    public void Normalize_repairs_dangling_duplicate_and_unplaced_visuals()
+    public void Normalize_repairs_overlaps_gaps_bounds_and_references()
     {
-        var report = Report(["a", "a"], ["ghost"]) with { Visuals = [Visual("a"), Visual("b")] };
+        var report = Report(("a", 0, 5, 6, 2), ("b", 2, 5, 6, 2), ("c", 10, 0, 6, 1)) with
+        {
+            Visuals = [Visual("a"), Visual("c"), Visual("d")],
+        };
 
-        Assert.Equal([["a", "_"], ["_"], ["b"]], Shape(ReportLayout.Normalize(report)));
+        report = ReportLayout.Normalize(report);
+
+        Assert.Equal((0, 0, 6, 2), Box(report, "a"));      // floated up
+        Assert.Equal((2, 2, 6, 2), Box(report, "b"));      // pushed under a
+        Assert.Equal((6, 0, 6, 1), Box(report, "c"));      // kept inside the 12 columns
+        Assert.Null(report.Layout!.Items.Single(i => i.Id == "b").VisualId); // unknown visual
+        Assert.Contains(report.Layout.Items, i => i.VisualId == "d");       // unplaced visual added
     }
 
     [Fact]
-    public void Inserting_slots_and_rows()
+    public void An_item_can_span_several_rows_and_columns()
     {
-        var report = Report(["a", "b"]);
+        var report = ReportLayout.Normalize(Report(("big", 0, 0, 8, 6), ("top", 8, 0, 4, 3), ("bottom", 8, 3, 4, 3)));
 
-        report = ReportLayout.InsertSlot(report, "r0", 1);
-        Assert.Equal([["a", "_", "b"]], Shape(report));
-
-        report = ReportLayout.InsertRow(report, 0);
-        Assert.Equal([["_"], ["a", "_", "b"]], Shape(report));
+        Assert.Equal((0, 0, 8, 6), Box(report, "big"));
+        Assert.Equal((8, 0, 4, 3), Box(report, "top"));
+        Assert.Equal((8, 3, 4, 3), Box(report, "bottom"));
     }
 
     [Fact]
-    public void New_slot_in_a_fit_row_gets_an_average_share()
+    public void Moving_onto_an_item_pushes_it_down()
     {
-        var report = Report(["a", "b"]);
-        report = ReportLayout.SetSlotWidths(report, "r0", new Dictionary<string, double> { ["s-a"] = 200, ["s-b"] = 600 });
+        var report = Report(("a", 0, 0, 6, 3), ("b", 6, 0, 6, 3));
 
-        report = ReportLayout.InsertSlot(report, "r0", 2);
+        report = ReportLayout.MoveItem(report, "b", 0, 0);
 
-        Assert.Equal(400, report.Layout!.Rows[0].Slots[2].Width);
-    }
-
-    [Theory]
-    [InlineData(0, new[] { "c", "a", "b" })]
-    [InlineData(2, new[] { "a", "c", "b" })] // "before b" (index 2 of the original row) leaves c in place
-    [InlineData(3, new[] { "a", "b", "c" })]
-    public void Moving_within_a_row_uses_indexes_of_the_original_row(int index, string[] expected)
-    {
-        var report = ReportLayout.MoveSlot(Report(["a", "c", "b"]), "s-c", "r0", index);
-
-        Assert.Equal(expected, Shape(report)[0]);
+        Assert.Equal((0, 0, 6, 3), Box(report, "b"));
+        Assert.Equal((0, 3, 6, 3), Box(report, "a"));
     }
 
     [Fact]
-    public void Moving_to_another_row_removes_the_emptied_row()
+    public void Items_float_up_but_never_jump_over_another()
     {
-        var report = ReportLayout.MoveSlot(Report(["a"], ["b", "c"]), "s-a", "r1", 1);
+        var report = Report(("a", 0, 0, 12, 2), ("b", 0, 2, 6, 2), ("c", 6, 2, 6, 2));
 
-        Assert.Equal([["b", "a", "c"]], Shape(report));
+        report = ReportLayout.RemoveItem(report, "a");
+        Assert.Equal((0, 0, 6, 2), Box(report, "b"));
+        Assert.Equal((6, 0, 6, 2), Box(report, "c"));
+
+        // c is under b: it stays under it when b grows
+        report = ReportLayout.MoveItem(Report(("b", 0, 0, 6, 2), ("c", 0, 2, 6, 2)), "b", 0, 0);
+        Assert.Equal((0, 2, 6, 2), Box(report, "c"));
     }
 
     [Fact]
-    public void Moving_to_a_new_row()
+    public void Resizing_pushes_overlapped_items_down_and_is_clamped()
     {
-        var report = ReportLayout.MoveSlotToNewRow(Report(["a", "b"], ["c"]), "s-b", 2);
+        var report = Report(("a", 0, 0, 6, 3), ("b", 6, 0, 6, 3));
 
-        Assert.Equal([["a"], ["c"], ["b"]], Shape(report));
+        report = ReportLayout.ResizeItem(report, "a", 8, 4);
+        Assert.Equal((0, 0, 8, 4), Box(report, "a"));
+        Assert.Equal((6, 4, 6, 3), Box(report, "b"));
+
+        report = ReportLayout.ResizeItem(report, "a", 40, 0);
+        Assert.Equal((0, 0, 12, 1), Box(report, "a"));
     }
 
     [Fact]
-    public void Removing_a_slot_removes_its_visual_and_keeps_one_slot()
+    public void Adding_next_to_an_item()
     {
-        var report = ReportLayout.RemoveSlot(Report(["a"], ["b"]), "s-a");
-        Assert.Equal([["b"]], Shape(report));
-        Assert.Equal(["b"], report.Visuals.Select(v => v.Id));
+        var report = Report(("a", 0, 0, 4, 2));
 
-        report = ReportLayout.RemoveSlot(report, "s-b");
-        Assert.Equal([["_"]], Shape(report));
+        report = ReportLayout.AddItemNextTo(report, "a", ItemSide.Right, "r");
+        Assert.Equal((4, 0, 6, 2), Box(report, "r"));
+
+        report = ReportLayout.AddItemNextTo(report, "a", ItemSide.Below, "b");
+        Assert.Equal((0, 2, 4, 3), Box(report, "b"));
+
+        // No room on the right: the new item goes below
+        report = ReportLayout.AddItemNextTo(Report(("full", 0, 0, 12, 2)), "full", ItemSide.Right, "n");
+        Assert.Equal((0, 2, 12, 3), Box(report, "n"));
+    }
+
+    [Fact]
+    public void Adding_at_the_end()
+    {
+        var report = ReportLayout.AddItemAtEnd(Report(("a", 0, 0, 12, 2)), "e");
+
+        Assert.Equal((0, 2, 6, 3), Box(report, "e"));
+    }
+
+    [Fact]
+    public void Removing_an_item_removes_its_visual_and_keeps_one_item()
+    {
+        var report = ReportLayout.RemoveItem(Report(("a", 0, 0, 6, 3)), "a");
+
         Assert.Empty(report.Visuals);
+        Assert.Null(Assert.Single(report.Layout!.Items).VisualId);
     }
 
     [Fact]
-    public void Removing_a_row_removes_its_visuals()
+    public void Setting_content_replaces_the_previous_one()
     {
-        var report = ReportLayout.RemoveRow(Report(["a", "b"], ["c"]), "r0");
+        var report = Report(("a", 0, 0, 6, 3));
 
-        Assert.Equal([["c"]], Shape(report));
-        Assert.Equal(["c"], report.Visuals.Select(v => v.Id));
+        report = ReportLayout.SetText(report, "a", new TextContent { Text = "Hello", IsBold = true });
+        Assert.Empty(report.Visuals);
+        Assert.Equal("Hello", report.Layout!.Items[0].Text!.Text);
+
+        report = ReportLayout.SetImage(report, "a", new ImageContent { Data = "AAAA", Fit = ImageFit.Cover });
+        Assert.Null(report.Layout!.Items[0].Text);
+        Assert.Equal(ImageFit.Cover, report.Layout.Items[0].Image!.Fit);
+
+        report = ReportLayout.SetVisual(report, "a", Visual("v"));
+        Assert.Equal("v", report.Layout!.Items[0].VisualId);
+        Assert.Null(report.Layout.Items[0].Image);
+        Assert.Equal(["v"], report.Visuals.Select(v => v.Id));
     }
 
     [Fact]
-    public void Setting_a_visual_fills_or_replaces_a_slot()
+    public void Editing_a_visual_keeps_its_item()
     {
-        var report = Report(["a", "_"]);
+        var report = Report(("a", 0, 0, 6, 3), ("b", 6, 0, 6, 3));
 
-        report = ReportLayout.SetVisual(report, "s-_", Visual("b"));
-        Assert.Equal([["a", "b"]], Shape(report));
+        report = ReportLayout.SetVisual(report, "a", Visual("a") with { Title = "edited" });
 
-        var edited = Visual("a") with { Title = "edited" };
-        report = ReportLayout.SetVisual(report, "s-a", edited);
         Assert.Equal("edited", report.Visuals.Single(v => v.Id == "a").Title);
-
-        report = ReportLayout.SetVisual(report, "s-a", Visual("c"));
-        Assert.Equal([["c", "b"]], Shape(report));
-        Assert.Equal(["b", "c"], report.Visuals.Select(v => v.Id).Order());
+        Assert.Equal(2, report.Layout!.Items.Count);
+        Assert.Equal((0, 0, 6, 3), Box(report, "a"));
     }
 
     [Fact]
-    public void Sizes_are_clamped()
+    public void Layout_with_text_and_image_round_trips_through_json()
     {
-        var report = ReportLayout.SetRowHeight(Report(["a"]), "r0", 10);
-        report = ReportLayout.SetSlotWidths(report, "r0", new Dictionary<string, double> { ["s-a"] = 1 });
-
-        Assert.Equal(ReportLayout.MinHeight, report.Layout!.Rows[0].Height);
-        Assert.Equal(ReportLayout.MinWidth, report.Layout.Rows[0].Slots[0].Width);
-    }
-
-    [Fact]
-    public void Layout_round_trips_through_json()
-    {
-        var report = ReportLayout.SetRowOverflow(Report(["a", "b"]), "r0", RowOverflow.Wrap);
+        var report = ReportLayout.SetText(Report(("a", 0, 0, 8, 6)), "a",
+            new TextContent { Text = "Title", FontSize = 24, Alignment = TextAlign.Center });
+        report = ReportLayout.AddItem(report, new LayoutItem { Id = "img", Column = 8, ColumnSpan = 4, RowSpan = 2, Image = new ImageContent { Data = "AQID", MediaType = "image/jpeg" } });
 
         var back = ReportSerializer.Deserialize(ReportSerializer.Serialize(report));
 
-        Assert.Equal(Shape(report), Shape(back));
-        Assert.Equal(RowOverflow.Wrap, back.Layout!.Rows[0].Overflow);
+        Assert.Equal(TextAlign.Center, back.Layout!.Items.Single(i => i.Id == "a").Text!.Alignment);
+        Assert.Equal("AQID", back.Layout.Items.Single(i => i.Id == "img").Image!.Data);
+        Assert.Equal((8, 0, 4, 2), Box(back, "img"));
     }
 
     [Fact]
     public void Validator_reports_layout_problems()
     {
-        var report = Report(["a", "a"], ["ghost"]) with { Visuals = [Visual("a")] };
+        var report = Report(("a", 0, 0, 6, 3)) with
+        {
+            Layout = new DashboardLayout
+            {
+                Items =
+                [
+                    new LayoutItem { VisualId = "a" },
+                    new LayoutItem { VisualId = "a" },
+                    new LayoutItem { VisualId = "ghost" },
+                ],
+            },
+        };
 
         var problems = ReportValidator.Validate(report, [new ModelMetadata("sales", "Sales",
             [new FieldDescriptor("Amount", "Amount", FieldKind.Measure, DataType.Number)])]);

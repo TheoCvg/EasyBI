@@ -1,40 +1,57 @@
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using EasyBI.Abstractions;
 using EasyBI.Core;
 using EasyBI.Wpf.Designer;
 
 namespace EasyBI.Wpf.Dashboard;
 
-/// <summary>Where a dragged slot would land relative to the slot under the pointer.</summary>
-public enum DropHint { None, Left, Right, Top, Bottom }
+public enum DashboardItemKind { Empty, Visual, Text, Image }
 
 /// <summary>
 /// Live state of a <see cref="DashboardPanel"/>. Every change goes through a <see cref="ReportLayout"/>
-/// operation on the immutable report, then the row and slot view-models are synchronized by id:
-/// they are reused, so visuals that did not move keep their rendering and do not query again.
+/// operation on the immutable report, then the item view-models are synchronized by id: they are reused,
+/// so items that did not change keep their rendering and visuals do not query again.
 /// </summary>
 public sealed class DashboardViewModel : ObservableObject
 {
     private const int MaxHistory = 50;
 
-    private readonly Dictionary<string, DashboardRowViewModel> _rows = [];
-    private readonly Dictionary<string, DashboardSlotViewModel> _slots = [];
+    private readonly Dictionary<string, DashboardItemViewModel> _items = [];
     private readonly LinkedList<ReportDefinition> _undo = new();
     private readonly Stack<ReportDefinition> _redo = new();
     private ReportDefinition _report = ReportLayout.Normalize(new ReportDefinition());
+    private int _columns = DashboardLayout.DefaultColumns;
+    private double _rowHeight = DashboardLayout.DefaultRowHeight;
 
-    public DashboardViewModel() => Sync();
+    public DashboardViewModel() => Sync(_report);
 
-    /// <summary>Raised after a change made through the dashboard (not after <see cref="Load"/>).</summary>
+    /// <summary>Raised after a change made through the dashboard (not after <see cref="Load"/> or a preview).</summary>
     public event EventHandler? ReportChanged;
 
     public ReportDefinition Report => _report;
 
-    public ObservableCollection<DashboardRowViewModel> Rows { get; } = [];
+    public ObservableCollection<DashboardItemViewModel> Items { get; } = [];
+
+    public int Columns
+    {
+        get => _columns;
+        private set => SetProperty(ref _columns, value);
+    }
+
+    public double RowHeight
+    {
+        get => _rowHeight;
+        private set => SetProperty(ref _rowHeight, value);
+    }
 
     public bool CanUndo => _undo.Count > 0;
 
     public bool CanRedo => _redo.Count > 0;
+
+    public DashboardItemViewModel? Find(string itemId) => _items.GetValueOrDefault(itemId);
 
     /// <summary>Shows another report; the undo history starts over.</summary>
     public void Load(ReportDefinition report)
@@ -42,7 +59,8 @@ public sealed class DashboardViewModel : ObservableObject
         _report = ReportLayout.Normalize(report);
         _undo.Clear();
         _redo.Clear();
-        Sync();
+        Sync(_report);
+        OnHistoryChanged();
     }
 
     public void Apply(Func<ReportDefinition, ReportDefinition> operation)
@@ -53,6 +71,12 @@ public sealed class DashboardViewModel : ObservableObject
         _redo.Clear();
         Show(operation(_report));
     }
+
+    /// <summary>Shows where items would go (while dragging or resizing) without changing the report.</summary>
+    public void Preview(Func<ReportDefinition, ReportDefinition> operation) => Sync(operation(_report));
+
+    /// <summary>Puts items back where the report says (drag cancelled).</summary>
+    public void EndPreview() => Sync(_report);
 
     public void Undo()
     {
@@ -72,149 +96,165 @@ public sealed class DashboardViewModel : ObservableObject
     private void Show(ReportDefinition report)
     {
         _report = report;
-        Sync();
-        OnPropertyChanged(nameof(CanUndo));
-        OnPropertyChanged(nameof(CanRedo));
+        Sync(report);
+        OnHistoryChanged();
         ReportChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public DashboardSlotViewModel? FindSlot(string slotId) => _slots.GetValueOrDefault(slotId);
-
-    private void Sync()
+    private void OnHistoryChanged()
     {
-        var layoutRows = _report.Layout!.Rows;
-        Reconcile(Rows, layoutRows.Select((row, index) =>
+        OnPropertyChanged(nameof(CanUndo));
+        OnPropertyChanged(nameof(CanRedo));
+    }
+
+    private void Sync(ReportDefinition report)
+    {
+        var layout = report.Layout!;
+        Columns = layout.Columns;
+        RowHeight = layout.RowHeight;
+
+        var items = layout.Items.Select(item =>
         {
-            var vm = _rows.TryGetValue(row.Id, out var existing) ? existing : _rows[row.Id] = new DashboardRowViewModel(row.Id);
-            vm.Update(row, isFirst: index == 0);
-            Reconcile(vm.Slots, row.Slots.Select((slot, i) =>
-            {
-                var slotVm = _slots.TryGetValue(slot.Id, out var s) ? s : _slots[slot.Id] = new DashboardSlotViewModel(slot.Id);
-                slotVm.Update(vm, slot, ReportLayout.VisualOf(_report, slot), isFirst: i == 0, isLast: i == row.Slots.Count - 1);
-                return slotVm;
-            }).ToList());
+            var vm = _items.TryGetValue(item.Id, out var existing) ? existing : _items[item.Id] = new DashboardItemViewModel(item.Id);
+            vm.Update(item, ReportLayout.VisualOf(report, item));
             return vm;
-        }).ToList());
+        }).ToList();
 
-        // Forget view-models that left the layout
-        foreach (var id in _rows.Keys.Except(layoutRows.Select(r => r.Id)).ToList()) _rows.Remove(id);
-        foreach (var id in _slots.Keys.Except(layoutRows.SelectMany(r => r.Slots).Select(s => s.Id)).ToList()) _slots.Remove(id);
-    }
-
-    /// <summary>Makes <paramref name="target"/> equal to <paramref name="items"/> with minimal moves, keeping item instances.</summary>
-    private static void Reconcile<T>(ObservableCollection<T> target, IReadOnlyList<T> items) where T : class
-    {
-        for (var i = target.Count - 1; i >= 0; i--)
-            if (!items.Contains(target[i])) target.RemoveAt(i);
-        for (var i = 0; i < items.Count; i++)
-        {
-            var current = target.IndexOf(items[i]);
-            if (current < 0) target.Insert(i, items[i]);
-            else if (current != i) target.Move(current, i);
-        }
+        for (var i = Items.Count - 1; i >= 0; i--)
+            if (!items.Contains(Items[i])) Items.RemoveAt(i);
+        foreach (var item in items.Where(i => !Items.Contains(i)))
+            Items.Add(item);
+        foreach (var id in _items.Keys.Except(layout.Items.Select(i => i.Id)).ToList())
+            _items.Remove(id);
     }
 }
 
-public sealed class DashboardRowViewModel(string id) : ObservableObject
+public sealed class DashboardItemViewModel(string id) : ObservableObject
 {
-    private double _height = LayoutRow.DefaultHeight;
-    private RowOverflow _overflow;
-    private bool _isFirst;
-
-    public string Id { get; } = id;
-
-    public ObservableCollection<DashboardSlotViewModel> Slots { get; } = [];
-
-    /// <summary>Row height; also set live while the user drags the row splitter.</summary>
-    public double Height
-    {
-        get => _height;
-        set => SetProperty(ref _height, value);
-    }
-
-    public RowOverflow Overflow
-    {
-        get => _overflow;
-        private set => SetProperty(ref _overflow, value);
-    }
-
-    public bool IsFirst
-    {
-        get => _isFirst;
-        private set => SetProperty(ref _isFirst, value);
-    }
-
-    internal void Update(LayoutRow row, bool isFirst)
-    {
-        Height = row.Height;
-        Overflow = row.Overflow;
-        IsFirst = isFirst;
-    }
-}
-
-public sealed class DashboardSlotViewModel(string id) : ObservableObject
-{
-    private DashboardRowViewModel? _row;
+    private int _column;
+    private int _row;
+    private int _columnSpan = 1;
+    private int _rowSpan = 1;
     private VisualDefinition? _visual;
-    private double _width = LayoutSlot.DefaultWidth;
-    private bool _isFirst;
-    private bool _canResize;
-    private DropHint _dropHint;
+    private TextContent? _text;
+    private ImageContent? _image;
+    private ImageSource? _imageSource;
+    private bool _isEditingText;
+    private string _editText = "";
 
     public string Id { get; } = id;
 
-    public DashboardRowViewModel Row => _row!;
+    public int Column
+    {
+        get => _column;
+        private set => SetProperty(ref _column, value);
+    }
+
+    public int Row
+    {
+        get => _row;
+        private set => SetProperty(ref _row, value);
+    }
+
+    public int ColumnSpan
+    {
+        get => _columnSpan;
+        private set => SetProperty(ref _columnSpan, value);
+    }
+
+    public int RowSpan
+    {
+        get => _rowSpan;
+        private set => SetProperty(ref _rowSpan, value);
+    }
+
+    public DashboardItemKind Kind =>
+        _visual is not null ? DashboardItemKind.Visual
+        : _text is not null ? DashboardItemKind.Text
+        : _image is not null ? DashboardItemKind.Image
+        : DashboardItemKind.Empty;
 
     public VisualDefinition? Visual
     {
         get => _visual;
         private set
         {
-            if (SetProperty(ref _visual, value)) OnPropertyChanged(nameof(IsEmpty));
+            if (SetProperty(ref _visual, value)) OnPropertyChanged(nameof(Kind));
         }
     }
 
-    public bool IsEmpty => _visual is null;
-
-    /// <summary>Preferred width; also set live while the user drags a slot splitter.</summary>
-    public double Width
+    public TextContent? Text
     {
-        get => _width;
-        set => SetProperty(ref _width, value);
-    }
-
-    public bool IsFirst
-    {
-        get => _isFirst;
-        private set => SetProperty(ref _isFirst, value);
-    }
-
-    /// <summary>False for the last slot of a Fit row: its right edge is the row's edge.</summary>
-    public bool CanResize
-    {
-        get => _canResize;
-        private set => SetProperty(ref _canResize, value);
-    }
-
-    public DropHint DropHint
-    {
-        get => _dropHint;
-        set => SetProperty(ref _dropHint, value);
-    }
-
-    /// <summary>Rendered width, used as the starting point when resizing.</summary>
-    public double ActualWidth { get; set; }
-
-    internal void Update(DashboardRowViewModel row, LayoutSlot slot, VisualDefinition? visual, bool isFirst, bool isLast)
-    {
-        if (!ReferenceEquals(_row, row))
+        get => _text;
+        private set
         {
-            _row = row;
-            OnPropertyChanged(nameof(Row));
+            if (!SetProperty(ref _text, value)) return;
+            OnPropertyChanged(nameof(Kind));
+            OnPropertyChanged(nameof(IsTextEmpty));
         }
+    }
+
+    public bool IsTextEmpty => string.IsNullOrWhiteSpace(_text?.Text);
+
+    public ImageContent? Image
+    {
+        get => _image;
+        private set
+        {
+            if (!SetProperty(ref _image, value)) return;
+            OnPropertyChanged(nameof(Kind));
+            ImageSource = Decode(value);
+        }
+    }
+
+    public ImageSource? ImageSource
+    {
+        get => _imageSource;
+        private set => SetProperty(ref _imageSource, value);
+    }
+
+    /// <summary>True while the text is edited in place.</summary>
+    public bool IsEditingText
+    {
+        get => _isEditingText;
+        set => SetProperty(ref _isEditingText, value);
+    }
+
+    /// <summary>Text being typed; applied to the report when the edit is committed.</summary>
+    public string EditText
+    {
+        get => _editText;
+        set => SetProperty(ref _editText, value);
+    }
+
+    internal void Update(LayoutItem item, VisualDefinition? visual)
+    {
+        Column = item.Column;
+        Row = item.Row;
+        ColumnSpan = item.ColumnSpan;
+        RowSpan = item.RowSpan;
         Visual = visual;
-        Width = slot.Width;
-        IsFirst = isFirst;
-        CanResize = !(isLast && row.Overflow == RowOverflow.Fit);
+        Text = item.Text;
+        Image = item.Image;
+    }
+
+    /// <summary>Decodes the embedded image once; an unreadable image shows nothing rather than failing.</summary>
+    internal static ImageSource? Decode(ImageContent? image)
+    {
+        if (image is null) return null;
+        try
+        {
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.StreamSource = new MemoryStream(Convert.FromBase64String(image.Data));
+            bitmap.EndInit();
+            bitmap.Freeze();
+            return bitmap;
+        }
+        catch (Exception ex) when (ex is FormatException or NotSupportedException or IOException or ArgumentException)
+        {
+            return null;
+        }
     }
 }

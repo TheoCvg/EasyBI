@@ -21,10 +21,10 @@ internal static class Strings
     public static string Error => Get();
     public static string NoRenderer => Get();
     public static string NoDimensionAvailable => Get();
-    public static string RowFit => Get();
-    public static string RowScroll => Get();
-    public static string RowWrap => Get();
-    public static string RemoveRow => Get();
+    public static string ImageFilter => Get();
+    public static string ImageTooLarge => Get();
+    public static string ImageUnreadable => Get();
+    public static string ChangeImage => Get();
 
     public static string Format(string format, params object?[] args) =>
         string.Format(EasyBILocalization.FormatCulture, format, args);
