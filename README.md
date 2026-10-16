@@ -22,6 +22,20 @@ end users build their visuals by drag-and-drop, and rendering is delegated to in
 | `tests/EasyBI.Core.Tests` | Engine, filtering and serialization tests | |
 | `tests/EasyBI.Wpf.Tests` | Designer tests | |
 
+## Installation
+
+```
+dotnet add package EasyBI.Wpf
+dotnet add package EasyBI.Renderers.LiveCharts2   # and/or EasyBI.Renderers.OxyPlot
+```
+
+`EasyBI.Wpf` brings `EasyBI.Core` and `EasyBI.Abstractions`. Every public WPF type is available
+under a single XAML namespace:
+
+```xml
+xmlns:bi="https://github.com/TheoCvg/EasyBI"
+```
+
 ## For the WPF developer
 
 ```csharp
@@ -48,7 +62,7 @@ var model = SemanticModel.For(() => dbFactory.CreateDbContext(), db => db.Sales,
 ```
 
 ```xml
-<designer:ReportDesigner Context="{Binding Context}" />                       <!-- design -->
+<bi:ReportDesigner Context="{Binding Context}" />                             <!-- design -->
 <bi:VisualView Context="{Binding Context}" Definition="{Binding Visual}" />   <!-- display -->
 ```
 

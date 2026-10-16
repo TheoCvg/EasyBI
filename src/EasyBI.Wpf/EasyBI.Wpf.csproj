@@ -6,9 +6,8 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <Description>Self-service BI for WPF: drag-and-drop report designer, visual view, filter bar with cross-filtering, built-in KPI and table renderers, pluggable chart connectors.</Description>
   </PropertyGroup>
 
 </Project>
