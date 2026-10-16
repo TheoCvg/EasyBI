@@ -1,3 +1,4 @@
+using System.Resources;
 using EasyBI.Core;
 
 namespace EasyBI.Sample;
@@ -41,15 +42,17 @@ public static class SalesData
         return sales;
     }
 
-    public static QueryableSemanticModel<Sale> CreateModel(IEnumerable<Sale> sales) =>
-        SemanticModel.For(sales, "sales", "Ventes")
+    /// <summary>Captions are resource keys, translated through <paramref name="captions"/>.</summary>
+    public static QueryableSemanticModel<Sale> CreateModel(IEnumerable<Sale> sales, ResourceManager captions) =>
+        SemanticModel.For(sales, "sales", "Sales")
             .Dimension(s => s.Date, "Date")
-            .Dimension(s => s.Region, "Région")
-            .Dimension(s => s.Channel, "Canal")
-            .Dimension(s => s.Product.Category, "Catégorie")
-            .Dimension(s => s.Product.Name, "Produit")
-            .Measure(s => s.Amount, "Chiffre d'affaires", format: "#,##0 €")
-            .Measure(s => s.Margin, "Marge", format: "#,##0 €")
-            .Measure(s => s.Quantity, "Quantité", format: "N0")
-            .Count("Nombre de ventes");
+            .Dimension(s => s.Region, "Region")
+            .Dimension(s => s.Channel, "Channel")
+            .Dimension(s => s.Product.Category, "Category")
+            .Dimension(s => s.Product.Name, "Product")
+            .Measure(s => s.Amount, "Revenue", format: "#,##0 €")
+            .Measure(s => s.Margin, "Margin", format: "#,##0 €")
+            .Measure(s => s.Quantity, "Quantity", format: "N0")
+            .Count("SalesCount")
+            .Localize(captions);
 }

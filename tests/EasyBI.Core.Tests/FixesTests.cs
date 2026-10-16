@@ -47,7 +47,7 @@ public class FixesTests
         Assert.Equal(DataType.Date, model.Metadata.GetField("At").DataType);
 
         var byQuarter = await model.ExecuteAsync(new([new("Day", DateGrain.Quarter)], [new("Amount")]));
-        Assert.Equal(["2024 T1", "2024 T2"], byQuarter.Rows.Select(r => r[0]!.ToString()));
+        Assert.Equal(["2024 Q1", "2024 Q2"], byQuarter.Rows.Select(r => r[0]!.ToString()));
 
         var byMonth = await model.ExecuteAsync(new([new("At", DateGrain.Month)], [new("Amount")],
             Filters: [new("At", FilterOperator.In, ["202402"], DateGrain.Month)]));

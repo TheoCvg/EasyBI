@@ -35,7 +35,7 @@
         <DataTemplate x:Key="SlicerTemplate" DataType="{x:Type bi:SlicerViewModel}">
             <Border Background="#FDF0E3" BorderBrush="#F5D3B0" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding Caption, StringFormat='{}{0} :'}" VerticalAlignment="Center" />
+                    <TextBlock VerticalAlignment="Center"><Run Text="{Binding Caption, Mode=OneWay}" /><Run Text="{bi:Localize LabelSuffix}" /></TextBlock>
                     <ToggleButton x:Name="Toggle" Margin="6,0,0,0" Padding="6,1" FontSize="11"
                                   Content="{Binding Filter.Summary}"
                                   IsEnabled="{Binding Filter.IsLoading, Converter={x:Static designer:InverseBooleanConverter.Instance}}" />
@@ -54,7 +54,7 @@
                             </ScrollViewer>
                         </Border>
                     </Popup>
-                    <Button Style="{StaticResource ChipButton}" Click="OnRemoveSlicer" ToolTip="Retirer le filtre" />
+                    <Button Style="{StaticResource ChipButton}" Click="OnRemoveSlicer" ToolTip="{bi:Localize RemoveFilter}" />
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -66,12 +66,12 @@
                 Background="#E3ECFD" BorderBrush="#C3D5FA" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
             <StackPanel Orientation="Horizontal">
                 <TextBlock x:Name="SelectionText" VerticalAlignment="Center" MaxWidth="360" TextTrimming="CharacterEllipsis" />
-                <Button Style="{StaticResource ChipButton}" Click="OnClearSelection" ToolTip="Annuler la sélection" />
+                <Button Style="{StaticResource ChipButton}" Click="OnClearSelection" ToolTip="{bi:Localize ClearSelection}" />
             </StackPanel>
         </Border>
 
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock Text="Filtres" Foreground="{StaticResource MutedBrush}" FontWeight="SemiBold"
+            <TextBlock Text="{bi:Localize Filters}" Foreground="{StaticResource MutedBrush}" FontWeight="SemiBold"
                        VerticalAlignment="Center" Margin="0,0,6,0" />
             <ItemsControl x:Name="SlicerList" ItemTemplate="{StaticResource SlicerTemplate}" VerticalAlignment="Center">
                 <ItemsControl.ItemsPanel>
@@ -80,7 +80,7 @@
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
             </ItemsControl>
-            <Button x:Name="AddButton" Content="+ Ajouter un filtre" Click="OnAddFilter" Margin="6,0,0,0" Padding="8,2"
+            <Button x:Name="AddButton" Content="{bi:Localize AddFilter}" Click="OnAddFilter" Margin="6,0,0,0" Padding="8,2"
                     VerticalAlignment="Center" Cursor="Hand" />
         </StackPanel>
     </DockPanel>

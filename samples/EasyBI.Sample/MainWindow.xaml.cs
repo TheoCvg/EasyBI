@@ -1,7 +1,9 @@
 ﻿using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using EasyBI.Abstractions;
 using EasyBI.Core;
 using EasyBI.Renderers.LiveCharts2;
@@ -19,7 +21,7 @@ public partial class MainWindow : Window
     {
         // --- All the WPF developer has to write: a model + renderers ---
         Context = EasyBIContext.Create()
-            .AddModel(SalesData.CreateModel(SalesData.Generate()))
+            .AddModel(SalesData.CreateModel(SalesData.Generate(), App.TextResources))
             .UseRenderer(new LiveCharts2Renderer())
             .UseRenderer(new OxyPlotRenderer());
 
@@ -28,7 +30,20 @@ public partial class MainWindow : Window
         Dashboard.ItemsSource = _visuals;
         RendererPicker.ItemsSource = Context.Renderers;
         RendererPicker.SelectedItem = Context.ActiveRenderer;
+        LanguagePicker.ItemsSource = App.Languages;
+        LanguagePicker.SelectedItem = App.Languages.FirstOrDefault(l => l.Equals(EasyBILocalization.Culture));
+        SetPublishLabel("AddToDashboard");
         foreach (var visual in DefaultVisuals()) _visuals.Add(visual);
+    }
+
+    private static string Text(string key) => App.Texts[key];
+
+    private void SetPublishLabel(string key) =>
+        PublishButton.SetBinding(ContentProperty, new Binding($"[{key}]") { Source = App.Texts });
+
+    private void OnLanguageChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (LanguagePicker.SelectedItem is CultureInfo culture) App.SetLanguage(culture);
     }
 
     public EasyBIContext Context { get; }
@@ -42,7 +57,7 @@ public partial class MainWindow : Window
     private void OnNewVisual(object sender, RoutedEventArgs e)
     {
         Designer.Clear();
-        PublishButton.Content = "Ajouter au tableau de bord";
+        SetPublishLabel("AddToDashboard");
     }
 
     private void OnPublishVisual(object sender, RoutedEventArgs e)
@@ -50,21 +65,21 @@ public partial class MainWindow : Window
         if (Designer.Visual is not { } visual) return;
         if (VisualValidator.Validate(visual) is { } problem)
         {
-            MessageBox.Show(this, problem, "Visuel incomplet", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, problem, Text("IncompleteVisual"), MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         var index = _visuals.ToList().FindIndex(v => v.Id == visual.Id);
         if (index >= 0) _visuals[index] = visual;
         else _visuals.Add(visual);
         Designer.Clear();
-        PublishButton.Content = "Ajouter au tableau de bord";
+        SetPublishLabel("AddToDashboard");
         Tabs.SelectedIndex = 0;
     }
 
     private void OnEditVisual(object sender, RoutedEventArgs e)
     {
         Designer.Edit((VisualDefinition)((FrameworkElement)sender).DataContext);
-        PublishButton.Content = "Mettre à jour le tableau de bord";
+        SetPublishLabel("UpdateDashboard");
         Tabs.SelectedIndex = 1;
     }
 
@@ -77,23 +92,23 @@ public partial class MainWindow : Window
 
     private void OnSave(object sender, RoutedEventArgs e)
     {
-        var dialog = new SaveFileDialog { Filter = "Rapport EasyBI (*.easybi.json)|*.easybi.json", FileName = "rapport.easybi.json" };
+        var dialog = new SaveFileDialog { Filter = Text("ReportFileFilter"), FileName = Text("DefaultFileName") };
         if (dialog.ShowDialog(this) != true) return;
-        var report = new ReportDefinition { Title = "Tableau de bord", Visuals = _visuals.ToArray(), Filters = Filters.Filters.ToArray() };
+        var report = new ReportDefinition { Title = Text("ReportTitle"), Visuals = _visuals.ToArray(), Filters = Filters.Filters.ToArray() };
         File.WriteAllText(dialog.FileName, ReportSerializer.Serialize(report));
     }
 
     private void OnOpen(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Filter = "Rapport EasyBI (*.easybi.json)|*.easybi.json|JSON (*.json)|*.json" };
+        var dialog = new OpenFileDialog { Filter = Text("OpenFileFilter") };
         if (dialog.ShowDialog(this) != true) return;
         try
         {
             var report = ReportSerializer.Deserialize(File.ReadAllText(dialog.FileName));
             if (Context.Validate(report) is { Count: > 0 } problems)
             {
-                MessageBox.Show(this, "Le rapport référence des éléments inconnus ; les visuels concernés afficheront une erreur.\n\n• "
-                    + string.Join("\n• ", problems), "Rapport incomplet", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, Text("ReportIncompleteMessage") + "\n\n• " + string.Join("\n• ", problems),
+                    Text("ReportIncomplete"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             _visuals.Clear();
             foreach (var visual in report.Visuals) _visuals.Add(visual);
@@ -102,22 +117,23 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Rapport illisible", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, ex.Message, Text("ReportUnreadable"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
+    // Visual titles are user content: they are written once, in the language active at startup
     private static IEnumerable<VisualDefinition> DefaultVisuals() =>
     [
         new()
         {
-            Title = "Indicateurs clés",
+            Title = Text("KeyIndicators"),
             Model = "sales",
             Mark = MarkType.Kpi,
             Values = [new("Amount"), new("Margin"), new("Count")],
         },
         new()
         {
-            Title = "CA par trimestre",
+            Title = Text("RevenueByQuarter"),
             Model = "sales",
             Mark = MarkType.Line,
             Axis = [new("Date", DateGrain.Quarter)],
@@ -125,7 +141,7 @@ public partial class MainWindow : Window
         },
         new()
         {
-            Title = "CA par région et canal",
+            Title = Text("RevenueByRegionAndChannel"),
             Model = "sales",
             Mark = MarkType.Bar,
             Axis = [new("Region")],
@@ -135,7 +151,7 @@ public partial class MainWindow : Window
         },
         new()
         {
-            Title = "Répartition du CA par catégorie",
+            Title = Text("RevenueByCategory"),
             Model = "sales",
             Mark = MarkType.Pie,
             Axis = [new("Product.Category")],

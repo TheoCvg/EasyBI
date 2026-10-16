@@ -1,5 +1,6 @@
 using System.Globalization;
 using EasyBI.Abstractions;
+using EasyBI.Core.Resources;
 
 namespace EasyBI.Core;
 
@@ -73,7 +74,7 @@ public static class ChartDataBuilder
         var caption = axis.Length == 0 ? null : string.Join(" / ", axis.Select(i => result.Columns[i].Caption));
         return new ChartData(
             caption,
-            categories.Select(c => c.Length == 0 ? "Total" : string.Join(" / ", c.Select(ValueFormatter.Display))).ToArray(),
+            categories.Select(c => c.Length == 0 ? Strings.Total : string.Join(" / ", c.Select(ValueFormatter.Display))).ToArray(),
             series.Select(s => new ChartSeries(
                 s.Name,
                 Enumerable.Range(0, categories.Count).Select(i => s.Values.GetValueOrDefault(i)).ToArray(),
@@ -99,19 +100,21 @@ public static class ChartDataBuilder
     }
 }
 
+/// <summary>Display texts of values, in the language and formats of <see cref="EasyBILocalization"/>.</summary>
 public static class ValueFormatter
 {
     public static string Display(object? value) => value switch
     {
-        null => "(vide)",
-        DateTime d => d.ToString("d", CultureInfo.CurrentCulture),
-        DateTimeOffset d => d.ToString("d", CultureInfo.CurrentCulture),
-        DateOnly d => d.ToString("d", CultureInfo.CurrentCulture),
-        bool b => b ? "Oui" : "Non",
-        IFormattable f => f.ToString(null, CultureInfo.CurrentCulture),
+        null => Strings.Blank,
+        DateTime d => d.ToString("d", EasyBILocalization.FormatCulture),
+        DateTimeOffset d => d.ToString("d", EasyBILocalization.FormatCulture),
+        DateOnly d => d.ToString("d", EasyBILocalization.FormatCulture),
+        DatePeriod { Grain: DateGrain.Quarter } p => Strings.Format(Strings.QuarterLabel, p.Key / 10, p.Key % 10),
+        bool b => b ? Strings.Yes : Strings.No,
+        IFormattable f => f.ToString(null, EasyBILocalization.FormatCulture),
         _ => value.ToString() ?? "",
     };
 
     public static string Format(double value, string? format) =>
-        value.ToString(string.IsNullOrEmpty(format) ? "#,##0.##" : format, CultureInfo.CurrentCulture);
+        value.ToString(string.IsNullOrEmpty(format) ? "#,##0.##" : format, EasyBILocalization.FormatCulture);
 }

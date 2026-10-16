@@ -44,7 +44,7 @@ internal static class QueryEngine<T>
                 _ => DataType.Text,
             };
             keyBodies.Add(body);
-            var caption = fieldRef.Grain == DateGrain.None ? field.Caption : $"{field.Caption} ({DateGrains.Caption(fieldRef.Grain)})";
+            var caption = DateGrains.Caption(field.Caption, fieldRef.Grain);
             columns.Add(new ResultColumn(fieldRef.Key, caption, FieldKind.Dimension, dataType));
         }
 
@@ -70,7 +70,7 @@ internal static class QueryEngine<T>
             var field = RequireKind(metadata.GetField(measureRef.Measure), FieldKind.Measure);
             var aggregation = measureRef.Aggregation ?? field.DefaultAggregation ?? Aggregation.Sum;
             cells.Add(Aggregate(group, selectors[field.Name], aggregation));
-            var caption = measureRef.Aggregation is null ? field.Caption : $"{field.Caption} ({aggregation})";
+            var caption = measureRef.Aggregation is null ? field.Caption : $"{field.Caption} ({Aggregations.Caption(aggregation)})";
             columns.Add(new ResultColumn(measureRef.Key, caption, FieldKind.Measure, DataType.Number, field.Format));
         }
 

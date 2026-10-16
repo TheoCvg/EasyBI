@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Windows;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 
@@ -29,4 +30,25 @@ public sealed class RelayCommand<T>(Action<T> execute) : ICommand
     public void Execute(object? parameter) => execute((T)parameter!);
 }
 
-public sealed record Option<T>(T Value, string Label);
+/// <summary>
+/// A choice shown in a list. Its label is computed, so it follows the EasyBI language:
+/// the option notifies <see cref="Label"/> when <see cref="EasyBI.Core.EasyBILocalization.Culture"/> changes.
+/// </summary>
+public class Option<T> : ObservableObject
+{
+    private readonly Func<string> _label;
+
+    public Option(T value, Func<string> label)
+    {
+        Value = value;
+        _label = label;
+        // Weak subscription: options may be shorter-lived than the shared string source
+        PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, OnLanguageChanged, string.Empty);
+    }
+
+    public T Value { get; }
+
+    public string Label => _label();
+
+    private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e) => OnPropertyChanged(nameof(Label));
+}

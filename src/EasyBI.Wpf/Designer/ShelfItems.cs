@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using EasyBI.Abstractions;
 using EasyBI.Core;
+using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf.Designer;
 
@@ -10,16 +11,12 @@ public enum Shelf { Axis, Legend, Values, Filters }
 public sealed class ShelfItemViewModel : ObservableObject
 {
     public static IReadOnlyList<Option<DateGrain>> GrainOptions { get; } =
-        Enum.GetValues<DateGrain>().Select(g => new Option<DateGrain>(g, DateGrains.Caption(g))).ToArray();
+        Enum.GetValues<DateGrain>().Select(g => new Option<DateGrain>(g, () => DateGrains.Caption(g))).ToArray();
 
     public static IReadOnlyList<Option<Aggregation>> AggregationOptions { get; } =
-    [
-        new(Aggregation.Sum, "Somme"),
-        new(Aggregation.Average, "Moyenne"),
-        new(Aggregation.Min, "Min"),
-        new(Aggregation.Max, "Max"),
-        new(Aggregation.Count, "Nombre"),
-    ];
+        new[] { Aggregation.Sum, Aggregation.Average, Aggregation.Min, Aggregation.Max, Aggregation.Count }
+            .Select(a => new Option<Aggregation>(a, () => Aggregations.Caption(a)))
+            .ToArray();
 
     private readonly Action _changed;
     private DateGrain _grain;
@@ -106,11 +103,11 @@ public sealed class FilterItemViewModel : ObservableObject
             var selected = Values.Where(v => v.IsChecked).Select(v => v.Label).ToList();
             var summary = selected.Count switch
             {
-                0 => "(tout)",
+                0 => Strings.FilterAll,
                 <= 2 => string.Join(", ", selected),
                 _ => $"{selected[0]}, {selected[1]} +{selected.Count - 2}",
             };
-            return Operator == FilterOperator.NotIn && selected.Count > 0 ? $"sauf {summary}" : summary;
+            return Operator == FilterOperator.NotIn && selected.Count > 0 ? Strings.Format(Strings.FilterExcept, summary) : summary;
         }
     }
 

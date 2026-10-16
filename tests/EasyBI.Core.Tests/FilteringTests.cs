@@ -47,7 +47,7 @@ public class FilteringTests
 
         filters.Select(request, new CategorySelection(sud, web));
 
-        Assert.Equal("Région = Sud, Canal = Web", filters.Selection!.Description);
+        Assert.Equal("Région = Sud, Canal = Web", filters.Selection!.Describe(Model().Metadata));
         Assert.Equal(300m, await TotalAsync(filters));
         // The source visual is not filtered by its own selection
         Assert.Same(ByRegionAndChannel, filters.Apply(ByRegionAndChannel));
@@ -76,7 +76,7 @@ public class FilteringTests
         var byQuarter = new VisualDefinition { Model = "sales", Mark = MarkType.Line, Axis = [new("Date", DateGrain.Quarter)], Values = [new("Amount")] };
         var request = await VisualPipeline.PrepareAsync(Model(), byQuarter);
 
-        filters.Select(request, new CategorySelection(request.Chart.Categories.ToList().IndexOf("2024 T1")));
+        filters.Select(request, new CategorySelection(request.Chart.Categories.ToList().IndexOf("2024 Q1")));
 
         var filter = Assert.Single(filters.Selection!.Filters);
         Assert.Equal(("Date", DateGrain.Quarter), (filter.Field, filter.Grain));
@@ -184,11 +184,11 @@ public class FilteringTests
 
         Assert.Equal(
         [
-            "« Inconnu » : modèle 'nope' inconnu.",
-            "« Cassé » : granularité 'Year' sur 'Region', qui n'est pas une date.",
-            "« Cassé » : 'Region' n'est pas une mesure.",
-            "« Cassé » : tri sur 'Amount', qui n'est pas affiché par le visuel.",
-            "Filtre du rapport : champ 'Ghost' absent du modèle 'sales'.",
+            "“Inconnu”: unknown model 'nope'.",
+            "“Cassé”: granularity 'Year' on 'Region', which is not a date.",
+            "“Cassé”: 'Region' is not a measure.",
+            "“Cassé”: sort on 'Amount', which the visual does not display.",
+            "Report filter: field 'Ghost' is not in model 'sales'.",
         ], problems);
     }
 }

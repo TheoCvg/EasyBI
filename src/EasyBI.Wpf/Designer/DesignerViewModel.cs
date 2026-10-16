@@ -1,16 +1,17 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Windows;
 using System.Windows.Input;
 using EasyBI.Abstractions;
+using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf.Designer;
 
-public sealed class MarkOptionViewModel(MarkType mark, string label) : ObservableObject
+public sealed class MarkOptionViewModel(MarkType mark, Func<string> label) : Option<MarkType>(mark, label)
 {
     private bool _isAvailable = true;
 
-    public MarkType Mark { get; } = mark;
-
-    public string Label { get; } = label;
+    public MarkType Mark => Value;
 
     public bool IsAvailable
     {
@@ -45,21 +46,23 @@ public sealed class DesignerViewModel : ObservableObject
         Context = context;
         MarkOptions =
         [
-            new(MarkType.Bar, "Barres"),
-            new(MarkType.Line, "Courbes"),
-            new(MarkType.Pie, "Secteurs"),
-            new(MarkType.Kpi, "KPI"),
-            new(MarkType.Table, "Table"),
+            new(MarkType.Bar, () => Strings.MarkBar),
+            new(MarkType.Line, () => Strings.MarkLine),
+            new(MarkType.Pie, () => Strings.MarkPie),
+            new(MarkType.Kpi, () => Strings.MarkKpi),
+            new(MarkType.Table, () => Strings.MarkTable),
         ];
+        Models = context.Models.Select(m => new Option<ISemanticModel>(m, () => m.Metadata.Caption)).ToArray();
         RemoveCommand = new RelayCommand<object>(Remove);
         context.Changed += (_, _) => RefreshAvailability();
+        PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, OnLanguageChanged, string.Empty);
         RefreshAvailability();
         SelectedModel = context.Models.FirstOrDefault();
     }
 
     public EasyBIContext Context { get; }
 
-    public IReadOnlyList<ISemanticModel> Models => Context.Models;
+    public IReadOnlyList<Option<ISemanticModel>> Models { get; }
 
     public IReadOnlyList<MarkOptionViewModel> MarkOptions { get; }
 
@@ -223,6 +226,17 @@ public sealed class DesignerViewModel : ObservableObject
             Top = _top,
             Extensions = _extensions,
         };
+    }
+
+    /// <summary>
+    /// The language changed: field lists and shelves are rebuilt so that the model captions
+    /// and the values shown in filters follow it. The visual itself is unchanged.
+    /// </summary>
+    private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(Dimensions));
+        OnPropertyChanged(nameof(Measures));
+        if (Visual is { } visual) Load(visual);
     }
 
     private void RefreshAvailability()

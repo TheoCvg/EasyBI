@@ -5,6 +5,7 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using EasyBI.Abstractions;
 using EasyBI.Core;
+using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf;
 
@@ -45,11 +46,13 @@ public class VisualView : ContentControl
         Loaded += (_, _) =>
         {
             Subscribe(Context, FilterContext);
+            EasyBILocalization.CultureChanged += OnCultureChanged;
             Refresh();
         };
         Unloaded += (_, _) =>
         {
             Unsubscribe(Context, FilterContext);
+            EasyBILocalization.CultureChanged -= OnCultureChanged;
             if (_pending is not null) Cancel();
         };
     }
@@ -130,6 +133,9 @@ public class VisualView : ContentControl
 
     private void OnFiltersUpdated(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Refresh);
 
+    // Captions and formatted values come with the result: the culture is part of the query key
+    private void OnCultureChanged(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Refresh);
+
     /// <summary>Re-runs the query if it changed, otherwise redraws the last result.</summary>
     public async void Refresh()
     {
@@ -144,7 +150,13 @@ public class VisualView : ContentControl
         }
 
         var effective = FilterContext?.Apply(visual) ?? visual;
-        var queryKey = JsonSerializer.Serialize(new { effective.Model, Query = effective.ToQuery() }, ReportSerializer.Options);
+        var queryKey = JsonSerializer.Serialize(new
+        {
+            effective.Model,
+            Query = effective.ToQuery(),
+            Culture = EasyBILocalization.UICulture.Name,
+            Format = EasyBILocalization.FormatCulture.Name,
+        }, ReportSerializer.Options);
         if (queryKey == _lastQueryKey)
         {
             // Same query (running or done): nothing to re-run
@@ -173,7 +185,7 @@ public class VisualView : ContentControl
             {
                 _last = null;
                 _lastQueryKey = null;
-                Show(visual, Message($"Erreur : {ex.Message}", Brushes.Firebrick));
+                Show(visual, Message(Strings.Format(Strings.Error, ex.Message), Brushes.Firebrick));
             }
         }
         finally
@@ -199,7 +211,7 @@ public class VisualView : ContentControl
         var renderer = context.ResolveRenderer(visual.Mark);
         if (renderer is null)
         {
-            Show(visual, Message($"Aucun renderer ne sait afficher « {visual.Mark} »."));
+            Show(visual, Message(Strings.Format(Strings.NoRenderer, visual.Mark)));
             return;
         }
 
@@ -219,7 +231,7 @@ public class VisualView : ContentControl
         }
         catch (Exception ex)
         {
-            Show(visual, Message($"Erreur : {ex.Message}", Brushes.Firebrick));
+            Show(visual, Message(Strings.Format(Strings.Error, ex.Message), Brushes.Firebrick));
         }
     }
 
@@ -239,9 +251,10 @@ public class VisualView : ContentControl
             DockPanel.SetDock(title, Dock.Top);
             root.Children.Add(title);
         }
-        if (FilterContext is { Selection: { } selection } filters && selection.SourceVisualId == visual.Id)
+        if (FilterContext is { Selection: { } selection } filters && selection.SourceVisualId == visual.Id
+            && Context?.Models.FirstOrDefault(m => m.Metadata.Name == selection.Model) is { } model)
         {
-            var chip = SelectionChip(selection, filters);
+            var chip = SelectionChip(selection.Describe(model.Metadata), filters);
             DockPanel.SetDock(chip, Dock.Top);
             root.Children.Add(chip);
         }
@@ -249,7 +262,7 @@ public class VisualView : ContentControl
         Content = root;
     }
 
-    private static FrameworkElement SelectionChip(CrossFilter selection, FilterContext filters)
+    private static FrameworkElement SelectionChip(string description, FilterContext filters)
     {
         var clear = new Button
         {
@@ -260,14 +273,14 @@ public class VisualView : ContentControl
             Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
             Cursor = System.Windows.Input.Cursors.Hand,
-            ToolTip = "Annuler la sélection",
+            ToolTip = Strings.ClearSelection,
         };
         clear.Click += (_, _) => filters.ClearSelection();
         var panel = new StackPanel { Orientation = Orientation.Horizontal };
         TextElement.SetFontSize(panel, 12);
         panel.Children.Add(new TextBlock
         {
-            Text = $"Sélection : {selection.Description}",
+            Text = Strings.Format(Strings.Selection, description),
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
         });

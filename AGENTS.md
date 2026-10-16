@@ -48,9 +48,17 @@ Both commands must succeed with no errors before a commit is pushed. Existing NU
 
 - **Everything in the code is written in English**: identifiers, comments, XML docs, test names,
   exception messages meant for developers.
-- **User-facing text** (designer labels, validation messages, values shown in the UI) stays in French
-  for now, until it is moved to `.resx` resources. Keep such strings easy to find (no string building
-  scattered across files).
+- **User-facing text** (designer labels, validation messages, values shown in the UI) is never
+  hard-coded: it lives in `Resources/Strings.resx` (English, neutral) and `Resources/Strings.fr.resx`
+  (French) of the project that displays it.
+  - Add a key to **both** files; the `French_resources_define_every_neutral_key` tests fail otherwise.
+  - In C#, expose it as a property of the project's internal `Resources.Strings` class and format
+    with `Strings.Format(...)`. In XAML, use `{bi:Localize Key}`.
+  - Texts are resolved in `EasyBILocalization.UICulture` and values formatted in
+    `EasyBILocalization.FormatCulture`, never in `CultureInfo.CurrentCulture` directly, so that the
+    language can change at runtime.
+  - Tests run in the invariant culture; tests that switch language use `TestCulture.Use(...)` and
+    belong to the `Culture` collection.
 - Commit messages, branch names and PR titles are in English.
 
 ## Code style
