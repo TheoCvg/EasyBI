@@ -98,6 +98,19 @@ Branches:
   - Breaking changes: add `!` after the scope and a `BREAKING CHANGE:` footer.
   - Example: `feat(core): add cross-filtering between visuals`.
 
+## Packages and releases
+
+- Every project under `src/` is a NuGet package. Shared package metadata lives in
+  `src/Directory.Build.props`; repository-wide settings in `Directory.Build.props`.
+- Public WPF types are exposed under the XAML namespace `https://github.com/TheoCvg/EasyBI`
+  (`src/EasyBI.Wpf/Properties/AssemblyInfo.cs`): register any new public namespace there.
+- CI (`.github/workflows/ci.yml`) builds, tests and packs every pull request and every push to
+  `develop` and `main`.
+- Releasing: merge `develop` into `main`, then tag `main` with `vX.Y.Z` (or `vX.Y.Z-beta.N`).
+  The `Release` workflow builds, tests, publishes the packages to nuget.org (`NUGET_API_KEY` secret)
+  and creates the GitHub release. Versions follow [SemVer](https://semver.org/); while in `0.x`,
+  breaking changes bump the minor version.
+
 ## Pull requests
 
 - Work branches target `develop` (hotfixes target `main`).

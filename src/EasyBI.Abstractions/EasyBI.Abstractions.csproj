@@ -2,8 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <Description>Contract of EasyBI, a self-service BI library: semantic model metadata, analytic queries, result sets, visual and report definitions. No dependencies.</Description>
   </PropertyGroup>
 
 </Project>
