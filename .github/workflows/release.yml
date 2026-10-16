@@ -1,13 +1,16 @@
 name: Release
 
 # Publishes the NuGet packages when a version tag (v1.2.3, v1.2.3-beta.1) is pushed.
-# Requires the NUGET_API_KEY repository secret.
+# Uses nuget.org Trusted Publishing: no stored API key. Requires a nuget.org Trusted Publishing
+# policy for this repository and workflow file (release.yml), and the NUGET_USER repository
+# secret holding the nuget.org profile name (not the email address).
 on:
   push:
     tags: ['v*']
 
 permissions:
-  contents: write
+  contents: write  # create the GitHub release
+  id-token: write  # request the OIDC token exchanged for a temporary nuget.org API key
 
 jobs:
   publish:
@@ -32,8 +35,15 @@ jobs:
       - name: Pack
         run: dotnet pack --configuration Release --no-build -p:Version=${{ env.VERSION }} --output artifacts
 
+      # The temporary API key is valid for one hour: request it right before pushing
+      - name: NuGet login (OIDC → temporary API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
       - name: Publish to nuget.org
-        run: dotnet nuget push "artifacts/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push "artifacts/*.nupkg" --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
 
       - name: GitHub release
         shell: bash
