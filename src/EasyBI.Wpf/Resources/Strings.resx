@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="MarkBar" xml:space="preserve">
+    <value>Bars</value>
+  </data>
+  <data name="MarkLine" xml:space="preserve">
+    <value>Lines</value>
+  </data>
+  <data name="MarkPie" xml:space="preserve">
+    <value>Pie</value>
+  </data>
+  <data name="MarkKpi" xml:space="preserve">
+    <value>KPI</value>
+  </data>
+  <data name="MarkTable" xml:space="preserve">
+    <value>Table</value>
+  </data>
+  <data name="FilterAll" xml:space="preserve">
+    <value>(all)</value>
+  </data>
+  <data name="FilterExcept" xml:space="preserve">
+    <value>all except {0}</value>
+  </data>
+  <data name="Selection" xml:space="preserve">
+    <value>Selection: {0}</value>
+  </data>
+  <data name="ClearSelection" xml:space="preserve">
+    <value>Clear selection</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Error: {0}</value>
+  </data>
+  <data name="NoRenderer" xml:space="preserve">
+    <value>No renderer can display “{0}”.</value>
+  </data>
+  <data name="Filters" xml:space="preserve">
+    <value>Filters</value>
+  </data>
+  <data name="AddFilter" xml:space="preserve">
+    <value>+ Add a filter</value>
+  </data>
+  <data name="RemoveFilter" xml:space="preserve">
+    <value>Remove filter</value>
+  </data>
+  <data name="NoDimensionAvailable" xml:space="preserve">
+    <value>No dimension available</value>
+  </data>
+  <data name="FieldListHint" xml:space="preserve">
+    <value>Drag to a shelf, or double-click</value>
+  </data>
+  <data name="ModelHeader" xml:space="preserve">
+    <value>MODEL</value>
+  </data>
+  <data name="DimensionsHeader" xml:space="preserve">
+    <value>DIMENSIONS</value>
+  </data>
+  <data name="MeasuresHeader" xml:space="preserve">
+    <value>MEASURES</value>
+  </data>
+  <data name="NotSupportedByRenderer" xml:space="preserve">
+    <value>Not supported by the active renderer</value>
+  </data>
+  <data name="VisualTitle" xml:space="preserve">
+    <value>Visual title</value>
+  </data>
+  <data name="Axis" xml:space="preserve">
+    <value>Axis</value>
+  </data>
+  <data name="Legend" xml:space="preserve">
+    <value>Legend</value>
+  </data>
+  <data name="Values" xml:space="preserve">
+    <value>Values</value>
+  </data>
+  <data name="LabelSuffix" xml:space="preserve">
+    <value>:</value>
+  </data>
+</root>

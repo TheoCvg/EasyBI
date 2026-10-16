@@ -47,7 +47,8 @@ public interface ISemanticModel
 
 /// <summary>
 /// Period produced by a date granularity (year, quarter, month). The integer key is sortable
-/// and used by filters; <see cref="ToString"/> returns the displayed label.
+/// and used by filters; <see cref="ToString"/> returns a culture-neutral label ("2024 Q1"),
+/// the localized label comes from EasyBI.Core's ValueFormatter.
 /// </summary>
 public readonly record struct DatePeriod(DateGrain Grain, int Key) : IComparable<DatePeriod>, IComparable
 {
@@ -57,7 +58,7 @@ public readonly record struct DatePeriod(DateGrain Grain, int Key) : IComparable
 
     public override string ToString() => Grain switch
     {
-        DateGrain.Quarter => $"{Key / 10} T{Key % 10}",
+        DateGrain.Quarter => $"{Key / 10} Q{Key % 10}",
         DateGrain.Month => $"{Key / 100}-{Key % 100:00}",
         _ => Key.ToString(),
     };

@@ -2,8 +2,19 @@ using EasyBI.Abstractions;
 
 namespace EasyBI.Core;
 
-/// <summary>Selection made in a visual, which filters the other visuals of the same model.</summary>
-public sealed record CrossFilter(string SourceVisualId, string Model, IReadOnlyList<FilterSpec> Filters, string Description);
+/// <summary>
+/// Selection made in a visual, which filters the other visuals of the same model.
+/// <see cref="Values"/> holds the raw value selected for each filter, used to describe the selection.
+/// </summary>
+public sealed record CrossFilter(string SourceVisualId, string Model, IReadOnlyList<FilterSpec> Filters, IReadOnlyList<object?> Values)
+{
+    /// <summary>Readable summary in the current language: "Region = North, Channel = Web".</summary>
+    public string Describe(ModelMetadata metadata) => string.Join(", ", Filters.Select((filter, i) =>
+    {
+        var caption = metadata.Fields.FirstOrDefault(f => f.Name == filter.Field)?.Caption ?? filter.Field;
+        return $"{DateGrains.Caption(caption, filter.Grain)} = {ValueFormatter.Display(Values[i])}";
+    }));
+}
 
 /// <summary>
 /// Filtering state of a dashboard: global filters (slicers, saved with the report)
@@ -126,8 +137,6 @@ public static class SelectionFilters
         var filters = picked
             .Select(p => new FilterSpec(p.Field.Field, FilterOperator.In, [InvariantValue.Format(p.Value)], p.Field.Grain))
             .ToArray();
-        var description = string.Join(", ", picked.Select(p =>
-            $"{request.Result.Columns[request.Result.IndexOf(p.Field.Key)].Caption} = {ValueFormatter.Display(p.Value)}"));
-        return new CrossFilter(visual.Id, visual.Model, filters, description);
+        return new CrossFilter(visual.Id, visual.Model, filters, picked.Select(p => p.Value).ToArray());
     }
 }

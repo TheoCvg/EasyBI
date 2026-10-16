@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Linq.Expressions;
+using System.Resources;
 using EasyBI.Abstractions;
 
 namespace EasyBI.Core;
@@ -50,7 +52,8 @@ public sealed class QueryableSemanticModel<T> : ISemanticModel
     private readonly string _caption;
     private readonly List<FieldDescriptor> _fields = [];
     private readonly Dictionary<string, LambdaExpression> _selectors = [];
-    private ModelMetadata? _metadata;
+    private ResourceManager? _resources;
+    private LocalizedMetadata? _metadata;
 
     internal QueryableSemanticModel(Func<SourceLease<T>> acquire, bool serialize, string name, string caption)
     {
@@ -60,7 +63,34 @@ public sealed class QueryableSemanticModel<T> : ISemanticModel
         _caption = caption;
     }
 
-    public ModelMetadata Metadata => _metadata ??= new ModelMetadata(_name, _caption, _fields.ToArray());
+    /// <summary>Metadata in the current EasyBI language (captions are translated when <see cref="Localize"/> was called).</summary>
+    public ModelMetadata Metadata
+    {
+        get
+        {
+            var culture = EasyBILocalization.UICulture;
+            if (_metadata is { } cached && (_resources is null || cached.Culture.Equals(culture)))
+                return cached.Metadata;
+            var metadata = new ModelMetadata(
+                _name,
+                Translate(_caption, culture),
+                _fields.Select(f => f with { Caption = Translate(f.Caption, culture) }).ToArray());
+            _metadata = new LocalizedMetadata(culture, metadata);
+            return metadata;
+        }
+    }
+
+    /// <summary>
+    /// Translates the model's captions: every caption given to <see cref="SemanticModel.For{T}(IQueryable{T}, string, string?)"/>,
+    /// <see cref="Dimension{TValue}"/>, <see cref="Measure{TValue}"/> and <see cref="Count"/> becomes a key looked up
+    /// in <paramref name="resources"/> for the current EasyBI language; a missing key falls back to the caption itself.
+    /// </summary>
+    public QueryableSemanticModel<T> Localize(ResourceManager resources)
+    {
+        _resources = resources;
+        _metadata = null;
+        return this;
+    }
 
     public QueryableSemanticModel<T> Dimension<TValue>(Expression<Func<T, TValue>> selector, string caption, string? name = null)
     {
@@ -113,6 +143,11 @@ public sealed class QueryableSemanticModel<T> : ISemanticModel
         _metadata = null;
         return this;
     }
+
+    private string Translate(string caption, CultureInfo culture) =>
+        _resources?.GetString(caption, culture) ?? caption;
+
+    private sealed record LocalizedMetadata(CultureInfo Culture, ModelMetadata Metadata);
 
     private static string NameOf(LambdaExpression selector)
     {

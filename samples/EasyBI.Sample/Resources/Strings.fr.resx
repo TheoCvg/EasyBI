@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Sales" xml:space="preserve">
+    <value>Ventes</value>
+  </data>
+  <data name="Date" xml:space="preserve">
+    <value>Date</value>
+  </data>
+  <data name="Region" xml:space="preserve">
+    <value>Région</value>
+  </data>
+  <data name="Channel" xml:space="preserve">
+    <value>Canal</value>
+  </data>
+  <data name="Category" xml:space="preserve">
+    <value>Catégorie</value>
+  </data>
+  <data name="Product" xml:space="preserve">
+    <value>Produit</value>
+  </data>
+  <data name="Revenue" xml:space="preserve">
+    <value>Chiffre d'affaires</value>
+  </data>
+  <data name="Margin" xml:space="preserve">
+    <value>Marge</value>
+  </data>
+  <data name="Quantity" xml:space="preserve">
+    <value>Quantité</value>
+  </data>
+  <data name="SalesCount" xml:space="preserve">
+    <value>Nombre de ventes</value>
+  </data>
+  <data name="WindowTitle" xml:space="preserve">
+    <value>EasyBI – démo</value>
+  </data>
+  <data name="Tagline" xml:space="preserve">
+    <value> · self-service BI pour WPF</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Langue :</value>
+  </data>
+  <data name="Renderer" xml:space="preserve">
+    <value>Renderer :</value>
+  </data>
+  <data name="Open" xml:space="preserve">
+    <value>Ouvrir…</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Enregistrer…</value>
+  </data>
+  <data name="DashboardTab" xml:space="preserve">
+    <value>  Tableau de bord  </value>
+  </data>
+  <data name="DesignerTab" xml:space="preserve">
+    <value>  Designer  </value>
+  </data>
+  <data name="Tip" xml:space="preserve">
+    <value>Astuce : cliquez sur une barre, une part ou une ligne de table pour filtrer les autres visuels ; recliquez pour annuler.</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>Modifier</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="NewVisual" xml:space="preserve">
+    <value>Nouveau visuel</value>
+  </data>
+  <data name="AddToDashboard" xml:space="preserve">
+    <value>Ajouter au tableau de bord</value>
+  </data>
+  <data name="UpdateDashboard" xml:space="preserve">
+    <value>Mettre à jour le tableau de bord</value>
+  </data>
+  <data name="IncompleteVisual" xml:space="preserve">
+    <value>Visuel incomplet</value>
+  </data>
+  <data name="ReportFileFilter" xml:space="preserve">
+    <value>Rapport EasyBI (*.easybi.json)|*.easybi.json</value>
+  </data>
+  <data name="OpenFileFilter" xml:space="preserve">
+    <value>Rapport EasyBI (*.easybi.json)|*.easybi.json|JSON (*.json)|*.json</value>
+  </data>
+  <data name="DefaultFileName" xml:space="preserve">
+    <value>rapport.easybi.json</value>
+  </data>
+  <data name="ReportTitle" xml:space="preserve">
+    <value>Tableau de bord</value>
+  </data>
+  <data name="ReportIncomplete" xml:space="preserve">
+    <value>Rapport incomplet</value>
+  </data>
+  <data name="ReportIncompleteMessage" xml:space="preserve">
+    <value>Le rapport référence des éléments inconnus ; les visuels concernés afficheront une erreur.</value>
+  </data>
+  <data name="ReportUnreadable" xml:space="preserve">
+    <value>Rapport illisible</value>
+  </data>
+  <data name="KeyIndicators" xml:space="preserve">
+    <value>Indicateurs clés</value>
+  </data>
+  <data name="RevenueByQuarter" xml:space="preserve">
+    <value>CA par trimestre</value>
+  </data>
+  <data name="RevenueByRegionAndChannel" xml:space="preserve">
+    <value>CA par région et canal</value>
+  </data>
+  <data name="RevenueByCategory" xml:space="preserve">
+    <value>Répartition du CA par catégorie</value>
+  </data>
+</root>

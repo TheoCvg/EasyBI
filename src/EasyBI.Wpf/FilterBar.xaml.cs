@@ -4,6 +4,8 @@ using System.Windows.Controls;
 using EasyBI.Abstractions;
 using EasyBI.Core;
 using EasyBI.Wpf.Designer;
+using EasyBI.Wpf.Resources;
+using System.ComponentModel;
 
 namespace EasyBI.Wpf;
 
@@ -34,6 +36,7 @@ public partial class FilterBar : UserControl
             if (FilterContext is { } filters) filters.Changed += OnFiltersUpdated;
             Sync();
         };
+        PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, OnLanguageChanged, string.Empty);
         Unloaded += (_, _) =>
         {
             if (FilterContext is { } filters) filters.Changed -= OnFiltersUpdated;
@@ -64,6 +67,13 @@ public partial class FilterBar : UserControl
 
     private void OnFiltersUpdated(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Sync);
 
+    // Slicer captions and value labels are built once: rebuild them in the new language
+    private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e) => Dispatcher.InvokeAsync(() =>
+    {
+        _slicers.Clear();
+        Sync();
+    });
+
     /// <summary>
     /// Brings the display in line with the <see cref="FilterContext"/>. Slicers are only rebuilt when
     /// the filters changed elsewhere (a report was opened): an empty slicer stays visible.
@@ -73,7 +83,9 @@ public partial class FilterBar : UserControl
         var filters = FilterContext;
         var selection = filters?.Selection;
         SelectionChip.Visibility = selection is null ? Visibility.Collapsed : Visibility.Visible;
-        SelectionText.Text = selection is null ? "" : $"Sélection : {selection.Description}";
+        SelectionText.Text = selection is null || Context?.Models.FirstOrDefault(m => m.Metadata.Name == selection.Model) is not { } selectionModel
+            ? ""
+            : Strings.Format(Strings.Selection, selection.Describe(selectionModel.Metadata));
         AddButton.IsEnabled = filters is not null && Context is not null;
 
         if (filters is null || Context is not { } context)
@@ -134,7 +146,7 @@ public partial class FilterBar : UserControl
             if (parent is { HasItems: true }) menu.Items.Add(parent);
         }
         if (menu.Items.Count == 0)
-            menu.Items.Add(new MenuItem { Header = "Aucune dimension disponible", IsEnabled = false });
+            menu.Items.Add(new MenuItem { Header = Strings.NoDimensionAvailable, IsEnabled = false });
         menu.IsOpen = true;
     }
 

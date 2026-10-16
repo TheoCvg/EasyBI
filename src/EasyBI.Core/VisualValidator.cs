@@ -1,4 +1,5 @@
 using EasyBI.Abstractions;
+using EasyBI.Core.Resources;
 
 namespace EasyBI.Core;
 
@@ -9,14 +10,14 @@ public static class VisualValidator
     public static string? Validate(VisualDefinition visual) => visual.Mark switch
     {
         MarkType.Table when visual.Axis.Count == 0 && visual.Legend is null && visual.Values.Count == 0 =>
-            "Déposez des champs pour construire la table.",
+            Strings.ValidationEmptyTable,
         MarkType.Table => null,
         _ when visual.Values.Count == 0 =>
-            "Déposez au moins une mesure dans « Valeurs ».",
+            Strings.ValidationNoMeasure,
         MarkType.Kpi when visual.Axis.Count > 0 || visual.Legend is not null =>
-            "Un KPI n'utilise ni « Axe » ni « Légende ».",
+            Strings.ValidationKpi,
         MarkType.Pie when visual.Axis.Count != 1 || visual.Legend is not null || visual.Values.Count != 1 =>
-            "Un camembert demande une dimension en « Axe », une seule mesure et pas de légende.",
+            Strings.ValidationPie,
         _ => null,
     };
 }

@@ -62,8 +62,8 @@ public class QueryEngineTests
             [new("Quantity", Aggregation.Max)]));
 
         Assert.Equal("Date.Quarter", result.Columns[0].Key);
-        Assert.Equal("Date (Trimestre)", result.Columns[0].Caption);
-        Assert.Equal(["2024 T1", "2024 T2", "2025 T3"], result.Rows.Select(r => r[0]!.ToString()));
+        Assert.Equal("Date (Quarter)", result.Columns[0].Caption);
+        Assert.Equal(["2024 Q1", "2024 Q2", "2025 Q3"], result.Rows.Select(r => r[0]!.ToString()));
         Assert.Equal(new DatePeriod(DateGrain.Quarter, 20241), result.Rows[0][0]);
         Assert.Equal([3, 5, 4], result.Rows.Select(r => r[1]));
     }

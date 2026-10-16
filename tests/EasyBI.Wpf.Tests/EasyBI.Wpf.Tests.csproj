@@ -22,6 +22,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Same culture setup as the Core tests: invariant by default, opt-in culture collection -->
+    <Compile Include="..\EasyBI.Core.Tests\TestCulture.cs" Link="TestCulture.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\EasyBI.Wpf\EasyBI.Wpf.csproj" />
   </ItemGroup>
 

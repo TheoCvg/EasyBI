@@ -89,6 +89,39 @@ A connector only has to call `request.Select?.Invoke(new CategorySelection(categ
 click (or `RowSelection` for a table): `Select` is null when interactivity is disabled, for example
 in the designer preview.
 
+## Localization
+
+EasyBI's own texts (designer, filter bar, messages, granularity and aggregation names, blank and
+boolean values) ship in **English** and **French**. The language can change at runtime: designer,
+filter bar and visuals update immediately.
+
+```csharp
+EasyBILocalization.Culture = CultureInfo.GetCultureInfo("fr-FR"); // null = follow CurrentUICulture
+```
+
+The same culture formats numbers and dates. Your semantic model captions can follow the language too:
+call `Localize` with your own resources, and every caption becomes a resource key (a missing key falls
+back to the caption itself).
+
+```csharp
+var model = SemanticModel.For(db.Sales, "sales", "Sales")
+    .Dimension(s => s.Region, "Region")
+    .Measure(s => s.Amount, "Revenue")
+    .Localize(MyStrings.ResourceManager);
+```
+
+Your own XAML texts can follow it as well with `LocalizedStrings` and the `Localize` markup extension:
+
+```csharp
+public static LocalizedStrings Texts { get; } = new(MyStrings.ResourceManager);
+```
+
+```xml
+<Button Content="{bi:Localize Save, Source={x:Static local:App.Texts}}" />
+```
+
+Visual and report titles are user content: they are stored as typed and not translated.
+
 ## Writing a connector
 
 A connector implements a single interface. It receives **already queried and pivoted** data
@@ -142,8 +175,7 @@ dotnet test
 dotnet run --project samples/EasyBI.Sample
 ```
 
-The user interface (designer, filter bar, messages) is currently in French; it will move to
-`.resx` resources.
+The demo starts in your system language (English or French) and has a language picker in its toolbar.
 
 ## Contributing
 

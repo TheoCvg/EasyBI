@@ -1,4 +1,5 @@
 using EasyBI.Abstractions;
+using EasyBI.Core.Resources;
 
 namespace EasyBI.Core;
 
@@ -16,10 +17,12 @@ public static class ReportValidator
 
         foreach (var visual in report.Visuals)
         {
-            var where = string.IsNullOrWhiteSpace(visual.Title) ? $"Visuel {visual.Mark}" : $"« {visual.Title} »";
+            var where = string.IsNullOrWhiteSpace(visual.Title)
+                ? Strings.Format(Strings.ReportUntitledVisual, visual.Mark)
+                : Strings.Format(Strings.ReportTitledVisual, visual.Title);
             if (!byName.TryGetValue(visual.Model, out var model))
             {
-                problems.Add($"{where} : modèle '{visual.Model}' inconnu.");
+                problems.Add(Strings.Format(Strings.ReportUnknownModel, where, visual.Model));
                 continue;
             }
             foreach (var axis in visual.Axis.Append(visual.Legend).OfType<FieldRef>())
@@ -34,16 +37,16 @@ public static class ReportValidator
                 var keys = visual.Axis.Append(visual.Legend).OfType<FieldRef>().Select(f => f.Key)
                     .Concat(visual.Values.Select(v => v.Key));
                 if (!keys.Contains(sort.Key))
-                    problems.Add($"{where} : tri sur '{sort.Key}', qui n'est pas affiché par le visuel.");
+                    problems.Add(Strings.Format(Strings.ReportSortNotDisplayed, where, sort.Key));
             }
         }
 
         foreach (var filter in report.Filters)
         {
             if (!byName.TryGetValue(filter.Model, out var model))
-                problems.Add($"Filtre du rapport : modèle '{filter.Model}' inconnu.");
+                problems.Add(Strings.Format(Strings.ReportUnknownModel, Strings.ReportFilter, filter.Model));
             else
-                CheckDimension(model, filter.Filter.Field, filter.Filter.Grain, "Filtre du rapport", problems);
+                CheckDimension(model, filter.Filter.Field, filter.Filter.Grain, Strings.ReportFilter, problems);
         }
         return problems;
     }
@@ -52,16 +55,16 @@ public static class ReportValidator
     {
         if (CheckField(model, name, FieldKind.Dimension, where, problems) is { } field
             && grain != DateGrain.None && field.DataType != DataType.Date)
-            problems.Add($"{where} : granularité '{grain}' sur '{name}', qui n'est pas une date.");
+            problems.Add(Strings.Format(Strings.ReportGrainOnNonDate, where, grain, name));
     }
 
     private static FieldDescriptor? CheckField(ModelMetadata model, string name, FieldKind kind, string where, List<string> problems)
     {
         var field = model.Fields.FirstOrDefault(f => f.Name == name);
         if (field is null)
-            problems.Add($"{where} : champ '{name}' absent du modèle '{model.Name}'.");
+            problems.Add(Strings.Format(Strings.ReportMissingField, where, name, model.Name));
         else if (field.Kind != kind)
-            problems.Add($"{where} : '{name}' n'est pas une {(kind == FieldKind.Dimension ? "dimension" : "mesure")}.");
+            problems.Add(Strings.Format(kind == FieldKind.Dimension ? Strings.ReportNotADimension : Strings.ReportNotAMeasure, where, name));
         return field?.Kind == kind ? field : null;
     }
 }

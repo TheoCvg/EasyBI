@@ -2,7 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:bi="https://github.com/TheoCvg/EasyBI"
-        Title="EasyBI – démo" Width="1280" Height="860" WindowStartupLocation="CenterScreen"
+        xmlns:local="clr-namespace:EasyBI.Sample"
+        Title="{bi:Localize WindowTitle, Source={x:Static local:App.Texts}}" Width="1280" Height="860" WindowStartupLocation="CenterScreen"
         Background="#F3F4F6" FontFamily="Segoe UI" FontSize="13">
     <Window.Resources>
         <Style x:Key="ToolbarButton" TargetType="Button">
@@ -21,25 +22,27 @@
         <Border DockPanel.Dock="Top" Background="White" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="18,10">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <TextBlock Text="Renderer :" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#6B7280" />
+                    <TextBlock Text="{bi:Localize Language, Source={x:Static local:App.Texts}}" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#6B7280" />
+                    <ComboBox x:Name="LanguagePicker" Width="150" DisplayMemberPath="NativeName" SelectionChanged="OnLanguageChanged" />
+                    <TextBlock Text="{bi:Localize Renderer, Source={x:Static local:App.Texts}}" VerticalAlignment="Center" Margin="18,0,8,0" Foreground="#6B7280" />
                     <ComboBox x:Name="RendererPicker" Width="140" DisplayMemberPath="Name" SelectionChanged="OnRendererChanged" />
-                    <Button Content="Ouvrir…" Style="{StaticResource ToolbarButton}" Margin="18,0,0,0" Click="OnOpen" />
-                    <Button Content="Enregistrer…" Style="{StaticResource ToolbarButton}" Click="OnSave" />
+                    <Button Content="{bi:Localize Open, Source={x:Static local:App.Texts}}" Style="{StaticResource ToolbarButton}" Margin="18,0,0,0" Click="OnOpen" />
+                    <Button Content="{bi:Localize Save, Source={x:Static local:App.Texts}}" Style="{StaticResource ToolbarButton}" Click="OnSave" />
                 </StackPanel>
                 <TextBlock VerticalAlignment="Center" FontSize="18" FontWeight="SemiBold">
-                    <Run Text="EasyBI" Foreground="#2E6BE6" /><Run Text=" · self-service BI pour WPF" Foreground="#374151" />
+                    <Run Text="EasyBI" Foreground="#2E6BE6" /><Run Text="{bi:Localize Tagline, Source={x:Static local:App.Texts}}" Foreground="#374151" />
                 </TextBlock>
             </DockPanel>
         </Border>
 
         <TabControl x:Name="Tabs" Margin="12" Padding="0" Background="White">
-            <TabItem Header="  Tableau de bord  ">
+            <TabItem Header="{bi:Localize DashboardTab, Source={x:Static local:App.Texts}}">
                 <!-- The FilterContext set here is inherited by the filter bar and by every visual -->
                 <DockPanel bi:VisualView.FilterContext="{Binding Filters}">
                 <Border DockPanel.Dock="Top" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="18,10">
                     <StackPanel>
                         <bi:FilterBar Context="{Binding Context}" />
-                        <TextBlock Text="Astuce : cliquez sur une barre, une part ou une ligne de table pour filtrer les autres visuels ; recliquez pour annuler."
+                        <TextBlock Text="{bi:Localize Tip, Source={x:Static local:App.Texts}}"
                                    Foreground="#9CA3AF" FontSize="11" Margin="0,6,0,0" />
                     </StackPanel>
                 </Border>
@@ -56,8 +59,8 @@
                                         BorderBrush="#E5E7EB" BorderThickness="1">
                                     <DockPanel>
                                         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                                            <Button Content="Modifier" Style="{StaticResource LinkButton}" Click="OnEditVisual" />
-                                            <Button Content="Supprimer" Style="{StaticResource LinkButton}" Click="OnRemoveVisual" />
+                                            <Button Content="{bi:Localize Edit, Source={x:Static local:App.Texts}}" Style="{StaticResource LinkButton}" Click="OnEditVisual" />
+                                            <Button Content="{bi:Localize Remove, Source={x:Static local:App.Texts}}" Style="{StaticResource LinkButton}" Click="OnRemoveVisual" />
                                         </StackPanel>
                                         <bi:VisualView Definition="{Binding}"
                                                        Context="{Binding DataContext.Context, RelativeSource={RelativeSource AncestorType=Window}}" />
@@ -70,12 +73,12 @@
                 </DockPanel>
             </TabItem>
 
-            <TabItem Header="  Designer  ">
+            <TabItem Header="{bi:Localize DesignerTab, Source={x:Static local:App.Texts}}">
                 <DockPanel>
                     <Border DockPanel.Dock="Bottom" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0" Padding="12,8">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Content="Nouveau visuel" Style="{StaticResource ToolbarButton}" Click="OnNewVisual" />
-                            <Button x:Name="PublishButton" Content="Ajouter au tableau de bord" Style="{StaticResource ToolbarButton}"
+                            <Button Content="{bi:Localize NewVisual, Source={x:Static local:App.Texts}}" Style="{StaticResource ToolbarButton}" Click="OnNewVisual" />
+                            <Button x:Name="PublishButton" Style="{StaticResource ToolbarButton}"
                                     Click="OnPublishVisual" FontWeight="SemiBold" />
                         </StackPanel>
                     </Border>

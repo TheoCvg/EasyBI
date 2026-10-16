@@ -22,7 +22,7 @@
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
-            <Setter Property="ToolTip" Value="Glissez vers une étagère, ou double-cliquez" />
+            <Setter Property="ToolTip" Value="{bi:Localize FieldListHint}" />
         </Style>
 
         <Style x:Key="ShelfBorder" TargetType="Border">
@@ -105,7 +105,7 @@
         <DataTemplate x:Key="FilterChipTemplate" DataType="{x:Type local:FilterItemViewModel}">
             <Border Background="#FDF0E3" BorderBrush="#F5D3B0" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding Caption, StringFormat='{}{0} :'}" VerticalAlignment="Center" />
+                    <TextBlock VerticalAlignment="Center"><Run Text="{Binding Caption, Mode=OneWay}" /><Run Text="{bi:Localize LabelSuffix}" /></TextBlock>
                     <ToggleButton x:Name="Toggle" Margin="6,0,0,0" Padding="6,1" FontSize="11"
                                   Content="{Binding Summary}" IsEnabled="{Binding IsLoading, Converter={x:Static local:InverseBooleanConverter.Instance}}" />
                     <Popup IsOpen="{Binding IsChecked, ElementName=Toggle}" StaysOpen="False"
@@ -146,10 +146,10 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <TextBlock Text="MODÈLE" Style="{StaticResource SectionHeader}" />
-                <ComboBox Grid.Row="1" ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}"
-                          DisplayMemberPath="Metadata.Caption" />
-                <TextBlock Grid.Row="2" Text="DIMENSIONS" Style="{StaticResource SectionHeader}" />
+                <TextBlock Text="{bi:Localize ModelHeader}" Style="{StaticResource SectionHeader}" />
+                <ComboBox Grid.Row="1" ItemsSource="{Binding Models}" SelectedValuePath="Value"
+                          SelectedValue="{Binding SelectedModel}" DisplayMemberPath="Label" />
+                <TextBlock Grid.Row="2" Text="{bi:Localize DimensionsHeader}" Style="{StaticResource SectionHeader}" />
                 <ListBox Grid.Row="3" x:Name="DimensionList" ItemsSource="{Binding Dimensions}" Style="{StaticResource FieldList}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -160,7 +160,7 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
-                <TextBlock Grid.Row="4" Text="MESURES" Style="{StaticResource SectionHeader}" />
+                <TextBlock Grid.Row="4" Text="{bi:Localize MeasuresHeader}" Style="{StaticResource SectionHeader}" />
                 <ListBox Grid.Row="5" x:Name="MeasureList" ItemsSource="{Binding Measures}" Style="{StaticResource FieldList}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -209,7 +209,7 @@
                                             </Trigger>
                                             <Trigger Property="IsEnabled" Value="False">
                                                 <Setter TargetName="Text" Property="Foreground" Value="#B8BEC7" />
-                                                <Setter Property="ToolTip" Value="Non supporté par le renderer actif" />
+                                                <Setter Property="ToolTip" Value="{bi:Localize NotSupportedByRenderer}" />
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -219,7 +219,7 @@
                     </ListBox.ItemContainerStyle>
                 </ListBox>
                 <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged, Delay=400}" Margin="0,0,16,0"
-                         VerticalContentAlignment="Center" Padding="6,4" FontSize="14" ToolTip="Titre du visuel" />
+                         VerticalContentAlignment="Center" Padding="6,4" FontSize="14" ToolTip="{bi:Localize VisualTitle}" />
             </DockPanel>
 
             <Grid Grid.Row="1">
@@ -234,22 +234,22 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <TextBlock Text="Axe" Style="{StaticResource ShelfLabel}" />
+                <TextBlock Text="{bi:Localize Axis}" Style="{StaticResource ShelfLabel}" />
                 <Border Grid.Column="1" Style="{StaticResource ShelfBorder}" Tag="{x:Static local:Shelf.Axis}">
                     <ItemsControl ItemsSource="{Binding Axis}" ItemTemplate="{StaticResource ChipTemplate}" ItemsPanel="{StaticResource WrapItems}" />
                 </Border>
 
-                <TextBlock Grid.Row="1" Text="Légende" Style="{StaticResource ShelfLabel}" />
+                <TextBlock Grid.Row="1" Text="{bi:Localize Legend}" Style="{StaticResource ShelfLabel}" />
                 <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource ShelfBorder}" Tag="{x:Static local:Shelf.Legend}">
                     <ItemsControl ItemsSource="{Binding Legend}" ItemTemplate="{StaticResource ChipTemplate}" ItemsPanel="{StaticResource WrapItems}" />
                 </Border>
 
-                <TextBlock Grid.Row="2" Text="Valeurs" Style="{StaticResource ShelfLabel}" />
+                <TextBlock Grid.Row="2" Text="{bi:Localize Values}" Style="{StaticResource ShelfLabel}" />
                 <Border Grid.Row="2" Grid.Column="1" Style="{StaticResource ShelfBorder}" Tag="{x:Static local:Shelf.Values}">
                     <ItemsControl ItemsSource="{Binding Values}" ItemTemplate="{StaticResource ChipTemplate}" ItemsPanel="{StaticResource WrapItems}" />
                 </Border>
 
-                <TextBlock Grid.Row="3" Text="Filtres" Style="{StaticResource ShelfLabel}" />
+                <TextBlock Grid.Row="3" Text="{bi:Localize Filters}" Style="{StaticResource ShelfLabel}" />
                 <Border Grid.Row="3" Grid.Column="1" Style="{StaticResource ShelfBorder}" Tag="{x:Static local:Shelf.Filters}">
                     <ItemsControl ItemsSource="{Binding Filters}" ItemTemplate="{StaticResource FilterChipTemplate}" ItemsPanel="{StaticResource WrapItems}" />
                 </Border>

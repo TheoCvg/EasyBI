@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="GrainNone" xml:space="preserve">
+    <value>Valeur exacte</value>
+  </data>
+  <data name="GrainYear" xml:space="preserve">
+    <value>Année</value>
+  </data>
+  <data name="GrainQuarter" xml:space="preserve">
+    <value>Trimestre</value>
+  </data>
+  <data name="GrainMonth" xml:space="preserve">
+    <value>Mois</value>
+  </data>
+  <data name="GrainDay" xml:space="preserve">
+    <value>Jour</value>
+  </data>
+  <data name="AggregationSum" xml:space="preserve">
+    <value>Somme</value>
+  </data>
+  <data name="AggregationAverage" xml:space="preserve">
+    <value>Moyenne</value>
+  </data>
+  <data name="AggregationMin" xml:space="preserve">
+    <value>Min</value>
+  </data>
+  <data name="AggregationMax" xml:space="preserve">
+    <value>Max</value>
+  </data>
+  <data name="AggregationCount" xml:space="preserve">
+    <value>Nombre</value>
+  </data>
+  <data name="Blank" xml:space="preserve">
+    <value>(vide)</value>
+  </data>
+  <data name="Yes" xml:space="preserve">
+    <value>Oui</value>
+  </data>
+  <data name="No" xml:space="preserve">
+    <value>Non</value>
+  </data>
+  <data name="Total" xml:space="preserve">
+    <value>Total</value>
+  </data>
+  <data name="QuarterLabel" xml:space="preserve">
+    <value>{0} T{1}</value>
+  </data>
+  <data name="ValidationEmptyTable" xml:space="preserve">
+    <value>Déposez des champs pour construire la table.</value>
+  </data>
+  <data name="ValidationNoMeasure" xml:space="preserve">
+    <value>Déposez au moins une mesure dans « Valeurs ».</value>
+  </data>
+  <data name="ValidationKpi" xml:space="preserve">
+    <value>Un KPI n'utilise ni « Axe » ni « Légende ».</value>
+  </data>
+  <data name="ValidationPie" xml:space="preserve">
+    <value>Un camembert demande une dimension en « Axe », une seule mesure et pas de légende.</value>
+  </data>
+  <data name="ReportUntitledVisual" xml:space="preserve">
+    <value>Visuel {0}</value>
+  </data>
+  <data name="ReportTitledVisual" xml:space="preserve">
+    <value>« {0} »</value>
+  </data>
+  <data name="ReportFilter" xml:space="preserve">
+    <value>Filtre du rapport</value>
+  </data>
+  <data name="ReportUnknownModel" xml:space="preserve">
+    <value>{0} : modèle '{1}' inconnu.</value>
+  </data>
+  <data name="ReportSortNotDisplayed" xml:space="preserve">
+    <value>{0} : tri sur '{1}', qui n'est pas affiché par le visuel.</value>
+  </data>
+  <data name="ReportGrainOnNonDate" xml:space="preserve">
+    <value>{0} : granularité '{1}' sur '{2}', qui n'est pas une date.</value>
+  </data>
+  <data name="ReportMissingField" xml:space="preserve">
+    <value>{0} : champ '{1}' absent du modèle '{2}'.</value>
+  </data>
+  <data name="ReportNotADimension" xml:space="preserve">
+    <value>{0} : '{1}' n'est pas une dimension.</value>
+  </data>
+  <data name="ReportNotAMeasure" xml:space="preserve">
+    <value>{0} : '{1}' n'est pas une mesure.</value>
+  </data>
+</root>
