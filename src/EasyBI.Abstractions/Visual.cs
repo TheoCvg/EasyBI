@@ -1,6 +1,10 @@
 namespace EasyBI.Abstractions;
 
-public enum MarkType { Bar, Line, Pie, Kpi, Table }
+/// <summary>
+/// What a visual shows. <see cref="Text"/> and <see cref="Image"/> carry their own content
+/// (<see cref="VisualDefinition.Text"/>, <see cref="VisualDefinition.Image"/>) and query no model.
+/// </summary>
+public enum MarkType { Bar, Line, Pie, Kpi, Table, Text, Image }
 
 /// <summary>
 /// Definition of a visual, independent of any charting library.
@@ -12,8 +16,8 @@ public sealed record VisualDefinition
 
     public string Title { get; init; } = "";
 
-    /// <summary>Name of the queried semantic model.</summary>
-    public required string Model { get; init; }
+    /// <summary>Name of the queried semantic model; empty for a <see cref="MarkType.Text"/> or <see cref="MarkType.Image"/> visual.</summary>
+    public string Model { get; init; } = "";
 
     public MarkType Mark { get; init; } = MarkType.Bar;
 
@@ -30,6 +34,12 @@ public sealed record VisualDefinition
     public SortSpec? Sort { get; init; }
 
     public int? Top { get; init; }
+
+    /// <summary>Content of a <see cref="MarkType.Text"/> visual.</summary>
+    public TextContent? Text { get; init; }
+
+    /// <summary>Content of a <see cref="MarkType.Image"/> visual.</summary>
+    public ImageContent? Image { get; init; }
 
     /// <summary>Options specific to a given renderer (key = renderer name), so the contract does not limit them.</summary>
     public IReadOnlyDictionary<string, string>? Extensions { get; init; }

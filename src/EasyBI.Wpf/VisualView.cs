@@ -149,6 +149,15 @@ public class VisualView : ContentControl
             return;
         }
 
+        if (visual.Mark.IsContent())
+        {
+            // Text and image: nothing to query
+            Cancel();
+            _last = VisualPipeline.PrepareContent(visual, context.Theme);
+            Draw();
+            return;
+        }
+
         var effective = FilterContext?.Apply(visual) ?? visual;
         var queryKey = JsonSerializer.Serialize(new
         {

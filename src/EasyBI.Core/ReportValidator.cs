@@ -15,7 +15,8 @@ public static class ReportValidator
         var byName = models.ToDictionary(m => m.Name);
         var problems = new List<string>();
 
-        foreach (var visual in report.Visuals)
+        // Text and image visuals carry their content and reference no model
+        foreach (var visual in report.Visuals.Where(v => !v.Mark.IsContent()))
         {
             var where = string.IsNullOrWhiteSpace(visual.Title)
                 ? Strings.Format(Strings.ReportUntitledVisual, visual.Mark)
