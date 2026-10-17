@@ -29,6 +29,7 @@ public sealed class MoveBehavior : DashboardBehavior
     private Size _size;
     private DashboardEdit? _edit;
     private DashboardLayoutSnapshot? _snapshot;
+    private DashboardPanelGeometry? _before;
     private string? _target;
     private bool _nextTo;
 
@@ -86,6 +87,7 @@ public sealed class MoveBehavior : DashboardBehavior
         Overlay.Lock(item);
         _edit = View.BeginEdit();
         _snapshot = DashboardLayout.Capture(Panel);
+        _before = Panel.CaptureGeometry();
         _target = null;
         _nextTo = false;
         // The item stays in the layout, where it will land: the placeholder shows that place
@@ -95,37 +97,35 @@ public sealed class MoveBehavior : DashboardBehavior
 
     private void OnMoved(Point position, Vector delta)
     {
-        if (_item is not { } item) return;
+        if (_item is not { } item || _before is not { } before) return;
         _pointer = position;
         Overlay.Refresh();
 
-        // Next to an item, the target holds while the pointer is over the place it made: the items around it moved
+        // Targets are found on the layout from before the drag: on the live one, items making room under the pointer
+        // would change the target, then change back once it is restored, endlessly. Next to an item, the target also
+        // holds while the pointer is over the place it made, since the items around that place moved.
         if (_nextTo && Widened(Panel.GetItemBounds(item)).Contains(position)) return;
-        if (Panel.EdgeAt(position, EdgeZone, item) is var (anchor, side))
+        if (before.EdgeAt(position, EdgeZone, item) is var (anchor, side))
         {
             Preview($"next:{Panel.Children.IndexOf(anchor)}:{side}", nextTo: true,
                 () => DashboardLayout.MoveNextTo(item, anchor, side, keepEmptyBands: true));
             return;
         }
 
-        var band = Panel.BandAt(position.Y);
-        if (Panel.ModeOf(band) == BandMode.Fit)
+        var band = before.BandAt(position.Y);
+        if (before.ModeOf(band) == BandMode.Fit)
         {
             var span = DashboardPanel.GetIsFullRow(item) ? Panel.Columns : DashboardPanel.GetColumnSpan(item);
-            var (column, row) = Panel.CellAt(band, position - _grab, span);
+            var (column, row) = before.CellAt(band, position - _grab, span);
             Preview($"{band}:{column}:{row}", nextTo: false, () => DashboardLayout.Move(item, band, column, row, keepEmptyBands: true));
         }
         else
         {
-            // The item goes before another one: find it in the preview, then insert relative to it in the original band
-            var ordered = Panel.ChildrenOf(band);
-            var index = Panel.FlowIndexAt(band, position, item);
-            var before = index < ordered.Count ? ordered[index] : null;
-            Preview($"{band}#{(before is null ? -1 : Panel.Children.IndexOf(before))}", nextTo: false, () =>
-            {
-                var original = Panel.ChildrenOf(band);
-                DashboardLayout.MoveTo(item, band, before is null ? original.Count : original.ToList().IndexOf(before), keepEmptyBands: true);
-            });
+            // A scrolling band may have scrolled since: compare in the geometry's own scroll position
+            var offset = band < Panel.Bands.Count ? Panel.Bands[band].HorizontalOffset - before.HorizontalOffsetOf(band) : 0;
+            var index = before.FlowIndexAt(band, new Point(position.X + offset, position.Y), item);
+            // The index is in the order of the band before the drag, which every preview starts from
+            Preview($"{band}#{index}", nextTo: false, () => DashboardLayout.MoveTo(item, band, index, keepEmptyBands: true));
         }
     }
 
@@ -165,6 +165,7 @@ public sealed class MoveBehavior : DashboardBehavior
         }
         _edit = null;
         _snapshot = null;
+        _before = null;
         Overlay.Unlock();
     }
 

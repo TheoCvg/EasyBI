@@ -155,6 +155,33 @@ public class DashboardInsertionTests
     });
 
     [Fact]
+    public void A_captured_geometry_keeps_answering_on_the_layout_it_was_taken_from() => Sta.Run(() =>
+    {
+        // The dragged item leaves its line: the items below float up under the pointer. Hit tests must not follow
+        // them, or the target would flip between two places for as long as the drag lasts.
+        var panel = new DashboardPanel { Gap = 10, RowHeight = 100 };
+        var x = Add(panel, 0, 0, 12);
+        var a = Add(panel, 0, 0, 6, row: 3);
+        Add(panel, 0, 6, 6, row: 3);
+        Arrange(panel);
+        var gapBetween = new Point(594, 400);
+        var before = panel.CaptureGeometry();
+        Assert.Equal((a, ItemSide.Right), before.EdgeAt(gapBetween, 40, excluding: x));
+
+        DashboardLayout.Move(x, 0, 0, 20);
+        Arrange(panel);
+
+        Assert.Equal((a, ItemSide.Right), before.EdgeAt(gapBetween, 40, excluding: x));
+        Assert.NotEqual(before.GetItemBounds(a), panel.GetItemBounds(a));
+    });
+
+    private static void Arrange(DashboardPanel panel)
+    {
+        panel.Measure(new Size(1190, double.PositiveInfinity));
+        panel.Arrange(new Rect(0, 0, 1190, panel.DesiredSize.Height));
+    }
+
+    [Fact]
     public void A_panel_child_moves_between_two_others() => Sta.Run(() =>
     {
         var panel = new DashboardPanel();

@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using EasyBI.Wpf.DragAndDrop;
 
 namespace EasyBI.Wpf.Dashboard;
 
@@ -167,57 +166,24 @@ public class DashboardPanel : Panel
     /// <summary>Where a child was placed by the last arrange (scroll offset included), in panel coordinates.</summary>
     public Rect GetItemBounds(UIElement child) => _slots.TryGetValue(child, out var rect) ? rect : Rect.Empty;
 
+    /// <summary>
+    /// The current geometry (bands and children as arranged last). Capture it before a drag to hit-test against the
+    /// layout from before the drag (see <see cref="DashboardPanelGeometry"/>).
+    /// </summary>
+    public DashboardPanelGeometry CaptureGeometry() => new(this, _bandBounds, GetItemBounds);
+
     /// <summary>The band under a vertical position: the band whose bounds (with the spacing below) contain it, or the nearest.</summary>
-    public int BandAt(double y)
-    {
-        for (var i = 0; i < _bandBounds.Count; i++)
-            if (y < _bandBounds[i].Bottom + BandSpacing / 2) return i;
-        return Math.Max(0, _bandBounds.Count - 1);
-    }
+    public int BandAt(double y) => CaptureGeometry().BandAt(y);
 
-    /// <summary>
-    /// Grid cell whose top-left corner is nearest to <paramref name="topLeft"/> (panel coordinates) in a grid band,
-    /// for an item covering <paramref name="columnSpan"/> columns.
-    /// </summary>
-    public (int Column, int Row) CellAt(int band, Point topLeft, int columnSpan)
-    {
-        var bounds = GetBandBounds(band);
-        var top = bounds.IsEmpty ? 0 : bounds.Top;
-        var span = Math.Clamp(columnSpan, 1, Columns);
-        var column = Math.Clamp((int)Math.Round(topLeft.X / Math.Max(1, ColumnPitch)), 0, Columns - span);
-        var row = Math.Max(0, (int)Math.Round((topLeft.Y - top) / RowPitch));
-        return (column, row);
-    }
+    /// <inheritdoc cref="DashboardPanelGeometry.CellAt"/>
+    public (int Column, int Row) CellAt(int band, Point topLeft, int columnSpan) => CaptureGeometry().CellAt(band, topLeft, columnSpan);
 
-    /// <summary>
-    /// Position (in the band's current order) before which an item dropped at <paramref name="point"/> goes in a
-    /// scrolling or wrapping band: before the first other item whose centre comes after the point, reading line by line.
-    /// </summary>
-    public int FlowIndexAt(int band, Point point, UIElement? excluding = null)
-    {
-        var bounds = ChildrenOf(band).Select(c => c == excluding ? Rect.Empty : GetItemBounds(c)).ToArray();
-        return InsertionIndex.At(bounds, point, singleLine: ModeOf(band) == BandMode.Scroll);
-    }
+    /// <inheritdoc cref="DashboardPanelGeometry.FlowIndexAt"/>
+    public int FlowIndexAt(int band, Point point, UIElement? excluding = null) => CaptureGeometry().FlowIndexAt(band, point, excluding);
 
-    /// <summary>
-    /// The edge of a grid band item that <paramref name="point"/> is near, to insert next to it: the item (other than
-    /// <paramref name="excluding"/>) whose bounds, widened by half the <see cref="Gap"/>, contain the point, and the side
-    /// whose zone (see <see cref="SideAt"/>) the point is in. Null in the middle of an item, away from items, or in
-    /// scrolling and wrapping bands (use <see cref="FlowIndexAt"/> there).
-    /// </summary>
-    public (UIElement Anchor, ItemSide Side)? EdgeAt(Point point, double edgeZone, UIElement? excluding = null)
-    {
-        foreach (UIElement child in InternalChildren)
-        {
-            if (child == excluding || child.Visibility != Visibility.Visible || ModeOf(BandIndexOf(child)) != BandMode.Fit) continue;
-            var bounds = GetItemBounds(child);
-            if (bounds.IsEmpty) continue;
-            var widened = bounds;
-            widened.Inflate(Gap / 2, Gap / 2);
-            if (widened.Contains(point)) return SideAt(bounds, point, edgeZone) is { } side ? (child, side) : null;
-        }
-        return null;
-    }
+    /// <inheritdoc cref="DashboardPanelGeometry.EdgeAt"/>
+    public (UIElement Anchor, ItemSide Side)? EdgeAt(Point point, double edgeZone, UIElement? excluding = null) =>
+        CaptureGeometry().EdgeAt(point, edgeZone, excluding);
 
     /// <summary>
     /// The side of <paramref name="bounds"/> whose edge is within <paramref name="edgeZone"/> of <paramref name="point"/>
