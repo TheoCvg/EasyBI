@@ -97,6 +97,15 @@
                               Visibility="{Binding HasAggregation, Converter={StaticResource BoolToVisibility}}"
                               ItemsSource="{x:Static local:ShelfItemViewModel.AggregationOptions}"
                               SelectedValue="{Binding Aggregation, Mode=TwoWay}" />
+                    <!-- Measures of a cartesian chart: chart type and value axis of their series -->
+                    <ComboBox Style="{StaticResource ChipCombo}" ToolTip="{bi:Localize SeriesMarkHint}"
+                              Visibility="{Binding ShowSeriesOptions, Converter={StaticResource BoolToVisibility}}"
+                              ItemsSource="{x:Static local:ShelfItemViewModel.SeriesMarkOptions}"
+                              SelectedItem="{Binding SeriesMarkOption, Mode=TwoWay}" />
+                    <ToggleButton Content="{bi:Localize SecondaryAxis}" ToolTip="{bi:Localize SecondaryAxisHint}"
+                                  Margin="4,0,0,0" Padding="5,0" FontSize="11" Cursor="Hand"
+                                  Visibility="{Binding ShowSeriesOptions, Converter={StaticResource BoolToVisibility}}"
+                                  IsChecked="{Binding SecondaryAxis, Mode=TwoWay}" />
                     <Button Style="{StaticResource ChipButton}" />
                 </StackPanel>
             </Border>

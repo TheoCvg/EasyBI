@@ -186,4 +186,25 @@
   <data name="Cancel" xml:space="preserve">
     <value>Cancel</value>
   </data>
+  <data name="MarkArea" xml:space="preserve">
+    <value>Areas</value>
+  </data>
+  <data name="MarkScatter" xml:space="preserve">
+    <value>Points</value>
+  </data>
+  <data name="MarkStackedBar" xml:space="preserve">
+    <value>Stacked</value>
+  </data>
+  <data name="SeriesMarkDefault" xml:space="preserve">
+    <value>As the visual</value>
+  </data>
+  <data name="SeriesMarkHint" xml:space="preserve">
+    <value>How this measure is drawn</value>
+  </data>
+  <data name="SecondaryAxis" xml:space="preserve">
+    <value>Y2</value>
+  </data>
+  <data name="SecondaryAxisHint" xml:space="preserve">
+    <value>Draw this measure against a second axis, on the right</value>
+  </data>
 </root>

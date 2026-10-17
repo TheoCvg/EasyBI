@@ -10,6 +10,18 @@ public static class VisualPipeline
     /// <summary>True for the marks that show their own content (text, image) instead of querying a model.</summary>
     public static bool IsContent(this MarkType mark) => mark is MarkType.Text or MarkType.Image;
 
+    /// <summary>True for the marks drawn on category and value axes, which can be mixed in one chart.</summary>
+    public static bool IsCartesian(this MarkType mark) =>
+        mark is MarkType.Bar or MarkType.StackedBar or MarkType.Line or MarkType.Area or MarkType.Scatter;
+
+    /// <summary>The chart type of a measure's series: its own mark in a cartesian chart, otherwise the visual's.</summary>
+    public static MarkType SeriesMark(this VisualDefinition visual, MeasureRef measure) =>
+        visual.Mark.IsCartesian() && measure.Mark is { } mark && mark.IsCartesian() ? mark : visual.Mark;
+
+    /// <summary>Every mark a renderer must support to draw the visual.</summary>
+    public static IReadOnlySet<MarkType> MarksOf(VisualDefinition visual) =>
+        visual.Values.Select(visual.SeriesMark).Append(visual.Mark).ToHashSet();
+
     /// <summary>Render request of a text or image visual: no query, empty data.</summary>
     public static RenderRequest PrepareContent(VisualDefinition visual, BiTheme? theme = null) =>
         new(visual, new ResultSet([], []), new ChartData(null, [], []), theme ?? BiTheme.Default);
@@ -19,11 +31,19 @@ public static class VisualPipeline
         var groupBy = visual.Legend is null ? visual.Axis : [.. visual.Axis, visual.Legend];
         return new AnalyticQuery(
             groupBy,
-            visual.Values,
+            // Chart types and axes only change the drawing: changing them must not query again
+            visual.Values.Select(v => v with { Mark = null, SecondaryAxis = false }).ToArray(),
             visual.Filters,
             visual.Sort is null ? null : [visual.Sort],
             visual.Top);
     }
+
+    /// <summary>
+    /// The request for drawing <paramref name="visual"/> with the result of a previous query. Used when only display
+    /// settings changed (title, chart types, axes...): the chart data is rebuilt, the source is not queried again.
+    /// </summary>
+    public static RenderRequest Redraw(RenderRequest previous, VisualDefinition visual) =>
+        previous with { Visual = visual, Chart = ChartDataBuilder.Build(visual, previous.Result) };
 
     public static async Task<RenderRequest> PrepareAsync(
         ISemanticModel model,
@@ -48,7 +68,7 @@ public static class ChartDataBuilder
         // two distinct values with the same display text do not merge.
         var categories = new List<object?[]>();
         var categoryIndex = new Dictionary<object?[], int>(ValuesComparer.Instance);
-        var series = new List<(string Name, string? Format, object? LegendValue, Dictionary<int, double?> Values)>();
+        var series = new List<(string Name, string? Format, object? LegendValue, int Measure, Dictionary<int, double?> Values)>();
         var seriesIndex = new Dictionary<object?[], int>(ValuesComparer.Instance);
 
         foreach (var row in result.Rows)
@@ -71,7 +91,7 @@ public static class ChartDataBuilder
                         : measures.Length == 1 ? ValueFormatter.Display(legendValue)
                         : $"{ValueFormatter.Display(legendValue)} · {column.Caption}";
                     seriesIndex[seriesKey] = s = series.Count;
-                    series.Add((name, column.Format, legendValue, []));
+                    series.Add((name, column.Format, legendValue, m, []));
                 }
                 var value = row[measures[m]];
                 series[s].Values[c] = value is null ? null : Convert.ToDouble(value, CultureInfo.InvariantCulture);
@@ -85,7 +105,12 @@ public static class ChartDataBuilder
             series.Select(s => new ChartSeries(
                 s.Name,
                 Enumerable.Range(0, categories.Count).Select(i => s.Values.GetValueOrDefault(i)).ToArray(),
-                s.Format) { LegendValue = s.LegendValue }).ToArray())
+                s.Format)
+            {
+                LegendValue = s.LegendValue,
+                Mark = visual.SeriesMark(visual.Values[s.Measure]),
+                SecondaryAxis = visual.Mark.IsCartesian() && visual.Values[s.Measure].SecondaryAxis,
+            }).ToArray())
         {
             CategoryValues = categories,
         };

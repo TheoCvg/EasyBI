@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using EasyBI.Abstractions;
+using EasyBI.Core;
 using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf.Designer;
@@ -47,7 +48,10 @@ public sealed class DesignerViewModel : ObservableObject
         MarkOptions =
         [
             new(MarkType.Bar, () => Strings.MarkBar),
+            new(MarkType.StackedBar, () => Strings.MarkStackedBar),
             new(MarkType.Line, () => Strings.MarkLine),
+            new(MarkType.Area, () => Strings.MarkArea),
+            new(MarkType.Scatter, () => Strings.MarkScatter),
             new(MarkType.Pie, () => Strings.MarkPie),
             new(MarkType.Kpi, () => Strings.MarkKpi),
             new(MarkType.Table, () => Strings.MarkTable),
@@ -178,7 +182,12 @@ public sealed class DesignerViewModel : ObservableObject
         foreach (var v in visual.Values)
         {
             var field = metadata.GetField(v.Measure);
-            Values.Add(new(field, Shelf.Values, Rebuild) { Aggregation = v.Aggregation ?? field.DefaultAggregation ?? Aggregation.Sum });
+            Values.Add(new(field, Shelf.Values, Rebuild)
+            {
+                Aggregation = v.Aggregation ?? field.DefaultAggregation ?? Aggregation.Sum,
+                SeriesMark = v.Mark,
+                SecondaryAxis = v.SecondaryAxis,
+            });
         }
         foreach (var f in visual.Filters)
         {
@@ -207,6 +216,8 @@ public sealed class DesignerViewModel : ObservableObject
     private void Rebuild()
     {
         if (_suspended) return;
+        // Chart types per measure only exist in cartesian charts; the settings are kept for when the user comes back
+        foreach (var value in Values) value.ShowSeriesOptions = SelectedMark.IsCartesian();
         var axis = Axis.Select(a => a.ToFieldRef()).ToArray();
         var legend = Legend.FirstOrDefault()?.ToFieldRef();
         var values = Values.Select(v => v.ToMeasureRef()).ToArray();

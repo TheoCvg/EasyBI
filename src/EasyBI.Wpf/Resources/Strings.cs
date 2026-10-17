@@ -14,6 +14,13 @@ internal static class Strings
     public static string MarkPie => Get();
     public static string MarkKpi => Get();
     public static string MarkTable => Get();
+    public static string MarkArea => Get();
+    public static string MarkScatter => Get();
+    public static string MarkStackedBar => Get();
+    public static string SeriesMarkDefault => Get();
+    public static string SeriesMarkHint => Get();
+    public static string SecondaryAxis => Get();
+    public static string SecondaryAxisHint => Get();
     public static string FilterAll => Get();
     public static string FilterExcept => Get();
     public static string Selection => Get();

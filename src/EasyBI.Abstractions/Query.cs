@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace EasyBI.Abstractions;
 
 /// <summary>Reference to a dimension, with an optional granularity for dates.</summary>
@@ -11,6 +13,16 @@ public sealed record FieldRef(string Field, DateGrain Grain = DateGrain.None)
 public sealed record MeasureRef(string Measure, Aggregation? Aggregation = null)
 {
     public string Key => Aggregation is null ? Measure : $"{Measure}.{Aggregation}";
+
+    /// <summary>
+    /// Chart type of this measure's series in a cartesian chart (bars, stacked bars, line, area, points); null follows
+    /// the visual's <see cref="VisualDefinition.Mark"/>. Display only: it does not change the query.
+    /// </summary>
+    public MarkType? Mark { get; init; }
+
+    /// <summary>Draws this measure's series against a second value axis, on the right. Display only.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] // reports only mention it when it is used
+    public bool SecondaryAxis { get; init; }
 }
 
 public enum FilterOperator { In, NotIn }

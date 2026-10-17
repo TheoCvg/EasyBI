@@ -3,8 +3,10 @@ namespace EasyBI.Abstractions;
 /// <summary>
 /// What a visual shows. <see cref="Text"/> and <see cref="Image"/> carry their own content
 /// (<see cref="VisualDefinition.Text"/>, <see cref="VisualDefinition.Image"/>) and query no model.
+/// The cartesian marks (<see cref="Bar"/>, <see cref="StackedBar"/>, <see cref="Line"/>, <see cref="Area"/>,
+/// <see cref="Scatter"/>) can be mixed in one chart, one per measure (<see cref="MeasureRef.Mark"/>).
 /// </summary>
-public enum MarkType { Bar, Line, Pie, Kpi, Table, Text, Image }
+public enum MarkType { Bar, Line, Pie, Kpi, Table, Text, Image, Area, Scatter, StackedBar }
 
 /// <summary>
 /// Definition of a visual, independent of any charting library.
@@ -19,6 +21,10 @@ public sealed record VisualDefinition
     /// <summary>Name of the queried semantic model; empty for a <see cref="MarkType.Text"/> or <see cref="MarkType.Image"/> visual.</summary>
     public string Model { get; init; } = "";
 
+    /// <summary>
+    /// Type of the visual. For a cartesian chart, it is also the type of the measures that do not set their own
+    /// <see cref="MeasureRef.Mark"/>.
+    /// </summary>
     public MarkType Mark { get; init; } = MarkType.Bar;
 
     /// <summary>Categories (X axis of a chart, rows of a table).</summary>

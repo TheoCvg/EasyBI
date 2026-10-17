@@ -129,9 +129,10 @@ public partial class MainWindow : Window
         {
             Title = Text("RevenueByQuarter"),
             Model = "sales",
-            Mark = MarkType.Line,
+            Mark = MarkType.Bar,
             Axis = [new("Date", DateGrain.Quarter)],
-            Values = [new("Amount")],
+            // A combined chart: revenue in bars, margin as a line, number of sales as points on the right axis
+            Values = [new("Amount"), new("Margin") { Mark = MarkType.Line }, new("Count") { Mark = MarkType.Scatter, SecondaryAxis = true }],
         };
         VisualDefinition regions = new()
         {
