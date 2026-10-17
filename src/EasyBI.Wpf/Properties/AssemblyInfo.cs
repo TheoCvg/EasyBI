@@ -10,5 +10,6 @@ using System.Windows.Markup;
 [assembly: XmlnsDefinition("https://github.com/TheoCvg/EasyBI", "EasyBI.Wpf.Dashboard")]
 [assembly: XmlnsDefinition("https://github.com/TheoCvg/EasyBI", "EasyBI.Wpf.Dashboard.Behaviors")]
 [assembly: XmlnsDefinition("https://github.com/TheoCvg/EasyBI", "EasyBI.Wpf.Designer")]
+[assembly: XmlnsDefinition("https://github.com/TheoCvg/EasyBI", "EasyBI.Wpf.DragAndDrop")]
 [assembly: XmlnsDefinition("https://github.com/TheoCvg/EasyBI", "EasyBI.Wpf.Renderers")]
 [assembly: XmlnsPrefix("https://github.com/TheoCvg/EasyBI", "bi")]

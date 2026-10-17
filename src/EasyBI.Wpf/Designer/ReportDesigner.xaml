@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:bi="clr-namespace:EasyBI.Wpf"
              xmlns:local="clr-namespace:EasyBI.Wpf.Designer"
+             xmlns:dnd="clr-namespace:EasyBI.Wpf.DragAndDrop"
 >
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
@@ -10,6 +11,11 @@
         <SolidColorBrush x:Key="LineBrush" Color="#DDE1E7" />
         <SolidColorBrush x:Key="MutedBrush" Color="#6B7280" />
         <SolidColorBrush x:Key="ShelfBrush" Color="#F4F6F9" />
+
+        <!-- Dragged chip: its caption only (the chip's own combo boxes stay on the shelf) -->
+        <DataTemplate x:Key="ChipPreviewTemplate">
+            <TextBlock Text="{Binding Caption}" Margin="6,2" />
+        </DataTemplate>
 
         <Style x:Key="SectionHeader" TargetType="TextBlock">
             <Setter Property="FontSize" Value="11" />
@@ -23,21 +29,37 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
             <Setter Property="ToolTip" Value="{bi:Localize FieldListHint}" />
+            <Setter Property="dnd:DragSource.IsEnabled" Value="True" />
+            <Setter Property="dnd:DragSource.AllowedEffects" Value="Copy" />
         </Style>
 
-        <Style x:Key="ShelfBorder" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource ShelfBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="6" />
-            <Setter Property="MinHeight" Value="38" />
-            <Setter Property="Padding" Value="3" />
+        <ItemsPanelTemplate x:Key="WrapItems">
+            <WrapPanel />
+        </ItemsPanelTemplate>
+
+        <!-- A shelf: fields are dropped on it, its chips are dragged to reorder them or move them to another shelf -->
+        <Style x:Key="Shelf" TargetType="ItemsControl">
+            <Setter Property="ItemsPanel" Value="{StaticResource WrapItems}" />
             <Setter Property="Margin" Value="0,3" />
-            <Setter Property="AllowDrop" Value="True" />
-            <EventSetter Event="DragEnter" Handler="OnShelfDragOver" />
-            <EventSetter Event="DragOver" Handler="OnShelfDragOver" />
-            <EventSetter Event="DragLeave" Handler="OnShelfDragLeave" />
-            <EventSetter Event="Drop" Handler="OnShelfDrop" />
+            <Setter Property="dnd:DropTarget.Handler" Value="{Binding}" />
+            <Setter Property="dnd:DragSource.IsEnabled" Value="True" />
+            <Setter Property="dnd:DragSource.AllowedEffects" Value="Move" />
+            <Setter Property="dnd:DragSource.PreviewTemplate" Value="{StaticResource ChipPreviewTemplate}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ItemsControl">
+                        <Border x:Name="Bd" Background="{StaticResource ShelfBrush}" BorderBrush="{StaticResource LineBrush}"
+                                BorderThickness="1" CornerRadius="6" MinHeight="38" Padding="3">
+                            <ItemsPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="dnd:DropTarget.IsDragOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="ShelfLabel" TargetType="TextBlock">
@@ -80,10 +102,6 @@
             <Setter Property="DisplayMemberPath" Value="Label" />
             <Setter Property="SelectedValuePath" Value="Value" />
         </Style>
-
-        <ItemsPanelTemplate x:Key="WrapItems">
-            <WrapPanel />
-        </ItemsPanelTemplate>
 
         <DataTemplate x:Key="ChipTemplate" DataType="{x:Type local:ShelfItemViewModel}">
             <Border Background="#E3ECFD" BorderBrush="#C3D5FA" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
@@ -162,7 +180,10 @@
                 <ListBox Grid.Row="3" x:Name="DimensionList" ItemsSource="{Binding Dimensions}" Style="{StaticResource FieldList}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
+                            <StackPanel Orientation="Horizontal" Background="Transparent">
+                                <StackPanel.InputBindings>
+                                    <MouseBinding MouseAction="LeftDoubleClick" Command="{Binding DataContext.AddFieldCommand, ElementName=LayoutRoot}" CommandParameter="{Binding}" />
+                                </StackPanel.InputBindings>
                                 <TextBlock Text="◆" Foreground="{StaticResource AccentBrush}" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0" />
                                 <TextBlock Text="{Binding Caption}" Padding="0,3" />
                             </StackPanel>
@@ -173,7 +194,10 @@
                 <ListBox Grid.Row="5" x:Name="MeasureList" ItemsSource="{Binding Measures}" Style="{StaticResource FieldList}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
+                            <StackPanel Orientation="Horizontal" Background="Transparent">
+                                <StackPanel.InputBindings>
+                                    <MouseBinding MouseAction="LeftDoubleClick" Command="{Binding DataContext.AddFieldCommand, ElementName=LayoutRoot}" CommandParameter="{Binding}" />
+                                </StackPanel.InputBindings>
                                 <TextBlock Text="Σ" Foreground="#2BA37B" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,7,0" />
                                 <TextBlock Text="{Binding Caption}" Padding="0,3" />
                             </StackPanel>
@@ -244,24 +268,20 @@
                 </Grid.RowDefinitions>
 
                 <TextBlock Text="{bi:Localize Axis}" Style="{StaticResource ShelfLabel}" />
-                <Border Grid.Column="1" Style="{StaticResource ShelfBorder}" Tag="{x:Static local:Shelf.Axis}">
-                    <ItemsControl ItemsSource="{Binding Axis}" ItemTemplate="{StaticResource ChipTemplate}" ItemsPanel="{StaticResource WrapItems}" />
-                </Border>
+                <ItemsControl Grid.Column="1" Style="{StaticResource Shelf}" dnd:DropTarget.Key="{x:Static local:Shelf.Axis}"
+                              ItemsSource="{Binding Axis}" ItemTemplate="{StaticResource ChipTemplate}" />
 
                 <TextBlock Grid.Row="1" Text="{bi:Localize Legend}" Style="{StaticResource ShelfLabel}" />
-                <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource ShelfBorder}" Tag="{x:Static local:Shelf.Legend}">
-                    <ItemsControl ItemsSource="{Binding Legend}" ItemTemplate="{StaticResource ChipTemplate}" ItemsPanel="{StaticResource WrapItems}" />
-                </Border>
+                <ItemsControl Grid.Row="1" Grid.Column="1" Style="{StaticResource Shelf}" dnd:DropTarget.Key="{x:Static local:Shelf.Legend}"
+                              ItemsSource="{Binding Legend}" ItemTemplate="{StaticResource ChipTemplate}" />
 
                 <TextBlock Grid.Row="2" Text="{bi:Localize Values}" Style="{StaticResource ShelfLabel}" />
-                <Border Grid.Row="2" Grid.Column="1" Style="{StaticResource ShelfBorder}" Tag="{x:Static local:Shelf.Values}">
-                    <ItemsControl ItemsSource="{Binding Values}" ItemTemplate="{StaticResource ChipTemplate}" ItemsPanel="{StaticResource WrapItems}" />
-                </Border>
+                <ItemsControl Grid.Row="2" Grid.Column="1" Style="{StaticResource Shelf}" dnd:DropTarget.Key="{x:Static local:Shelf.Values}"
+                              ItemsSource="{Binding Values}" ItemTemplate="{StaticResource ChipTemplate}" />
 
                 <TextBlock Grid.Row="3" Text="{bi:Localize Filters}" Style="{StaticResource ShelfLabel}" />
-                <Border Grid.Row="3" Grid.Column="1" Style="{StaticResource ShelfBorder}" Tag="{x:Static local:Shelf.Filters}">
-                    <ItemsControl ItemsSource="{Binding Filters}" ItemTemplate="{StaticResource FilterChipTemplate}" ItemsPanel="{StaticResource WrapItems}" />
-                </Border>
+                <ItemsControl Grid.Row="3" Grid.Column="1" Style="{StaticResource Shelf}" dnd:DropTarget.Key="{x:Static local:Shelf.Filters}"
+                              ItemsSource="{Binding Filters}" ItemTemplate="{StaticResource FilterChipTemplate}" />
             </Grid>
 
             <Border Grid.Row="2" Margin="0,14,0,0" Padding="14" Background="White" CornerRadius="8"

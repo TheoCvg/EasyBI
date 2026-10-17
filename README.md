@@ -116,10 +116,16 @@ children placed by attached properties.
 
 **`DashboardLayout`** is the static class that moves children while keeping the layout consistent (no
 overlap in a grid band, items pushed down then floated up, emptied bands removed): `Move`, `MoveTo`,
-`Resize`, `ResizeWidth`, `SetFullRow`, `AddNextTo`, `SplitFullRow`, `Remove`, `InsertBand`,
+`MoveNextTo`, `Resize`, `ResizeWidth`, `SetFullRow`, `AddNextTo`, `SplitFullRow`, `Remove`, `InsertBand`,
 `RemoveBand`, `SetBandMode`, plus `Update` for custom operations, `Capture` (snapshot to restore) and
 `GetLayout` / `SetLayout` (to save and restore). The rules themselves are pure functions on records in
 `DashboardLayoutEngine`, usable without any UI.
+
+`AddNextTo` and `MoveNextTo` place an item next to another one (`ItemSide.Right`, `Left`, `Below`, `Above`). In a
+grid band, on the right or left the item joins the anchor's line: the line's items move aside, and share the columns
+equally when the line is too narrow (`[A][B]` + X between them gives `[A][X][B]` on 4 columns each); below or above,
+it takes the anchor's columns and what is under it moves down. A full-row anchor has no sides. `DashboardPanel.EdgeAt`
+finds the item edge under a point (`SideAt` for the rule).
 
 **`DashboardView`** is the ready-made `UserControl`: `DashboardItem`s showing visuals in a
 `DashboardPanel`, with every interaction provided by a **behavior** (Microsoft.Xaml.Behaviors):
@@ -127,7 +133,7 @@ overlap in a grid band, items pushed down then floated up, emptied bands removed
 | Behavior | Feature |
 |---|---|
 | `AddButtonsBehavior` | "+" on the right and bottom edges of an item, "+" between bands |
-| `MoveBehavior` | grip to drag an item, live reflow, across bands; Escape cancels |
+| `MoveBehavior` | grip to drag an item: a picture follows the pointer and a placeholder shows where it lands, the others making room live; near an item's edge it goes next to it (like "+"), elsewhere on the cell under it; across bands, auto-scroll near the edges; Escape cancels |
 | `ResizeBehavior` | corner handle: cells in a grid band, pixels and rows elsewhere |
 | `ItemToolbarBehavior` | full row, edit, remove; text size, bold, alignment; image fit |
 | `BandMenuBehavior` | ⋮ menu of a band: Fit / Scroll / Wrap, insert, remove (`MenuOpening` to customize it) |
@@ -154,11 +160,47 @@ Hooks for applications:
   `AddRight`, `AddBelow`, `InsertBand`, `RemoveBand`...) for custom templates, and public methods
   (`AddNextTo`, `SetVisual`, `InsertBand`, `BeginEdit` to group changes into one undo step...);
 - an implicit style for `DashboardItem` (lookless control) and the `DashboardOverlay` style keys
-  (`PlusButtonStyleKey`, `IconButtonStyleKey`, `GripStyleKey`, `ResizeGripStyleKey`) to restyle;
+  (`PlusButtonStyleKey`, `IconButtonStyleKey`, `GripStyleKey`, `ResizeGripStyleKey`, `DropPlaceholderStyleKey`,
+  `DragGhostStyleKey`) to restyle;
 - `DashboardBehavior` as a base class for new interactions: it gives access to the view, the panel and the
-  overlay where behaviors draw their controls; `DragGesture` handles press-drag-release gestures.
+  overlay where behaviors draw their controls; `DragGesture` handles press-drag-release gestures (with
+  auto-scroll: `AutoScroll`, `ScrollsBands`).
 
 `IsReadOnly="True"` hides the editing chrome; clicks keep cross-filtering in every mode.
+
+### Drag and drop
+
+The designer's drag and drop is built on reusable attached properties (namespace `EasyBI.Wpf.DragAndDrop`,
+XAML prefix `bi:`), usable on any `ItemsControl` of an application. Being attached properties, they can be set
+from a style:
+
+```xml
+<!-- Items can be dragged: a preview follows the pointer, a moved item is dimmed -->
+<ListBox ItemsSource="{Binding Fields}" bi:DragSource.IsEnabled="True" bi:DragSource.AllowedEffects="Copy" />
+
+<!-- Drops are decided by an IDropHandler (usually the view-model); an insertion line shows where the item goes -->
+<ItemsControl ItemsSource="{Binding Columns}" bi:DropTarget.Handler="{Binding}" bi:DropTarget.Key="Columns" />
+```
+
+```csharp
+public sealed class MyViewModel : IDropHandler
+{
+    public DragDropEffects DragOver(DropInfo drop) => drop.Item is Field ? DragDropEffects.Copy : DragDropEffects.None;
+    public void Drop(DropInfo drop) => Columns.Insert(drop.Index, ((Field)drop.Item!).ToColumn());
+}
+```
+
+- `DropInfo` gives the dragged `Item`, the target's `Key` (one handler for several targets), the insertion
+  `Index` among the target's items and the raw `Data` for drags coming from elsewhere.
+- `DropTarget.IsDragOver` is true while an accepted drag is over the target (style triggers);
+  `DropTarget.Orientation` switches the insertion rules to a vertical stack.
+- A scrollable target, or its scroll viewer, scrolls when the pointer nears its edges (`AutoScroller`, also usable
+  on its own); `InsertionIndex` holds the pure insertion rules.
+- Style keys `DragSource.PreviewStyleKey` (a `ContentControl`; `DragSource.PreviewTemplate` sets the content) and
+  `DropTarget.InsertionLineStyleKey` (a `Border`).
+
+In the designer, fields are dropped between chips, chips are reordered within a shelf, and dimensions move between
+Axis and Legend keeping their granularity.
 
 ## Filtering: global filters and cross-filtering
 

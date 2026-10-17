@@ -15,8 +15,8 @@ public enum BandMode
     Wrap,
 }
 
-/// <summary>Where a new item goes relative to an existing one.</summary>
-public enum ItemSide { Right, Below }
+/// <summary>Where an item goes relative to an existing one.</summary>
+public enum ItemSide { Right, Below, Left, Above }
 
 /// <summary>
 /// Serializable arrangement of a <see cref="DashboardPanel"/>: a stack of bands, each with its own

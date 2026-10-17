@@ -166,46 +166,43 @@ public class DashboardPanel : Panel
     /// <summary>Where a child was placed by the last arrange (scroll offset included), in panel coordinates.</summary>
     public Rect GetItemBounds(UIElement child) => _slots.TryGetValue(child, out var rect) ? rect : Rect.Empty;
 
+    /// <summary>
+    /// The current geometry (bands and children as arranged last). Capture it before a drag to hit-test against the
+    /// layout from before the drag (see <see cref="DashboardPanelGeometry"/>).
+    /// </summary>
+    public DashboardPanelGeometry CaptureGeometry() => new(this, _bandBounds, GetItemBounds);
+
     /// <summary>The band under a vertical position: the band whose bounds (with the spacing below) contain it, or the nearest.</summary>
-    public int BandAt(double y)
-    {
-        for (var i = 0; i < _bandBounds.Count; i++)
-            if (y < _bandBounds[i].Bottom + BandSpacing / 2) return i;
-        return Math.Max(0, _bandBounds.Count - 1);
-    }
+    public int BandAt(double y) => CaptureGeometry().BandAt(y);
+
+    /// <inheritdoc cref="DashboardPanelGeometry.CellAt"/>
+    public (int Column, int Row) CellAt(int band, Point topLeft, int columnSpan) => CaptureGeometry().CellAt(band, topLeft, columnSpan);
+
+    /// <inheritdoc cref="DashboardPanelGeometry.FlowIndexAt"/>
+    public int FlowIndexAt(int band, Point point, UIElement? excluding = null) => CaptureGeometry().FlowIndexAt(band, point, excluding);
+
+    /// <inheritdoc cref="DashboardPanelGeometry.EdgeAt"/>
+    public (UIElement Anchor, ItemSide Side)? EdgeAt(Point point, double edgeZone, UIElement? excluding = null) =>
+        CaptureGeometry().EdgeAt(point, edgeZone, excluding);
 
     /// <summary>
-    /// Grid cell whose top-left corner is nearest to <paramref name="topLeft"/> (panel coordinates) in a grid band,
-    /// for an item covering <paramref name="columnSpan"/> columns.
+    /// The side of <paramref name="bounds"/> whose edge is within <paramref name="edgeZone"/> of <paramref name="point"/>
+    /// (at most a quarter of the item, so that its middle stays free), the nearest one in a corner; null in the middle.
+    /// A point outside the bounds is beyond the edge it crossed.
     /// </summary>
-    public (int Column, int Row) CellAt(int band, Point topLeft, int columnSpan)
+    public static ItemSide? SideAt(Rect bounds, Point point, double edgeZone)
     {
-        var bounds = GetBandBounds(band);
-        var top = bounds.IsEmpty ? 0 : bounds.Top;
-        var span = Math.Clamp(columnSpan, 1, Columns);
-        var column = Math.Clamp((int)Math.Round(topLeft.X / Math.Max(1, ColumnPitch)), 0, Columns - span);
-        var row = Math.Max(0, (int)Math.Round((topLeft.Y - top) / RowPitch));
-        return (column, row);
-    }
-
-    /// <summary>
-    /// Position (in the band's current order) before which an item dropped at <paramref name="point"/> goes in a
-    /// scrolling or wrapping band: before the first other item whose centre comes after the point, reading line by line.
-    /// </summary>
-    public int FlowIndexAt(int band, Point point, UIElement? excluding = null)
-    {
-        var ordered = ChildrenOf(band);
-        var mode = ModeOf(band);
-        for (var i = 0; i < ordered.Count; i++)
-        {
-            if (ordered[i] == excluding) continue;
-            var bounds = GetItemBounds(ordered[i]);
-            if (bounds.IsEmpty) continue;
-            var sameLine = mode == BandMode.Scroll || (point.Y >= bounds.Top && point.Y <= bounds.Bottom);
-            var before = sameLine ? point.X < bounds.Left + bounds.Width / 2 : point.Y < bounds.Top;
-            if (before) return i;
-        }
-        return ordered.Count;
+        var zoneX = Math.Min(edgeZone, bounds.Width / 4);
+        var zoneY = Math.Min(edgeZone, bounds.Height / 4);
+        (ItemSide Side, double Distance, double Zone)[] edges =
+        [
+            (ItemSide.Left, point.X - bounds.Left, zoneX),
+            (ItemSide.Right, bounds.Right - point.X, zoneX),
+            (ItemSide.Above, point.Y - bounds.Top, zoneY),
+            (ItemSide.Below, bounds.Bottom - point.Y, zoneY),
+        ];
+        var near = edges.Where(e => e.Distance <= e.Zone).OrderBy(e => e.Distance).ToArray();
+        return near.Length > 0 ? near[0].Side : null;
     }
 
     protected override Size MeasureOverride(Size availableSize)

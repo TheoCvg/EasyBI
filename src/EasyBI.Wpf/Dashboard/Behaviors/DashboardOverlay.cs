@@ -31,6 +31,12 @@ public sealed class DashboardOverlay : Adorner
     /// <summary>Style of the handle used to resize an item (a <c>ContentControl</c>).</summary>
     public static ComponentResourceKey ResizeGripStyleKey { get; } = new(typeof(DashboardOverlay), "ResizeGrip");
 
+    /// <summary>Style of the place where a moved item will land (a <c>ContentControl</c>, sized like the item).</summary>
+    public static ComponentResourceKey DropPlaceholderStyleKey { get; } = new(typeof(DashboardOverlay), "DropPlaceholder");
+
+    /// <summary>Style of the picture of a moved item following the pointer (a <c>ContentControl</c> holding an <c>Image</c>).</summary>
+    public static ComponentResourceKey DragGhostStyleKey { get; } = new(typeof(DashboardOverlay), "DragGhost");
+
     /// <summary>Distance around an item within which it stays hovered (its "+" buttons sit on its edges).</summary>
     public const double HoverMargin = 14;
 
