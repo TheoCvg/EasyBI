@@ -67,22 +67,13 @@
     <value>  Designer  </value>
   </data>
   <data name="Tip" xml:space="preserve">
-    <value>Tip: click a bar, a slice or a table row to filter the other visuals; click again to clear.</value>
-  </data>
-  <data name="Edit" xml:space="preserve">
-    <value>Edit</value>
-  </data>
-  <data name="Remove" xml:space="preserve">
-    <value>Remove</value>
+    <value>Tip: click a bar, a slice or a table row to filter the other visuals. Hover an item to move it (⠿), resize it (◢) or add an item next to it (+); double-click a text to edit it.</value>
   </data>
   <data name="NewVisual" xml:space="preserve">
     <value>New visual</value>
   </data>
   <data name="AddToDashboard" xml:space="preserve">
     <value>Add to dashboard</value>
-  </data>
-  <data name="UpdateDashboard" xml:space="preserve">
-    <value>Update dashboard</value>
   </data>
   <data name="IncompleteVisual" xml:space="preserve">
     <value>Incomplete visual</value>
@@ -119,5 +110,20 @@
   </data>
   <data name="RevenueByCategory" xml:space="preserve">
     <value>Revenue by category</value>
+  </data>
+  <data name="Undo" xml:space="preserve">
+    <value>Undo</value>
+  </data>
+  <data name="Redo" xml:space="preserve">
+    <value>Redo</value>
+  </data>
+  <data name="ReadOnly" xml:space="preserve">
+    <value>Read-only</value>
+  </data>
+  <data name="DashboardTitle" xml:space="preserve">
+    <value>Sales dashboard</value>
+  </data>
+  <data name="DashboardNote" xml:space="preserve">
+    <value>Revenue is shown excluding tax. Use the ⋮ menu of a band to switch between grid, horizontal scroll and wrap.</value>
   </data>
 </root>

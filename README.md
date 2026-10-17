@@ -15,12 +15,12 @@ end users build their visuals by drag-and-drop, and rendering is delegated to in
 |---|---|---|
 | `EasyBI.Abstractions` | **The contract**: model, query, `ResultSet`, `VisualDefinition`, `ReportDefinition` | none |
 | `EasyBI.Core` | Model builder, query engine over `IQueryable` (expression trees), pivot, filtering, JSON | Abstractions |
-| `EasyBI.Wpf` | `IVisualRenderer`, `EasyBIContext`, `VisualView`, `ReportDesigner`, `FilterBar`, built-in KPI and Table renderers | Core |
+| `EasyBI.Wpf` | `IVisualRenderer`, `EasyBIContext`, `VisualView`, `ReportDesigner`, `FilterBar`, dashboard (`DashboardPanel`, `DashboardView`, behaviors), built-in KPI, Table, Text and Image renderers | Core + Microsoft.Xaml.Behaviors.Wpf |
 | `EasyBI.Renderers.LiveCharts2` | LiveCharts2 connector (bars, lines, pies) | Wpf + LiveCharts2 |
 | `EasyBI.Renderers.OxyPlot` | OxyPlot connector (bars, lines, pies) | Wpf + OxyPlot |
 | `samples/EasyBI.Sample` | Demo: dashboard + designer + renderer switch + JSON save/load | |
 | `tests/EasyBI.Core.Tests` | Engine, filtering and serialization tests | |
-| `tests/EasyBI.Wpf.Tests` | Designer tests | |
+| `tests/EasyBI.Wpf.Tests` | Designer and dashboard tests | |
 
 ## Installation
 
@@ -65,6 +65,77 @@ var model = SemanticModel.For(() => dbFactory.CreateDbContext(), db => db.Sales,
 <bi:ReportDesigner Context="{Binding Context}" />                             <!-- design -->
 <bi:VisualView Context="{Binding Context}" Definition="{Binding Visual}" />   <!-- display -->
 ```
+
+Besides charts, KPIs and tables, a visual can be a **text** (`MarkType.Text`, content in
+`VisualDefinition.Text`) or an **image** (`MarkType.Image`, embedded as base64 in `VisualDefinition.Image`).
+They query no model and are drawn by the built-in `TextRenderer` and `ImageRenderer`.
+
+## Dashboard
+
+Arranging visuals is a WPF concern: the report (`easybi/v1`) never contains a layout. The dashboard is
+built in three layers, each usable on its own.
+
+**`DashboardPanel`** is a `Panel`, like a `Canvas` or a `Grid`: a stack of bands, each with a mode, and
+children placed by attached properties.
+
+```xml
+<bi:DashboardPanel Columns="12" RowHeight="110">
+    <bi:DashboardPanel.Bands>
+        <bi:DashboardBand Mode="Fit" />    <!-- 12-column grid, items span rows and columns -->
+        <bi:DashboardBand Mode="Scroll" /> <!-- fixed-width items, horizontal scrolling -->
+        <bi:DashboardBand Mode="Wrap" />   <!-- fixed-width items, wrapping -->
+    </bi:DashboardPanel.Bands>
+    <Border bi:DashboardPanel.Band="0" bi:DashboardPanel.ColumnSpan="8" bi:DashboardPanel.RowSpan="2" />
+    <Border bi:DashboardPanel.Band="1" bi:DashboardPanel.ItemWidth="360" />
+    <Border bi:DashboardPanel.Band="0" bi:DashboardPanel.IsFullRow="True" />
+</bi:DashboardPanel>
+```
+
+**`DashboardLayout`** is the static class that moves children while keeping the layout consistent (no
+overlap in a grid band, items pushed down then floated up, emptied bands removed): `Move`, `MoveTo`,
+`Resize`, `ResizeWidth`, `SetFullRow`, `AddNextTo`, `SplitFullRow`, `Remove`, `InsertBand`,
+`RemoveBand`, `SetBandMode`, plus `Update` for custom operations, `Capture` (snapshot to restore) and
+`GetLayout` / `SetLayout` (to save and restore). The rules themselves are pure functions on records in
+`DashboardLayoutEngine`, usable without any UI.
+
+**`DashboardView`** is the ready-made `UserControl`: `DashboardItem`s showing visuals in a
+`DashboardPanel`, with every interaction provided by a **behavior** (Microsoft.Xaml.Behaviors):
+
+| Behavior | Feature |
+|---|---|
+| `AddButtonsBehavior` | "+" on the right and bottom edges of an item, "+" between bands |
+| `MoveBehavior` | grip to drag an item, live reflow, across bands; Escape cancels |
+| `ResizeBehavior` | corner handle: cells in a grid band, pixels and rows elsewhere |
+| `ItemToolbarBehavior` | full row, edit, remove; text size, bold, alignment; image fit |
+| `BandMenuBehavior` | ⋮ menu of a band: Fit / Scroll / Wrap, insert, remove (`MenuOpening` to customize it) |
+| `BandScrollBehavior` | scroll bar and Shift+wheel for scrolling bands |
+| `TextEditBehavior` | double-click a text to edit it in place |
+| `UndoRedoBehavior` | Ctrl+Z / Ctrl+Y (`ApplicationCommands.Undo` / `Redo`) |
+
+```xml
+<bi:DashboardView x:Name="Dashboard" Context="{Binding Context}" Document="{Binding Dashboard}">
+    <i:Interaction.Behaviors>
+        <!-- Declaring a behavior replaces its default; set UseDefaultBehaviors="False" to pick them all -->
+        <bi:UndoRedoBehavior MaxHistory="100" />
+    </i:Interaction.Behaviors>
+</bi:DashboardView>
+```
+
+Hooks for applications:
+
+- events `EditVisualRequested` (replace the built-in designer dialog), `ImageRequested` (replace the file
+  dialog), `FullRowSplitRequested` (ask yourself before giving up a full row; by default the item shows a
+  banner), `TextEditRequested`, `ItemRemoving` (veto), `Changed` (every change, with the documents before
+  and after), `DocumentLoaded`;
+- `DashboardCommands` (`AddVisual`, `AddText`, `AddImage`, `EditItem`, `RemoveItem`, `ToggleFullRow`,
+  `AddRight`, `AddBelow`, `InsertBand`, `RemoveBand`...) for custom templates, and public methods
+  (`AddNextTo`, `SetVisual`, `InsertBand`, `BeginEdit` to group changes into one undo step...);
+- an implicit style for `DashboardItem` (lookless control) and the `DashboardOverlay` style keys
+  (`PlusButtonStyleKey`, `IconButtonStyleKey`, `GripStyleKey`, `ResizeGripStyleKey`) to restyle;
+- `DashboardBehavior` as a base class for new interactions: it gives access to the view, the panel and the
+  overlay where behaviors draw their controls; `DragGesture` handles press-drag-release gestures.
+
+`IsReadOnly="True"` hides the editing chrome; clicks keep cross-filtering in every mode.
 
 ## Filtering: global filters and cross-filtering
 
@@ -166,6 +237,33 @@ the types that no renderer can draw.
 `null` in `values` means a missing value. `EasyBIContext.Validate(report)` reports the unknown
 models and fields of a loaded report.
 
+Text and image visuals carry their content and no model:
+
+```json
+{ "mark": "Text", "text": { "text": "Sales dashboard", "fontSize": 24, "isBold": true, "alignment": "Left" } }
+{ "mark": "Image", "image": { "data": "iVBORw0KGgo...", "mediaType": "image/png", "fit": "Contain" } }
+```
+
+### Dashboard file (`easybi-dashboard/v1`)
+
+`DashboardSerializer` saves what a `DashboardView` shows: the unchanged report next to the WPF layout,
+which references visuals by id. It also opens a plain `easybi/v1` report (visuals then get a default layout).
+
+```json
+{
+  "schema": "easybi-dashboard/v1",
+  "report": { "schema": "easybi/v1", "visuals": [ ... ], "filters": [ ... ] },
+  "layout": {
+    "columns": 12,
+    "rowHeight": 110,
+    "bands": [
+      { "mode": "Fit", "items": [ { "visualId": "...", "column": 0, "row": 0, "columnSpan": 8, "rowSpan": 2, "isFullRow": false } ] },
+      { "mode": "Scroll", "items": [ { "visualId": "...", "width": 360, "rowSpan": 3 } ] }
+    ]
+  }
+}
+```
+
 The same file renders identically with any connector.
 
 ## Run
@@ -191,4 +289,5 @@ See [AGENTS.md](AGENTS.md) for the code style, language rules and Git workflow.
   source implements `IAsyncEnumerable` (EF Core). EF Core's SQL translation (GroupBy on a composite
   key, sort on an aggregate, projection to `object[]`) still has to be validated against a real database.
 - At most 4 grouping dimensions (axis + legend).
-- No dark theme, no free-form dashboard layout.
+- No dark theme.
+- Dashboard images are embedded in the file (2 MB by default, `DashboardView.MaxImageBytes`).

@@ -9,6 +9,9 @@ public static class VisualValidator
     /// <returns>A message for the end user, or null when the visual can be displayed.</returns>
     public static string? Validate(VisualDefinition visual) => visual.Mark switch
     {
+        MarkType.Text => null,
+        MarkType.Image when visual.Image is null => Strings.ValidationNoImage,
+        MarkType.Image => null,
         MarkType.Table when visual.Axis.Count == 0 && visual.Legend is null && visual.Values.Count == 0 =>
             Strings.ValidationEmptyTable,
         MarkType.Table => null,

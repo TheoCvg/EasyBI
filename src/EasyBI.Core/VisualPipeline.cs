@@ -7,6 +7,13 @@ namespace EasyBI.Core;
 /// <summary>Chains: visual definition → query → execution → pivoted data.</summary>
 public static class VisualPipeline
 {
+    /// <summary>True for the marks that show their own content (text, image) instead of querying a model.</summary>
+    public static bool IsContent(this MarkType mark) => mark is MarkType.Text or MarkType.Image;
+
+    /// <summary>Render request of a text or image visual: no query, empty data.</summary>
+    public static RenderRequest PrepareContent(VisualDefinition visual, BiTheme? theme = null) =>
+        new(visual, new ResultSet([], []), new ChartData(null, [], []), theme ?? BiTheme.Default);
+
     public static AnalyticQuery ToQuery(this VisualDefinition visual)
     {
         var groupBy = visual.Legend is null ? visual.Axis : [.. visual.Axis, visual.Legend];

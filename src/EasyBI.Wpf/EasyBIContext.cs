@@ -10,7 +10,7 @@ namespace EasyBI.Wpf;
 /// </summary>
 public sealed class EasyBIContext
 {
-    private static readonly IVisualRenderer[] BuiltInRenderers = [new KpiRenderer(), new TableRenderer()];
+    private static readonly IVisualRenderer[] BuiltInRenderers = [new KpiRenderer(), new TableRenderer(), new TextRenderer(), new ImageRenderer()];
 
     private readonly List<ISemanticModel> _models = [];
     private readonly List<IVisualRenderer> _renderers = [];
@@ -70,7 +70,7 @@ public sealed class EasyBIContext
 
     /// <summary>
     /// Capability negotiation: the active renderer if it can draw the mark, otherwise another
-    /// plugged-in renderer, otherwise a built-in one (KPI, table).
+    /// plugged-in renderer, otherwise a built-in one (KPI, table, text, image).
     /// </summary>
     public IVisualRenderer? ResolveRenderer(MarkType mark)
     {

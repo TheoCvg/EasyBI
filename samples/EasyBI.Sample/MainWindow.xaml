@@ -39,37 +39,25 @@
             <TabItem Header="{bi:Localize DashboardTab, Source={x:Static local:App.Texts}}">
                 <!-- The FilterContext set here is inherited by the filter bar and by every visual -->
                 <DockPanel bi:VisualView.FilterContext="{Binding Filters}">
-                <Border DockPanel.Dock="Top" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="18,10">
-                    <StackPanel>
-                        <bi:FilterBar Context="{Binding Context}" />
-                        <TextBlock Text="{bi:Localize Tip, Source={x:Static local:App.Texts}}"
-                                   Foreground="#9CA3AF" FontSize="11" Margin="0,6,0,0" />
-                    </StackPanel>
-                </Border>
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <ItemsControl x:Name="Dashboard" Margin="10">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <UniformGrid Columns="2" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Margin="8" Padding="14" Height="330" Background="White" CornerRadius="8"
-                                        BorderBrush="#E5E7EB" BorderThickness="1">
-                                    <DockPanel>
-                                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                                            <Button Content="{bi:Localize Edit, Source={x:Static local:App.Texts}}" Style="{StaticResource LinkButton}" Click="OnEditVisual" />
-                                            <Button Content="{bi:Localize Remove, Source={x:Static local:App.Texts}}" Style="{StaticResource LinkButton}" Click="OnRemoveVisual" />
-                                        </StackPanel>
-                                        <bi:VisualView Definition="{Binding}"
-                                                       Context="{Binding DataContext.Context, RelativeSource={RelativeSource AncestorType=Window}}" />
-                                    </DockPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
+                    <Border DockPanel.Dock="Top" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="18,10">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                                <Button Content="{bi:Localize Undo, Source={x:Static local:App.Texts}}" Style="{StaticResource LinkButton}"
+                                        Command="Undo" CommandTarget="{Binding ElementName=Dashboard}" />
+                                <Button Content="{bi:Localize Redo, Source={x:Static local:App.Texts}}" Style="{StaticResource LinkButton}"
+                                        Command="Redo" CommandTarget="{Binding ElementName=Dashboard}" />
+                                <CheckBox Content="{bi:Localize ReadOnly, Source={x:Static local:App.Texts}}" VerticalAlignment="Center" Margin="12,0,0,0"
+                                          IsChecked="{Binding IsReadOnly, ElementName=Dashboard}" />
+                            </StackPanel>
+                            <StackPanel>
+                                <bi:FilterBar Context="{Binding Context}" />
+                                <TextBlock Text="{bi:Localize Tip, Source={x:Static local:App.Texts}}" TextWrapping="Wrap"
+                                           Foreground="#9CA3AF" FontSize="11" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                    <!-- Interactions are behaviors attached by default; Interaction.Behaviors can replace or configure them -->
+                    <bi:DashboardView x:Name="Dashboard" Context="{Binding Context}" />
                 </DockPanel>
             </TabItem>
 
