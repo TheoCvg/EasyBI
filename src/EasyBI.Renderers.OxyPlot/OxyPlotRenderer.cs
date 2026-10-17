@@ -29,7 +29,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
             _ => throw new NotSupportedException($"OxyPlotRenderer does not support '{request.Visual.Mark}'."),
         };
         model.PlotAreaBorderThickness = new OxyThickness(0);
-        model.TextColor = OxyColor.FromRgb(0x37, 0x41, 0x51);
+        ApplyTheme(model, request.Theme);
         var view = new PlotView { Model = model, Background = System.Windows.Media.Brushes.Transparent };
         // Legend, labels and axis title adapt to the room the chart actually gets
         view.SizeChanged += (_, _) => Fit(view, model, request);
@@ -261,4 +261,23 @@ public sealed class OxyPlotRenderer : IVisualRenderer
     }
 
     private static OxyColor Color(BiTheme theme, int index) => OxyColor.Parse(theme.ColorAt(index));
+
+    /// <summary>Text, axes, grid lines and slice borders in the theme's colors (EasyBI's light colors when it has none).</summary>
+    private static void ApplyTheme(PlotModel model, BiTheme theme)
+    {
+        model.TextColor = Parse(theme.Foreground) ?? OxyColor.FromRgb(0x37, 0x41, 0x51);
+        var grid = Parse(theme.GridLine) ?? OxyColor.FromRgb(0xE5, 0xE7, 0xEB);
+        foreach (var axis in model.Axes)
+        {
+            axis.MajorGridlineColor = grid;
+            axis.TicklineColor = grid;
+            axis.AxislineColor = grid;
+            if (Parse(theme.MutedForeground) is { } labels) axis.TextColor = labels;
+        }
+        // Slices are separated by the color they are drawn on
+        foreach (var pie in model.Series.OfType<PieSeries>())
+            pie.Stroke = Parse(theme.Background) ?? OxyColors.White;
+    }
+
+    private static OxyColor? Parse(string? color) => color is null ? null : OxyColor.Parse(color);
 }

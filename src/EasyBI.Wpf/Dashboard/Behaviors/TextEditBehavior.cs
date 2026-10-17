@@ -12,14 +12,15 @@ namespace EasyBI.Wpf.Dashboard.Behaviors;
 /// </summary>
 public sealed class TextEditBehavior : DashboardBehavior
 {
-    private readonly TextBox _editor = new()
+    private readonly TextBox _editor = new TextBox
     {
         AcceptsReturn = true,
         TextWrapping = TextWrapping.Wrap,
         VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
         BorderThickness = new Thickness(0),
-        Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xF9, 0xFA, 0xFB)),
-    };
+    }
+        .Themed(Control.BackgroundProperty, EasyBITheme.SurfaceAltBrushKey)
+        .Themed(Control.ForegroundProperty, EasyBITheme.ForegroundBrushKey);
 
     private DashboardItem? _item;
 

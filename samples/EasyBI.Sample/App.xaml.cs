@@ -38,4 +38,10 @@ public partial class App : Application
         CultureInfo.DefaultThreadCurrentUICulture = culture;
         EasyBILocalization.Culture = culture;
     }
+
+    /// <summary>Switches EasyBI's theme at runtime: every view follows, charts included.</summary>
+    public static void SetTheme(EasyBIThemeMode mode)
+    {
+        foreach (var theme in Current.Resources.MergedDictionaries.OfType<EasyBIThemeDictionary>()) theme.Mode = mode;
+    }
 }

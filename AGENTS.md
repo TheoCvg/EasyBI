@@ -77,6 +77,10 @@ Follow the style already in the codebase:
 - One main type per file; small closely related types (records, enums) may share a file.
 - No new third-party dependency in `Abstractions` or `Core` without discussing it first.
 - WPF: keep logic in view-models or `Core`, not in code-behind; update UI only on the dispatcher.
+- WPF: no hard-coded colors. Draw with the `EasyBITheme` keys, as `DynamicResource` (`SetResourceReference` in code)
+  so that theme changes apply at runtime; add a key to `EasyBITheme`, `Light.xaml` and `Dark.xaml` when none fits
+  (a test checks that both themes define every key). Do not give standard controls an explicit style without
+  `BasedOn` their implicit one, so that the application's control library still applies.
 
 ## Tests
 

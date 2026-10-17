@@ -1,0 +1,39 @@
+<!-- EasyBI's light theme: every key of EasyBITheme. Copy a key into the application's resources to override it. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:bi="clr-namespace:EasyBI.Wpf">
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.BackgroundBrushKey}" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.SurfaceBrushKey}" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.SurfaceAltBrushKey}" Color="#F6F7F9" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.BorderBrushKey}" Color="#E2E5EA" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.BorderStrongBrushKey}" Color="#C9CED6" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.ForegroundBrushKey}" Color="#1F2937" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.MutedForegroundBrushKey}" Color="#6B7280" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.DisabledForegroundBrushKey}" Color="#B8BEC7" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.AccentBrushKey}" Color="#2E6BE6" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.AccentHoverBrushKey}" Color="#1E4FBF" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.AccentForegroundBrushKey}" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.AccentSoftBrushKey}" Color="#E3ECFD" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.AccentSoftBorderBrushKey}" Color="#C3D5FA" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.SecondarySoftBrushKey}" Color="#FDF0E3" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.SecondarySoftBorderBrushKey}" Color="#F5D3B0" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.HoverBrushKey}" Color="#E5E7EB" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.ErrorBrushKey}" Color="#B91C1C" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.MeasureBrushKey}" Color="#2BA37B" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.GridLineBrushKey}" Color="#E5E7EB" />
+
+    <bi:ChartPalette x:Key="{x:Static bi:EasyBITheme.ChartPaletteKey}">
+        <Color>#2E6BE6</Color>
+        <Color>#E8833A</Color>
+        <Color>#2BA37B</Color>
+        <Color>#D64550</Color>
+        <Color>#8A5CD6</Color>
+        <Color>#C9A227</Color>
+        <Color>#3AA6C9</Color>
+        <Color>#8C6D52</Color>
+        <Color>#D46BAE</Color>
+        <Color>#6B7A8F</Color>
+    </bi:ChartPalette>
+
+    <CornerRadius x:Key="{x:Static bi:EasyBITheme.CornerRadiusKey}">8</CornerRadius>
+</ResourceDictionary>

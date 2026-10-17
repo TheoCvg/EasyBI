@@ -4,7 +4,7 @@
         xmlns:bi="https://github.com/TheoCvg/EasyBI"
         xmlns:local="clr-namespace:EasyBI.Sample"
         Title="{bi:Localize WindowTitle, Source={x:Static local:App.Texts}}" Width="1280" Height="860" WindowStartupLocation="CenterScreen"
-        Background="#F3F4F6" FontFamily="Segoe UI" FontSize="13">
+        Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceAltBrushKey}}" Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}" FontFamily="Segoe UI" FontSize="13">
     <Window.Resources>
         <Style x:Key="ToolbarButton" TargetType="Button">
             <Setter Property="Padding" Value="12,5" />
@@ -19,27 +19,32 @@
 
     <DockPanel>
         <!-- Toolbar -->
-        <Border DockPanel.Dock="Top" Background="White" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="18,10">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="0,0,0,1" Padding="18,10">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <TextBlock Text="{bi:Localize Language, Source={x:Static local:App.Texts}}" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#6B7280" />
+                    <TextBlock Text="{bi:Localize Theme, Source={x:Static local:App.Texts}}" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                    <ComboBox x:Name="ThemePicker" Width="110" SelectionChanged="OnThemeChanged">
+                        <ComboBoxItem Tag="Light" Content="{bi:Localize ThemeLight, Source={x:Static local:App.Texts}}" IsSelected="True" />
+                        <ComboBoxItem Tag="Dark" Content="{bi:Localize ThemeDark, Source={x:Static local:App.Texts}}" />
+                    </ComboBox>
+                    <TextBlock Text="{bi:Localize Language, Source={x:Static local:App.Texts}}" VerticalAlignment="Center" Margin="18,0,8,0" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
                     <ComboBox x:Name="LanguagePicker" Width="150" DisplayMemberPath="NativeName" SelectionChanged="OnLanguageChanged" />
-                    <TextBlock Text="{bi:Localize Renderer, Source={x:Static local:App.Texts}}" VerticalAlignment="Center" Margin="18,0,8,0" Foreground="#6B7280" />
+                    <TextBlock Text="{bi:Localize Renderer, Source={x:Static local:App.Texts}}" VerticalAlignment="Center" Margin="18,0,8,0" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
                     <ComboBox x:Name="RendererPicker" Width="140" DisplayMemberPath="Name" SelectionChanged="OnRendererChanged" />
                     <Button Content="{bi:Localize Open, Source={x:Static local:App.Texts}}" Style="{StaticResource ToolbarButton}" Margin="18,0,0,0" Click="OnOpen" />
                     <Button Content="{bi:Localize Save, Source={x:Static local:App.Texts}}" Style="{StaticResource ToolbarButton}" Click="OnSave" />
                 </StackPanel>
                 <TextBlock VerticalAlignment="Center" FontSize="18" FontWeight="SemiBold">
-                    <Run Text="EasyBI" Foreground="#2E6BE6" /><Run Text="{bi:Localize Tagline, Source={x:Static local:App.Texts}}" Foreground="#374151" />
+                    <Run Text="EasyBI" Foreground="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" /><Run Text="{bi:Localize Tagline, Source={x:Static local:App.Texts}}" />
                 </TextBlock>
             </DockPanel>
         </Border>
 
-        <TabControl x:Name="Tabs" Margin="12" Padding="0" Background="White">
+        <TabControl x:Name="Tabs" Margin="12" Padding="0" Background="{DynamicResource {x:Static bi:EasyBITheme.BackgroundBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}">
             <TabItem Header="{bi:Localize DashboardTab, Source={x:Static local:App.Texts}}">
                 <!-- The FilterContext set here is inherited by the filter bar and by every visual -->
                 <DockPanel bi:VisualView.FilterContext="{Binding Filters}">
-                    <Border DockPanel.Dock="Top" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="18,10">
+                    <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="0,0,0,1" Padding="18,10">
                         <DockPanel>
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
                                 <Button Content="{bi:Localize Undo, Source={x:Static local:App.Texts}}" Style="{StaticResource LinkButton}"
@@ -47,17 +52,18 @@
                                 <Button Content="{bi:Localize Redo, Source={x:Static local:App.Texts}}" Style="{StaticResource LinkButton}"
                                         Command="Redo" CommandTarget="{Binding ElementName=Dashboard}" />
                                 <CheckBox Content="{bi:Localize ReadOnly, Source={x:Static local:App.Texts}}" VerticalAlignment="Center" Margin="12,0,0,0"
+                                          Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}"
                                           IsChecked="{Binding IsReadOnly, ElementName=Dashboard}" />
                             </StackPanel>
                             <StackPanel>
                                 <bi:FilterBar Context="{Binding Context}" />
                                 <TextBlock Text="{bi:Localize Tip, Source={x:Static local:App.Texts}}" TextWrapping="Wrap"
-                                           Foreground="#9CA3AF" FontSize="11" Margin="0,6,0,0" />
+                                           Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" FontSize="11" Margin="0,6,0,0" />
                             </StackPanel>
                         </DockPanel>
                     </Border>
                     <!-- Fields to drag onto the dashboard (hidden while it is read-only) -->
-                    <Border DockPanel.Dock="Left" Width="210" Background="#FAFBFC" BorderBrush="#E5E7EB" BorderThickness="0,0,1,0" Padding="14,0,14,14">
+                    <Border DockPanel.Dock="Left" Width="210" Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceAltBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="0,0,1,0" Padding="14,0,14,14">
                         <Border.Style>
                             <Style TargetType="Border">
                                 <Style.Triggers>
@@ -76,14 +82,14 @@
 
             <TabItem Header="{bi:Localize DesignerTab, Source={x:Static local:App.Texts}}">
                 <DockPanel>
-                    <Border DockPanel.Dock="Bottom" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0" Padding="12,8">
+                    <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="0,1,0,0" Padding="12,8">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button Content="{bi:Localize NewVisual, Source={x:Static local:App.Texts}}" Style="{StaticResource ToolbarButton}" Click="OnNewVisual" />
                             <Button x:Name="PublishButton" Style="{StaticResource ToolbarButton}"
                                     Click="OnPublishVisual" FontWeight="SemiBold" />
                         </StackPanel>
                     </Border>
-                    <bi:ReportDesigner x:Name="Designer" Context="{Binding Context}" Background="White" />
+                    <bi:ReportDesigner x:Name="Designer" Context="{Binding Context}" />
                 </DockPanel>
             </TabItem>
         </TabControl>
