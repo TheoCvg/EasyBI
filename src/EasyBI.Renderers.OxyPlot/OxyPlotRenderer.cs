@@ -31,9 +31,59 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         model.PlotAreaBorderThickness = new OxyThickness(0);
         model.TextColor = OxyColor.FromRgb(0x37, 0x41, 0x51);
         var view = new PlotView { Model = model, Background = System.Windows.Media.Brushes.Transparent };
+        // Legend, labels and axis title adapt to the room the chart actually gets
+        view.SizeChanged += (_, _) => Fit(view, model, request);
         if (request.Select is { } select)
             view.Controller = SelectionController(model, select);
         return view;
+    }
+
+    private static void Fit(PlotView view, PlotModel model, RenderRequest request)
+    {
+        if (view.ActualWidth <= 0) return;
+        var changed = request.Visual.Mark == MarkType.Pie
+            ? FitPie(model, ChartFitting.Pie(request.Chart, view.ActualWidth, view.ActualHeight))
+            : FitCartesian(model, request.Chart, ChartFitting.Cartesian(request.Chart, view.ActualWidth, view.ActualHeight));
+        // Only redraw when something changed: SizeChanged fires continuously while a dashboard cell is resized
+        if (changed) model.InvalidatePlot(false);
+    }
+
+    private static bool FitCartesian(PlotModel model, ChartData chart, ChartFit fit)
+    {
+        var changed = false;
+        var axis = (CategoryAxis)model.Axes.First(a => a.Key == CategoryAxisKey);
+        if (axis.Angle != fit.LabelRotation) (axis.Angle, changed) = (fit.LabelRotation, true);
+        if (axis.MajorStep != fit.LabelStep) (axis.MajorStep, changed) = (fit.LabelStep, true);
+        var title = fit.ShowAxisTitles ? chart.CategoryCaption : null;
+        if (axis.Title != title) (axis.Title, changed) = (title, true);
+
+        var visible = fit.Legend != ChartLegend.Hidden;
+        if (model.IsLegendVisible != visible) (model.IsLegendVisible, changed) = (visible, true);
+        if (visible && model.Legends.FirstOrDefault() is { } legend)
+        {
+            var position = fit.Legend == ChartLegend.Bottom ? LegendPosition.BottomCenter : LegendPosition.RightTop;
+            if (legend.LegendPosition != position)
+            {
+                legend.LegendPosition = position;
+                legend.LegendOrientation = fit.Legend == ChartLegend.Bottom ? LegendOrientation.Horizontal : LegendOrientation.Vertical;
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    /// <summary>
+    /// OxyPlot draws the category names around the pie instead of in a legend: they are dropped when the fit has no
+    /// room for a legend. The donut hole is relative to the pie, so it already keeps its proportions.
+    /// </summary>
+    private static bool FitPie(PlotModel model, ChartFit fit)
+    {
+        var pie = (PieSeries)model.Series[0];
+        var format = fit.Legend == ChartLegend.Hidden ? null : PieOutsideLabelFormat;
+        if (pie.OutsideLabelFormat == format) return false;
+        pie.OutsideLabelFormat = format;
+        (pie.TickHorizontalLength, pie.TickRadialLength) = format is null ? (0, 0) : (8, 6);
+        return true;
     }
 
     /// <summary>Left click: shows the tracker as usual, and selects the element that was hit.</summary>
@@ -85,7 +135,6 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         {
             Position = AxisPosition.Bottom,
             Title = chart.CategoryCaption,
-            Angle = chart.Categories.Count > 8 ? -45 : 0,
             AxisTitleDistance = 10,
             Key = CategoryAxisKey,
         };
@@ -178,6 +227,8 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         }
     }
 
+    private const string PieOutsideLabelFormat = "{1}";
+
     private static PlotModel BuildPie(RenderRequest request)
     {
         var chart = request.Chart;
@@ -190,7 +241,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
             InsideLabelPosition = 0.75,
             InsideLabelColor = OxyColors.White,
             InsideLabelFormat = "{2:0}%",
-            OutsideLabelFormat = "{1}",
+            OutsideLabelFormat = PieOutsideLabelFormat,
             AngleSpan = 360,
             StartAngle = -90,
             TrackerFormatString = "{1}: {2:" + (source.Format ?? "#,##0.##") + "}",
