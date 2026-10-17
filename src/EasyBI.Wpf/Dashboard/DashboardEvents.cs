@@ -39,21 +39,6 @@ public sealed class TextEditRequestedEventArgs(DashboardItem item) : EventArgs
     public bool Handled { get; set; }
 }
 
-/// <summary>
-/// Raised when an item is added next to a full-row item, which requires giving up the full row. Set
-/// <see cref="Handled"/> to ask the user yourself, then call <see cref="Proceed"/> if they agree; otherwise the item
-/// shows a banner (<see cref="DashboardItem.IsFullRowSplitPending"/>).
-/// </summary>
-public sealed class FullRowSplitRequestedEventArgs(DashboardItem item, Action proceed) : EventArgs
-{
-    public DashboardItem Item { get; } = item;
-
-    public bool Handled { get; set; }
-
-    /// <summary>Removes the full-row setting and adds the new item next to it.</summary>
-    public void Proceed() => proceed();
-}
-
 /// <summary>Raised before an item (and the visual it shows) is removed; set <see cref="Cancel"/> to keep it.</summary>
 public sealed class ItemRemovingEventArgs(DashboardItem item) : EventArgs
 {

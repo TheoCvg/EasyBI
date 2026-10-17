@@ -36,22 +36,6 @@
                                 </WrapPanel>
                             </Grid>
                         </Border>
-
-                        <!-- Shown when an item is added next to this full-row item -->
-                        <Border x:Name="FullRowBanner" Visibility="Collapsed" VerticalAlignment="Top" Margin="6,26,6,0" Padding="10,8"
-                                Background="#FFF7E6" BorderBrush="#F5C26B" BorderThickness="1" CornerRadius="6">
-                            <DockPanel>
-                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
-                                    <Button Content="{bi:Localize FullRowProceed}" Padding="8,2"
-                                            Command="{x:Static local:DashboardCommands.ConfirmFullRowSplit}"
-                                            CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
-                                    <Button Content="{bi:Localize Cancel}" Padding="8,2" Margin="6,0,0,0"
-                                            Command="{x:Static local:DashboardCommands.CancelFullRowSplit}"
-                                            CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
-                                </StackPanel>
-                                <TextBlock Text="{bi:Localize FullRowWarning}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                            </DockPanel>
-                        </Border>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="Kind" Value="Empty">
@@ -70,9 +54,6 @@
                         <Trigger Property="local:DashboardView.IsReadOnly" Value="True">
                             <Setter TargetName="Choices" Property="Visibility" Value="Collapsed" />
                             <Setter TargetName="TextPlaceholder" Property="Visibility" Value="Collapsed" />
-                        </Trigger>
-                        <Trigger Property="IsFullRowSplitPending" Value="True">
-                            <Setter TargetName="FullRowBanner" Property="Visibility" Value="Visible" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -155,6 +136,32 @@
                         <TextBlock Text="◢" FontSize="11" Foreground="#6B7280"
                                    HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,3,1" />
                     </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type behaviors:DashboardOverlay}, ResourceId=FreeSpace}" TargetType="Button">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid Background="Transparent">
+                        <Rectangle x:Name="Frame" Stroke="#C9CED6" StrokeThickness="1.5" StrokeDashArray="4 3" RadiusX="8" RadiusY="8" />
+                        <Border x:Name="Plus" Width="28" Height="28" CornerRadius="14" Background="#2E6BE6" Opacity="0"
+                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="+" Foreground="White" FontSize="18" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" />
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Frame" Property="Stroke" Value="#2E6BE6" />
+                            <Setter TargetName="Frame" Property="Fill" Value="#0A2E6BE6" />
+                            <Setter TargetName="Plus" Property="Opacity" Value="1" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

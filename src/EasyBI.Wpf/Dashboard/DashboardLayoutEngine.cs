@@ -1,150 +1,231 @@
 namespace EasyBI.Wpf.Dashboard;
 
 /// <summary>
-/// Pure layout operations on a <see cref="DashboardLayoutDefinition"/>; each one returns a new, consistent layout:
+/// Pure layout operations on a <see cref="DashboardLayoutDefinition"/>; each one returns a new, normalized layout:
 /// <list type="bullet">
-/// <item>in a <see cref="BandMode.Fit"/> band, items stay inside the grid and never overlap: an item moved, resized
-/// or added pushes the others down, then everything floats up without jumping over another item;</item>
-/// <item>a full-row item covers all the columns (Fit) or the whole band width (Scroll, Wrap);</item>
+/// <item>in a <see cref="BandMode.Fit"/> band, an item added or moved next to another one joins its container when the
+/// side follows the container's direction, otherwise the two are wrapped in a new container (side by side or stacked);</item>
+/// <item>new and moved items are greedy (no width constraint): they share the room with their siblings, so a grid
+/// band never has a gap; constraints come from resizing, and <see cref="SetAuto"/> removes them;</item>
+/// <item>containers with a single child, or inside a container of the same direction, are merged away;</item>
 /// <item>a band emptied by a move or a removal disappears.</item>
 /// </list>
-/// Items and bands are identified by their <see cref="ItemLayout.Id"/> and <see cref="BandLayout.Id"/>.
-/// <see cref="DashboardLayout"/> runs these operations on the children of a <see cref="DashboardPanel"/>.
+/// Nodes and bands are identified by their <see cref="LayoutNode.Id"/> and <see cref="BandLayout.Id"/>.
+/// <see cref="DashboardLayout"/> runs these operations on a <see cref="DashboardPanel"/>.
 /// </summary>
 public static class DashboardLayoutEngine
 {
-    public const double MinRowHeight = 40;
+    /// <summary>Smallest fixed width of an item in scrolling and wrapping bands.</summary>
     public const double MinWidth = 160;
 
-    /// <summary>Width a Fit band is assumed to have when converting column spans to pixel widths and back.</summary>
+    /// <summary>Width a band is assumed to have when converting columns to pixels and back without a better one.</summary>
     public const double ReferenceWidth = 1200;
 
-    /// <summary>Clamps sizes and positions, then resolves overlaps and floats items up in grid bands.</summary>
+    // --- Normalizing and placing visuals ---
+
+    /// <summary>
+    /// Clamps the constraints, drops those that mean nothing where the node is (a width inside a stack...), merges
+    /// containers with a single child or of the same direction as their parent, and removes empty containers.
+    /// </summary>
     public static DashboardLayoutDefinition Normalize(DashboardLayoutDefinition layout)
     {
         var columns = Math.Max(1, layout.Columns);
         return layout with
         {
             Columns = columns,
-            RowHeight = Math.Max(MinRowHeight, layout.RowHeight),
-            Bands = layout.Bands.Select(b => b with { Items = Arranged(b.Mode, b.Items.Select(i => Clamp(i, b.Mode, columns)).ToList(), null) }).ToArray(),
+            RowHeight = Math.Max(20, layout.RowHeight),
+            Bands = layout.Bands.Select(b => b with { Items = NormalizeBand(b.Mode, b.Items, columns) }).ToArray(),
         };
     }
 
     /// <summary>
     /// Makes a saved layout match the visuals to show: items referencing an unknown (or already shown) visual become
-    /// empty, visuals without an item are added at the end, and an empty layout gets one empty item to start from.
+    /// empty, visuals without an item are added at the end two per line, and an empty layout gets one empty item.
     /// </summary>
     public static DashboardLayoutDefinition Place(DashboardLayoutDefinition? layout, IEnumerable<string> visualIds)
     {
-        layout ??= new DashboardLayoutDefinition();
+        layout = Normalize(layout ?? new DashboardLayoutDefinition());
         var ids = visualIds.Distinct().ToList();
         var known = ids.ToHashSet();
         var shown = new HashSet<string>();
-        var bands = layout.Bands
-            .Select(b => b with
-            {
-                Items = b.Items.Select(i => i.VisualId is { } id && (!known.Contains(id) || !shown.Add(id)) ? i with { VisualId = null } : i).ToArray(),
-            })
-            .Where(b => b.Items.Count > 0)
-            .ToList();
-        layout = Normalize(layout with { Bands = bands });
+        LayoutNode Check(LayoutNode node) => node.IsItem
+            ? node.VisualId is { } id && (!known.Contains(id) || !shown.Add(id)) ? node with { VisualId = null } : node
+            : node with { Children = node.Children.Select(Check).ToArray() };
+        var bands = layout.Bands.Select(b => b with { Items = b.Items.Select(Check).ToArray() }).Where(b => b.Items.Count > 0).ToList();
 
         var unplaced = ids.Where(id => !shown.Contains(id)).ToList();
         if (unplaced.Count > 0)
         {
-            var columns = layout.Columns;
-            var target = layout.Bands.LastOrDefault() is { Mode: BandMode.Fit } last ? last : new BandLayout();
-            var span = Math.Min(ItemLayout.DefaultColumnSpan, columns);
-            var perRow = Math.Max(1, columns / span);
-            var bottom = Bottom(target.Items);
-            var added = unplaced.Select((id, index) => new ItemLayout
-            {
-                VisualId = id,
-                Column = index % perRow * span,
-                Row = bottom + index / perRow * ItemLayout.DefaultRowSpan,
-                ColumnSpan = span,
-            });
-            var filled = target with { Items = [.. target.Items, .. added] };
-            layout = layout with
-            {
-                Bands = ReferenceEquals(target, layout.Bands.LastOrDefault()) ? [.. layout.Bands.SkipLast(1), filled] : [.. layout.Bands, filled],
-            };
+            var lines = unplaced.Chunk(2).Select(pair => pair.Length == 1
+                ? LayoutNode.Item(pair[0])
+                : LayoutNode.Row(LayoutNode.Item(pair[0]), LayoutNode.Item(pair[1])));
+            if (bands.LastOrDefault() is { Mode: BandMode.Fit } last)
+                bands[^1] = last with { Items = [.. last.Items, .. lines] };
+            else
+                bands.Add(new BandLayout { Items = lines.ToArray() });
         }
-        if (layout.Bands.Count == 0)
-            layout = layout with { Bands = [new BandLayout { Items = [new ItemLayout { ColumnSpan = Math.Min(ItemLayout.DefaultColumnSpan, layout.Columns) }] }] };
-        return Normalize(layout);
+        if (bands.Count == 0) bands.Add(new BandLayout { Items = [LayoutNode.Item()] });
+        return Normalize(layout with { Bands = bands });
     }
 
-    /// <summary>Index of the band holding an item, or -1.</summary>
-    public static int BandOf(DashboardLayoutDefinition layout, string itemId)
+    // --- Finding ---
+
+    /// <summary>Index of the band holding a node, or -1.</summary>
+    public static int BandOf(DashboardLayoutDefinition layout, string nodeId) =>
+        layout.Bands.Select((b, i) => (b, i)).FirstOrDefault(x => x.b.Items.Any(n => n.Descendants().Any(d => d.Id == nodeId)), (null!, -1)).Item2;
+
+    public static LayoutNode? Find(DashboardLayoutDefinition layout, string nodeId) =>
+        layout.Bands.SelectMany(b => b.Items).SelectMany(n => n.Descendants()).FirstOrDefault(n => n.Id == nodeId);
+
+    /// <summary>The container holding a node, or null for a line of a grid band (or an item of another band).</summary>
+    public static LayoutNode? ParentOf(DashboardLayoutDefinition layout, string nodeId) =>
+        layout.Bands.SelectMany(b => b.Items).SelectMany(n => n.Descendants()).FirstOrDefault(n => n.Children.Any(c => c.Id == nodeId));
+
+    /// <summary>
+    /// The node whose width an item's width is: the item, or the stack it is in (and so on up), since a stack's
+    /// children take its whole width.
+    /// </summary>
+    public static LayoutNode? WidthNodeOf(DashboardLayoutDefinition layout, string itemId)
     {
-        for (var i = 0; i < layout.Bands.Count; i++)
-            if (layout.Bands[i].Items.Any(item => item.Id == itemId)) return i;
-        return -1;
+        var node = Find(layout, itemId);
+        while (node is not null && ParentOf(layout, node.Id) is { Split: SplitDirection.Column } stack) node = stack;
+        return node;
     }
 
-    public static ItemLayout? Find(DashboardLayoutDefinition layout, string itemId) =>
-        layout.Bands.SelectMany(b => b.Items).FirstOrDefault(i => i.Id == itemId);
+    /// <summary>True when an item has a size constraint (it is not fully greedy).</summary>
+    public static bool IsConstrained(DashboardLayoutDefinition layout, string itemId) =>
+        Find(layout, itemId) is { } item && (item.RowSpan is not null || item.Width is not null || WidthNodeOf(layout, itemId)?.ColumnSpan is not null);
 
     // --- Adding ---
 
-    /// <summary>Adds an item at the end of a band (below everything in a grid band); a new band is created past the last one.</summary>
-    public static DashboardLayoutDefinition Add(DashboardLayoutDefinition layout, int bandIndex, ItemLayout item)
+    /// <summary>Adds an item at the end of a band (a new line in a grid band); a new grid band is created past the last one.</summary>
+    public static DashboardLayoutDefinition Add(DashboardLayoutDefinition layout, int bandIndex, LayoutNode item) =>
+        InsertAt(layout, bandIndex, int.MaxValue, item);
+
+    /// <summary>
+    /// Inserts an item at position <paramref name="index"/> of a band: as a new line of a grid band (it takes the
+    /// whole width), or among the items of a scrolling or wrapping band. A new grid band is created past the last one.
+    /// </summary>
+    public static DashboardLayoutDefinition InsertAt(DashboardLayoutDefinition layout, int bandIndex, int index, LayoutNode item)
     {
         layout = Normalize(layout);
         if (bandIndex < 0 || bandIndex >= layout.Bands.Count)
             return InsertBand(layout, layout.Bands.Count, BandMode.Fit, [item]);
         var band = layout.Bands[bandIndex];
-        var added = band.Mode == BandMode.Fit
-            ? item with { Column = 0, Row = Bottom(band.Items), ColumnSpan = Math.Min(item.ColumnSpan, layout.Columns) }
-            : item;
-        return WithBand(layout, band with { Items = [.. band.Items, added] }, item.Id);
+        var items = band.Items.ToList();
+        items.Insert(Math.Clamp(index, 0, items.Count), Greedy(item));
+        return Normalize(WithBand(layout, band with { Items = items }));
     }
 
     /// <summary>
-    /// Adds an item next to another one (see <see cref="ItemSide"/>). In a grid band, an item added to the right or
-    /// left joins the anchor's line (<see cref="ItemLayout.DefaultColumnSpan"/> columns, the anchor's height): the
-    /// line's items move aside, and share the width equally when it is too narrow; a full-row anchor has no sides, the
-    /// item goes below or above it. Added below or above, the item takes the anchor's columns and pushes what is
-    /// under it down. In a scrolling or wrapping band, the new item comes right after (or before) the anchor, with its height.
+    /// Adds an item next to another node. In a grid band: on the anchor's left or right (above or below), the item
+    /// joins the anchor's container if it lays its children side by side (stacks them), otherwise the anchor and the
+    /// item are wrapped in a new container; when a line has no room left for one more column, its constraints are
+    /// dropped so that everyone shares it. In scrolling and wrapping bands, the item comes after (right, below) or
+    /// before (left, above) the anchor.
     /// </summary>
-    public static DashboardLayoutDefinition AddNextTo(DashboardLayoutDefinition layout, string anchorId, ItemSide side, ItemLayout item)
+    public static DashboardLayoutDefinition AddNextTo(DashboardLayoutDefinition layout, string anchorId, ItemSide side, LayoutNode item)
     {
         layout = Normalize(layout);
         var bandIndex = BandOf(layout, anchorId);
-        if (bandIndex < 0) return Add(layout, layout.Bands.Count - 1, item);
-        var anchor = Find(layout, anchorId)!;
-        var sideways = layout.Bands[bandIndex].Mode != BandMode.Fit || (IsSideways(side) && !anchor.IsFullRow);
-        var sized = sideways
-            ? item with { ColumnSpan = Math.Min(ItemLayout.DefaultColumnSpan, layout.Columns), RowSpan = anchor.RowSpan, IsFullRow = false }
-            : item with { ColumnSpan = anchor.ColumnSpan, RowSpan = ItemLayout.DefaultRowSpan, IsFullRow = false };
-        return PlaceNextTo(layout, bandIndex, anchor, side, sized);
+        return bandIndex < 0 ? Add(layout, layout.Bands.Count - 1, item) : Normalize(PlaceNextTo(layout, bandIndex, anchorId, side, Greedy(item)));
+    }
+
+    // --- Moving ---
+
+    /// <summary>
+    /// Moves an item next to another node, with the rules of <see cref="AddNextTo"/>. The item becomes greedy in width
+    /// and keeps its height. A band the item leaves empty disappears.
+    /// </summary>
+    public static DashboardLayoutDefinition MoveNextTo(DashboardLayoutDefinition layout, string itemId, string anchorId, ItemSide side)
+    {
+        layout = Normalize(layout);
+        if (itemId == anchorId || Find(layout, itemId) is not { IsItem: true } item || Find(layout, anchorId) is null) return layout;
+        // The anchor may be the container the item leaves: it is only merged away after the move
+        var without = Detach(layout, itemId);
+        var bandIndex = BandOf(without, anchorId);
+        if (bandIndex < 0) return layout;
+        var moved = PlaceNextTo(without, bandIndex, anchorId, side, Greedy(item));
+        return DropEmptiedBands(layout, Normalize(moved));
     }
 
     /// <summary>
-    /// Gives up the full row of an item to add another one to its right: in a grid band the item keeps half of the
-    /// columns and the new item takes the other half; in other bands the new item follows it.
+    /// Moves an item to position <paramref name="index"/> of a band: a new line of a grid band, or a place among the
+    /// items of a scrolling or wrapping band. The index refers to the band as it is before the move, so "insert before
+    /// the line (item) at index i" works within one band too.
     /// </summary>
-    public static DashboardLayoutDefinition SplitFullRow(DashboardLayoutDefinition layout, string itemId, ItemLayout item)
+    public static DashboardLayoutDefinition MoveTo(DashboardLayoutDefinition layout, string itemId, int bandIndex, int index)
     {
         layout = Normalize(layout);
-        var columns = layout.Columns;
-        var half = Math.Max(1, columns - Math.Min(ItemLayout.DefaultColumnSpan, columns / 2));
-        var isGrid = BandOf(layout, itemId) is var b and >= 0 && layout.Bands[b].Mode == BandMode.Fit;
-        layout = UpdateItem(layout, itemId, i => i with { IsFullRow = false, ColumnSpan = isGrid ? half : i.ColumnSpan });
-        return AddNextTo(layout, itemId, ItemSide.Right, item);
+        if (Find(layout, itemId) is not { IsItem: true } item || bandIndex < 0 || bandIndex >= layout.Bands.Count) return layout;
+        // Inserted first under a temporary id, so that the index is the one of the band before the move
+        var temporary = Guid.NewGuid().ToString("N");
+        var band = layout.Bands[bandIndex];
+        var items = band.Mode == BandMode.Fit ? band.Items.ToList() : band.Items.SelectMany(i => i.Items()).ToList();
+        items.Insert(Math.Clamp(index, 0, items.Count), Greedy(item) with { Id = temporary });
+        var inserted = Detach(WithBand(layout, band with { Items = items }), itemId);
+        var moved = Normalize(Rename(inserted, temporary, itemId));
+        return DropEmptiedBands(layout, moved);
+    }
+
+    // --- Sizes ---
+
+    /// <summary>
+    /// Constrains an item of a grid band: <paramref name="columnSpan"/> fixes its width (the width of the stack it is
+    /// in, if any), <paramref name="rowSpan"/> its height; null leaves a dimension as it is. A width never leaves less
+    /// than one column to each sibling.
+    /// </summary>
+    public static DashboardLayoutDefinition Resize(DashboardLayoutDefinition layout, string itemId, int? columnSpan, int? rowSpan)
+    {
+        layout = Normalize(layout);
+        if (Find(layout, itemId) is not { IsItem: true }) return layout;
+        if (rowSpan is { } rows) layout = Update(layout, itemId, i => i with { RowSpan = Math.Max(1, rows) });
+        if (columnSpan is { } span && WidthNodeOf(layout, itemId) is { } node)
+        {
+            var bandIndex = BandOf(layout, node.Id);
+            var columns = Columns(layout, bandIndex);
+            var parent = ParentOf(layout, node.Id);
+            var room = parent is null
+                ? layout.Columns
+                : columns[parent.Id].Span - parent.Children.Where(c => c.Id != node.Id).Sum(c => c.ColumnSpan ?? 1);
+            layout = Update(layout, node.Id, n => n with { ColumnSpan = Math.Clamp(span, 1, Math.Max(1, room)) });
+        }
+        return Normalize(layout);
+    }
+
+    /// <summary>Constrains an item of a scrolling or wrapping band: width in pixels and height in rows (null leaves them as they are).</summary>
+    public static DashboardLayoutDefinition ResizeWidth(DashboardLayoutDefinition layout, string itemId, double? width, int? rowSpan) =>
+        Normalize(Update(Normalize(layout), itemId, i => i with
+        {
+            Width = width is { } w ? Math.Max(MinWidth, w) : i.Width,
+            RowSpan = rowSpan is { } rows ? Math.Max(1, rows) : i.RowSpan,
+        }));
+
+    /// <summary>Removes the size constraints of an item: it is greedy again, in width and height.</summary>
+    public static DashboardLayoutDefinition SetAuto(DashboardLayoutDefinition layout, string itemId)
+    {
+        layout = Normalize(layout);
+        if (WidthNodeOf(layout, itemId) is { } node) layout = Update(layout, node.Id, n => n with { ColumnSpan = null });
+        return Normalize(Update(layout, itemId, i => i with { RowSpan = null, Width = null }));
+    }
+
+    /// <summary>Removes an item; its siblings take its room, and its band disappears when it was the last item.</summary>
+    public static DashboardLayoutDefinition Remove(DashboardLayoutDefinition layout, string itemId)
+    {
+        layout = Normalize(layout);
+        return DropEmptiedBands(layout, Normalize(Detach(layout, itemId)));
     }
 
     // --- Bands ---
 
-    /// <summary>Inserts a band holding <paramref name="items"/> at <paramref name="index"/>.</summary>
-    public static DashboardLayoutDefinition InsertBand(DashboardLayoutDefinition layout, int index, BandMode mode, IReadOnlyList<ItemLayout> items, string? bandId = null)
+    /// <summary>Inserts a band holding <paramref name="items"/> (one per line in a grid band) at <paramref name="index"/>.</summary>
+    public static DashboardLayoutDefinition InsertBand(DashboardLayoutDefinition layout, int index, BandMode mode, IReadOnlyList<LayoutNode> items, string? bandId = null)
     {
         layout = Normalize(layout);
-        var flowed = mode == BandMode.Fit ? Flow(items, layout.Columns) : items;
-        var band = new BandLayout { Id = bandId ?? Guid.NewGuid().ToString("N"), Mode = mode, Items = flowed };
-        return Normalize(layout with { Bands = Insert(layout.Bands, index, band) });
+        var band = new BandLayout { Id = bandId ?? Guid.NewGuid().ToString("N"), Mode = mode, Items = items.Select(Greedy).ToArray() };
+        var bands = layout.Bands.ToList();
+        bands.Insert(Math.Clamp(index, 0, bands.Count), band);
+        return Normalize(layout with { Bands = bands });
     }
 
     /// <summary>Removes a band and its items.</summary>
@@ -153,283 +234,165 @@ public static class DashboardLayoutEngine
         : Normalize(layout with { Bands = layout.Bands.Where((_, i) => i != index).ToArray() });
 
     /// <summary>
-    /// Changes how a band lays out its items. From a grid, items keep their order (top to bottom, left to right)
-    /// and get a width proportional to their column span; to a grid, they flow left to right with a column span
-    /// proportional to their width. Pass the band's actual width and the gap between items so that items keep their
-    /// size on screen.
+    /// Changes how a band lays out its items, keeping their order and their size on screen. To a grid, the lines are
+    /// those a wrapping band of <paramref name="bandWidth"/> would make; from a grid, items keep their width in pixels
+    /// when it was constrained, and stay greedy otherwise.
     /// </summary>
-    public static DashboardLayoutDefinition SetBandMode(DashboardLayoutDefinition layout, int index, BandMode mode, double bandWidth = ReferenceWidth, double gap = 0)
+    public static DashboardLayoutDefinition SetBandMode(
+        DashboardLayoutDefinition layout, int index, BandMode mode, double bandWidth = ReferenceWidth, double gap = 0, double minItemWidth = 280)
     {
         layout = Normalize(layout);
         if (index < 0 || index >= layout.Bands.Count || layout.Bands[index].Mode == mode) return layout;
         var band = layout.Bands[index];
-        var columns = layout.Columns;
         bandWidth = bandWidth > 0 ? bandWidth : ReferenceWidth;
-
-        // Same geometry as the grid: a span of s columns is s column widths plus the s - 1 gaps between them
-        var columnWidth = Math.Max(1, (bandWidth - (columns - 1) * gap) / columns);
-        IReadOnlyList<ItemLayout> items;
+        var settings = new ArrangeSettings(bandWidth, layout.Columns, layout.RowHeight, gap, minItemWidth);
+        IReadOnlyList<LayoutNode> items;
         if (band.Mode == BandMode.Fit)
         {
-            items = band.Items.OrderBy(i => i.Row).ThenBy(i => i.Column)
-                .Select(i => i with { Width = Math.Max(MinWidth, Math.Round(i.ColumnSpan * columnWidth + (i.ColumnSpan - 1) * gap)) })
-                .ToArray();
+            var columns = Columns(layout, index);
+            items = band.Items.SelectMany(i => i.Items()).Select(i => i with
+            {
+                ColumnSpan = null,
+                Width = WidthNodeOf(layout, i.Id) is { ColumnSpan: not null } node ? Math.Round(settings.WidthOf(columns[node.Id].Span)) : null,
+            }).ToArray();
         }
         else if (mode == BandMode.Fit)
         {
-            items = Flow(band.Items.Select(i => i with
+            // The lines a wrapping band makes, each item keeping its width in columns
+            var wrapped = BandArrangement.Arrange(band with { Mode = BandMode.Wrap }, settings);
+            items = band.Items.GroupBy(i => wrapped.Items[i.Id].Top).Select(line => Line(line.Select(i => i with
             {
-                ColumnSpan = Math.Clamp((int)Math.Round((i.Width + gap) / (columnWidth + gap)), 1, columns),
-            }).ToArray(), columns);
+                Width = null,
+                ColumnSpan = i.Width is { } w ? Math.Clamp((int)Math.Round((w + gap) / Math.Max(1, settings.ColumnWidth + gap)), 1, layout.Columns) : null,
+            }).ToArray())).ToArray();
         }
         else
         {
-            items = band.Items; // Scroll <-> Wrap: same order and widths
+            items = band.Items;
         }
-        return WithBand(layout, band with { Mode = mode, Items = items }, null);
-    }
-
-    // --- Moving and resizing ---
-
-    /// <summary>Moves an item to a cell of a grid band; the items it lands on move down.</summary>
-    public static DashboardLayoutDefinition Move(DashboardLayoutDefinition layout, string itemId, int bandIndex, int column, int row) =>
-        MoveCore(layout, itemId, bandIndex, (target, item) =>
-            [.. target.Items.Where(i => i.Id != itemId), item with { Column = column, Row = row }]);
-
-    /// <summary>
-    /// Moves an item to position <paramref name="index"/> of a scrolling or wrapping band. The index refers to the
-    /// band as it is before the move, so "insert before the item at index i" works within one band too.
-    /// </summary>
-    public static DashboardLayoutDefinition MoveTo(DashboardLayoutDefinition layout, string itemId, int bandIndex, int index) =>
-        MoveCore(layout, itemId, bandIndex, (target, item) =>
-        {
-            // The moved item is first replaced by a placeholder so that indexes stay those of the original band
-            var items = target.Items.Select(i => i.Id == itemId ? null : i).ToList();
-            items.Insert(Math.Clamp(index, 0, items.Count), item);
-            return items.OfType<ItemLayout>().ToArray();
-        });
-
-    /// <summary>
-    /// Moves an item next to another one, with the rules of <see cref="AddNextTo"/>, the item keeping its size when
-    /// there is room. A band the item leaves empty disappears.
-    /// </summary>
-    public static DashboardLayoutDefinition MoveNextTo(DashboardLayoutDefinition layout, string itemId, string anchorId, ItemSide side)
-    {
-        layout = Normalize(layout);
-        var bandIndex = BandOf(layout, anchorId);
-        if (itemId == anchorId || bandIndex < 0 || Find(layout, itemId) is not { } item) return layout;
-        // The item leaves its band first (it may be the anchor's line); emptied bands are dropped after the placement,
-        // so that band indexes stay valid
-        var without = layout with { Bands = layout.Bands.Select(b => b with { Items = b.Items.Where(i => i.Id != itemId).ToArray() }).ToArray() };
-        var placed = PlaceNextTo(without, bandIndex, Find(without, anchorId)!, side, item);
-        return placed with { Bands = placed.Bands.Where((b, i) => b.Items.Count > 0 || layout.Bands[i].Items.Count == 0).ToArray() };
-    }
-
-    /// <summary>Changes the columns and rows an item covers in a grid band; the items it now overlaps move down.</summary>
-    public static DashboardLayoutDefinition Resize(DashboardLayoutDefinition layout, string itemId, int columnSpan, int rowSpan) =>
-        UpdateItem(Normalize(layout), itemId, i => i with { ColumnSpan = columnSpan, RowSpan = rowSpan });
-
-    /// <summary>Changes the width and height of an item in a scrolling or wrapping band.</summary>
-    public static DashboardLayoutDefinition ResizeWidth(DashboardLayoutDefinition layout, string itemId, double width, int rowSpan) =>
-        UpdateItem(Normalize(layout), itemId, i => i with { Width = width, RowSpan = rowSpan });
-
-    /// <summary>
-    /// Makes an item take the whole width of its band. Turned off, the item keeps its current size and can then be
-    /// narrowed to make room for others.
-    /// </summary>
-    public static DashboardLayoutDefinition SetFullRow(DashboardLayoutDefinition layout, string itemId, bool isFullRow)
-    {
-        layout = Normalize(layout);
-        return UpdateItem(layout, itemId, i => isFullRow
-            ? i with { IsFullRow = true }
-            : i with { IsFullRow = false, ColumnSpan = i.IsFullRow ? layout.Columns : i.ColumnSpan });
-    }
-
-    /// <summary>Removes an item; its band disappears when it was the last one.</summary>
-    public static DashboardLayoutDefinition Remove(DashboardLayoutDefinition layout, string itemId)
-    {
-        layout = Normalize(layout);
-        var bands = layout.Bands
-            .Select(b => b with { Items = b.Items.Where(i => i.Id != itemId).ToArray() })
-            .Where((b, index) => b.Items.Count > 0 || layout.Bands[index].Items.Count == 0)
-            .ToArray();
-        return Normalize(layout with { Bands = bands });
+        return Normalize(WithBand(layout, band with { Mode = mode, Items = items }));
     }
 
     // --- Helpers ---
 
-    private static DashboardLayoutDefinition MoveCore(
-        DashboardLayoutDefinition layout, string itemId, int bandIndex, Func<BandLayout, ItemLayout, IReadOnlyList<ItemLayout>> insert)
-    {
-        layout = Normalize(layout);
-        if (Find(layout, itemId) is not { } item || bandIndex < 0 || bandIndex >= layout.Bands.Count) return layout;
+    /// <summary>The grid columns covered by every node of a grid band.</summary>
+    private static IReadOnlyDictionary<string, (int Start, int Span)> Columns(DashboardLayoutDefinition layout, int bandIndex) =>
+        BandArrangement.Arrange(layout.Bands[bandIndex] with { Mode = BandMode.Fit }, new ArrangeSettings(ReferenceWidth, layout.Columns, layout.RowHeight, 0, 1)).Columns;
 
-        // The item leaves every other band; the target band places it (and drops its previous copy).
-        // A band the item leaves empty disappears.
-        var bands = layout.Bands.Select((b, i) =>
-            i == bandIndex ? b with { Items = insert(b, item) }
-            : b with { Items = b.Items.Where(x => x.Id != itemId).ToArray() })
-            .Where((b, i) => b.Items.Count > 0 || layout.Bands[i].Items.Count == 0)
-            .ToArray();
-        return WithBands(layout, bands, itemId);
-    }
+    private static LayoutNode Greedy(LayoutNode node) => node with { ColumnSpan = null };
 
-    private static bool IsSideways(ItemSide side) => side is ItemSide.Right or ItemSide.Left;
+    private static LayoutNode Line(LayoutNode[] items) => items.Length == 1 ? items[0] : LayoutNode.Row(items);
 
-    private static DashboardLayoutDefinition PlaceNextTo(DashboardLayoutDefinition layout, int bandIndex, ItemLayout anchor, ItemSide side, ItemLayout item)
+    private static DashboardLayoutDefinition PlaceNextTo(DashboardLayoutDefinition layout, int bandIndex, string anchorId, ItemSide side, LayoutNode item)
     {
         var band = layout.Bands[bandIndex];
         var after = side is ItemSide.Right or ItemSide.Below;
         if (band.Mode != BandMode.Fit)
         {
-            var index = band.Items.ToList().IndexOf(anchor) + (after ? 1 : 0);
-            return WithBand(layout, band with { Items = Insert(band.Items, index, item) }, null);
+            var items = band.Items.SelectMany(i => i.Items()).ToList();
+            var anchor = Math.Max(0, items.FindIndex(i => i.Descendants().Any(d => d.Id == anchorId)));
+            items.Insert(anchor + (after ? 1 : 0), item);
+            return WithBand(layout, band with { Items = items });
         }
 
-        var columns = layout.Columns;
-        if (IsSideways(side) && !anchor.IsFullRow && !item.IsFullRow
-            && InLine(band.Items, anchor, item with { Row = anchor.Row }, after, columns) is { } line)
+        var sideways = side is ItemSide.Right or ItemSide.Left;
+        var parent = ParentOf(layout, anchorId);
+        // The lines of a grid band are stacked: they behave as a stack's children
+        var direction = parent?.Split ?? SplitDirection.Column;
+        if (direction == (sideways ? SplitDirection.Row : SplitDirection.Column))
         {
-            var others = band.Items.Where(i => line.All(l => l.Id != i.Id));
-            return WithBand(layout, band with { Items = [.. others, .. line] }, item.Id);
-        }
-        // Above or below, or no room on the sides: the item takes the anchor's place, or the line under it
-        var placed = item with
-        {
-            Column = anchor.Column,
-            Row = after ? anchor.Row + anchor.RowSpan : anchor.Row,
-            ColumnSpan = item.IsFullRow ? columns : Math.Min(item.ColumnSpan, columns),
-        };
-        return WithBand(layout, band with { Items = [.. band.Items, placed] }, placed.Id);
-    }
-
-    /// <summary>
-    /// The anchor's line (the items starting on its row) with <paramref name="item"/> inserted next to the anchor:
-    /// items move aside as little as possible; when the line is too narrow, they all share the columns equally.
-    /// Null when even that does not fit (more items than columns).
-    /// </summary>
-    private static IReadOnlyList<ItemLayout>? InLine(IReadOnlyList<ItemLayout> items, ItemLayout anchor, ItemLayout item, bool after, int columns)
-    {
-        var line = items.Where(i => i.Row == anchor.Row && !i.IsFullRow).OrderBy(i => i.Column).ToList();
-        var at = line.FindIndex(i => i.Id == anchor.Id) + (after ? 1 : 0);
-        var start = at == 0 ? line[0].Column : line[at - 1].Column + line[at - 1].ColumnSpan;
-        line.Insert(at, item with { Column = start, ColumnSpan = Math.Clamp(item.ColumnSpan, 1, columns) });
-
-        if (line.Sum(i => i.ColumnSpan) > columns)
-        {
-            if (line.Count > columns) return null;
-            // Equal shares, the remainder going to the first items
-            var share = columns / line.Count;
-            var extra = columns % line.Count;
-            return line.Select((i, k) => i with { Column = k * share + Math.Min(k, extra), ColumnSpan = share + (k < extra ? 1 : 0) }).ToArray();
-        }
-        // Push right what overlaps, then back left from the edge what overflows
-        var placed = new ItemLayout[line.Count];
-        for (int k = 0, cursor = 0; k < line.Count; k++)
-        {
-            placed[k] = line[k] with { Column = Math.Max(line[k].Column, cursor) };
-            cursor = placed[k].Column + placed[k].ColumnSpan;
-        }
-        for (int k = line.Count - 1, limit = columns; k >= 0; k--)
-        {
-            placed[k] = placed[k] with { Column = Math.Min(placed[k].Column, limit - placed[k].ColumnSpan) };
-            limit = placed[k].Column;
-        }
-        return placed;
-    }
-
-    private static DashboardLayoutDefinition UpdateItem(DashboardLayoutDefinition layout, string itemId, Func<ItemLayout, ItemLayout> change) =>
-        WithBands(layout, layout.Bands.Select(b => b with { Items = b.Items.Select(i => i.Id == itemId ? change(i) : i).ToArray() }).ToArray(), itemId);
-
-    private static DashboardLayoutDefinition WithBand(DashboardLayoutDefinition layout, BandLayout band, string? priorityId) =>
-        WithBands(layout, layout.Bands.Select(b => b.Id == band.Id ? band : b).ToArray(), priorityId);
-
-    /// <summary>Applies new bands; the band holding <paramref name="priorityId"/> is arranged with that item first.</summary>
-    private static DashboardLayoutDefinition WithBands(DashboardLayoutDefinition layout, IReadOnlyList<BandLayout> bands, string? priorityId)
-    {
-        var columns = layout.Columns;
-        var arranged = bands.Select(b => priorityId is not null && b.Mode == BandMode.Fit && b.Items.Any(i => i.Id == priorityId)
-            ? b with { Items = Arranged(BandMode.Fit, b.Items.Select(i => Clamp(i, BandMode.Fit, columns)).ToList(), priorityId) }
-            : b).ToArray();
-        return Normalize(layout with { Bands = arranged });
-    }
-
-    /// <summary>Places items left to right on grid lines, in their order.</summary>
-    private static IReadOnlyList<ItemLayout> Flow(IReadOnlyList<ItemLayout> items, int columns)
-    {
-        var flowed = new List<ItemLayout>();
-        int column = 0, row = 0, lineHeight = 0;
-        foreach (var item in items)
-        {
-            var span = item.IsFullRow ? columns : Math.Clamp(item.ColumnSpan, 1, columns);
-            if (column + span > columns)
+            if (parent is null)
             {
-                column = 0;
-                row += lineHeight;
-                lineHeight = 0;
+                var lines = band.Items.ToList();
+                lines.Insert(lines.FindIndex(l => l.Id == anchorId) + (after ? 1 : 0), item);
+                return WithBand(layout, band with { Items = lines });
             }
-            flowed.Add(item with { Column = column, Row = row, ColumnSpan = span });
-            column += span;
-            lineHeight = Math.Max(lineHeight, item.RowSpan);
-        }
-        return flowed;
-    }
-
-    private static IReadOnlyList<ItemLayout> Arranged(BandMode mode, List<ItemLayout> items, string? priorityId) =>
-        mode == BandMode.Fit ? Arrange(items, priorityId) : items;
-
-    /// <summary>
-    /// Removes overlaps and gaps in a grid band. The priority item (just moved, resized or added) keeps its place
-    /// first; the others, from top to bottom, are pushed below what they overlap. Then every item floats up as long
-    /// as nothing is above it, without ever jumping over another item.
-    /// </summary>
-    private static IReadOnlyList<ItemLayout> Arrange(List<ItemLayout> items, string? priorityId)
-    {
-        var placed = new List<ItemLayout>();
-        var priority = priorityId is null ? null : items.FirstOrDefault(i => i.Id == priorityId);
-        if (priority is not null) placed.Add(priority);
-        foreach (var item in items.Where(i => !ReferenceEquals(i, priority)).OrderBy(i => i.Row).ThenBy(i => i.Column))
-        {
-            var row = item.Row;
-            while (Collides(item with { Row = row }, placed)) row++;
-            placed.Add(item with { Row = row });
+            var children = parent.Children.ToList();
+            children.Insert(children.FindIndex(c => c.Id == anchorId) + (after ? 1 : 0), item);
+            if (direction == SplitDirection.Row)
+            {
+                // No column left for the newcomer: everyone shares the line
+                var span = Columns(layout, bandIndex)[parent.Id].Span;
+                if (children.Sum(c => c.ColumnSpan ?? 1) > span) children = children.Select(c => c with { ColumnSpan = null }).ToList();
+            }
+            return Update(layout, parent.Id, p => p with { Children = children });
         }
 
-        var compacted = new List<ItemLayout>();
-        foreach (var item in placed.OrderBy(i => i.Row).ThenBy(i => i.Column))
+        // Across the container: the anchor and the item make a new container in its place
+        return Update(layout, anchorId, anchor =>
         {
-            var row = item.Row;
-            while (row > 0 && !Collides(item with { Row = row - 1 }, compacted)) row--;
-            compacted.Add(item with { Row = row });
+            LayoutNode[] pair = after ? [anchor, item] : [item, anchor];
+            if (sideways) return LayoutNode.Row(pair);
+            // A stack takes the width its first child had in the line
+            var stack = LayoutNode.Column(after ? [anchor with { ColumnSpan = null }, item] : [item, anchor with { ColumnSpan = null }]);
+            return stack with { ColumnSpan = anchor.ColumnSpan };
+        });
+    }
+
+    /// <summary>Removes a node without merging anything (containers it leaves empty or alone are merged by <see cref="Normalize"/>).</summary>
+    private static DashboardLayoutDefinition Detach(DashboardLayoutDefinition layout, string nodeId) =>
+        layout with { Bands = layout.Bands.Select(b => b with { Items = Without(b.Items, nodeId) }).ToArray() };
+
+    private static IReadOnlyList<LayoutNode> Without(IReadOnlyList<LayoutNode> nodes, string nodeId) =>
+        nodes.Where(n => n.Id != nodeId).Select(n => n.IsItem ? n : n with { Children = Without(n.Children, nodeId) }).ToArray();
+
+    private static DashboardLayoutDefinition Update(DashboardLayoutDefinition layout, string nodeId, Func<LayoutNode, LayoutNode> change)
+    {
+        IReadOnlyList<LayoutNode> Map(IReadOnlyList<LayoutNode> nodes) =>
+            nodes.Select(n => n.Id == nodeId ? change(n) : n.IsItem ? n : n with { Children = Map(n.Children) }).ToArray();
+        return layout with { Bands = layout.Bands.Select(b => b with { Items = Map(b.Items) }).ToArray() };
+    }
+
+    private static DashboardLayoutDefinition Rename(DashboardLayoutDefinition layout, string from, string to) => Update(layout, from, n => n with { Id = to });
+
+    private static DashboardLayoutDefinition WithBand(DashboardLayoutDefinition layout, BandLayout band) =>
+        layout with { Bands = layout.Bands.Select(b => b.Id == band.Id ? band : b).ToArray() };
+
+    /// <summary>Removes the bands an operation emptied (bands that were already empty stay).</summary>
+    private static DashboardLayoutDefinition DropEmptiedBands(DashboardLayoutDefinition before, DashboardLayoutDefinition after) =>
+        after with { Bands = after.Bands.Where(b => b.Items.Count > 0 || before.Bands.Any(o => o.Id == b.Id && o.Items.Count == 0)).ToArray() };
+
+    private static IReadOnlyList<LayoutNode> NormalizeBand(BandMode mode, IReadOnlyList<LayoutNode> items, int columns)
+    {
+        if (mode != BandMode.Fit)
+            return items.SelectMany(i => i.Items()).Select(i => Clamp(i with { ColumnSpan = null }, columns)).ToArray();
+        // Lines behave as the children of a stack: a stack among them is split into lines
+        return items.SelectMany(i => Simplify(i, columns))
+            .SelectMany(l => l.Split == SplitDirection.Column ? l.Children : [l])
+            .Select(l => l.IsItem ? l : l with { ColumnSpan = null })
+            .ToArray();
+    }
+
+    private static IEnumerable<LayoutNode> Simplify(LayoutNode node, int columns)
+    {
+        if (node.IsItem)
+        {
+            yield return Clamp(node, columns);
+            yield break;
         }
-        // Keep the original order of the items (it is the save order)
-        return items.Select(i => compacted.First(c => c.Id == i.Id)).ToArray();
-    }
-
-    private static bool Collides(ItemLayout item, IEnumerable<ItemLayout> others) => others.Any(o =>
-        o.Id != item.Id
-        && item.Column < o.Column + o.ColumnSpan && o.Column < item.Column + item.ColumnSpan
-        && item.Row < o.Row + o.RowSpan && o.Row < item.Row + item.RowSpan);
-
-    private static int Bottom(IEnumerable<ItemLayout> items) => items.Select(i => i.Row + i.RowSpan).DefaultIfEmpty(0).Max();
-
-    private static ItemLayout Clamp(ItemLayout item, BandMode mode, int columns)
-    {
-        item = item with { RowSpan = Math.Max(1, item.RowSpan), Width = Math.Max(MinWidth, item.Width) };
-        if (mode != BandMode.Fit) return item;
-        var span = item.IsFullRow ? columns : Math.Clamp(item.ColumnSpan, 1, columns);
-        return item with
+        var split = node.Split!.Value;
+        var children = node.Children
+            .SelectMany(c => Simplify(c, columns))
+            // A container of the same direction as its parent adds nothing: its children join the parent
+            .SelectMany(c => c.Split == split ? c.Children : [c])
+            // Constraints that mean nothing here: a width inside a stack, the height of a container side by side
+            .Select(c => split == SplitDirection.Column ? c with { ColumnSpan = null } : c.IsItem ? c : c with { RowSpan = null })
+            .ToArray();
+        if (children.Length == 0) yield break;
+        // A container with one child is that child, unless its constraint along the container would be lost
+        if (children.Length == 1 && (split == SplitDirection.Row ? children[0].ColumnSpan : children[0].RowSpan) is null)
         {
-            ColumnSpan = span,
-            Column = item.IsFullRow ? 0 : Math.Clamp(item.Column, 0, columns - span),
-            Row = Math.Max(0, item.Row),
-        };
+            var child = children[0];
+            yield return child with { ColumnSpan = child.ColumnSpan ?? node.ColumnSpan, RowSpan = child.RowSpan ?? node.RowSpan };
+            yield break;
+        }
+        yield return node with { Children = children, Width = null, VisualId = null };
     }
 
-    private static T[] Insert<T>(IReadOnlyList<T> items, int index, T item)
+    private static LayoutNode Clamp(LayoutNode node, int columns) => node with
     {
-        var list = items.ToList();
-        list.Insert(Math.Clamp(index, 0, list.Count), item);
-        return [.. list];
-    }
+        ColumnSpan = node.ColumnSpan is { } span ? Math.Clamp(span, 1, columns) : null,
+        RowSpan = node.RowSpan is { } rows ? Math.Max(1, rows) : null,
+        Width = node.Width is { } width ? Math.Max(MinWidth, width) : null,
+    };
 }

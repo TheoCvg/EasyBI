@@ -77,9 +77,6 @@ public partial class DashboardView : UserControl
     /// <summary>Raised when a text should be edited.</summary>
     public event EventHandler<TextEditRequestedEventArgs>? TextEditRequested;
 
-    /// <summary>Raised when an item is added next to a full-row item.</summary>
-    public event EventHandler<FullRowSplitRequestedEventArgs>? FullRowSplitRequested;
-
     /// <summary>Raised before an item is removed.</summary>
     public event EventHandler<ItemRemovingEventArgs>? ItemRemoving;
 
@@ -128,6 +125,7 @@ public partial class DashboardView : UserControl
     public static IReadOnlyList<Behavior> CreateDefaultBehaviors() =>
     [
         new AddButtonsBehavior(),
+        new FreeSpaceBehavior(),
         new MoveBehavior(),
         new ResizeBehavior(),
         new ItemToolbarBehavior(),
@@ -176,7 +174,6 @@ public partial class DashboardView : UserControl
                 if (visual is not null && existing.Remove(visual.Id, out var kept))
                 {
                     kept.Visual = visual;
-                    kept.IsFullRowSplitPending = false;
                     return kept;
                 }
                 return NewItem(visual);
@@ -194,9 +191,8 @@ public partial class DashboardView : UserControl
     public DashboardDocument Capture()
     {
         var layout = DashboardLayout.GetLayout(Panel, e => (e as DashboardItem)?.Visual?.Id);
-        // Visuals are saved in display order
-        var visuals = Panel.Children.Cast<UIElement>()
-            .OrderBy(Panel.BandIndexOf).ThenBy(DashboardPanel.GetRow).ThenBy(DashboardPanel.GetColumn)
+        // Visuals are saved in reading order
+        var visuals = Enumerable.Range(0, Panel.BandCount).SelectMany(Panel.ChildrenOf)
             .OfType<DashboardItem>().Select(i => i.Visual).OfType<VisualDefinition>().ToArray();
         return new DashboardDocument { Report = _report with { Visuals = visuals }, Layout = layout };
     }
@@ -267,38 +263,30 @@ public partial class DashboardView : UserControl
 
     // --- Items ---
 
-    /// <summary>
-    /// Adds an empty item to the right of (or below) another one. Next to a full-row item, <see cref="FullRowSplitRequested"/>
-    /// is raised first; without a handler, the item shows its banner and nothing is added yet (returns null).
-    /// </summary>
-    public DashboardItem? AddNextTo(DashboardItem anchor, ItemSide side)
+    /// <summary>Adds an empty item next to another one (see <see cref="DashboardLayoutEngine.AddNextTo"/>).</summary>
+    public DashboardItem AddNextTo(DashboardItem anchor, ItemSide side)
     {
-        if (side is ItemSide.Right or ItemSide.Left && DashboardPanel.GetIsFullRow(anchor))
-        {
-            var args = new FullRowSplitRequestedEventArgs(anchor, () => SplitFullRow(anchor));
-            FullRowSplitRequested?.Invoke(this, args);
-            if (!args.Handled) anchor.IsFullRowSplitPending = true;
-            return null;
-        }
         var item = NewItem(null);
         DashboardLayout.AddNextTo(anchor, item, side);
         return item;
     }
 
-    /// <summary>Gives up the full row of an item and adds an empty item next to it.</summary>
-    public DashboardItem SplitFullRow(DashboardItem anchor)
+    /// <summary>Adds an empty item in a free space: it takes the room left by its constrained neighbours.</summary>
+    public DashboardItem AddIn(DashboardFreeSpace space)
     {
-        anchor.IsFullRowSplitPending = false;
         var item = NewItem(null);
-        DashboardLayout.SplitFullRow(anchor, item);
+        DashboardLayout.AddNextTo(Panel, space.AnchorId, item, space.Side);
         return item;
     }
 
     /// <summary>Adds an empty item at the end of a band.</summary>
-    public DashboardItem AddItem(int band)
+    public DashboardItem AddItem(int band) => InsertLine(band, int.MaxValue);
+
+    /// <summary>Inserts a line holding an empty item before line <paramref name="index"/> of a grid band (a position in other bands).</summary>
+    public DashboardItem InsertLine(int band, int index)
     {
         var item = NewItem(null);
-        DashboardLayout.Add(Panel, item, band);
+        DashboardLayout.InsertAt(Panel, item, band, index);
         return item;
     }
 
@@ -317,7 +305,8 @@ public partial class DashboardView : UserControl
         return true;
     }
 
-    public void SetFullRow(DashboardItem item, bool isFullRow) => DashboardLayout.SetFullRow(item, isFullRow);
+    /// <summary>Removes the size constraints of an item: it takes the room its neighbours leave again.</summary>
+    public void SetAutoSize(DashboardItem item) => DashboardLayout.SetAuto(item);
 
     /// <summary>Shows a visual (chart, text or image) in an item; null empties it.</summary>
     public void SetVisual(DashboardItem item, VisualDefinition? visual)
@@ -445,14 +434,9 @@ public partial class DashboardView : UserControl
         BindItem(DashboardCommands.AddImage, PickImage);
         BindItem(DashboardCommands.EditItem, EditItem);
         BindItem(DashboardCommands.RemoveItem, item => Remove(item));
-        BindItem(DashboardCommands.ToggleFullRow, item => SetFullRow(item, !DashboardPanel.GetIsFullRow(item)));
+        BindItem(DashboardCommands.ResetSize, SetAutoSize);
         BindItem(DashboardCommands.AddRight, item => AddNextTo(item, ItemSide.Right));
         BindItem(DashboardCommands.AddBelow, item => AddNextTo(item, ItemSide.Below));
-        BindItem(DashboardCommands.ConfirmFullRowSplit, item => SplitFullRow(item));
-        // Cancelling only hides the banner: allowed even read-only
-        CommandBindings.Add(new CommandBinding(DashboardCommands.CancelFullRowSplit,
-            (_, e) => { if (Target(e) is { } item) item.IsFullRowSplitPending = false; },
-            (_, e) => e.CanExecute = Target(e) is not null));
         BindBand(DashboardCommands.InsertBand, index => InsertBand(index));
         BindBand(DashboardCommands.RemoveBand, RemoveBand);
     }

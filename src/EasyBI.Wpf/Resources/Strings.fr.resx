@@ -168,14 +168,14 @@
   <data name="AddBand" xml:space="preserve">
     <value>Ajouter une bande ici</value>
   </data>
-  <data name="FullRow" xml:space="preserve">
-    <value>Pleine ligne</value>
+  <data name="AddLine" xml:space="preserve">
+    <value>Ajouter une ligne ici</value>
   </data>
-  <data name="FullRowWarning" xml:space="preserve">
-    <value>Cet élément occupe toute la ligne. Ajouter un élément à côté retire ce réglage.</value>
+  <data name="AddHere" xml:space="preserve">
+    <value>Ajouter un élément ici</value>
   </data>
-  <data name="FullRowProceed" xml:space="preserve">
-    <value>Retirer la pleine ligne et ajouter</value>
+  <data name="AutoSize" xml:space="preserve">
+    <value>Taille automatique : prendre la place disponible</value>
   </data>
   <data name="EditorTitle" xml:space="preserve">
     <value>Visuel</value>

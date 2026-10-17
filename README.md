@@ -98,44 +98,62 @@ They query no model and are drawn by the built-in `TextRenderer` and `ImageRende
 Arranging visuals is a WPF concern: the report (`easybi/v1`) never contains a layout. The dashboard is
 built in three layers, each usable on its own.
 
-**`DashboardPanel`** is a `Panel`, like a `Canvas` or a `Grid`: a stack of bands, each with a mode, and
-children placed by attached properties.
+**The layout** (`DashboardLayoutDefinition`) is a stack of bands, each with a mode. Its items are **greedy**:
+without a constraint, they share the room their neighbours leave, so a dashboard never has a gap.
 
-```xml
-<bi:DashboardPanel Columns="12" RowHeight="110">
-    <bi:DashboardPanel.Bands>
-        <bi:DashboardBand Mode="Fit" />    <!-- 12-column grid, items span rows and columns -->
-        <bi:DashboardBand Mode="Scroll" /> <!-- fixed-width items, horizontal scrolling -->
-        <bi:DashboardBand Mode="Wrap" />   <!-- fixed-width items, wrapping -->
-    </bi:DashboardPanel.Bands>
-    <Border bi:DashboardPanel.Band="0" bi:DashboardPanel.ColumnSpan="8" bi:DashboardPanel.RowSpan="2" />
-    <Border bi:DashboardPanel.Band="1" bi:DashboardPanel.ItemWidth="360" />
-    <Border bi:DashboardPanel.Band="0" bi:DashboardPanel.IsFullRow="True" />
-</bi:DashboardPanel>
+- **Fit** bands are a grid of 12 columns that fills the width. A band is a stack of lines; a line is an item, or a
+  container (`LayoutNode.Row`: side by side, `LayoutNode.Column`: stacked) of items and containers. Along a
+  container, constrained children keep their size (`ColumnSpan` in columns, `RowSpan` in rows) and the others share
+  the rest; across it, every child takes the whole room. An item with a `RowSpan` sets the height of its line and the
+  items next to it stretch, so items stacked beside a tall item share its height.
+- **Wrap** bands start their items at `DashboardPanel.MinItemWidth` (or their fixed `Width` in pixels), break lines
+  when the next one does not fit, then share what is left on each line. **Scroll** bands do the same on one line,
+  and scroll horizontally when the items do not fit.
+- A container whose children are all constrained leaves a **free space**, which the dashboard offers to fill.
+
+```csharp
+new DashboardLayoutDefinition
+{
+    Bands =
+    [
+        new BandLayout
+        {
+            Items =
+            [
+                new LayoutNode { VisualId = title.Id, RowSpan = 1 },                                // a whole line
+                LayoutNode.Row(
+                    new LayoutNode { VisualId = map.Id, ColumnSpan = 6, RowSpan = 6 },               // left half, 2 lines high
+                    LayoutNode.Column(LayoutNode.Item(sales.Id), LayoutNode.Item(margin.Id))),       // stacked beside it
+            ],
+        },
+        new BandLayout { Mode = BandMode.Scroll, Items = [LayoutNode.Item(a.Id), new LayoutNode { VisualId = b.Id, Width = 360 }] },
+    ],
+};
 ```
 
-**`DashboardLayout`** is the static class that moves children while keeping the layout consistent (no
-overlap in a grid band, items pushed down then floated up, emptied bands removed): `Move`, `MoveTo`,
-`MoveNextTo`, `Resize`, `ResizeWidth`, `SetFullRow`, `AddNextTo`, `SplitFullRow`, `Remove`, `InsertBand`,
-`RemoveBand`, `SetBandMode`, plus `Update` for custom operations, `Capture` (snapshot to restore) and
-`GetLayout` / `SetLayout` (to save and restore). The rules themselves are pure functions on records in
-`DashboardLayoutEngine`, usable without any UI.
+**`DashboardPanel`** shows a layout (`Layout` property); children are matched to its items by the attached
+`DashboardPanel.ItemId`. The geometry itself is a pure function (`BandArrangement.Arrange`), and the panel exposes
+hit tests for interactions (`EdgeAt`, `FlowIndexAt`, `FreeSpaces`, and `CaptureGeometry` to hit-test the layout from
+before a drag).
 
-`AddNextTo` and `MoveNextTo` place an item next to another one (`ItemSide.Right`, `Left`, `Below`, `Above`). In a
-grid band, on the right or left the item joins the anchor's line: the line's items move aside, and share the columns
-equally when the line is too narrow (`[A][B]` + X between them gives `[A][X][B]` on 4 columns each); below or above,
-it takes the anchor's columns and what is under it moves down. A full-row anchor has no sides. `DashboardPanel.EdgeAt`
-finds the item edge under a point (`SideAt` for the rule).
+**`DashboardLayout`** is the static class that changes a panel's layout while keeping it consistent: `AddNextTo`,
+`MoveNextTo` (`ItemSide.Right`, `Left`, `Below`, `Above`), `InsertAt` / `MoveTo` (a new line), `Resize`,
+`ResizeWidth`, `SetAuto`, `Remove`, `InsertBand`, `RemoveBand`, `SetBandMode`, plus `Update` for custom
+operations, `Capture` (snapshot to restore) and `GetLayout` / `SetLayout` (to save and restore). Next to an item, a
+side along its container joins it (the line's columns are shared when it has no room left), a side across it
+wraps the item and the newcomer in a new container. The rules are pure functions on records in
+`DashboardLayoutEngine`, usable without any UI.
 
 **`DashboardView`** is the ready-made `UserControl`: `DashboardItem`s showing visuals in a
 `DashboardPanel`, with every interaction provided by a **behavior** (Microsoft.Xaml.Behaviors):
 
 | Behavior | Feature |
 |---|---|
-| `AddButtonsBehavior` | "+" on the right and bottom edges of an item, "+" between bands |
-| `MoveBehavior` | grip to drag an item: a picture follows the pointer and a placeholder shows where it lands, the others making room live; near an item's edge it goes next to it (like "+"), elsewhere on the cell under it; across bands, auto-scroll near the edges; Escape cancels |
-| `ResizeBehavior` | corner handle: cells in a grid band, pixels and rows elsewhere |
-| `ItemToolbarBehavior` | full row, edit, remove; text size, bold, alignment; image fit |
+| `AddButtonsBehavior` | "+" on the right and bottom edges of an item, "+" between lines and between bands |
+| `FreeSpaceBehavior` | fills free spaces with a placeholder that adds an item there |
+| `MoveBehavior` | grip to drag an item: a picture follows the pointer and a placeholder shows where it lands, the others making room live; near an item's edge it goes next to it (like "+"), between two lines it becomes a line, over a free space it fills it; across bands, auto-scroll near the edges; Escape cancels |
+| `ResizeBehavior` | corner handle: constrains the item (columns and rows in a grid band, pixels and rows elsewhere) |
+| `ItemToolbarBehavior` | automatic size (for a resized item), edit, remove; text size, bold, alignment; image fit |
 | `BandMenuBehavior` | ⋮ menu of a band: Fit / Scroll / Wrap, insert, remove (`MenuOpening` to customize it) |
 | `BandScrollBehavior` | scroll bar and Shift+wheel for scrolling bands |
 | `TextEditBehavior` | double-click a text to edit it in place |
@@ -153,15 +171,15 @@ finds the item edge under a point (`SideAt` for the rule).
 Hooks for applications:
 
 - events `EditVisualRequested` (replace the built-in designer dialog), `ImageRequested` (replace the file
-  dialog), `FullRowSplitRequested` (ask yourself before giving up a full row; by default the item shows a
-  banner), `TextEditRequested`, `ItemRemoving` (veto), `Changed` (every change, with the documents before
+  dialog), `TextEditRequested`, `ItemRemoving` (veto), `Changed` (every change, with the documents before
   and after), `DocumentLoaded`;
-- `DashboardCommands` (`AddVisual`, `AddText`, `AddImage`, `EditItem`, `RemoveItem`, `ToggleFullRow`,
+- `DashboardCommands` (`AddVisual`, `AddText`, `AddImage`, `EditItem`, `RemoveItem`, `ResetSize`,
   `AddRight`, `AddBelow`, `InsertBand`, `RemoveBand`...) for custom templates, and public methods
-  (`AddNextTo`, `SetVisual`, `InsertBand`, `BeginEdit` to group changes into one undo step...);
+  (`AddNextTo`, `AddIn` a free space, `InsertLine`, `SetAutoSize`, `SetVisual`, `InsertBand`, `BeginEdit` to group
+  changes into one undo step...);
 - an implicit style for `DashboardItem` (lookless control) and the `DashboardOverlay` style keys
-  (`PlusButtonStyleKey`, `IconButtonStyleKey`, `GripStyleKey`, `ResizeGripStyleKey`, `DropPlaceholderStyleKey`,
-  `DragGhostStyleKey`) to restyle;
+  (`PlusButtonStyleKey`, `IconButtonStyleKey`, `GripStyleKey`, `ResizeGripStyleKey`, `FreeSpaceStyleKey`,
+  `DropPlaceholderStyleKey`, `DragGhostStyleKey`) to restyle;
 - `DashboardBehavior` as a base class for new interactions: it gives access to the view, the panel and the
   overlay where behaviors draw their controls; `DragGesture` handles press-drag-release gestures (with
   auto-scroll: `AutoScroll`, `ScrollsBands`).
@@ -315,7 +333,8 @@ Text and image visuals carry their content and no model:
 ### Dashboard file (`easybi-dashboard/v1`)
 
 `DashboardSerializer` saves what a `DashboardView` shows: the unchanged report next to the WPF layout,
-which references visuals by id. It also opens a plain `easybi/v1` report (visuals then get a default layout).
+which references visuals by id. Sizes that are not saved are greedy. It also opens a plain `easybi/v1` report
+(visuals then get a default layout).
 
 ```json
 {
@@ -325,8 +344,14 @@ which references visuals by id. It also opens a plain `easybi/v1` report (visual
     "columns": 12,
     "rowHeight": 110,
     "bands": [
-      { "mode": "Fit", "items": [ { "visualId": "...", "column": 0, "row": 0, "columnSpan": 8, "rowSpan": 2, "isFullRow": false } ] },
-      { "mode": "Scroll", "items": [ { "visualId": "...", "width": 360, "rowSpan": 3 } ] }
+      {
+        "mode": "Fit",
+        "items": [
+          { "visualId": "...", "rowSpan": 1 },
+          { "split": "Row", "children": [ { "visualId": "...", "columnSpan": 6 }, { "visualId": "..." } ] }
+        ]
+      },
+      { "mode": "Scroll", "items": [ { "visualId": "...", "width": 360 }, { "visualId": "..." } ] }
     ]
   }
 }

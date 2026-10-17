@@ -58,11 +58,11 @@ public class DashboardViewTests
         var changes = new List<DashboardChangedEventArgs>();
         view.Changed += (_, e) => changes.Add(e);
 
-        view.SetFullRow(Item(view, "a"), true);
+        DashboardLayout.Resize(Item(view, "a"), 4, null);
 
         var change = Assert.Single(changes);
-        Assert.False(change.Before.Layout!.Bands[0].Items[0].IsFullRow);
-        Assert.True(change.After.Layout!.Bands[0].Items[0].IsFullRow);
+        Assert.Null(change.Before.Layout!.Bands[0].Items[0].Children[0].ColumnSpan);
+        Assert.Equal(4, change.After.Layout!.Bands[0].Items[0].Children[0].ColumnSpan);
         Assert.Same(change.After, view.Document);
     });
 
@@ -75,7 +75,7 @@ public class DashboardViewTests
 
         using (var edit = view.BeginEdit())
         {
-            DashboardLayout.Move(Item(view, "b"), 0, 0, 0);
+            DashboardLayout.MoveTo(Item(view, "b"), 0, 0);
             DashboardLayout.Resize(Item(view, "b"), 12, 1);
             edit.Commit();
         }
@@ -90,39 +90,36 @@ public class DashboardViewTests
     });
 
     [Fact]
-    public void Adding_next_to_a_full_row_item_asks_first() => Sta.Run(() =>
+    public void Items_are_added_next_to_others_in_free_spaces_and_between_lines() => Sta.Run(() =>
     {
         var view = View(Chart("a"));
         var a = Item(view, "a");
-        view.SetFullRow(a, true);
 
-        // Without a handler: the banner shows and nothing is added yet
-        Assert.Null(view.AddNextTo(a, ItemSide.Right));
-        Assert.True(a.IsFullRowSplitPending);
-        Assert.Single(view.Items);
+        var right = view.AddNextTo(a, ItemSide.Right);
+        Assert.Equal(DashboardItemKind.Empty, right.Kind);
+        view.Remove(right);
 
-        DashboardCommands.ConfirmFullRowSplit.Execute(a, view);
-        Assert.False(a.IsFullRowSplitPending);
-        Assert.False(DashboardPanel.GetIsFullRow(a));
-        Assert.Equal(2, view.Items.Count());
+        DashboardLayout.Resize(a, 6, null);
+        view.Panel.Measure(new System.Windows.Size(1200, double.PositiveInfinity));
+        view.Panel.Arrange(new System.Windows.Rect(view.Panel.DesiredSize));
+        var filler = view.AddIn(Assert.Single(view.Panel.FreeSpaces));
+        Assert.Equal([a, filler], view.Panel.ChildrenOf(0));
+
+        var line = view.InsertLine(0, 0);
+        Assert.Equal([line, a, filler], view.Panel.ChildrenOf(0));
     });
 
     [Fact]
-    public void An_application_can_handle_the_full_row_question() => Sta.Run(() =>
+    public void Resetting_the_size_makes_an_item_greedy_again() => Sta.Run(() =>
     {
-        var view = View(Chart("a"));
+        var view = View(Chart("a"), Chart("b"));
         var a = Item(view, "a");
-        view.SetFullRow(a, true);
-        view.FullRowSplitRequested += (_, e) =>
-        {
-            e.Handled = true;
-            e.Proceed();
-        };
+        DashboardLayout.Resize(a, 4, 2);
+        Assert.True(DashboardLayout.IsConstrained(a));
 
-        view.AddNextTo(a, ItemSide.Right);
+        DashboardCommands.ResetSize.Execute(a, view);
 
-        Assert.False(a.IsFullRowSplitPending);
-        Assert.Equal(2, view.Items.Count());
+        Assert.False(DashboardLayout.IsConstrained(a));
     });
 
     [Fact]
@@ -222,19 +219,19 @@ public class DashboardViewTests
         var undo = new UndoRedoBehavior();
         Interaction.GetBehaviors(view).Add(undo);
 
-        view.SetFullRow(Item(view, "a"), true);
+        DashboardLayout.Resize(Item(view, "a"), 4, null);
         view.Remove(Item(view, "b"));
         Assert.True(undo.CanUndo);
 
         ApplicationCommands.Undo.Execute(null, view);
         Assert.Equal(["a", "b"], view.Capture().Report.Visuals.Select(v => v.Id));
         undo.Undo();
-        Assert.False(DashboardPanel.GetIsFullRow(Item(view, "a")));
+        Assert.False(DashboardLayout.IsConstrained(Item(view, "a")));
         Assert.False(undo.CanUndo);
 
         undo.Redo();
         undo.Redo();
-        Assert.True(DashboardPanel.GetIsFullRow(Item(view, "a")));
+        Assert.True(DashboardLayout.IsConstrained(Item(view, "a")));
         Assert.Equal(["a"], view.Capture().Report.Visuals.Select(v => v.Id));
     });
 
@@ -244,7 +241,7 @@ public class DashboardViewTests
         var view = View(Chart("a"));
         var undo = new UndoRedoBehavior();
         Interaction.GetBehaviors(view).Add(undo);
-        view.SetFullRow(Item(view, "a"), true);
+        DashboardLayout.Resize(Item(view, "a"), 4, null);
 
         view.Document = new DashboardDocument { Report = new ReportDefinition { Visuals = [Chart("b")] } };
 

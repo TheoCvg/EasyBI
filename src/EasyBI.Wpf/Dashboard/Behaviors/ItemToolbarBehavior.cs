@@ -6,7 +6,7 @@ namespace EasyBI.Wpf.Dashboard.Behaviors;
 
 /// <summary>
 /// Toolbar at the top-right corner of the hovered item: text formatting (size, bold, alignment) for a text, fit for an
-/// image, full row, edit and remove. Override <see cref="CreateButtons"/> to change the buttons.
+/// image, automatic size (for a resized item), edit and remove. Override <see cref="CreateButtons"/> to change the buttons.
 /// </summary>
 public class ItemToolbarBehavior : DashboardBehavior
 {
@@ -53,9 +53,8 @@ public class ItemToolbarBehavior : DashboardBehavior
             });
         }
 
-        var fullRow = Button("↔", "FullRow", () => View.SetFullRow(item, !DashboardPanel.GetIsFullRow(item)));
-        if (DashboardPanel.GetIsFullRow(item)) fullRow.Tag = "Active";
-        yield return fullRow;
+        // A constrained item can become greedy again
+        if (DashboardLayout.IsConstrained(item)) yield return Button("↔", "AutoSize", () => View.SetAutoSize(item));
 
         var editTip = item.Kind switch
         {
@@ -92,7 +91,7 @@ public class ItemToolbarBehavior : DashboardBehavior
         if (Overlay.HoveredItem != _item) Rebuild();
     }
 
-    // Full row and content (an empty item that became a text...) change the buttons
+    // Size constraints and content (an empty item that became a text...) change the buttons
     private void OnArrangementChanged(object sender, RoutedEventArgs e) => Rebuild();
 
     private void OnChanged(object? sender, DashboardChangedEventArgs e) => Rebuild();

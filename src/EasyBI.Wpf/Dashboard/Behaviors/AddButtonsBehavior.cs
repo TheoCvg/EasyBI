@@ -3,8 +3,9 @@ using System.Windows;
 namespace EasyBI.Wpf.Dashboard.Behaviors;
 
 /// <summary>
-/// "+" buttons: on the right edge of the hovered item (and on its bottom edge in a grid band) to add an item next to it,
-/// and in the space below a band to insert a band. Each appears when the pointer comes near its edge.
+/// "+" buttons: on the right edge of the hovered item (and on its bottom edge in a grid band) to add an item next to it
+/// (see <see cref="DashboardLayoutEngine.AddNextTo"/>), between two lines of a grid band to insert a line, and in the
+/// space below a band to insert a band. Each appears when the pointer comes near its place.
 /// </summary>
 public sealed class AddButtonsBehavior : DashboardBehavior
 {
@@ -18,12 +19,19 @@ public sealed class AddButtonsBehavior : DashboardBehavior
     private DashboardItem? _rightOf;
     private DashboardItem? _below;
     private int _bandAfter = -1;
+    private (int Band, int Index)? _line;
 
     protected override void OnAttach()
     {
         AddToOverlay(CreateButton(DashboardOverlay.PlusButtonStyleKey, null, "AddRight", () => Add(ItemSide.Right)), PlaceRight);
         AddToOverlay(CreateButton(DashboardOverlay.PlusButtonStyleKey, null, "AddBelow", () => Add(ItemSide.Below)), PlaceBelow);
         AddToOverlay(CreateButton(DashboardOverlay.PlusButtonStyleKey, null, "AddBand", InsertBand), PlaceBand);
+        AddToOverlay(CreateButton(DashboardOverlay.PlusButtonStyleKey, null, "AddLine", InsertLine), PlaceLine);
+    }
+
+    private void InsertLine()
+    {
+        if (_line is var (band, index)) View.InsertLine(band, index);
     }
 
     private void Add(ItemSide side)
@@ -54,11 +62,25 @@ public sealed class AddButtonsBehavior : DashboardBehavior
         // Items follow each other in scrolling and wrapping bands: only "+" on the right there
         if (Panel.ModeOf(Panel.BandIndexOf(item)) != BandMode.Fit) return null;
         var bounds = overlay.HoveredBounds;
-        var nearEdge = p.Y >= bounds.Bottom - EdgeZone && p.Y <= bounds.Bottom + Panel.Gap / 2
+        // The gap under the item belongs to the "+" between lines
+        var nearEdge = p.Y >= bounds.Bottom - EdgeZone && p.Y <= bounds.Bottom
             && p.X >= bounds.Left + 24 && p.X <= bounds.Right - 24;
         if (!nearEdge) return null;
         _below = item;
         return Centered(new Point(bounds.Left + bounds.Width / 2, bounds.Bottom + Panel.Gap / 2), size);
+    }
+
+    private Rect? PlaceLine(DashboardOverlay overlay, Size size)
+    {
+        if (!CanEdit || overlay.IsLocked || overlay.Pointer is not { } p) return null;
+        if (Panel.CaptureGeometry().LineBoundaryAt(p) is not var (band, index) || index == 0) return null;
+        var lines = Panel.GetLineBounds(band);
+        var bounds = Panel.GetBandBounds(band);
+        // Under the last line, only the gap: below it is the "+" inserting a band
+        if (index == lines.Count && p.Y > bounds.Bottom + Panel.Gap / 2) return null;
+        _line = (band, index);
+        var y = index < lines.Count ? (lines[index - 1].Bottom + lines[index].Top) / 2 : bounds.Bottom + Panel.Gap / 2;
+        return Centered(new Point(bounds.Left + bounds.Width / 2, y), size);
     }
 
     private Rect? PlaceBand(DashboardOverlay overlay, Size size)
