@@ -39,25 +39,24 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         var series = chart.Series.Select((s, i) => CreateSeries(s, Color(request.Theme, i))).ToArray();
         var hasSecondary = chart.Series.Any(s => s.SecondaryAxis);
 
+        var categoryAxis = new Axis
+        {
+            Labels = chart.Categories.ToArray(),
+            Name = chart.CategoryCaption,
+            NameTextSize = 13,
+            TextSize = 12,
+        };
         var view = new CartesianChart
         {
             Series = series,
-            XAxes =
-            [
-                new Axis
-                {
-                    Labels = chart.Categories.ToArray(),
-                    LabelsRotation = chart.Categories.Count > 8 ? -45 : 0,
-                    Name = chart.CategoryCaption,
-                    NameTextSize = 13,
-                    TextSize = 12,
-                },
-            ],
+            XAxes = [categoryAxis],
             YAxes = hasSecondary
                 ? [ValueAxis(chart, secondary: false), ValueAxis(chart, secondary: true)]
                 : [ValueAxis(chart, secondary: false)],
             LegendPosition = chart.Series.Count > 1 ? LegendPosition.Right : LegendPosition.Hidden,
         };
+        // Legend, labels and axis title adapt to the room the chart actually gets
+        view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, chart);
 
         if (request.Select is { } select)
         {
@@ -76,6 +75,29 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         }
         return view;
     }
+
+    private static void FitCartesian(CartesianChart view, Axis categoryAxis, ChartData chart)
+    {
+        if (view.ActualWidth <= 0) return;
+        var fit = ChartFitting.Cartesian(chart, view.ActualWidth, view.ActualHeight);
+
+        // Only assign what changed: every assignment redraws the chart
+        var legend = Position(fit.Legend);
+        if (view.LegendPosition != legend) view.LegendPosition = legend;
+        if (categoryAxis.LabelsRotation != fit.LabelRotation) categoryAxis.LabelsRotation = fit.LabelRotation;
+        // Skipped labels are blanked: LiveCharts2 does not apply a step to an axis made of labels
+        var labels = chart.Categories.Select((c, i) => i % fit.LabelStep == 0 ? c : "").ToArray();
+        if (!labels.SequenceEqual(categoryAxis.Labels ?? [])) categoryAxis.Labels = labels;
+        var title = fit.ShowAxisTitles ? chart.CategoryCaption : null;
+        if (categoryAxis.Name != title) categoryAxis.Name = title;
+    }
+
+    private static LegendPosition Position(ChartLegend placement) => placement switch
+    {
+        ChartLegend.Right => LegendPosition.Right,
+        ChartLegend.Bottom => LegendPosition.Bottom,
+        _ => LegendPosition.Hidden,
+    };
 
     /// <summary>A value axis formatted like the first series drawn against it.</summary>
     private static Axis ValueAxis(ChartData chart, bool secondary)
@@ -168,12 +190,13 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                 Name = category,
                 Values = [value],
                 Fill = new SolidColorPaint(Color(request.Theme, i)),
-                InnerRadius = 60,
                 ToolTipLabelFormatter = p => ValueFormatter.Format(p.Coordinate.PrimaryValue, source.Format),
             }] = i;
         }
 
         var view = new PieChart { Series = slices.Keys.ToArray(), LegendPosition = LegendPosition.Right };
+        // Legend and donut hole adapt to the room the chart actually gets
+        view.SizeChanged += (_, _) => FitPie(view, slices.Keys, chart);
         if (request.Select is { } select)
         {
             view.Cursor = System.Windows.Input.Cursors.Hand;
@@ -184,6 +207,16 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
             };
         }
         return view;
+    }
+
+    private static void FitPie(PieChart view, IEnumerable<ISeries> slices, ChartData chart)
+    {
+        if (view.ActualWidth <= 0) return;
+        var fit = ChartFitting.Pie(chart, view.ActualWidth, view.ActualHeight);
+        var legend = Position(fit.Legend);
+        if (view.LegendPosition != legend) view.LegendPosition = legend;
+        foreach (var slice in slices.OfType<PieSeries<double>>())
+            if (Math.Abs(slice.InnerRadius - fit.InnerRadius) > 1) slice.InnerRadius = fit.InnerRadius;
     }
 
     private static SKColor Color(BiTheme theme, int index) => SKColor.Parse(theme.ColorAt(index));
