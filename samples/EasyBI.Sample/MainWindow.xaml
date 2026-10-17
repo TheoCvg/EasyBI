@@ -56,6 +56,19 @@
                             </StackPanel>
                         </DockPanel>
                     </Border>
+                    <!-- Fields to drag onto the dashboard (hidden while it is read-only) -->
+                    <Border DockPanel.Dock="Left" Width="210" Background="#FAFBFC" BorderBrush="#E5E7EB" BorderThickness="0,0,1,0" Padding="14,0,14,14">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsReadOnly, ElementName=Dashboard}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <bi:FieldList Context="{Binding Context}" />
+                    </Border>
                     <!-- Interactions are behaviors attached by default; Interaction.Behaviors can replace or configure them -->
                     <bi:DashboardView x:Name="Dashboard" Context="{Binding Context}" />
                 </DockPanel>

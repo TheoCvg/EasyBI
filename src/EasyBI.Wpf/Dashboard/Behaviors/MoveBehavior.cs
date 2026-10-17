@@ -32,7 +32,7 @@ public sealed class MoveBehavior : DashboardBehavior
     private DashboardEdit? _edit;
     private DashboardLayoutSnapshot? _snapshot;
     private DashboardPanelGeometry? _before;
-    private string? _target;
+    private DashboardDropTarget? _target;
     private bool _nextTo;
 
     /// <summary>Distance from an item's edge within which the moved item goes next to it (at most a quarter of the item).</summary>
@@ -107,32 +107,9 @@ public sealed class MoveBehavior : DashboardBehavior
         // would change the target, then change back once it is restored, endlessly. A target also holds while the
         // pointer is over the place it made, since the items around that place moved.
         if (_nextTo && Widened(Panel.GetItemBounds(item)).Contains(position)) return;
-        if (before.FreeSpaceAt(position) is { } space)
-        {
-            Preview($"free:{space.AnchorId}:{space.Side}", nextTo: true,
-                () => DashboardLayout.MoveNextTo(item, space.AnchorId, space.Side, keepEmptyBands: true));
-            return;
-        }
-        if (before.LineBoundaryAt(position) is var (lineBand, line))
-        {
-            Preview($"line:{lineBand}:{line}", nextTo: true, () => DashboardLayout.MoveTo(item, lineBand, line, keepEmptyBands: true));
-            return;
-        }
-        if (before.EdgeAt(position, EdgeZone, item) is var (anchor, side))
-        {
-            Preview($"next:{Panel.Children.IndexOf(anchor)}:{side}", nextTo: true,
-                () => DashboardLayout.MoveNextTo(item, anchor, side, keepEmptyBands: true));
-            return;
-        }
-
-        var band = before.BandAt(position.Y);
         // In the middle of a grid item, the target stays where it is
-        if (before.ModeOf(band) == BandMode.Fit) return;
-        // A scrolling band may have scrolled since: compare in the geometry's own scroll position
-        var offset = band < Panel.Bands.Count ? Panel.Bands[band].HorizontalOffset - before.HorizontalOffsetOf(band) : 0;
-        var index = before.FlowIndexAt(band, new Point(position.X + offset, position.Y), item);
-        // The index is in the order of the band before the drag, which every preview starts from
-        Preview($"{band}#{index}", nextTo: false, () => DashboardLayout.MoveTo(item, band, index, keepEmptyBands: true));
+        if (DashboardDropTarget.Find(before, Panel, position, EdgeZone, item) is not { } target) return;
+        Preview(target, () => target.Move(item, keepEmptyBands: true));
     }
 
     private Rect Widened(Rect bounds)
@@ -141,11 +118,12 @@ public sealed class MoveBehavior : DashboardBehavior
         return bounds;
     }
 
-    private void Preview(string target, bool nextTo, Action move)
+    private void Preview(DashboardDropTarget target, Action move)
     {
         if (target == _target) return;
         _target = target;
-        _nextTo = nextTo;
+        // Next to an item or as a line, the place made under the pointer holds the target (see OnMoved)
+        _nextTo = target.Kind != DashboardDropKind.Flow;
         // Every preview starts from the layout before the drag, so that moves do not accumulate;
         // bands scrolled during the drag stay scrolled
         var offsets = Panel.Bands.Select(b => (Band: b, b.HorizontalOffset)).ToArray();

@@ -126,6 +126,7 @@ public partial class DashboardView : UserControl
     [
         new AddButtonsBehavior(),
         new FreeSpaceBehavior(),
+        new FieldDropBehavior(),
         new MoveBehavior(),
         new ResizeBehavior(),
         new ItemToolbarBehavior(),
@@ -276,6 +277,14 @@ public partial class DashboardView : UserControl
     {
         var item = NewItem(null);
         DashboardLayout.AddNextTo(Panel, space.AnchorId, item, space.Side);
+        return item;
+    }
+
+    /// <summary>Adds an empty item where a drop target puts it (see <see cref="DashboardDropTarget.Find"/>).</summary>
+    public DashboardItem AddAt(DashboardDropTarget target)
+    {
+        var item = NewItem(null);
+        target.Add(Panel, item);
         return item;
     }
 

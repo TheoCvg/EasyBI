@@ -47,6 +47,12 @@ public static class DragSource
     /// <summary>True while a drag started by a <see cref="DragSource"/> is in progress.</summary>
     public static bool IsDragging { get; private set; }
 
+    /// <summary>
+    /// Raised when a drag started by a <see cref="DragSource"/> ends, dropped or not (Escape, released elsewhere): drop
+    /// targets showing a preview drop it then. Unsubscribe when done, the event is static.
+    /// </summary>
+    public static event EventHandler? DragEnded;
+
     /// <summary>The data a drag of <paramref name="item"/> carries.</summary>
     public static DataObject CreateData(object item)
     {
@@ -129,6 +135,7 @@ public static class DragSource
             press.Container.ClearValue(UIElement.OpacityProperty);
             items.GiveFeedback -= follow;
             preview?.Remove();
+            DragEnded?.Invoke(null, EventArgs.Empty);
         }
     }
 

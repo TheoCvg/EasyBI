@@ -151,6 +151,7 @@ wraps the item and the newcomer in a new container. The rules are pure functions
 |---|---|
 | `AddButtonsBehavior` | "+" on the right and bottom edges of an item, "+" between lines and between bands |
 | `FreeSpaceBehavior` | fills free spaces with a placeholder that adds an item there |
+| `FieldDropBehavior` | makes visuals from fields dragged from a `FieldList` (see below) |
 | `MoveBehavior` | grip to drag an item: a picture follows the pointer and a placeholder shows where it lands, the others making room live; near an item's edge it goes next to it (like "+"), between two lines it becomes a line, over a free space it fills it; across bands, auto-scroll near the edges; Escape cancels |
 | `ResizeBehavior` | corner handle: constrains the item (columns and rows in a grid band, pixels and rows elsewhere) |
 | `ItemToolbarBehavior` | automatic size (for a resized item), edit, remove; text size, bold, alignment; image fit |
@@ -185,6 +186,27 @@ Hooks for applications:
   auto-scroll: `AutoScroll`, `ScrollsBands`).
 
 `IsReadOnly="True"` hides the editing chrome; clicks keep cross-filtering in every mode.
+
+**Building visuals by dragging fields.** `FieldList` shows the fields of the context's models (model picker,
+dimensions, measures) and drags them as `ModelField`s. Placed next to a dashboard, it lets users build it directly:
+
+```xml
+<DockPanel>
+    <bi:FieldList DockPanel.Dock="Left" Width="210" Context="{Binding Context}" />
+    <bi:DashboardView Context="{Binding Context}" />
+</DockPanel>
+```
+
+- dropped where an item can go (an edge, between two lines, a free space, a scrolling or wrapping band), a field
+  makes a new visual: a KPI for a measure, the first measure by that dimension for a dimension (a line by month for a
+  date, bars otherwise); the other items make room live around a placeholder;
+- dropped on an empty item, it fills it; dropped on a visual, it is added to it (a measure to its values, a dimension
+  to its axis, then its legend; a dimension breaks a KPI down into bars);
+- the rules are pure functions in `FieldVisuals` (`Create`, `AddField`); `FieldDropBehavior.CreateVisual` and
+  `AddField` replace them. Each drop is one undo step.
+
+The designer's field panel is the same `FieldList` (its shelves accept the `ModelField`s of the selected model).
+`DashboardDropTarget.Find`, the place an item dropped at a point goes, is shared by moves and field drops.
 
 ### Drag and drop
 

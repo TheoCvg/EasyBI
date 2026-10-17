@@ -1,0 +1,61 @@
+<UserControl x:Class="EasyBI.Wpf.FieldList"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:bi="clr-namespace:EasyBI.Wpf"
+             xmlns:dnd="clr-namespace:EasyBI.Wpf.DragAndDrop">
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="AccentBrush" Color="#2E6BE6" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#6B7280" />
+
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="Margin" Value="0,14,0,6" />
+        </Style>
+
+        <!-- Fields are dragged as ModelField items -->
+        <Style x:Key="Fields" TargetType="ListBox">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="dnd:DragSource.IsEnabled" Value="True" />
+            <Setter Property="dnd:DragSource.AllowedEffects" Value="Copy" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Text="{bi:Localize ModelHeader}" Style="{StaticResource SectionHeader}" />
+        <ComboBox Grid.Row="1" x:Name="ModelPicker" SelectedValuePath="Value" DisplayMemberPath="Label" />
+        <TextBlock Grid.Row="2" Text="{bi:Localize DimensionsHeader}" Style="{StaticResource SectionHeader}" />
+        <ListBox Grid.Row="3" x:Name="DimensionList" Style="{StaticResource Fields}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="◆" Foreground="{StaticResource AccentBrush}" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Text="{Binding Caption}" Padding="0,3" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <TextBlock Grid.Row="4" Text="{bi:Localize MeasuresHeader}" Style="{StaticResource SectionHeader}" />
+        <ListBox Grid.Row="5" x:Name="MeasureList" Style="{StaticResource Fields}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Σ" Foreground="#2BA37B" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,7,0" />
+                        <TextBlock Text="{Binding Caption}" Padding="0,3" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</UserControl>
