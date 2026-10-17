@@ -1,7 +1,9 @@
 <UserControl x:Class="EasyBI.Wpf.Dashboard.DashboardView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:EasyBI.Wpf.Dashboard">
+             xmlns:bi="clr-namespace:EasyBI.Wpf"
+             xmlns:local="clr-namespace:EasyBI.Wpf.Dashboard"
+             Background="{DynamicResource {x:Static bi:EasyBITheme.BackgroundBrushKey}}" Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}">
     <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
         <!-- Behaviors draw their controls (grips, "+" buttons, toolbars...) in this adorner layer, above the panel -->
         <AdornerDecorator>

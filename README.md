@@ -265,6 +265,83 @@ A connector only has to call `request.Select?.Invoke(new CategorySelection(categ
 click (or `RowSelection` for a table): `Select` is null when interactivity is disabled, for example
 in the designer preview.
 
+## Theming
+
+Every EasyBI control (designer, dashboard, filter bar, field list, KPI and table renderers, chart connectors) draws
+with **resources looked up dynamically**: an application restyles EasyBI by defining them, and switches theme at runtime
+by replacing the dictionary that defines them. Charts follow too, without querying their data again.
+
+### Light and dark
+
+```xml
+<Application.Resources>
+    <ResourceDictionary>
+        <ResourceDictionary.MergedDictionaries>
+            <bi:EasyBIThemeDictionary Mode="Dark" />
+        </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+</Application.Resources>
+```
+
+Without it, the light theme applies. To switch at runtime, change `Mode` (or swap the dictionary):
+
+```csharp
+foreach (var theme in Application.Current.Resources.MergedDictionaries.OfType<EasyBIThemeDictionary>())
+    theme.Mode = EasyBIThemeMode.Light;
+```
+
+### Overriding a few colors
+
+Define the keys you want in your resources, after the theme dictionary; the others keep the theme's values:
+
+```xml
+<SolidColorBrush x:Key="{x:Static bi:EasyBITheme.AccentBrushKey}" Color="#7C3AED" />
+<bi:ChartPalette x:Key="{x:Static bi:EasyBITheme.ChartPaletteKey}">
+    <Color>#7C3AED</Color>
+    <Color>#F59E0B</Color>
+    <Color>#10B981</Color>
+</bi:ChartPalette>
+<CornerRadius x:Key="{x:Static bi:EasyBITheme.CornerRadiusKey}">4</CornerRadius>
+```
+
+The complete list, with their light and dark values, is in
+[`Themes/Light.xaml`](src/EasyBI.Wpf/Themes/Light.xaml) and [`Themes/Dark.xaml`](src/EasyBI.Wpf/Themes/Dark.xaml):
+
+| Key (`EasyBITheme.…`) | Used for |
+|---|---|
+| `BackgroundBrushKey` | behind the dashboard, the designer and the visual editor |
+| `SurfaceBrushKey` | cards (dashboard items, designer preview), popups, toolbars, chart tooltips |
+| `SurfaceAltBrushKey` | field lists, designer shelves, empty items, alternate table rows |
+| `BorderBrushKey`, `BorderStrongBrushKey` | borders and separators; empty items and free spaces |
+| `ForegroundBrushKey`, `MutedForegroundBrushKey`, `DisabledForegroundBrushKey` | text, secondary text (headers, hints, icons, axis labels), unavailable options |
+| `AccentBrushKey`, `AccentHoverBrushKey`, `AccentForegroundBrushKey` | selection, "+" buttons, drop indicators, and the text on them |
+| `AccentSoftBrushKey`, `AccentSoftBorderBrushKey` | field chips, selection chip, drop placeholders |
+| `SecondarySoftBrushKey`, `SecondarySoftBorderBrushKey` | filter chips |
+| `HoverBrushKey` | small buttons under the pointer |
+| `ErrorBrushKey` | error messages |
+| `MeasureBrushKey` | the Σ of measures in field lists |
+| `GridLineBrushKey` | grid lines of charts and tables |
+| `ChartPaletteKey` (`ChartPalette`) | colors of chart series, in order |
+| `CornerRadiusKey` (`CornerRadius`) | rounding of cards |
+
+Control-specific parts have their own style keys (`DashboardOverlay.PlusButtonStyleKey`, `FreeSpaceStyleKey`,
+`DropPlaceholderStyleKey`, `DragSource.PreviewStyleKey`... see [Dashboard](#dashboard) and
+[Drag and drop](#drag-and-drop)), and `DashboardItem` has an implicit style.
+
+### Standard controls
+
+Buttons, combo boxes, text boxes and check boxes inside EasyBI have **no explicit style**: they take your application's
+implicit styles, so a control library (WPF UI, Material Design...) styles them too. EasyBI's own light and dark themes
+color EasyBI's surfaces, text and charts, not the standard controls: with the dark theme and no control library, they
+keep the system's light look.
+
+### Charts
+
+`VisualView` passes the theme to renderers in `RenderRequest.Theme` (`BiTheme`): the palette, and the `Foreground`,
+`MutedForeground`, `GridLine` and `Background` colors (hexadecimal, null when unknown). It is built by
+`EasyBITheme.ChartTheme(element)` from the resources above. A palette or colors set on `EasyBIContext.Theme` take
+precedence over the resources.
+
 ## Localization
 
 EasyBI's own texts (designer, filter bar, messages, granularity and aggregation names, blank and
@@ -314,6 +391,10 @@ public sealed class MyRenderer : IVisualRenderer
 
 Each `ChartSeries` comes with its resolved `Mark` and `SecondaryAxis`: a connector draws every series with its own
 type, so one chart can mix bars, lines, areas and points.
+
+Colors come from `request.Theme`: series take `ColorAt(index)`, text `Foreground`, axis labels `MutedForeground`, grid
+lines `GridLine`, tooltips `Background` (each one null when the theme does not set it: keep the library's default).
+Draw on a transparent background, so that the chart sits on the theme's surface.
 
 `EasyBIContext.ResolveRenderer` negotiates capabilities: the active renderer if it supports every type the
 visual uses (the visual's and its measures'), otherwise another plugged-in renderer, otherwise a built-in one. The designer disables
@@ -404,5 +485,6 @@ See [AGENTS.md](AGENTS.md) for the code style, language rules and Git workflow.
   source implements `IAsyncEnumerable` (EF Core). EF Core's SQL translation (GroupBy on a composite
   key, sort on an aggregate, projection to `object[]`) still has to be validated against a real database.
 - At most 4 grouping dimensions (axis + legend).
-- No dark theme.
+- The built-in light and dark themes do not restyle standard controls (buttons, combo boxes...): use a control
+  library for those (see [Theming](#theming)).
 - Dashboard images are embedded in the file (2 MB by default, `DashboardView.MaxImageBytes`).

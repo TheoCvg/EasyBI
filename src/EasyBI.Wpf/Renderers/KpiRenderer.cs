@@ -34,9 +34,8 @@ public sealed class KpiRenderer : IVisualRenderer
             {
                 Text = series.Name,
                 FontSize = 14,
-                Foreground = Brushes.DimGray,
                 HorizontalAlignment = HorizontalAlignment.Center,
-            });
+            }.Themed(TextBlock.ForegroundProperty, EasyBITheme.MutedForegroundBrushKey));
             panel.Children.Add(card);
         }
         return new Viewbox { Child = panel, Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly };
