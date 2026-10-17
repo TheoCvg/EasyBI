@@ -199,6 +199,46 @@ public class DashboardPanel : Panel
         return InsertionIndex.At(bounds, point, singleLine: ModeOf(band) == BandMode.Scroll);
     }
 
+    /// <summary>
+    /// The edge of a grid band item that <paramref name="point"/> is near, to insert next to it: the item (other than
+    /// <paramref name="excluding"/>) whose bounds, widened by half the <see cref="Gap"/>, contain the point, and the side
+    /// whose zone (see <see cref="SideAt"/>) the point is in. Null in the middle of an item, away from items, or in
+    /// scrolling and wrapping bands (use <see cref="FlowIndexAt"/> there).
+    /// </summary>
+    public (UIElement Anchor, ItemSide Side)? EdgeAt(Point point, double edgeZone, UIElement? excluding = null)
+    {
+        foreach (UIElement child in InternalChildren)
+        {
+            if (child == excluding || child.Visibility != Visibility.Visible || ModeOf(BandIndexOf(child)) != BandMode.Fit) continue;
+            var bounds = GetItemBounds(child);
+            if (bounds.IsEmpty) continue;
+            var widened = bounds;
+            widened.Inflate(Gap / 2, Gap / 2);
+            if (widened.Contains(point)) return SideAt(bounds, point, edgeZone) is { } side ? (child, side) : null;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The side of <paramref name="bounds"/> whose edge is within <paramref name="edgeZone"/> of <paramref name="point"/>
+    /// (at most a quarter of the item, so that its middle stays free), the nearest one in a corner; null in the middle.
+    /// A point outside the bounds is beyond the edge it crossed.
+    /// </summary>
+    public static ItemSide? SideAt(Rect bounds, Point point, double edgeZone)
+    {
+        var zoneX = Math.Min(edgeZone, bounds.Width / 4);
+        var zoneY = Math.Min(edgeZone, bounds.Height / 4);
+        (ItemSide Side, double Distance, double Zone)[] edges =
+        [
+            (ItemSide.Left, point.X - bounds.Left, zoneX),
+            (ItemSide.Right, bounds.Right - point.X, zoneX),
+            (ItemSide.Above, point.Y - bounds.Top, zoneY),
+            (ItemSide.Below, bounds.Bottom - point.Y, zoneY),
+        ];
+        var near = edges.Where(e => e.Distance <= e.Zone).OrderBy(e => e.Distance).ToArray();
+        return near.Length > 0 ? near[0].Side : null;
+    }
+
     protected override Size MeasureOverride(Size availableSize)
     {
         var width = double.IsInfinity(availableSize.Width) ? DashboardLayoutEngine.ReferenceWidth : availableSize.Width;

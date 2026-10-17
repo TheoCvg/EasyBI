@@ -160,6 +160,32 @@
         </Setter>
     </Style>
 
+    <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type behaviors:DashboardOverlay}, ResourceId=DropPlaceholder}" TargetType="ContentControl">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContentControl">
+                    <Rectangle Fill="#142E6BE6" Stroke="#2E6BE6" StrokeThickness="2" StrokeDashArray="4 3" RadiusX="8" RadiusY="8" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type behaviors:DashboardOverlay}, ResourceId=DragGhost}" TargetType="ContentControl">
+        <Setter Property="Opacity" Value="0.8" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContentControl">
+                    <Border CornerRadius="8">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="16" ShadowDepth="4" Opacity="0.3" />
+                        </Border.Effect>
+                        <ContentPresenter />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Drag and drop: the preview following the pointer and the insertion line of a list -->
     <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type dnd:DragSource}, ResourceId=Preview}" TargetType="ContentControl">
         <Setter Property="Opacity" Value="0.95" />

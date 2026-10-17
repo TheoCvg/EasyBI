@@ -29,7 +29,8 @@ public sealed class ResizeBehavior : DashboardBehavior
 
     private Rect? Place(DashboardOverlay overlay, Size size)
     {
-        if (!CanEdit || overlay.HoveredItem is null) return null;
+        // Hidden during another gesture (a move); kept during its own, which needs the mouse capture
+        if (!CanEdit || overlay.HoveredItem is null || (overlay.IsLocked && _item is null)) return null;
         var bounds = overlay.HoveredBounds;
         return new Rect(bounds.Right - size.Width, bounds.Bottom - size.Height, size.Width, size.Height);
     }

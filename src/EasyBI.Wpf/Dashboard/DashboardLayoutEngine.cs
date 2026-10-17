@@ -103,31 +103,23 @@ public static class DashboardLayoutEngine
     }
 
     /// <summary>
-    /// Adds an item to the right of (or below) another one. In a grid band, "right" needs two free columns,
-    /// otherwise the item goes below; a full-row item has no right side. In a scrolling or wrapping band, the
-    /// new item comes right after the other one, with its height.
+    /// Adds an item next to another one (see <see cref="ItemSide"/>). In a grid band, an item added to the right or
+    /// left joins the anchor's line (<see cref="ItemLayout.DefaultColumnSpan"/> columns, the anchor's height): the
+    /// line's items move aside, and share the width equally when it is too narrow; a full-row anchor has no sides, the
+    /// item goes below or above it. Added below or above, the item takes the anchor's columns and pushes what is
+    /// under it down. In a scrolling or wrapping band, the new item comes right after (or before) the anchor, with its height.
     /// </summary>
     public static DashboardLayoutDefinition AddNextTo(DashboardLayoutDefinition layout, string anchorId, ItemSide side, ItemLayout item)
     {
         layout = Normalize(layout);
         var bandIndex = BandOf(layout, anchorId);
         if (bandIndex < 0) return Add(layout, layout.Bands.Count - 1, item);
-        var band = layout.Bands[bandIndex];
-        var anchor = band.Items.First(i => i.Id == anchorId);
-
-        if (band.Mode != BandMode.Fit)
-        {
-            var index = band.Items.ToList().IndexOf(anchor) + 1;
-            return WithBand(layout, band with { Items = Insert(band.Items, index, item with { RowSpan = anchor.RowSpan, IsFullRow = false }) }, null);
-        }
-
-        var columns = layout.Columns;
-        var right = anchor.Column + anchor.ColumnSpan;
-        var placed = side == ItemSide.Right && !anchor.IsFullRow && columns - right >= 2
-            ? item with { Column = right, Row = anchor.Row, ColumnSpan = Math.Min(ItemLayout.DefaultColumnSpan, columns - right), RowSpan = anchor.RowSpan, IsFullRow = false }
-            // Below, or to the right without room: start a new line under the anchor
-            : item with { Column = anchor.Column, Row = anchor.Row + anchor.RowSpan, ColumnSpan = anchor.ColumnSpan, RowSpan = ItemLayout.DefaultRowSpan, IsFullRow = false };
-        return WithBand(layout, band with { Items = [.. band.Items, placed] }, placed.Id);
+        var anchor = Find(layout, anchorId)!;
+        var sideways = layout.Bands[bandIndex].Mode != BandMode.Fit || (IsSideways(side) && !anchor.IsFullRow);
+        var sized = sideways
+            ? item with { ColumnSpan = Math.Min(ItemLayout.DefaultColumnSpan, layout.Columns), RowSpan = anchor.RowSpan, IsFullRow = false }
+            : item with { ColumnSpan = anchor.ColumnSpan, RowSpan = ItemLayout.DefaultRowSpan, IsFullRow = false };
+        return PlaceNextTo(layout, bandIndex, anchor, side, sized);
     }
 
     /// <summary>
@@ -217,6 +209,22 @@ public static class DashboardLayoutEngine
             return items.OfType<ItemLayout>().ToArray();
         });
 
+    /// <summary>
+    /// Moves an item next to another one, with the rules of <see cref="AddNextTo"/>, the item keeping its size when
+    /// there is room. A band the item leaves empty disappears.
+    /// </summary>
+    public static DashboardLayoutDefinition MoveNextTo(DashboardLayoutDefinition layout, string itemId, string anchorId, ItemSide side)
+    {
+        layout = Normalize(layout);
+        var bandIndex = BandOf(layout, anchorId);
+        if (itemId == anchorId || bandIndex < 0 || Find(layout, itemId) is not { } item) return layout;
+        // The item leaves its band first (it may be the anchor's line); emptied bands are dropped after the placement,
+        // so that band indexes stay valid
+        var without = layout with { Bands = layout.Bands.Select(b => b with { Items = b.Items.Where(i => i.Id != itemId).ToArray() }).ToArray() };
+        var placed = PlaceNextTo(without, bandIndex, Find(without, anchorId)!, side, item);
+        return placed with { Bands = placed.Bands.Where((b, i) => b.Items.Count > 0 || layout.Bands[i].Items.Count == 0).ToArray() };
+    }
+
     /// <summary>Changes the columns and rows an item covers in a grid band; the items it now overlaps move down.</summary>
     public static DashboardLayoutDefinition Resize(DashboardLayoutDefinition layout, string itemId, int columnSpan, int rowSpan) =>
         UpdateItem(Normalize(layout), itemId, i => i with { ColumnSpan = columnSpan, RowSpan = rowSpan });
@@ -264,6 +272,70 @@ public static class DashboardLayoutEngine
             .Where((b, i) => b.Items.Count > 0 || layout.Bands[i].Items.Count == 0)
             .ToArray();
         return WithBands(layout, bands, itemId);
+    }
+
+    private static bool IsSideways(ItemSide side) => side is ItemSide.Right or ItemSide.Left;
+
+    private static DashboardLayoutDefinition PlaceNextTo(DashboardLayoutDefinition layout, int bandIndex, ItemLayout anchor, ItemSide side, ItemLayout item)
+    {
+        var band = layout.Bands[bandIndex];
+        var after = side is ItemSide.Right or ItemSide.Below;
+        if (band.Mode != BandMode.Fit)
+        {
+            var index = band.Items.ToList().IndexOf(anchor) + (after ? 1 : 0);
+            return WithBand(layout, band with { Items = Insert(band.Items, index, item) }, null);
+        }
+
+        var columns = layout.Columns;
+        if (IsSideways(side) && !anchor.IsFullRow && !item.IsFullRow
+            && InLine(band.Items, anchor, item with { Row = anchor.Row }, after, columns) is { } line)
+        {
+            var others = band.Items.Where(i => line.All(l => l.Id != i.Id));
+            return WithBand(layout, band with { Items = [.. others, .. line] }, item.Id);
+        }
+        // Above or below, or no room on the sides: the item takes the anchor's place, or the line under it
+        var placed = item with
+        {
+            Column = anchor.Column,
+            Row = after ? anchor.Row + anchor.RowSpan : anchor.Row,
+            ColumnSpan = item.IsFullRow ? columns : Math.Min(item.ColumnSpan, columns),
+        };
+        return WithBand(layout, band with { Items = [.. band.Items, placed] }, placed.Id);
+    }
+
+    /// <summary>
+    /// The anchor's line (the items starting on its row) with <paramref name="item"/> inserted next to the anchor:
+    /// items move aside as little as possible; when the line is too narrow, they all share the columns equally.
+    /// Null when even that does not fit (more items than columns).
+    /// </summary>
+    private static IReadOnlyList<ItemLayout>? InLine(IReadOnlyList<ItemLayout> items, ItemLayout anchor, ItemLayout item, bool after, int columns)
+    {
+        var line = items.Where(i => i.Row == anchor.Row && !i.IsFullRow).OrderBy(i => i.Column).ToList();
+        var at = line.FindIndex(i => i.Id == anchor.Id) + (after ? 1 : 0);
+        var start = at == 0 ? line[0].Column : line[at - 1].Column + line[at - 1].ColumnSpan;
+        line.Insert(at, item with { Column = start, ColumnSpan = Math.Clamp(item.ColumnSpan, 1, columns) });
+
+        if (line.Sum(i => i.ColumnSpan) > columns)
+        {
+            if (line.Count > columns) return null;
+            // Equal shares, the remainder going to the first items
+            var share = columns / line.Count;
+            var extra = columns % line.Count;
+            return line.Select((i, k) => i with { Column = k * share + Math.Min(k, extra), ColumnSpan = share + (k < extra ? 1 : 0) }).ToArray();
+        }
+        // Push right what overlaps, then back left from the edge what overflows
+        var placed = new ItemLayout[line.Count];
+        for (int k = 0, cursor = 0; k < line.Count; k++)
+        {
+            placed[k] = line[k] with { Column = Math.Max(line[k].Column, cursor) };
+            cursor = placed[k].Column + placed[k].ColumnSpan;
+        }
+        for (int k = line.Count - 1, limit = columns; k >= 0; k--)
+        {
+            placed[k] = placed[k] with { Column = Math.Min(placed[k].Column, limit - placed[k].ColumnSpan) };
+            limit = placed[k].Column;
+        }
+        return placed;
     }
 
     private static DashboardLayoutDefinition UpdateItem(DashboardLayoutDefinition layout, string itemId, Func<ItemLayout, ItemLayout> change) =>

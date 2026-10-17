@@ -70,6 +70,13 @@ public static class DashboardLayout
     public static void MoveTo(UIElement item, int band, int index, bool keepEmptyBands = false) =>
         UpdateItem(item, (layout, id) => DashboardLayoutEngine.MoveTo(layout, id, band, index), keepEmptyBands);
 
+    /// <summary>
+    /// Moves an item next to <paramref name="anchor"/> (see <see cref="DashboardLayoutEngine.MoveNextTo"/>): in a grid
+    /// band, between two items of a line, which make room. <paramref name="keepEmptyBands"/> as for <see cref="Move"/>.
+    /// </summary>
+    public static void MoveNextTo(UIElement item, UIElement anchor, ItemSide side, bool keepEmptyBands = false) =>
+        UpdateItem(item, (layout, id, idOf) => DashboardLayoutEngine.MoveNextTo(layout, id, idOf(anchor), side), keepEmptyBands);
+
     /// <summary>Changes the columns and rows an item covers in a grid band.</summary>
     public static void Resize(UIElement item, int columnSpan, int rowSpan) =>
         UpdateItem(item, (layout, id) => DashboardLayoutEngine.Resize(layout, id, columnSpan, rowSpan));
@@ -141,12 +148,16 @@ public static class DashboardLayout
         Write(panel, result, session.Bands, elements, removeOthers: true);
     }
 
-    private static void UpdateItem(UIElement item, Func<DashboardLayoutDefinition, string, DashboardLayoutDefinition> operation, bool keepEmptyBands = false)
+    private static void UpdateItem(UIElement item, Func<DashboardLayoutDefinition, string, DashboardLayoutDefinition> operation, bool keepEmptyBands = false) =>
+        UpdateItem(item, (layout, id, _) => operation(layout, id), keepEmptyBands);
+
+    private static void UpdateItem(
+        UIElement item, Func<DashboardLayoutDefinition, string, Func<UIElement, string>, DashboardLayoutDefinition> operation, bool keepEmptyBands)
     {
         var panel = RequirePanel(item);
         Update(panel, (layout, idOf) =>
         {
-            var result = operation(layout, idOf(item));
+            var result = operation(layout, idOf(item), idOf);
             if (!keepEmptyBands) return result;
             // The engine drops a band the item left empty: put it back where it was
             var kept = layout.Bands.Select(b => result.Bands.FirstOrDefault(r => r.Id == b.Id) ?? b with { Items = [] })

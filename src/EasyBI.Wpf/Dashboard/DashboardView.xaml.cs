@@ -273,7 +273,7 @@ public partial class DashboardView : UserControl
     /// </summary>
     public DashboardItem? AddNextTo(DashboardItem anchor, ItemSide side)
     {
-        if (side == ItemSide.Right && DashboardPanel.GetIsFullRow(anchor))
+        if (side is ItemSide.Right or ItemSide.Left && DashboardPanel.GetIsFullRow(anchor))
         {
             var args = new FullRowSplitRequestedEventArgs(anchor, () => SplitFullRow(anchor));
             FullRowSplitRequested?.Invoke(this, args);

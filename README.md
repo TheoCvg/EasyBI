@@ -116,10 +116,16 @@ children placed by attached properties.
 
 **`DashboardLayout`** is the static class that moves children while keeping the layout consistent (no
 overlap in a grid band, items pushed down then floated up, emptied bands removed): `Move`, `MoveTo`,
-`Resize`, `ResizeWidth`, `SetFullRow`, `AddNextTo`, `SplitFullRow`, `Remove`, `InsertBand`,
+`MoveNextTo`, `Resize`, `ResizeWidth`, `SetFullRow`, `AddNextTo`, `SplitFullRow`, `Remove`, `InsertBand`,
 `RemoveBand`, `SetBandMode`, plus `Update` for custom operations, `Capture` (snapshot to restore) and
 `GetLayout` / `SetLayout` (to save and restore). The rules themselves are pure functions on records in
 `DashboardLayoutEngine`, usable without any UI.
+
+`AddNextTo` and `MoveNextTo` place an item next to another one (`ItemSide.Right`, `Left`, `Below`, `Above`). In a
+grid band, on the right or left the item joins the anchor's line: the line's items move aside, and share the columns
+equally when the line is too narrow (`[A][B]` + X between them gives `[A][X][B]` on 4 columns each); below or above,
+it takes the anchor's columns and what is under it moves down. A full-row anchor has no sides. `DashboardPanel.EdgeAt`
+finds the item edge under a point (`SideAt` for the rule).
 
 **`DashboardView`** is the ready-made `UserControl`: `DashboardItem`s showing visuals in a
 `DashboardPanel`, with every interaction provided by a **behavior** (Microsoft.Xaml.Behaviors):
@@ -127,7 +133,7 @@ overlap in a grid band, items pushed down then floated up, emptied bands removed
 | Behavior | Feature |
 |---|---|
 | `AddButtonsBehavior` | "+" on the right and bottom edges of an item, "+" between bands |
-| `MoveBehavior` | grip to drag an item, live reflow, across bands, auto-scroll near the edges; Escape cancels |
+| `MoveBehavior` | grip to drag an item: a picture follows the pointer and a placeholder shows where it lands, the others making room live; near an item's edge it goes next to it (like "+"), elsewhere on the cell under it; across bands, auto-scroll near the edges; Escape cancels |
 | `ResizeBehavior` | corner handle: cells in a grid band, pixels and rows elsewhere |
 | `ItemToolbarBehavior` | full row, edit, remove; text size, bold, alignment; image fit |
 | `BandMenuBehavior` | ⋮ menu of a band: Fit / Scroll / Wrap, insert, remove (`MenuOpening` to customize it) |
@@ -154,7 +160,8 @@ Hooks for applications:
   `AddRight`, `AddBelow`, `InsertBand`, `RemoveBand`...) for custom templates, and public methods
   (`AddNextTo`, `SetVisual`, `InsertBand`, `BeginEdit` to group changes into one undo step...);
 - an implicit style for `DashboardItem` (lookless control) and the `DashboardOverlay` style keys
-  (`PlusButtonStyleKey`, `IconButtonStyleKey`, `GripStyleKey`, `ResizeGripStyleKey`) to restyle;
+  (`PlusButtonStyleKey`, `IconButtonStyleKey`, `GripStyleKey`, `ResizeGripStyleKey`, `DropPlaceholderStyleKey`,
+  `DragGhostStyleKey`) to restyle;
 - `DashboardBehavior` as a base class for new interactions: it gives access to the view, the panel and the
   overlay where behaviors draw their controls; `DragGesture` handles press-drag-release gestures (with
   auto-scroll: `AutoScroll`, `ScrollsBands`).
