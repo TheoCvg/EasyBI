@@ -217,7 +217,7 @@ public class VisualView : ContentControl
         if (!IsLoaded || _pending is not null || _last is null || Context is not { } context || Definition is not { } visual)
             return;
 
-        var renderer = context.ResolveRenderer(visual.Mark);
+        var renderer = context.ResolveRenderer(visual);
         if (renderer is null)
         {
             Show(visual, Message(Strings.Format(Strings.NoRenderer, visual.Mark)));
@@ -225,11 +225,7 @@ public class VisualView : ContentControl
         }
 
         var filters = FilterContext;
-        var request = _last with
-        {
-            Visual = filters?.Apply(visual) ?? visual,
-            Theme = context.Theme,
-        };
+        var request = VisualPipeline.Redraw(_last, filters?.Apply(visual) ?? visual) with { Theme = context.Theme };
         if (filters is not null)
             request = request with { Select = selection => filters.Select(request, selection) };
 

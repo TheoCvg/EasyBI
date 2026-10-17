@@ -16,8 +16,8 @@ end users build their visuals by drag-and-drop, and rendering is delegated to in
 | `EasyBI.Abstractions` | **The contract**: model, query, `ResultSet`, `VisualDefinition`, `ReportDefinition` | none |
 | `EasyBI.Core` | Model builder, query engine over `IQueryable` (expression trees), pivot, filtering, JSON | Abstractions |
 | `EasyBI.Wpf` | `IVisualRenderer`, `EasyBIContext`, `VisualView`, `ReportDesigner`, `FilterBar`, dashboard (`DashboardPanel`, `DashboardView`, behaviors), built-in KPI, Table, Text and Image renderers | Core + Microsoft.Xaml.Behaviors.Wpf |
-| `EasyBI.Renderers.LiveCharts2` | LiveCharts2 connector (bars, lines, pies) | Wpf + LiveCharts2 |
-| `EasyBI.Renderers.OxyPlot` | OxyPlot connector (bars, lines, pies) | Wpf + OxyPlot |
+| `EasyBI.Renderers.LiveCharts2` | LiveCharts2 connector (bars, stacked bars, lines, areas, points, combined charts, pies) | Wpf + LiveCharts2 |
+| `EasyBI.Renderers.OxyPlot` | OxyPlot connector (bars, stacked bars, lines, areas, points, combined charts, pies) | Wpf + OxyPlot |
 | `samples/EasyBI.Sample` | Demo: dashboard + designer + renderer switch + JSON save/load | |
 | `tests/EasyBI.Core.Tests` | Engine, filtering and serialization tests | |
 | `tests/EasyBI.Wpf.Tests` | Designer and dashboard tests | |
@@ -64,6 +64,29 @@ var model = SemanticModel.For(() => dbFactory.CreateDbContext(), db => db.Sales,
 ```xml
 <bi:ReportDesigner Context="{Binding Context}" />                             <!-- design -->
 <bi:VisualView Context="{Binding Context}" Definition="{Binding Visual}" />   <!-- display -->
+```
+
+### Combined charts
+
+The cartesian chart types (`Bar`, `StackedBar`, `Line`, `Area`, `Scatter`) can be mixed in one chart, **one per
+measure**: `MeasureRef.Mark` overrides the visual's type for that measure's series (with a legend, every series of
+the measure keeps its type), and `MeasureRef.SecondaryAxis` draws it against a second value axis on the right. In
+the designer, each measure of a chart has a type selector and a "Y2" toggle. These settings only change the drawing:
+the query is the same, so changing them does not query the source again.
+
+```csharp
+new VisualDefinition
+{
+    Model = "sales",
+    Mark = MarkType.Bar,                                      // default type of the measures
+    Axis = [new("Date", DateGrain.Quarter)],
+    Values =
+    [
+        new("Amount"),                                        // bars
+        new("Margin") { Mark = MarkType.Line },               // line
+        new("Count") { Mark = MarkType.Scatter, SecondaryAxis = true }, // points, right axis
+    ],
+};
 ```
 
 Besides charts, KPIs and tables, a visual can be a **text** (`MarkType.Text`, content in
@@ -207,8 +230,11 @@ public sealed class MyRenderer : IVisualRenderer
 }
 ```
 
-`EasyBIContext.ResolveRenderer` negotiates capabilities: the active renderer if it supports the
-visual type, otherwise another plugged-in renderer, otherwise a built-in one. The designer disables
+Each `ChartSeries` comes with its resolved `Mark` and `SecondaryAxis`: a connector draws every series with its own
+type, so one chart can mix bars, lines, areas and points.
+
+`EasyBIContext.ResolveRenderer` negotiates capabilities: the active renderer if it supports every type the
+visual uses (the visual's and its measures'), otherwise another plugged-in renderer, otherwise a built-in one. The designer disables
 the types that no renderer can draw.
 
 ## Report format (`easybi/v1`)
@@ -224,7 +250,7 @@ the types that no renderer can draw.
       "mark": "Bar",
       "axis": [ { "field": "Region", "grain": "None" } ],
       "legend": { "field": "Channel", "grain": "None" },
-      "values": [ { "measure": "Amount" } ],
+      "values": [ { "measure": "Amount" }, { "measure": "Count", "mark": "Line", "secondaryAxis": true } ],
       "filters": [ { "field": "Product.Category", "operator": "In", "values": [ "Services" ] } ]
     }
   ],

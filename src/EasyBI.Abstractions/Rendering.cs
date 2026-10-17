@@ -5,6 +5,12 @@ public sealed record ChartSeries(string Name, IReadOnlyList<double?> Values, str
 {
     /// <summary>Value of the Legend dimension that produced this series (null without a legend).</summary>
     public object? LegendValue { get; init; }
+
+    /// <summary>How to draw the series in a cartesian chart, already resolved from its measure and the visual.</summary>
+    public MarkType Mark { get; init; } = MarkType.Bar;
+
+    /// <summary>True when the series uses the second value axis, on the right.</summary>
+    public bool SecondaryAxis { get; init; }
 }
 
 /// <summary>
