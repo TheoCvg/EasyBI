@@ -2,7 +2,8 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:bi="clr-namespace:EasyBI.Wpf"
                     xmlns:local="clr-namespace:EasyBI.Wpf.Dashboard"
-                    xmlns:behaviors="clr-namespace:EasyBI.Wpf.Dashboard.Behaviors">
+                    xmlns:behaviors="clr-namespace:EasyBI.Wpf.Dashboard.Behaviors"
+                    xmlns:dnd="clr-namespace:EasyBI.Wpf.DragAndDrop">
 
     <!-- Dashboard item: a card showing its visual, or the choices of an empty item -->
     <Style TargetType="local:DashboardItem">
@@ -157,5 +158,27 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- Drag and drop: the preview following the pointer and the insertion line of a list -->
+    <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type dnd:DragSource}, ResourceId=Preview}" TargetType="ContentControl">
+        <Setter Property="Opacity" Value="0.95" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContentControl">
+                    <Border Background="White" BorderBrush="#2E6BE6" BorderThickness="1" CornerRadius="6" Padding="4,2">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.25" />
+                        </Border.Effect>
+                        <ContentPresenter />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type dnd:DropTarget}, ResourceId=InsertionLine}" TargetType="Border">
+        <Setter Property="Background" Value="#2E6BE6" />
+        <Setter Property="CornerRadius" Value="1" />
     </Style>
 </ResourceDictionary>

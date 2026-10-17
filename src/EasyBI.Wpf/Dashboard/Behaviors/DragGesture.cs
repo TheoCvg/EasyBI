@@ -1,5 +1,8 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using EasyBI.Wpf.DragAndDrop;
 
 namespace EasyBI.Wpf.Dashboard.Behaviors;
 
@@ -7,6 +10,8 @@ namespace EasyBI.Wpf.Dashboard.Behaviors;
 /// A press-drag-release gesture on a handle, in panel coordinates. It starts once the pointer has moved beyond the
 /// system drag distance, and always ends exactly once: on release (committed), on Escape or on a lost capture
 /// (cancelled). Behaviors open a <see cref="DashboardEdit"/> in <c>started</c> and close it in <c>ended</c>.
+/// Near the edges of the dashboard's scroll viewer the view scrolls (and, with <see cref="ScrollsBands"/>, a
+/// <see cref="BandMode.Scroll"/> band near its sides), <c>moved</c> being called again as the content moves.
 /// </summary>
 public sealed class DragGesture
 {
@@ -18,6 +23,8 @@ public sealed class DragGesture
     private readonly Action<bool> _ended;
     private Point _start;
     private bool _pressed;
+    private AutoScroller? _scroller;
+    private ScrollViewer? _viewer;
 
     /// <param name="view">The dashboard; it gets the keyboard during the gesture, for Escape.</param>
     /// <param name="handle">The element pressed to start the gesture.</param>
@@ -44,6 +51,12 @@ public sealed class DragGesture
 
     /// <summary>True once the pointer moved enough to start the gesture.</summary>
     public bool IsStarted { get; private set; }
+
+    /// <summary>Scrolls the view when the pointer nears its top or bottom (true by default).</summary>
+    public bool AutoScroll { get; set; } = true;
+
+    /// <summary>Also scrolls a <see cref="BandMode.Scroll"/> band when the pointer nears its sides (moving items into it).</summary>
+    public bool ScrollsBands { get; set; }
 
     /// <summary>Ends the gesture now (Escape, behavior detached...).</summary>
     public void Cancel() => End(commit: false);
@@ -78,6 +91,58 @@ public sealed class DragGesture
             _started(_start);
         }
         _moved(position, delta);
+        Scroll(position);
+    }
+
+    private void Scroll(Point position)
+    {
+        if (!AutoScroll) return;
+        var panel = _view.Panel;
+        if (_scroller is null)
+        {
+            _viewer = ScrollViewerOf(panel);
+            _scroller = new AutoScroller(ScrollBy);
+            // The content moved under a still pointer: the target changes
+            _scroller.Scrolled += (_, _) =>
+            {
+                if (IsStarted) _moved(Mouse.GetPosition(panel), Mouse.GetPosition(panel) - _start);
+            };
+        }
+        var band = panel.BandAt(position.Y);
+        var horizontal = ScrollsBands && band < panel.Bands.Count && panel.Bands[band].CanScroll;
+        // Vertically the visible part of the view; horizontally the band, as wide as the panel
+        var viewport = _viewer is null ? new Rect(panel.RenderSize) : AutoScroller.ViewportOf(_viewer, panel);
+        _scroller.Update(new Rect(0, viewport.Top, panel.ActualWidth, viewport.Height), position, horizontal, vertical: _viewer is not null);
+    }
+
+    private bool ScrollBy(Vector offset)
+    {
+        var panel = _view.Panel;
+        var scrolled = false;
+        if (offset.Y != 0 && _viewer is { } viewer)
+        {
+            var before = viewer.VerticalOffset;
+            viewer.ScrollToVerticalOffset(before + offset.Y);
+            // Applied at the next layout pass: run it now so that the gesture sees the new position
+            viewer.UpdateLayout();
+            scrolled |= viewer.VerticalOffset != before;
+        }
+        var band = panel.BandAt(Mouse.GetPosition(panel).Y);
+        if (offset.X != 0 && ScrollsBands && band < panel.Bands.Count && panel.Bands[band] is { CanScroll: true } definition)
+        {
+            var before = definition.HorizontalOffset;
+            definition.HorizontalOffset = Math.Clamp(before + offset.X, 0, definition.ExtentWidth - definition.ViewportWidth);
+            panel.UpdateLayout();
+            scrolled |= definition.HorizontalOffset != before;
+        }
+        return scrolled;
+    }
+
+    private static ScrollViewer? ScrollViewerOf(DependencyObject element)
+    {
+        for (var e = VisualTreeHelper.GetParent(element); e is not null; e = VisualTreeHelper.GetParent(e))
+            if (e is ScrollViewer viewer) return viewer;
+        return null;
     }
 
     private void OnKey(object sender, KeyEventArgs e)
@@ -94,6 +159,7 @@ public sealed class DragGesture
         _view.PreviewKeyDown -= OnKey;
         var started = IsStarted;
         IsStarted = false;
+        _scroller?.Stop();
         if (_handle.IsMouseCaptured) _handle.ReleaseMouseCapture();
         if (started) _ended(commit);
     }

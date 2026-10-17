@@ -6,6 +6,7 @@ namespace EasyBI.Wpf.Dashboard.Behaviors;
 /// <summary>
 /// Moves items with a grip shown at their top-left corner. While dragging, the item snaps to the grid cell (or the
 /// position in a scrolling or wrapping band) under the pointer and the others make room live, across bands too.
+/// Near the edges, the view (and a scrolling band) scrolls to reach the rest of the dashboard.
 /// Escape cancels. There is no global edit mode: clicking an item elsewhere keeps cross-filtering.
 /// </summary>
 public sealed class MoveBehavior : DashboardBehavior
@@ -22,7 +23,7 @@ public sealed class MoveBehavior : DashboardBehavior
     {
         var grip = new ContentControl { Focusable = false };
         grip.SetResourceReference(FrameworkElement.StyleProperty, DashboardOverlay.GripStyleKey);
-        _gesture = new DragGesture(View, grip, CanBegin, OnStarted, OnMoved, OnEnded);
+        _gesture = new DragGesture(View, grip, CanBegin, OnStarted, OnMoved, OnEnded) { ScrollsBands = true };
         AddToOverlay(grip, Place);
     }
 
@@ -82,8 +83,11 @@ public sealed class MoveBehavior : DashboardBehavior
     {
         if (target == _target) return;
         _target = target;
-        // Every preview starts from the layout before the drag, so that moves do not accumulate
+        // Every preview starts from the layout before the drag, so that moves do not accumulate;
+        // bands scrolled during the drag stay scrolled
+        var offsets = Panel.Bands.Select(b => (Band: b, b.HorizontalOffset)).ToArray();
         _snapshot!.Restore();
+        foreach (var (band, offset) in offsets) band.HorizontalOffset = offset;
         move();
     }
 

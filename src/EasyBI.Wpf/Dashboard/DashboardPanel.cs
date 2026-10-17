@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using EasyBI.Wpf.DragAndDrop;
 
 namespace EasyBI.Wpf.Dashboard;
 
@@ -194,18 +195,8 @@ public class DashboardPanel : Panel
     /// </summary>
     public int FlowIndexAt(int band, Point point, UIElement? excluding = null)
     {
-        var ordered = ChildrenOf(band);
-        var mode = ModeOf(band);
-        for (var i = 0; i < ordered.Count; i++)
-        {
-            if (ordered[i] == excluding) continue;
-            var bounds = GetItemBounds(ordered[i]);
-            if (bounds.IsEmpty) continue;
-            var sameLine = mode == BandMode.Scroll || (point.Y >= bounds.Top && point.Y <= bounds.Bottom);
-            var before = sameLine ? point.X < bounds.Left + bounds.Width / 2 : point.Y < bounds.Top;
-            if (before) return i;
-        }
-        return ordered.Count;
+        var bounds = ChildrenOf(band).Select(c => c == excluding ? Rect.Empty : GetItemBounds(c)).ToArray();
+        return InsertionIndex.At(bounds, point, singleLine: ModeOf(band) == BandMode.Scroll);
     }
 
     protected override Size MeasureOverride(Size availableSize)

@@ -3,15 +3,14 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Input;
-using System.Windows.Media;
 using EasyBI.Abstractions;
 
 namespace EasyBI.Wpf.Designer;
 
 /// <summary>
-/// Self-service designer: the user drags fields onto shelves,
-/// picks a visual type and sees a live preview.
+/// Self-service designer: the user drags fields onto shelves (or double-clicks them), reorders or moves the chips,
+/// picks a visual type and sees a live preview. Drag and drop goes through <see cref="DragAndDrop.DragSource"/> and
+/// <see cref="DragAndDrop.DropTarget"/>, the view-model deciding what each shelf accepts.
 /// </summary>
 public partial class ReportDesigner : UserControl
 {
@@ -24,21 +23,7 @@ public partial class ReportDesigner : UserControl
 
     public static readonly DependencyProperty VisualProperty = VisualPropertyKey.DependencyProperty;
 
-    private Point? _dragStart;
-
-    public ReportDesigner()
-    {
-        InitializeComponent();
-        foreach (var list in new[] { DimensionList, MeasureList })
-        {
-            list.PreviewMouseLeftButtonDown += (_, e) => _dragStart = e.GetPosition(null);
-            list.PreviewMouseMove += OnFieldMouseMove;
-            list.MouseDoubleClick += (_, e) =>
-            {
-                if (FieldUnder(e) is { } field) ViewModel?.AddToDefaultShelf(field);
-            };
-        }
-    }
+    public ReportDesigner() => InitializeComponent();
 
     public EasyBIContext? Context
     {
@@ -68,46 +53,6 @@ public partial class ReportDesigner : UserControl
     {
         if (e.PropertyName == nameof(DesignerViewModel.Visual))
             SetValue(VisualPropertyKey, ViewModel?.Visual);
-    }
-
-    private void OnFieldMouseMove(object sender, MouseEventArgs e)
-    {
-        if (e.LeftButton != MouseButtonState.Pressed || _dragStart is not { } start) return;
-        var delta = start - e.GetPosition(null);
-        if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance
-            && Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance) return;
-        if (FieldUnder(e) is not { } field) return;
-        _dragStart = null;
-        DragDrop.DoDragDrop((DependencyObject)sender, new DataObject(typeof(FieldDescriptor), field), DragDropEffects.Copy);
-    }
-
-    private static FieldDescriptor? FieldUnder(RoutedEventArgs e) =>
-        (e.OriginalSource as FrameworkElement)?.DataContext as FieldDescriptor;
-
-    private void OnShelfDragLeave(object sender, DragEventArgs e) => Highlight((Border)sender, false);
-
-    private void OnShelfDragOver(object sender, DragEventArgs e)
-    {
-        var shelf = (Border)sender;
-        var accepted = e.Data.GetData(typeof(FieldDescriptor)) is FieldDescriptor field
-            && ViewModel?.CanDrop(field, (Shelf)shelf.Tag) == true;
-        e.Effects = accepted ? DragDropEffects.Copy : DragDropEffects.None;
-        Highlight(shelf, accepted);
-        e.Handled = true;
-    }
-
-    private void OnShelfDrop(object sender, DragEventArgs e)
-    {
-        var shelf = (Border)sender;
-        Highlight(shelf, false);
-        if (e.Data.GetData(typeof(FieldDescriptor)) is FieldDescriptor field)
-            ViewModel?.Drop(field, (Shelf)shelf.Tag);
-    }
-
-    private void Highlight(Border shelf, bool on)
-    {
-        if (on) shelf.BorderBrush = (Brush)FindResource("AccentBrush");
-        else shelf.ClearValue(Border.BorderBrushProperty);
     }
 }
 
