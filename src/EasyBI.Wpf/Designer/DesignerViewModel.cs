@@ -60,7 +60,10 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         ];
         Models = context.Models.Select(m => new Option<ISemanticModel>(m, () => m.Metadata.Caption)).ToArray();
         RemoveCommand = new RelayCommand<object>(Remove);
-        AddFieldCommand = new RelayCommand<FieldDescriptor?>(field => { if (field is not null) AddToDefaultShelf(field); });
+        AddFieldCommand = new RelayCommand<object?>(item =>
+        {
+            if (Unwrap(item) is FieldDescriptor field) AddToDefaultShelf(field);
+        });
         context.Changed += (_, _) => RefreshAvailability();
         PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, OnLanguageChanged, string.Empty);
         RefreshAvailability();
@@ -83,7 +86,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
 
     public ICommand RemoveCommand { get; }
 
-    /// <summary>Adds a field to its default shelf (see <see cref="AddToDefaultShelf"/>); bound to a double-click.</summary>
+    /// <summary>Adds a field (or a <see cref="ModelField"/> of the selected model) to its default shelf (see <see cref="AddToDefaultShelf"/>); bound to a double-click.</summary>
     public ICommand AddFieldCommand { get; }
 
     public IEnumerable<FieldDescriptor> Dimensions => _selectedModel?.Metadata.Dimensions ?? [];
@@ -133,11 +136,11 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     public void Drop(FieldDescriptor field, Shelf shelf) => Drop((object)field, shelf);
 
     /// <summary>
-    /// Whether <paramref name="item"/> can be dropped on <paramref name="shelf"/>: a field from the field lists
-    /// (see <see cref="CanDrop(FieldDescriptor, Shelf)"/>), a chip moved within its shelf, or a dimension moved
-    /// between Axis and Legend.
+    /// Whether <paramref name="item"/> can be dropped on <paramref name="shelf"/>: a field (a <see cref="FieldDescriptor"/>,
+    /// or a <see cref="ModelField"/> of the selected model, see <see cref="CanDrop(FieldDescriptor, Shelf)"/>), a chip
+    /// moved within its shelf, or a dimension moved between Axis and Legend.
     /// </summary>
-    public bool CanDrop(object item, Shelf shelf) => item switch
+    public bool CanDrop(object item, Shelf shelf) => Unwrap(item) switch
     {
         FieldDescriptor field => CanDrop(field, shelf),
         // A chip of another designer (or already removed) is not ours to move
@@ -160,6 +163,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     public void Drop(object item, Shelf shelf, int index = int.MaxValue)
     {
         if (_selectedModel is null || !CanDrop(item, shelf)) return;
+        item = Unwrap(item)!;
         switch (item)
         {
             case FieldDescriptor field when shelf == Shelf.Filters:
@@ -184,13 +188,16 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
 
     DragDropEffects IDropHandler.DragOver(DropInfo drop) =>
         drop.Key is Shelf shelf && drop.Item is { } item && CanDrop(item, shelf)
-            ? item is FieldDescriptor ? DragDropEffects.Copy : DragDropEffects.Move
+            ? Unwrap(item) is FieldDescriptor ? DragDropEffects.Copy : DragDropEffects.Move
             : DragDropEffects.None;
 
     void IDropHandler.Drop(DropInfo drop)
     {
         if (drop.Key is Shelf shelf && drop.Item is { } item) Drop(item, shelf, drop.Index);
     }
+
+    /// <summary>The field of a <see cref="ModelField"/> of the selected model; other models' fields are refused (null).</summary>
+    private object? Unwrap(object? item) => item is ModelField field ? field.Model == _selectedModel ? field.Field : null : item;
 
     private ObservableCollection<ShelfItemViewModel> Collection(Shelf shelf) => shelf switch
     {

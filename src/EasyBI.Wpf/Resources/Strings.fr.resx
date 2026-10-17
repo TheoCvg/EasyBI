@@ -207,4 +207,7 @@
   <data name="SecondaryAxisHint" xml:space="preserve">
     <value>Dessiner cette mesure sur un second axe, à droite</value>
   </data>
+  <data name="VisualTitleBy" xml:space="preserve">
+    <value>{0} par {1}</value>
+  </data>
 </root>

@@ -67,7 +67,7 @@
     <value>  Designer  </value>
   </data>
   <data name="Tip" xml:space="preserve">
-    <value>Tip: click a bar, a slice or a table row to filter the other visuals. Hover an item to move it (⠿), resize it (◢) or add an item next to it (+); double-click a text to edit it.</value>
+    <value>Tip: click a bar, a slice or a table row to filter the other visuals. Drag a field from the left onto the dashboard to make a visual, or onto a visual to add it. Hover an item to move it (⠿), resize it (◢) or add an item next to it (+); double-click a text to edit it.</value>
   </data>
   <data name="NewVisual" xml:space="preserve">
     <value>New visual</value>

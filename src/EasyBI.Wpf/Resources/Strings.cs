@@ -58,6 +58,7 @@ internal static class Strings
     public static string AddLine => Get();
     public static string AddHere => Get();
     public static string AutoSize => Get();
+    public static string VisualTitleBy => Get();
     public static string EditorTitle => Get();
     public static string Ok => Get();
     public static string Cancel => Get();

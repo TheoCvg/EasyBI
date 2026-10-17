@@ -24,15 +24,6 @@
             <Setter Property="Margin" Value="0,14,0,6" />
         </Style>
 
-        <Style x:Key="FieldList" TargetType="ListBox">
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
-            <Setter Property="ToolTip" Value="{bi:Localize FieldListHint}" />
-            <Setter Property="dnd:DragSource.IsEnabled" Value="True" />
-            <Setter Property="dnd:DragSource.AllowedEffects" Value="Copy" />
-        </Style>
-
         <ItemsPanelTemplate x:Key="WrapItems">
             <WrapPanel />
         </ItemsPanelTemplate>
@@ -164,47 +155,9 @@
 
         <!-- Field panel -->
         <Border Background="#FAFBFC" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,1,0" Padding="14,4,14,14">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <TextBlock Text="{bi:Localize ModelHeader}" Style="{StaticResource SectionHeader}" />
-                <ComboBox Grid.Row="1" ItemsSource="{Binding Models}" SelectedValuePath="Value"
-                          SelectedValue="{Binding SelectedModel}" DisplayMemberPath="Label" />
-                <TextBlock Grid.Row="2" Text="{bi:Localize DimensionsHeader}" Style="{StaticResource SectionHeader}" />
-                <ListBox Grid.Row="3" x:Name="DimensionList" ItemsSource="{Binding Dimensions}" Style="{StaticResource FieldList}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal" Background="Transparent">
-                                <StackPanel.InputBindings>
-                                    <MouseBinding MouseAction="LeftDoubleClick" Command="{Binding DataContext.AddFieldCommand, ElementName=LayoutRoot}" CommandParameter="{Binding}" />
-                                </StackPanel.InputBindings>
-                                <TextBlock Text="◆" Foreground="{StaticResource AccentBrush}" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                <TextBlock Text="{Binding Caption}" Padding="0,3" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-                <TextBlock Grid.Row="4" Text="{bi:Localize MeasuresHeader}" Style="{StaticResource SectionHeader}" />
-                <ListBox Grid.Row="5" x:Name="MeasureList" ItemsSource="{Binding Measures}" Style="{StaticResource FieldList}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal" Background="Transparent">
-                                <StackPanel.InputBindings>
-                                    <MouseBinding MouseAction="LeftDoubleClick" Command="{Binding DataContext.AddFieldCommand, ElementName=LayoutRoot}" CommandParameter="{Binding}" />
-                                </StackPanel.InputBindings>
-                                <TextBlock Text="Σ" Foreground="#2BA37B" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,7,0" />
-                                <TextBlock Text="{Binding Caption}" Padding="0,3" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Grid>
+            <!-- Fields are dragged onto the shelves; a double-click puts one on its default shelf -->
+            <bi:FieldList Context="{Binding Context}" SelectedModel="{Binding SelectedModel, Mode=TwoWay}"
+                          ActivateCommand="{Binding AddFieldCommand}" ToolTip="{bi:Localize FieldListHint}" />
         </Border>
 
         <!-- Visual builder -->
