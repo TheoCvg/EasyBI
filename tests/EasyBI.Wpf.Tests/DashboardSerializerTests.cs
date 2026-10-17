@@ -19,8 +19,8 @@ public class DashboardSerializerTests
             {
                 Bands =
                 [
-                    new BandLayout { Items = [new ItemLayout { VisualId = "t", ColumnSpan = 8, IsFullRow = true }] },
-                    new BandLayout { Mode = BandMode.Wrap, Items = [new ItemLayout { VisualId = "i", Width = 420 }] },
+                    new BandLayout { Items = [LayoutNode.Row(new LayoutNode { VisualId = "t", ColumnSpan = 8, RowSpan = 1 }, LayoutNode.Item())] },
+                    new BandLayout { Mode = BandMode.Wrap, Items = [new LayoutNode { VisualId = "i", Width = 420 }] },
                 ],
             },
         };
@@ -32,7 +32,11 @@ public class DashboardSerializerTests
         Assert.DoesNotContain("\"id\": \"" + document.Layout.Bands[0].Id, json); // operation ids are not saved
         Assert.Equal("Sales", back.Report.Visuals[0].Text!.Text);
         Assert.Equal("AQID", back.Report.Visuals[1].Image!.Data);
-        Assert.True(back.Layout!.Bands[0].Items[0].IsFullRow);
+        var line = back.Layout!.Bands[0].Items[0];
+        Assert.Equal(SplitDirection.Row, line.Split);
+        Assert.Equal(("t", 8, 1), (line.Children[0].VisualId, line.Children[0].ColumnSpan, line.Children[0].RowSpan));
+        Assert.Null(line.Children[1].ColumnSpan); // greedy: nothing saved
+        Assert.DoesNotContain("columnSpan\": null", json);
         Assert.Equal((BandMode.Wrap, 420d), (back.Layout.Bands[1].Mode, back.Layout.Bands[1].Items[0].Width));
     });
 

@@ -25,10 +25,6 @@ public class DashboardItem : Control
 
     public static readonly DependencyProperty KindProperty = KindPropertyKey.DependencyProperty;
 
-    /// <summary>True while the item asks whether to give up its full row so that an item can be added next to it.</summary>
-    public static readonly DependencyProperty IsFullRowSplitPendingProperty = DependencyProperty.Register(
-        nameof(IsFullRowSplitPending), typeof(bool), typeof(DashboardItem), new PropertyMetadata(false));
-
     static DashboardItem()
     {
         DefaultStyleKeyProperty.OverrideMetadata(typeof(DashboardItem), new FrameworkPropertyMetadata(typeof(DashboardItem)));
@@ -51,12 +47,6 @@ public class DashboardItem : Control
     {
         get => (DashboardItemKind)GetValue(KindProperty);
         private set => SetValue(KindPropertyKey, value);
-    }
-
-    public bool IsFullRowSplitPending
-    {
-        get => (bool)GetValue(IsFullRowSplitPendingProperty);
-        set => SetValue(IsFullRowSplitPendingProperty, value);
     }
 
     public static DashboardItemKind KindOf(VisualDefinition? visual) => visual?.Mark switch

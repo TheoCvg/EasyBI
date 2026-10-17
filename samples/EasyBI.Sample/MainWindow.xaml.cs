@@ -169,20 +169,15 @@ public partial class MainWindow : Window
                     {
                         Items =
                         [
-                            new ItemLayout { VisualId = title.Id, RowSpan = 1, IsFullRow = true },
-                            new ItemLayout { VisualId = kpis.Id, Row = 1, ColumnSpan = 12, RowSpan = 2 },
-                            new ItemLayout { VisualId = quarters.Id, Row = 3 },
-                            new ItemLayout { VisualId = regions.Id, Row = 3, Column = 6 },
+                            new LayoutNode { VisualId = title.Id, RowSpan = 1 },
+                            new LayoutNode { VisualId = kpis.Id, RowSpan = 2 },
+                            LayoutNode.Row(LayoutNode.Item(quarters.Id), LayoutNode.Item(regions.Id)),
                         ],
                     },
                     new BandLayout
                     {
                         Mode = BandMode.Scroll,
-                        Items =
-                        [
-                            new ItemLayout { VisualId = categories.Id, Width = 520 },
-                            new ItemLayout { VisualId = note.Id, Width = 360 },
-                        ],
+                        Items = [LayoutNode.Item(categories.Id), new LayoutNode { VisualId = note.Id, Width = 360 }],
                     },
                 ],
             },

@@ -4,8 +4,9 @@ using System.Windows.Controls;
 namespace EasyBI.Wpf.Dashboard.Behaviors;
 
 /// <summary>
-/// Resizes items with a handle at their bottom-right corner: by whole cells in a grid band, by pixels (width) and
-/// rows (height) in scrolling and wrapping bands. The other items make room live; Escape cancels.
+/// Resizes items with a handle at their bottom-right corner: by whole columns and rows in a grid band, by pixels
+/// (width) and rows (height) in scrolling and wrapping bands. Resizing constrains the item (see
+/// <see cref="DashboardLayoutEngine.Resize"/>); the other items make room live. Escape cancels.
 /// </summary>
 public sealed class ResizeBehavior : DashboardBehavior
 {
@@ -45,7 +46,11 @@ public sealed class ResizeBehavior : DashboardBehavior
     private void OnStarted(Point start)
     {
         var item = _item = _pressed!;
-        _initial = (DashboardPanel.GetColumnSpan(item), DashboardPanel.GetRowSpan(item), DashboardPanel.GetItemWidth(item));
+        // The size on screen, constrained or not: an unconstrained item starts from the room it took
+        var bounds = Panel.GetItemBounds(item);
+        var widthNode = DashboardPanel.GetItemId(item) is { } id ? DashboardLayoutEngine.WidthNodeOf(Panel.Layout, id) : null;
+        var columns = widthNode is null ? null : Panel.GetColumns(widthNode.Id);
+        _initial = (columns?.Span ?? 1, Math.Max(1, (int)Math.Round((bounds.Height + Panel.Gap) / Panel.RowPitch)), bounds.Width);
         Overlay.Lock(item);
         _edit = View.BeginEdit();
         _snapshot = DashboardLayout.Capture(Panel);
@@ -55,20 +60,22 @@ public sealed class ResizeBehavior : DashboardBehavior
     private void OnMoved(Point position, Vector delta)
     {
         if (_item is not { } item) return;
-        var rowSpan = Math.Max(1, _initial.RowSpan + (int)Math.Round(delta.Y / Panel.RowPitch));
+        // A dimension the pointer did not change stays as it was (greedy if it was)
+        var rows = (int)Math.Round(delta.Y / Panel.RowPitch);
+        int? rowSpan = rows == 0 ? null : Math.Max(1, _initial.RowSpan + rows);
 
         string target;
         Action resize;
         if (Panel.ModeOf(Panel.BandIndexOf(item)) == BandMode.Fit)
         {
-            var columnSpan = Math.Clamp(_initial.ColumnSpan + (int)Math.Round(delta.X / Math.Max(1, Panel.ColumnPitch)), 1, Panel.Columns);
+            var columns = (int)Math.Round(delta.X / Math.Max(1, Panel.ColumnPitch));
+            int? columnSpan = columns == 0 ? null : Math.Clamp(_initial.ColumnSpan + columns, 1, Panel.Columns);
             target = $"{columnSpan}x{rowSpan}";
             resize = () => DashboardLayout.Resize(item, columnSpan, rowSpan);
         }
         else
         {
-            // A full-row item keeps the band width: only its height changes
-            var width = DashboardPanel.GetIsFullRow(item) ? _initial.Width : Math.Max(DashboardLayoutEngine.MinWidth, Math.Round(_initial.Width + delta.X));
+            double? width = Math.Abs(delta.X) < 1 ? null : Math.Max(DashboardLayoutEngine.MinWidth, Math.Round(_initial.Width + delta.X));
             target = $"{width}x{rowSpan}";
             resize = () => DashboardLayout.ResizeWidth(item, width, rowSpan);
         }

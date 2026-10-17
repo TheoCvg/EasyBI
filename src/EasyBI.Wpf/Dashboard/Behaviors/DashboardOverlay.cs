@@ -31,6 +31,9 @@ public sealed class DashboardOverlay : Adorner
     /// <summary>Style of the handle used to resize an item (a <c>ContentControl</c>).</summary>
     public static ComponentResourceKey ResizeGripStyleKey { get; } = new(typeof(DashboardOverlay), "ResizeGrip");
 
+    /// <summary>Style of the placeholder filling a free space, which adds an item there when clicked (a <c>Button</c>).</summary>
+    public static ComponentResourceKey FreeSpaceStyleKey { get; } = new(typeof(DashboardOverlay), "FreeSpace");
+
     /// <summary>Style of the place where a moved item will land (a <c>ContentControl</c>, sized like the item).</summary>
     public static ComponentResourceKey DropPlaceholderStyleKey { get; } = new(typeof(DashboardOverlay), "DropPlaceholder");
 
@@ -39,6 +42,16 @@ public sealed class DashboardOverlay : Adorner
 
     /// <summary>Distance around an item within which it stays hovered (its "+" buttons sit on its edges).</summary>
     public const double HoverMargin = 14;
+
+    /// <summary>
+    /// True (default): an element hidden by its placement stays while the pointer is over it, so that it can be reached
+    /// and clicked. Set it to false for elements that must disappear at once (a placeholder replaced by an item).
+    /// </summary>
+    public static readonly DependencyProperty StaysUnderPointerProperty = DependencyProperty.RegisterAttached(
+        "StaysUnderPointer", typeof(bool), typeof(DashboardOverlay), new PropertyMetadata(true));
+
+    public static bool GetStaysUnderPointer(DependencyObject element) => (bool)element.GetValue(StaysUnderPointerProperty);
+    public static void SetStaysUnderPointer(DependencyObject element, bool value) => element.SetValue(StaysUnderPointerProperty, value);
 
     private static readonly DependencyProperty OverlayProperty = DependencyProperty.RegisterAttached(
         "Overlay", typeof(DashboardOverlay), typeof(DashboardOverlay), new PropertyMetadata(null));
@@ -147,7 +160,7 @@ public sealed class DashboardOverlay : Adorner
         {
             var rect = placement(this, element.DesiredSize);
             // An element under the pointer stays where it is, so that it can be reached and clicked
-            if (rect is null && element.IsMouseOver && _shown.TryGetValue(element, out var shown)) rect = shown;
+            if (rect is null && element.IsMouseOver && GetStaysUnderPointer(element) && _shown.TryGetValue(element, out var shown)) rect = shown;
             if (rect is { } r) _shown[element] = r;
             else _shown.Remove(element);
             // Hidden elements are moved far away rather than collapsed: changing visibility here would loop the layout

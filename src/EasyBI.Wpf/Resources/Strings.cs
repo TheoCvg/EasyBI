@@ -55,9 +55,9 @@ internal static class Strings
     public static string InsertBand => Get();
     public static string RemoveBand => Get();
     public static string AddBand => Get();
-    public static string FullRow => Get();
-    public static string FullRowWarning => Get();
-    public static string FullRowProceed => Get();
+    public static string AddLine => Get();
+    public static string AddHere => Get();
+    public static string AutoSize => Get();
     public static string EditorTitle => Get();
     public static string Ok => Get();
     public static string Cancel => Get();

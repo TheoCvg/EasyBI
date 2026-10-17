@@ -17,14 +17,12 @@ public static class DashboardCommands
     public static RoutedCommand EditItem { get; } = new(nameof(EditItem), typeof(DashboardCommands));
 
     public static RoutedCommand RemoveItem { get; } = new(nameof(RemoveItem), typeof(DashboardCommands));
-    public static RoutedCommand ToggleFullRow { get; } = new(nameof(ToggleFullRow), typeof(DashboardCommands));
+
+    /// <summary>Removes the size constraints of an item (see <see cref="DashboardView.SetAutoSize"/>).</summary>
+    public static RoutedCommand ResetSize { get; } = new(nameof(ResetSize), typeof(DashboardCommands));
+
     public static RoutedCommand AddRight { get; } = new(nameof(AddRight), typeof(DashboardCommands));
     public static RoutedCommand AddBelow { get; } = new(nameof(AddBelow), typeof(DashboardCommands));
-
-    /// <summary>Accepts giving up the full row of an item (see <see cref="DashboardItem.IsFullRowSplitPending"/>).</summary>
-    public static RoutedCommand ConfirmFullRowSplit { get; } = new(nameof(ConfirmFullRowSplit), typeof(DashboardCommands));
-
-    public static RoutedCommand CancelFullRowSplit { get; } = new(nameof(CancelFullRowSplit), typeof(DashboardCommands));
 
     /// <summary>Inserts a band holding an empty item; the parameter is the index of the new band.</summary>
     public static RoutedCommand InsertBand { get; } = new(nameof(InsertBand), typeof(DashboardCommands));

@@ -4,8 +4,8 @@ using System.Runtime.CompilerServices;
 namespace EasyBI.Wpf.Dashboard;
 
 /// <summary>
-/// A band of a <see cref="DashboardPanel"/>, declared like a <c>RowDefinition</c> of a <c>Grid</c>:
-/// children choose their band with the attached <see cref="DashboardPanel.BandProperty"/>.
+/// Live state of a band of a <see cref="DashboardPanel"/> (one per <see cref="BandLayout"/> of its
+/// <see cref="DashboardPanel.Layout"/>): its mode and, for a scrolling band, its scroll position and extent.
 /// </summary>
 public sealed class DashboardBand : INotifyPropertyChanged
 {
@@ -16,10 +16,11 @@ public sealed class DashboardBand : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    /// <summary>Mode of the band, from the panel's layout.</summary>
     public BandMode Mode
     {
         get => _mode;
-        set => Set(ref _mode, value);
+        internal set => Set(ref _mode, value);
     }
 
     /// <summary>Horizontal scroll position of a <see cref="BandMode.Scroll"/> band (clamped by the panel).</summary>

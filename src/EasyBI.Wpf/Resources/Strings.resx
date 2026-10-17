@@ -168,14 +168,14 @@
   <data name="AddBand" xml:space="preserve">
     <value>Add a band here</value>
   </data>
-  <data name="FullRow" xml:space="preserve">
-    <value>Full row</value>
+  <data name="AddLine" xml:space="preserve">
+    <value>Add a line here</value>
   </data>
-  <data name="FullRowWarning" xml:space="preserve">
-    <value>This item takes the whole row. Adding an item next to it removes this setting.</value>
+  <data name="AddHere" xml:space="preserve">
+    <value>Add an item here</value>
   </data>
-  <data name="FullRowProceed" xml:space="preserve">
-    <value>Remove full row and add</value>
+  <data name="AutoSize" xml:space="preserve">
+    <value>Automatic size: take the room left</value>
   </data>
   <data name="EditorTitle" xml:space="preserve">
     <value>Visual</value>

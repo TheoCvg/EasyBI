@@ -2,260 +2,328 @@ using EasyBI.Wpf.Dashboard;
 
 namespace EasyBI.Wpf.Tests;
 
+/// <summary>Layout operations on the tree of a dashboard. Shapes read: <c>Row(a,b)</c> side by side, <c>Col(a,b)</c>
+/// stacked, <c>|</c> between lines, <c>a:4</c> 4 columns wide, <c>a^2</c> 2 rows high, <c>a~300</c> 300 px wide.</summary>
 public class DashboardLayoutEngineTests
 {
-    private static ItemLayout Item(string id, int column, int row, int columnSpan, int rowSpan) =>
-        new() { Id = id, VisualId = id, Column = column, Row = row, ColumnSpan = columnSpan, RowSpan = rowSpan };
+    private static LayoutNode I(string id, int? columns = null, int? rows = null, double? width = null) =>
+        new() { Id = id, VisualId = id, ColumnSpan = columns, RowSpan = rows, Width = width };
 
-    private static DashboardLayoutDefinition Layout(params BandLayout[] bands) => new() { Bands = bands };
+    private static LayoutNode Row(params LayoutNode[] children) => LayoutNode.Row(children);
 
-    private static BandLayout Grid(params ItemLayout[] items) => new() { Items = items };
+    private static LayoutNode Col(params LayoutNode[] children) => LayoutNode.Column(children);
 
-    private static BandLayout Strip(BandMode mode, params string[] items) =>
-        new() { Mode = mode, Items = items.Select(i => new ItemLayout { Id = i, VisualId = i }).ToArray() };
+    private static DashboardLayoutDefinition Grid(params LayoutNode[] lines) => new() { Bands = [new BandLayout { Items = lines }] };
 
-    private static (int Column, int Row, int ColumnSpan, int RowSpan) Box(DashboardLayoutDefinition layout, string id) =>
-        DashboardLayoutEngine.Find(layout, id) is { } i ? (i.Column, i.Row, i.ColumnSpan, i.RowSpan) : default;
+    private static DashboardLayoutDefinition Bands(params BandLayout[] bands) => new() { Bands = bands };
 
-    private static string[][] Order(DashboardLayoutDefinition layout) =>
-        layout.Bands.Select(b => b.Items.Select(i => i.Id).ToArray()).ToArray();
+    private static string Shape(DashboardLayoutDefinition layout, int band = 0) =>
+        string.Join(" | ", layout.Bands[band].Items.Select(Shape));
 
-    // --- Placing visuals ---
+    private static string Shape(LayoutNode node)
+    {
+        var size = (node.ColumnSpan is { } c ? $":{c}" : "") + (node.RowSpan is { } r ? $"^{r}" : "") + (node.Width is { } w ? $"~{w}" : "");
+        return node.IsItem
+            ? (node.VisualId ?? "_") + size
+            : (node.Split == SplitDirection.Row ? "Row" : "Col") + size + "(" + string.Join(",", node.Children.Select(Shape)) + ")";
+    }
+
+    private static LayoutNode New(string id) => I(id);
+
+    // --- Placing visuals and normalizing ---
 
     [Fact]
     public void Placing_nothing_gives_one_band_with_one_empty_item()
     {
-        var band = Assert.Single(DashboardLayoutEngine.Place(null, []).Bands);
+        var layout = DashboardLayoutEngine.Place(null, []);
 
-        Assert.Equal(BandMode.Fit, band.Mode);
-        Assert.Null(Assert.Single(band.Items).VisualId);
+        Assert.Equal("_", Shape(layout));
+        Assert.Equal(BandMode.Fit, Assert.Single(layout.Bands).Mode);
     }
 
     [Fact]
     public void Visuals_without_a_layout_are_placed_two_per_line()
     {
-        var layout = DashboardLayoutEngine.Place(null, ["a", "b", "c"]);
-
-        Assert.Equal([(0, 0, 6, 3), (6, 0, 6, 3), (0, 3, 6, 3)], new[] { "a", "b", "c" }.Select(id =>
-            layout.Bands[0].Items.Single(i => i.VisualId == id) is var i ? (i.Column, i.Row, i.ColumnSpan, i.RowSpan) : default));
+        Assert.Equal("Row(a,b) | c", Shape(DashboardLayoutEngine.Place(null, ["a", "b", "c"])));
     }
 
     [Fact]
-    public void Placing_repairs_overlaps_bounds_references_and_empty_bands()
+    public void Placing_empties_unknown_and_repeated_visuals_and_adds_the_missing_ones()
     {
-        var layout = DashboardLayoutEngine.Place(
-            Layout(Grid(Item("a", 0, 5, 6, 2), Item("ghost", 2, 5, 6, 2), Item("c", 10, 0, 6, 1)), Grid()),
-            ["a", "c", "d"]);
+        var layout = DashboardLayoutEngine.Place(Grid(Row(I("a"), I("gone"), I("a"))), ["a", "b"]);
 
-        Assert.Equal((0, 0, 6, 2), Box(layout, "a"));      // floated up
-        Assert.Equal((2, 2, 6, 2), Box(layout, "ghost"));  // pushed under a
-        Assert.Equal((6, 0, 6, 1), Box(layout, "c"));      // kept inside the 12 columns
-        Assert.Null(DashboardLayoutEngine.Find(layout, "ghost")!.VisualId); // unknown visual: the item becomes empty
-        Assert.Contains(layout.Bands[0].Items, i => i.VisualId == "d");    // unplaced visual added
-        Assert.Single(layout.Bands);                                         // empty band dropped
-    }
-
-    [Fact]
-    public void A_visual_placed_twice_is_shown_once()
-    {
-        var layout = DashboardLayoutEngine.Place(Layout(Grid(Item("a", 0, 0, 6, 3), Item("copy", 6, 0, 6, 3) with { VisualId = "a" })), ["a"]);
-
-        Assert.Equal(["a", null], layout.Bands[0].Items.Select(i => i.VisualId));
-    }
-
-    // --- Grid bands ---
-
-    [Fact]
-    public void An_item_can_span_several_rows_and_columns()
-    {
-        var layout = DashboardLayoutEngine.Normalize(Layout(Grid(Item("big", 0, 0, 8, 6), Item("top", 8, 0, 4, 3), Item("bottom", 8, 3, 4, 3))));
-
-        Assert.Equal((0, 0, 8, 6), Box(layout, "big"));
-        Assert.Equal((8, 3, 4, 3), Box(layout, "bottom"));
-    }
-
-    [Fact]
-    public void Moving_onto_an_item_pushes_it_down()
-    {
-        var layout = DashboardLayoutEngine.Move(Layout(Grid(Item("a", 0, 0, 6, 3), Item("b", 6, 0, 6, 3))), "b", 0, 0, 0);
-
-        Assert.Equal((0, 0, 6, 3), Box(layout, "b"));
-        Assert.Equal((0, 3, 6, 3), Box(layout, "a"));
-    }
-
-    [Fact]
-    public void Items_float_up_but_never_jump_over_another()
-    {
-        var layout = DashboardLayoutEngine.Remove(Layout(Grid(Item("a", 0, 0, 12, 2), Item("b", 0, 2, 6, 2), Item("c", 6, 2, 6, 2))), "a");
-
-        Assert.Equal((0, 0, 6, 2), Box(layout, "b"));
-        Assert.Equal((6, 0, 6, 2), Box(layout, "c"));
-    }
-
-    [Fact]
-    public void Resizing_pushes_overlapped_items_down_and_is_clamped()
-    {
-        var layout = Layout(Grid(Item("a", 0, 0, 6, 3), Item("b", 6, 0, 6, 3)));
-
-        layout = DashboardLayoutEngine.Resize(layout, "a", 8, 4);
-        Assert.Equal((0, 0, 8, 4), Box(layout, "a"));
-        Assert.Equal((6, 4, 6, 3), Box(layout, "b"));
-
-        layout = DashboardLayoutEngine.Resize(layout, "a", 40, 0);
-        Assert.Equal((0, 0, 12, 1), Box(layout, "a"));
-    }
-
-    [Fact]
-    public void Adding_next_to_an_item_in_a_grid()
-    {
-        var layout = Layout(Grid(Item("a", 0, 0, 4, 2)));
-
-        layout = DashboardLayoutEngine.AddNextTo(layout, "a", ItemSide.Right, new ItemLayout { Id = "r" });
-        Assert.Equal((4, 0, 6, 2), Box(layout, "r"));
-
-        layout = DashboardLayoutEngine.AddNextTo(layout, "a", ItemSide.Below, new ItemLayout { Id = "b" });
-        Assert.Equal((0, 2, 4, 3), Box(layout, "b"));
-    }
-
-    [Fact]
-    public void Adding_at_the_end_of_a_grid_starts_below_everything_then_floats_up()
-    {
-        var layout = DashboardLayoutEngine.Add(Layout(Grid(Item("a", 0, 0, 6, 2), Item("b", 6, 0, 6, 4))), 0, new ItemLayout { Id = "n" });
-
-        Assert.Equal((0, 2, 6, 3), Box(layout, "n")); // under a, the shorter column
-    }
-
-    // --- Full row ---
-
-    [Fact]
-    public void A_full_row_item_covers_every_column_and_pushes_its_neighbours_down()
-    {
-        var layout = DashboardLayoutEngine.SetFullRow(Layout(Grid(Item("a", 0, 0, 6, 2), Item("b", 6, 0, 6, 2))), "a", true);
-
-        Assert.Equal((0, 0, 12, 2), Box(layout, "a"));
-        Assert.Equal((6, 2, 6, 2), Box(layout, "b"));
-
-        // It stays full width whatever the requested size
-        layout = DashboardLayoutEngine.Resize(layout, "a", 4, 2);
-        Assert.Equal((0, 0, 12, 2), Box(layout, "a"));
-    }
-
-    [Fact]
-    public void Nothing_is_added_to_the_right_of_a_full_row_item()
-    {
-        var layout = DashboardLayoutEngine.SetFullRow(Layout(Grid(Item("a", 0, 0, 6, 2))), "a", true);
-
-        layout = DashboardLayoutEngine.AddNextTo(layout, "a", ItemSide.Right, new ItemLayout { Id = "n" });
-
-        Assert.Equal((0, 2, 12, 3), Box(layout, "n")); // goes below instead
-    }
-
-    [Fact]
-    public void Removing_full_row_keeps_the_size_so_the_item_can_be_narrowed()
-    {
-        var layout = DashboardLayoutEngine.SetFullRow(Layout(Grid(Item("a", 0, 0, 6, 2))), "a", true);
-
-        layout = DashboardLayoutEngine.SetFullRow(layout, "a", false);
-        Assert.Equal((0, 0, 12, 2), Box(layout, "a"));
-
-        layout = DashboardLayoutEngine.AddNextTo(DashboardLayoutEngine.Resize(layout, "a", 6, 2), "a", ItemSide.Right, new ItemLayout { Id = "n" });
-        Assert.Equal((6, 0, 6, 2), Box(layout, "n"));
-    }
-
-    [Fact]
-    public void Splitting_a_full_row_puts_the_new_item_beside_it()
-    {
-        var layout = DashboardLayoutEngine.SetFullRow(Layout(Grid(Item("a", 0, 0, 6, 2), Item("b", 0, 2, 6, 2))), "a", true);
-
-        layout = DashboardLayoutEngine.SplitFullRow(layout, "a", new ItemLayout { Id = "n" });
-
-        Assert.False(DashboardLayoutEngine.Find(layout, "a")!.IsFullRow);
-        Assert.Equal((0, 0, 6, 2), Box(layout, "a"));
-        Assert.Equal((6, 0, 6, 2), Box(layout, "n"));
-        Assert.Equal((0, 2, 6, 2), Box(layout, "b"));
-    }
-
-    [Fact]
-    public void Splitting_a_full_row_in_a_strip_inserts_after_it()
-    {
-        var layout = DashboardLayoutEngine.SetFullRow(Layout(Strip(BandMode.Wrap, "a", "b")), "a", true);
-
-        layout = DashboardLayoutEngine.SplitFullRow(layout, "a", new ItemLayout { Id = "n" });
-
-        Assert.Equal([["a", "n", "b"]], Order(layout));
-        Assert.False(layout.Bands[0].Items[0].IsFullRow);
-    }
-
-    // --- Scrolling and wrapping bands ---
-
-    [Fact]
-    public void Strip_bands_keep_item_order_and_insert_after_the_anchor()
-    {
-        var layout = DashboardLayoutEngine.AddNextTo(Layout(Strip(BandMode.Scroll, "a", "b")), "a", ItemSide.Right, new ItemLayout { Id = "n" });
-
-        Assert.Equal([["a", "n", "b"]], Order(layout));
+        Assert.Equal("Row(a,_,_) | b", Shape(layout));
     }
 
     [Theory]
-    [InlineData(0, new[] { "c", "a", "b" })]
-    [InlineData(2, new[] { "a", "c", "b" })] // "before b" (index 2 of the original band)
-    [InlineData(3, new[] { "a", "b", "c" })]
-    public void Moving_within_a_strip_uses_indexes_of_the_original_band(int index, string[] expected)
+    [InlineData("Row(Row(a,b),c)", "Row(a,b,c)")]       // same direction: merged
+    [InlineData("Row(Col(a))", "a")]                     // a single child is the container
+    [InlineData("Col(a,b)", "a | b")]                    // lines are already stacked
+    [InlineData("Row(a,Col(b:4,c))", "Row(a,Col(b,c))")] // a width inside a stack means nothing
+    [InlineData("Row(a:4)", "Row(a:4)")]                 // ...but a narrowed item alone keeps its line
+    public void Normalizing_simplifies_the_tree(string tree, string expected)
     {
-        var layout = DashboardLayoutEngine.MoveTo(Layout(Strip(BandMode.Wrap, "a", "c", "b")), "c", 0, index);
+        var layout = Grid(tree switch
+        {
+            "Row(Row(a,b),c)" => Row(Row(I("a"), I("b")), I("c")),
+            "Row(Col(a))" => Row(Col(I("a"))),
+            "Col(a,b)" => Col(I("a"), I("b")),
+            "Row(a,Col(b:4,c))" => Row(I("a"), Col(I("b", columns: 4), I("c"))),
+            _ => Row(I("a", columns: 4)),
+        });
 
-        Assert.Equal(expected, Order(layout)[0]);
+        Assert.Equal(expected, Shape(DashboardLayoutEngine.Normalize(layout)));
+    }
+
+    // --- Adding next to an item ---
+
+    [Fact]
+    public void An_item_added_beside_an_item_of_a_line_joins_the_line()
+    {
+        var layout = DashboardLayoutEngine.AddNextTo(Grid(Row(I("a"), I("b"))), "a", ItemSide.Right, New("n"));
+
+        Assert.Equal("Row(a,n,b)", Shape(layout));
+        Assert.Equal("Row(n,a,b)", Shape(DashboardLayoutEngine.AddNextTo(Grid(Row(I("a"), I("b"))), "a", ItemSide.Left, New("n"))));
     }
 
     [Fact]
-    public void Items_move_between_bands_and_emptied_bands_disappear()
+    public void An_item_added_below_an_item_of_a_line_is_stacked_with_it_in_its_columns()
     {
-        var layout = DashboardLayoutEngine.Move(Layout(Strip(BandMode.Scroll, "a"), Grid(Item("b", 0, 0, 6, 3))), "a", 1, 6, 0);
+        var layout = DashboardLayoutEngine.AddNextTo(Grid(Row(I("a"), I("b", columns: 4))), "b", ItemSide.Below, New("n"));
 
-        Assert.Equal([["b", "a"]], Order(layout));
-        Assert.Equal((6, 0, 6, 3), Box(layout, "a"));
+        Assert.Equal("Row(a,Col:4(b,n))", Shape(layout));
     }
 
     [Fact]
-    public void Resizing_a_strip_item_changes_its_width()
+    public void Next_to_a_whole_line_item_a_line_is_made_or_inserted()
     {
-        var layout = DashboardLayoutEngine.ResizeWidth(Layout(Strip(BandMode.Wrap, "a")), "a", 50, 2);
-
-        var item = layout.Bands[0].Items[0];
-        Assert.Equal((DashboardLayoutEngine.MinWidth, 2), (item.Width, item.RowSpan));
+        Assert.Equal("Row(a,n) | b", Shape(DashboardLayoutEngine.AddNextTo(Grid(I("a"), I("b")), "a", ItemSide.Right, New("n"))));
+        Assert.Equal("a | n | b", Shape(DashboardLayoutEngine.AddNextTo(Grid(I("a"), I("b")), "a", ItemSide.Below, New("n"))));
+        Assert.Equal("n | a | b", Shape(DashboardLayoutEngine.AddNextTo(Grid(I("a"), I("b")), "a", ItemSide.Above, New("n"))));
     }
 
     [Fact]
-    public void Changing_band_mode_keeps_item_sizes_on_screen()
+    public void A_line_without_room_for_one_more_column_drops_its_constraints()
     {
-        var layout = Layout(Grid(Item("a", 6, 0, 6, 2), Item("b", 0, 0, 3, 2)));
+        var layout = DashboardLayoutEngine.AddNextTo(Grid(Row(I("a", columns: 6), I("b", columns: 6))), "a", ItemSide.Right, New("n"));
 
-        var strip = DashboardLayoutEngine.SetBandMode(layout, 0, BandMode.Scroll);
-        Assert.Equal(BandMode.Scroll, strip.Bands[0].Mode);
-        Assert.Equal(["b", "a"], strip.Bands[0].Items.Select(i => i.Id));      // top to bottom, left to right
-        Assert.Equal([300d, 600d], strip.Bands[0].Items.Select(i => i.Width)); // 3 and 6 of 12 columns of 1200 px
+        Assert.Equal("Row(a,n,b)", Shape(layout));
+    }
 
-        // With the band's real width and gaps: 8 + 4 columns still fit one line (12 x 84 + 11 x 14 = 1162)
-        var real = DashboardLayoutEngine.SetBandMode(Layout(Grid(Item("a", 0, 0, 8, 2), Item("b", 8, 0, 4, 2))), 0, BandMode.Wrap, 1162, 14);
-        var widths = real.Bands[0].Items.Select(i => i.Width).ToArray();
-        Assert.Equal([770d, 378d], widths);    // 8 x 84 + 7 x 14, 4 x 84 + 3 x 14
-        Assert.Equal(1162d, widths.Sum() + 14); // plus the gap between them: the band width
+    [Fact]
+    public void A_new_item_fills_the_free_space_its_anchor_leaves()
+    {
+        // The user narrowed the only item to 6 columns: the item added on its right takes the rest
+        var layout = DashboardLayoutEngine.AddNextTo(Grid(I("a", columns: 6)), "a", ItemSide.Right, New("n"));
+        var band = BandArrangement.Arrange(layout.Bands[0], new ArrangeSettings(1190, 12, 100, 10, 280));
 
-        var back = DashboardLayoutEngine.SetBandMode(real, 0, BandMode.Fit, 1162, 14);
-        Assert.Equal((0, 0, 8, 2), Box(back, "a"));
-        Assert.Equal((8, 0, 4, 2), Box(back, "b"));
+        Assert.Equal("Row(a:6,n)", Shape(layout));
+        Assert.Equal((6, 6), band.Columns["n"]);
+        Assert.Empty(band.FreeSpaces);
+    }
+
+    [Fact]
+    public void Scrolling_and_wrapping_bands_insert_after_or_before_the_anchor()
+    {
+        var strip = Bands(new BandLayout { Mode = BandMode.Scroll, Items = [I("a"), I("b")] });
+
+        Assert.Equal("a | n | b", Shape(DashboardLayoutEngine.AddNextTo(strip, "a", ItemSide.Right, New("n"))));
+        Assert.Equal("n | a | b", Shape(DashboardLayoutEngine.AddNextTo(strip, "a", ItemSide.Left, New("n"))));
+    }
+
+    // --- Moving ---
+
+    [Fact]
+    public void A_moved_item_goes_between_two_items_of_a_line()
+    {
+        var layout = DashboardLayoutEngine.MoveNextTo(Grid(Row(I("a"), I("b")), I("x")), "x", "a", ItemSide.Right);
+
+        Assert.Equal("Row(a,x,b)", Shape(layout));
+    }
+
+    [Fact]
+    public void A_moved_item_becomes_greedy_in_width_and_keeps_its_height()
+    {
+        var layout = DashboardLayoutEngine.MoveNextTo(Grid(Row(I("a"), I("x", columns: 4, rows: 2)), I("b")), "x", "b", ItemSide.Right);
+
+        Assert.Equal("a | Row(b,x^2)", Shape(layout));
+    }
+
+    [Fact]
+    public void A_stack_left_with_one_item_is_merged_away()
+    {
+        var layout = DashboardLayoutEngine.MoveNextTo(Grid(Row(I("a"), Col(I("x"), I("y")))), "y", "a", ItemSide.Below);
+
+        Assert.Equal("Row(Col(a,y),x)", Shape(layout));
+    }
+
+    [Fact]
+    public void An_item_can_move_next_to_the_container_it_leaves()
+    {
+        // Free spaces are anchored on containers: the anchor survives the item leaving it
+        var layout = Grid(Row(I("a", columns: 3), Col(I("x", rows: 1), I("y", rows: 1)) with { Id = "stack", ColumnSpan = 3 }));
+
+        Assert.Equal("Row(a:3,Col:3(x^1),y^1)", Shape(DashboardLayoutEngine.MoveNextTo(layout, "y", "stack", ItemSide.Right)));
+    }
+
+    [Theory]
+    [InlineData("a", 2, "b | a | c")]
+    [InlineData("c", 0, "c | a | b")]
+    [InlineData("a", 3, "b | c | a")]
+    public void A_moved_item_becomes_a_line_at_an_index_of_the_band_before_the_move(string item, int index, string expected)
+    {
+        Assert.Equal(expected, Shape(DashboardLayoutEngine.MoveTo(Grid(I("a"), I("b"), I("c")), item, 0, index)));
+    }
+
+    [Fact]
+    public void A_band_emptied_by_a_move_disappears()
+    {
+        var layout = Bands(new BandLayout { Items = [I("x")] }, new BandLayout { Mode = BandMode.Wrap, Items = [I("a"), I("b")] });
+
+        layout = DashboardLayoutEngine.MoveNextTo(layout, "x", "a", ItemSide.Right);
+
+        Assert.Equal(BandMode.Wrap, Assert.Single(layout.Bands).Mode);
+        Assert.Equal("a | x | b", Shape(layout));
+    }
+
+    [Fact]
+    public void Moving_an_item_next_to_itself_changes_nothing()
+    {
+        var layout = DashboardLayoutEngine.Normalize(Grid(Row(I("a"), I("b"))));
+
+        Assert.Equal("Row(a,b)", Shape(DashboardLayoutEngine.MoveNextTo(layout, "a", "a", ItemSide.Right)));
+    }
+
+    // --- Sizes ---
+
+    [Fact]
+    public void Resizing_constrains_the_item_or_the_stack_it_is_in()
+    {
+        var layout = Grid(Row(I("a"), Col(I("x"), I("y"))));
+
+        Assert.Equal("Row(a:4,Col(x,y))", Shape(DashboardLayoutEngine.Resize(layout, "a", 4, null)));
+        Assert.Equal("Row(a,Col:5(x,y))", Shape(DashboardLayoutEngine.Resize(layout, "x", 5, null)));
+        Assert.Equal("Row(a,Col(x^2,y))", Shape(DashboardLayoutEngine.Resize(layout, "x", null, 2)));
+    }
+
+    [Fact]
+    public void A_width_leaves_a_column_to_each_sibling()
+    {
+        Assert.Equal("Row(a:10,b,c)", Shape(DashboardLayoutEngine.Resize(Grid(Row(I("a"), I("b"), I("c"))), "a", 12, null)));
+        Assert.Equal("Row(a:8,b:4)", Shape(DashboardLayoutEngine.Resize(Grid(Row(I("a"), I("b", columns: 4))), "a", 9, null)));
+    }
+
+    [Fact]
+    public void An_item_alone_on_its_line_can_be_narrowed()
+    {
+        Assert.Equal("a:6 | b", Shape(DashboardLayoutEngine.Resize(Grid(I("a"), I("b")), "a", 6, null)));
+    }
+
+    [Fact]
+    public void Automatic_size_removes_every_constraint_of_an_item()
+    {
+        var layout = Grid(Row(I("a", rows: 2), Col(I("x", rows: 1), I("y")) with { Id = "stack", ColumnSpan = 4 }));
+
+        Assert.True(DashboardLayoutEngine.IsConstrained(layout, "y")); // through its stack
+        Assert.Equal("Row(a^2,Col(x^1,y))", Shape(DashboardLayoutEngine.SetAuto(layout, "y")));
+        Assert.Equal("Row(a,Col:4(x^1,y))", Shape(DashboardLayoutEngine.SetAuto(layout, "a")));
+        Assert.False(DashboardLayoutEngine.IsConstrained(DashboardLayoutEngine.SetAuto(layout, "a"), "a"));
+    }
+
+    [Fact]
+    public void Wrapping_items_are_resized_in_pixels()
+    {
+        var layout = Bands(new BandLayout { Mode = BandMode.Wrap, Items = [I("a"), I("b")] });
+
+        Assert.Equal("a^2~420 | b", Shape(DashboardLayoutEngine.ResizeWidth(layout, "a", 420, 2)));
+        Assert.Equal("a~160 | b", Shape(DashboardLayoutEngine.ResizeWidth(layout, "a", 20, null))); // minimum width
+    }
+
+    // --- Removing ---
+
+    [Fact]
+    public void Removing_an_item_gives_its_room_to_its_siblings()
+    {
+        Assert.Equal("a", Shape(DashboardLayoutEngine.Remove(Grid(Row(I("a"), I("b"))), "b")));
+        Assert.Equal("Row(a,x)", Shape(DashboardLayoutEngine.Remove(Grid(Row(I("a"), Col(I("x"), I("y")))), "y")));
+    }
+
+    [Fact]
+    public void A_narrowed_item_left_alone_keeps_its_width_and_a_free_space()
+    {
+        Assert.Equal("Row(a:4)", Shape(DashboardLayoutEngine.Remove(Grid(Row(I("a", columns: 4), I("b"))), "b")));
+    }
+
+    [Fact]
+    public void Removing_the_last_item_of_a_band_removes_the_band()
+    {
+        var layout = DashboardLayoutEngine.Remove(Bands(new BandLayout { Items = [I("a")] }, new BandLayout { Items = [I("b")] }), "a");
+
+        Assert.Single(layout.Bands);
+        Assert.Equal("b", Shape(layout));
+    }
+
+    // --- Bands ---
+
+    [Fact]
+    public void A_grid_band_becomes_a_wrapping_band_keeping_constrained_widths_in_pixels()
+    {
+        // 12 columns over 1210 px with 10 px gaps: a column is 91.67 px, 6 columns are 600 px
+        var layout = DashboardLayoutEngine.SetBandMode(Grid(Row(I("a", columns: 6), I("b"))), 0, BandMode.Wrap, 1210, 10);
+
+        Assert.Equal(BandMode.Wrap, layout.Bands[0].Mode);
+        Assert.Equal("a~600 | b", Shape(layout));
+    }
+
+    [Fact]
+    public void A_wrapping_band_becomes_a_grid_with_the_lines_it_showed()
+    {
+        var wrap = Bands(new BandLayout { Mode = BandMode.Wrap, Items = [I("a", width: 600), I("b"), I("c"), I("d")] });
+
+        // 600 + 280 + 280 fit in 1200 px, d wraps; 600 px are 6 columns of 100 px
+        var layout = DashboardLayoutEngine.SetBandMode(wrap, 0, BandMode.Fit, 1200, 0, 280);
+
+        Assert.Equal("Row(a:6,b,c) | d", Shape(layout));
     }
 
     [Fact]
     public void Bands_can_be_inserted_and_removed()
     {
-        var layout = Layout(Grid(Item("a", 0, 0, 6, 3)));
+        var layout = DashboardLayoutEngine.InsertBand(Grid(I("a")), 0, BandMode.Scroll, [I("n")]);
 
-        layout = DashboardLayoutEngine.InsertBand(layout, 0, BandMode.Wrap, [new ItemLayout { Id = "n" }]);
-        Assert.Equal([BandMode.Wrap, BandMode.Fit], layout.Bands.Select(b => b.Mode));
-        Assert.Equal([["n"], ["a"]], Order(layout));
+        Assert.Equal([BandMode.Scroll, BandMode.Fit], layout.Bands.Select(b => b.Mode));
+        Assert.Equal("a", Shape(DashboardLayoutEngine.RemoveBand(layout, 0)));
+    }
 
-        layout = DashboardLayoutEngine.RemoveBand(layout, 1);
-        Assert.Equal([["n"]], Order(layout));
+    // --- The user's walk-through ---
+
+    [Fact]
+    public void A_dashboard_grows_from_one_greedy_item_without_ever_leaving_a_gap()
+    {
+        var settings = new ArrangeSettings(1190, 12, 100, 10, 280);
+        BandArrangement Arrange(DashboardLayoutDefinition l) => BandArrangement.Arrange(l.Bands[0], settings);
+
+        // 1-2. An item alone takes the whole line
+        var layout = DashboardLayoutEngine.Place(null, ["v1"]);
+        var v1 = layout.Bands[0].Items[0].Id;
+        Assert.Equal(new System.Windows.Rect(0, 0, 1190, 320), Arrange(layout).Items[v1]);
+
+        // 3. Constrained to half the width: the rest is a free space offering to add an item
+        layout = DashboardLayoutEngine.Resize(layout, v1, 6, null);
+        Assert.Equal(v1, Assert.Single(Arrange(layout).FreeSpaces).AnchorId);
+
+        // 4. Two lines high (6 rows): the free space follows
+        layout = DashboardLayoutEngine.Resize(layout, v1, null, 6);
+        Assert.Equal(650, Assert.Single(Arrange(layout).FreeSpaces).Bounds.Height);
+
+        // 5. An item added in the free space is greedy both ways
+        layout = DashboardLayoutEngine.AddNextTo(layout, v1, ItemSide.Right, I("v2"));
+        Assert.Equal(new System.Windows.Rect(600, 0, 590, 650), Arrange(layout).Items["v2"]);
+
+        // Then one more below it: they share the height next to the tall item
+        layout = DashboardLayoutEngine.AddNextTo(layout, "v2", ItemSide.Below, I("v3"));
+        Assert.Equal("Row(v1:6^6,Col(v2,v3))", Shape(layout));
+        Assert.Equal(320, Arrange(layout).Items["v3"].Height);
+        Assert.Empty(Arrange(layout).FreeSpaces);
     }
 }
