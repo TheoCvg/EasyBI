@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using EasyBI.Abstractions;
 using EasyBI.Core;
@@ -27,11 +28,27 @@ public sealed class EditVisualRequestedEventArgs(string itemId, VisualDefinition
 }
 
 /// <summary>
-/// Dashboard laid out on a grid that end users arrange: items show a visual, a text or an image and can cover
-/// several rows and columns. Items move with their grip (the others make room live), resize with the corner
-/// handle, and "+" buttons on their right and bottom edges add new items. The arrangement is part of
-/// <see cref="Report"/> (<see cref="ReportDefinition.Layout"/>), so saving and restoring the report saves and
-/// restores the dashboard.
+/// Raised when the user adds an item next to a full-row item, which requires giving up the full row.
+/// Set <see cref="Handled"/> to ask the user yourself, then call <see cref="Proceed"/> if they agree;
+/// otherwise the panel shows a banner on the item.
+/// </summary>
+public sealed class FullRowSplitRequestedEventArgs(string itemId, Action proceed) : EventArgs
+{
+    public string ItemId { get; } = itemId;
+
+    public bool Handled { get; set; }
+
+    /// <summary>Removes the full-row setting and adds the new item next to it.</summary>
+    public void Proceed() => proceed();
+}
+
+/// <summary>
+/// Dashboard made of bands that end users arrange. A <see cref="BandMode.Fit"/> band is a 12-column grid where
+/// items can span several rows and columns; a <see cref="BandMode.Scroll"/> or <see cref="BandMode.Wrap"/> band
+/// lines items of a fixed width up, scrolling or wrapping. Items show a visual, a text or an image, move with
+/// their grip (the others make room live, across bands too), resize with the corner handle, and can take the
+/// full row. The arrangement is part of <see cref="Report"/> (<see cref="ReportDefinition.Layout"/>), so saving
+/// and restoring the report saves and restores the dashboard.
 /// </summary>
 public partial class DashboardPanel : UserControl
 {
@@ -53,25 +70,26 @@ public partial class DashboardPanel : UserControl
     private const double MaxFontSize = 96;
 
     private readonly DashboardViewModel _viewModel = new();
-    private DashboardGridPanel? _grid;
+    private readonly Dictionary<DashboardBandViewModel, DashboardGridPanel> _grids = [];
     private bool _pushing;
 
     // Dragging
     private Point? _dragStart;
     private Point _grabOffset;
     private DashboardItemViewModel? _dragged;
-    private (int Column, int Row)? _dropCell;
+    private Func<ReportDefinition, ReportDefinition>? _drop;
+    private string? _dropKey;
 
     // Resizing
-    private (int ColumnSpan, int RowSpan) _resizeStart;
-    private (int ColumnSpan, int RowSpan)? _resizeTarget;
+    private (int ColumnSpan, int RowSpan, double Width) _resizeStart;
+    private string? _resizeKey;
+    private Func<ReportDefinition, ReportDefinition>? _resize;
     private Vector _resizeDelta;
 
     public DashboardPanel()
     {
         InitializeComponent();
-        ItemList.DataContext = _viewModel;
-        ItemList.ItemsSource = _viewModel.Items;
+        BandList.ItemsSource = _viewModel.Bands;
         // Keep the keyboard focus after a change, even when the clicked button disappeared, so Ctrl+Z works
         Focusable = true;
         FocusVisualStyle = null;
@@ -91,6 +109,9 @@ public partial class DashboardPanel : UserControl
 
     /// <summary>Raised before a visual is created or edited.</summary>
     public event EventHandler<EditVisualRequestedEventArgs>? EditVisualRequested;
+
+    /// <summary>Raised when "+" is used next to a full-row item.</summary>
+    public event EventHandler<FullRowSplitRequestedEventArgs>? FullRowSplitRequested;
 
     public EasyBIContext? Context
     {
@@ -151,19 +172,53 @@ public partial class DashboardPanel : UserControl
         }
     }
 
-    private void OnGridLoaded(object sender, RoutedEventArgs e) => _grid = (DashboardGridPanel)sender;
+    private void OnGridLoaded(object sender, RoutedEventArgs e)
+    {
+        var grid = (DashboardGridPanel)sender;
+        if (grid.DataContext is DashboardBandViewModel band) _grids[band] = grid;
+    }
 
     private static DashboardItemViewModel Item(object sender) => (DashboardItemViewModel)((FrameworkElement)sender).DataContext;
 
+    private static DashboardBandViewModel Band(object sender) => (DashboardBandViewModel)((FrameworkElement)sender).DataContext;
+
     // --- Adding ---
 
-    private void OnAddRight(object sender, RoutedEventArgs e) =>
-        _viewModel.Apply(r => ReportLayout.AddItemNextTo(r, Item(sender).Id, ItemSide.Right));
+    private void OnAddRight(object sender, RoutedEventArgs e)
+    {
+        var item = Item(sender);
+        var itemId = item.Id;
+        if (!item.IsFullRow)
+        {
+            _viewModel.Apply(r => ReportLayout.AddItemNextTo(r, itemId, ItemSide.Right));
+            return;
+        }
+
+        // Adding next to a full-row item gives up the full row: the application or a banner asks first
+        var args = new FullRowSplitRequestedEventArgs(itemId, () => _viewModel.Apply(r => ReportLayout.SplitFullRow(r, itemId)));
+        FullRowSplitRequested?.Invoke(this, args);
+        if (!args.Handled) item.ShowFullRowWarning = true;
+    }
+
+    private void OnFullRowProceed(object sender, RoutedEventArgs e)
+    {
+        var item = Item(sender);
+        item.ShowFullRowWarning = false;
+        _viewModel.Apply(r => ReportLayout.SplitFullRow(r, item.Id));
+    }
+
+    private void OnFullRowCancel(object sender, RoutedEventArgs e) => Item(sender).ShowFullRowWarning = false;
 
     private void OnAddBelow(object sender, RoutedEventArgs e) =>
         _viewModel.Apply(r => ReportLayout.AddItemNextTo(r, Item(sender).Id, ItemSide.Below));
 
     private void OnAddAtEnd(object sender, RoutedEventArgs e) => _viewModel.Apply(r => ReportLayout.AddItemAtEnd(r));
+
+    private void OnInsertBand(object sender, RoutedEventArgs e)
+    {
+        var band = Band(sender);
+        _viewModel.Apply(r => ReportLayout.InsertBand(r, _viewModel.Bands.IndexOf(band) + 1));
+    }
 
     private void OnAddVisual(object sender, RoutedEventArgs e) => EditVisual(Item(sender));
 
@@ -175,6 +230,34 @@ public partial class DashboardPanel : UserControl
     }
 
     private void OnAddImage(object sender, RoutedEventArgs e) => PickImage(Item(sender), ImageFit.Contain);
+
+    // --- Bands ---
+
+    private void OnBandOptions(object sender, RoutedEventArgs e)
+    {
+        var band = Band(sender);
+        // Converting between grid spans and pixel widths uses the band's real width (left gutter excluded)
+        var bandWidth = ((FrameworkElement)((FrameworkElement)sender).Parent).ActualWidth - 24;
+        var menu = new ContextMenu { PlacementTarget = (UIElement)sender };
+        foreach (var (mode, label) in new[] { (BandMode.Fit, Strings.BandFit), (BandMode.Scroll, Strings.BandScroll), (BandMode.Wrap, Strings.BandWrap) })
+        {
+            var item = new MenuItem { Header = label, IsCheckable = true, IsChecked = band.Mode == mode };
+            item.Click += (_, _) => _viewModel.Apply(r => ReportLayout.SetBandMode(r, band.Id, mode, bandWidth, DashboardViewModel.Gap));
+            menu.Items.Add(item);
+        }
+        menu.Items.Add(new Separator());
+        var insert = new MenuItem { Header = Strings.InsertBand };
+        insert.Click += (_, _) => _viewModel.Apply(r => ReportLayout.InsertBand(r, _viewModel.Bands.IndexOf(band) + 1));
+        menu.Items.Add(insert);
+        var remove = new MenuItem { Header = Strings.RemoveBand };
+        remove.Click += (_, _) =>
+        {
+            ClearSelectionOf(band.Items);
+            _viewModel.Apply(r => ReportLayout.RemoveBand(r, band.Id));
+        };
+        menu.Items.Add(remove);
+        menu.IsOpen = true;
+    }
 
     // --- Editing and removing ---
 
@@ -202,12 +285,25 @@ public partial class DashboardPanel : UserControl
             args.Complete(visual);
     }
 
+    private void OnToggleFullRow(object sender, RoutedEventArgs e)
+    {
+        var item = Item(sender);
+        _viewModel.Apply(r => ReportLayout.SetFullRow(r, item.Id, !item.IsFullRow));
+    }
+
     private void OnRemoveItem(object sender, RoutedEventArgs e)
     {
         var item = Item(sender);
-        if (VisualView.GetFilterContext(this) is { Selection: { } selection } filters && item.Visual?.Id == selection.SourceVisualId)
-            filters.ClearSelection(); // a removed visual can no longer filter the others
+        ClearSelectionOf([item]);
         _viewModel.Apply(r => ReportLayout.RemoveItem(r, item.Id));
+    }
+
+    /// <summary>A removed visual can no longer filter the others.</summary>
+    private void ClearSelectionOf(IEnumerable<DashboardItemViewModel> items)
+    {
+        if (VisualView.GetFilterContext(this) is { Selection: { } selection } filters
+            && items.Any(i => i.Visual?.Id == selection.SourceVisualId))
+            filters.ClearSelection();
     }
 
     // --- Text ---
@@ -217,7 +313,7 @@ public partial class DashboardPanel : UserControl
         if (e.ClickCount == 2 && IsLayoutEditable) BeginTextEdit(Item(sender));
     }
 
-    private void BeginTextEdit(DashboardItemViewModel item)
+    private static void BeginTextEdit(DashboardItemViewModel item)
     {
         item.EditText = item.Text?.Text ?? "";
         item.IsEditingText = true;
@@ -313,13 +409,13 @@ public partial class DashboardPanel : UserControl
         _ => "image/png",
     };
 
-    // --- Moving: the item follows the pointer cell by cell and the others make room live ---
+    // --- Moving: the item follows the pointer and the others make room live ---
 
     private void OnGripMouseDown(object sender, MouseButtonEventArgs e)
     {
         _dragStart = e.GetPosition(this);
         // Where the item was grabbed, so that it does not jump under the pointer
-        _grabOffset = e.GetPosition(ItemContainer(sender));
+        _grabOffset = e.GetPosition(Container(sender));
         ((UIElement)sender).CaptureMouse();
     }
 
@@ -339,70 +435,131 @@ public partial class DashboardPanel : UserControl
         ((UIElement)sender).ReleaseMouseCapture();
 
         _dragged = Item(sender);
-        _dropCell = null;
+        _drop = null;
+        _dropKey = null;
         var result = DragDrop.DoDragDrop((DependencyObject)sender, new DataObject(typeof(DashboardItemViewModel), _dragged), DragDropEffects.Move);
         if (result == DragDropEffects.None) _viewModel.EndPreview();
         _dragged = null;
     }
 
-    private UIElement ItemContainer(object sender) => (UIElement)ItemList.ItemContainerGenerator.ContainerFromItem(Item(sender));
+    /// <summary>The element that hosts an item in its band (grid cell or strip slot).</summary>
+    private static FrameworkElement Container(object sender)
+    {
+        DependencyObject current = (DependencyObject)sender;
+        while (current is not ContentPresenter { Content: DashboardItemViewModel })
+            current = VisualTreeHelper.GetParent(current);
+        return (FrameworkElement)current;
+    }
 
-    private void OnSurfaceDragOver(object sender, DragEventArgs e)
+    private void OnBandDragOver(object sender, DragEventArgs e)
     {
         e.Handled = true;
-        if (!IsLayoutEditable || _grid is null || _dragged is not { } item
-            || !e.Data.GetDataPresent(typeof(DashboardItemViewModel)))
+        if (!IsLayoutEditable || _dragged is not { } item || !e.Data.GetDataPresent(typeof(DashboardItemViewModel)))
         {
             e.Effects = DragDropEffects.None;
             return;
         }
         e.Effects = DragDropEffects.Move;
 
-        var position = e.GetPosition(_grid);
-        var column = (int)Math.Round((position.X - _grabOffset.X) / _grid.ColumnPitch(_grid.ActualWidth));
-        var row = (int)Math.Round((position.Y - _grabOffset.Y) / _grid.RowPitch);
-        var cell = (Math.Clamp(column, 0, Math.Max(0, _viewModel.Columns - item.ColumnSpan)), Math.Max(0, row));
-        if (cell == _dropCell) return;
-        _dropCell = cell;
-        _viewModel.Preview(r => ReportLayout.MoveItem(r, item.Id, cell.Item1, cell.Item2));
+        var band = Band(sender);
+        string key;
+        Func<ReportDefinition, ReportDefinition> drop;
+        if (band.Mode == BandMode.Fit)
+        {
+            if (!_grids.TryGetValue(band, out var grid)) return;
+            var position = e.GetPosition(grid);
+            var span = item.IsFullRow ? band.Columns : Math.Min(item.ColumnSpan, band.Columns);
+            var column = Math.Clamp((int)Math.Round((position.X - _grabOffset.X) / grid.ColumnPitch(grid.ActualWidth)), 0, band.Columns - span);
+            var row = Math.Max(0, (int)Math.Round((position.Y - _grabOffset.Y) / grid.RowPitch));
+            key = $"{band.Id}/{column}/{row}";
+            drop = r => ReportLayout.MoveItem(r, item.Id, band.Id, column, row);
+        }
+        else
+        {
+            var index = StripIndex((ItemsControl)sender, band, item, e.GetPosition((IInputElement)sender));
+            key = $"{band.Id}#{index}";
+            drop = r => ReportLayout.MoveItemTo(r, item.Id, band.Id, index);
+        }
+
+        if (key == _dropKey) return;
+        _dropKey = key;
+        _drop = drop;
+        _viewModel.Preview(drop);
     }
 
-    private void OnSurfaceDrop(object sender, DragEventArgs e)
+    /// <summary>
+    /// Index (in the band as saved) before which the dragged item goes: before the first other item whose
+    /// centre is after the pointer, reading line by line.
+    /// </summary>
+    private int StripIndex(ItemsControl strip, DashboardBandViewModel band, DashboardItemViewModel dragged, Point pointer)
+    {
+        var saved = _viewModel.Report.Layout!.Bands.FirstOrDefault(b => b.Id == band.Id)?.Items.Select(i => i.Id).ToList() ?? [];
+        foreach (var other in band.Items.Where(i => i != dragged))
+        {
+            if (strip.ItemContainerGenerator.ContainerFromItem(other) is not FrameworkElement container) continue;
+            var bounds = container.TransformToAncestor(strip).TransformBounds(new Rect(container.RenderSize));
+            var sameLine = band.Mode == BandMode.Scroll || (pointer.Y >= bounds.Top && pointer.Y <= bounds.Bottom);
+            var before = band.Mode == BandMode.Scroll || sameLine ? pointer.X < bounds.Left + bounds.Width / 2 : pointer.Y < bounds.Top;
+            if (before)
+                return saved.IndexOf(other.Id) is var index and >= 0 ? index : saved.Count;
+        }
+        return saved.Count;
+    }
+
+    private void OnBandDrop(object sender, DragEventArgs e)
     {
         e.Handled = true;
-        if (_dragged is not { } item || _dropCell is not { } cell) return;
-        _viewModel.Apply(r => ReportLayout.MoveItem(r, item.Id, cell.Column, cell.Row));
+        if (_drop is { } drop) _viewModel.Apply(drop);
+        _drop = null;
+        _dropKey = null;
     }
 
-    // --- Resizing: the corner handle snaps to whole cells ---
+    // --- Resizing: whole cells in a grid band, pixels (width) and rows (height) in other bands ---
 
     private void OnResizeStarted(object sender, DragStartedEventArgs e)
     {
         var item = Item(sender);
-        _resizeStart = (item.ColumnSpan, item.RowSpan);
-        _resizeTarget = null;
+        _resizeStart = (item.ColumnSpan, item.RowSpan, item.Width);
+        _resizeKey = null;
+        _resize = null;
         _resizeDelta = default;
     }
 
     private void OnResizeDelta(object sender, DragDeltaEventArgs e)
     {
-        if (_grid is null) return;
         var item = Item(sender);
         _resizeDelta += new Vector(e.HorizontalChange, e.VerticalChange);
-        var columnSpan = Math.Max(1, _resizeStart.ColumnSpan + (int)Math.Round(_resizeDelta.X / _grid.ColumnPitch(_grid.ActualWidth)));
-        var rowSpan = Math.Max(1, _resizeStart.RowSpan + (int)Math.Round(_resizeDelta.Y / _grid.RowPitch));
-        if ((columnSpan, rowSpan) == (_resizeTarget ?? _resizeStart)) return;
-        _resizeTarget = (columnSpan, rowSpan);
-        _viewModel.Preview(r => ReportLayout.ResizeItem(r, item.Id, columnSpan, rowSpan));
+        var rowPitch = item.Band.RowHeight + DashboardViewModel.Gap;
+        var rowSpan = Math.Max(1, _resizeStart.RowSpan + (int)Math.Round(_resizeDelta.Y / rowPitch));
+
+        string key;
+        Func<ReportDefinition, ReportDefinition> resize;
+        if (item.Band.Mode == BandMode.Fit)
+        {
+            if (!_grids.TryGetValue(item.Band, out var grid)) return;
+            var columnSpan = Math.Max(1, _resizeStart.ColumnSpan + (int)Math.Round(_resizeDelta.X / grid.ColumnPitch(grid.ActualWidth)));
+            key = $"{columnSpan}x{rowSpan}";
+            resize = r => ReportLayout.ResizeItem(r, item.Id, columnSpan, rowSpan);
+        }
+        else
+        {
+            // A full-row item keeps the band width: only its height changes
+            var width = item.IsFullRow ? _resizeStart.Width : Math.Max(ReportLayout.MinWidth, Math.Round(_resizeStart.Width + _resizeDelta.X));
+            key = $"{width}x{rowSpan}";
+            resize = r => ReportLayout.ResizeItemWidth(r, item.Id, width, rowSpan);
+        }
+
+        if (key == _resizeKey) return;
+        _resizeKey = key;
+        _resize = resize;
+        _viewModel.Preview(resize);
     }
 
     private void OnResizeCompleted(object sender, DragCompletedEventArgs e)
     {
-        var item = Item(sender);
-        if (_resizeTarget is { } target && target != _resizeStart)
-            _viewModel.Apply(r => ReportLayout.ResizeItem(r, item.Id, target.ColumnSpan, target.RowSpan));
-        else
-            _viewModel.EndPreview();
-        _resizeTarget = null;
+        if (_resize is { } resize) _viewModel.Apply(resize);
+        else _viewModel.EndPreview();
+        _resize = null;
+        _resizeKey = null;
     }
 }

@@ -150,6 +150,36 @@
   <data name="ImageUnreadable" xml:space="preserve">
     <value>Ce fichier n'est pas une image lisible.</value>
   </data>
+  <data name="BandOptions" xml:space="preserve">
+    <value>Options de la bande</value>
+  </data>
+  <data name="BandFit" xml:space="preserve">
+    <value>Ajuster (grille)</value>
+  </data>
+  <data name="BandScroll" xml:space="preserve">
+    <value>Défilement horizontal</value>
+  </data>
+  <data name="BandWrap" xml:space="preserve">
+    <value>Retour à la ligne</value>
+  </data>
+  <data name="InsertBand" xml:space="preserve">
+    <value>Insérer une bande en dessous</value>
+  </data>
+  <data name="RemoveBand" xml:space="preserve">
+    <value>Supprimer la bande</value>
+  </data>
+  <data name="AddBand" xml:space="preserve">
+    <value>Ajouter une bande ici</value>
+  </data>
+  <data name="FullRow" xml:space="preserve">
+    <value>Pleine ligne</value>
+  </data>
+  <data name="FullRowWarning" xml:space="preserve">
+    <value>Cet élément occupe toute la ligne. Ajouter un élément à côté retire ce réglage.</value>
+  </data>
+  <data name="FullRowProceed" xml:space="preserve">
+    <value>Retirer la pleine ligne et ajouter</value>
+  </data>
   <data name="EditorTitle" xml:space="preserve">
     <value>Visuel</value>
   </data>

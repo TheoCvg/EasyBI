@@ -100,3 +100,15 @@ public sealed class DashboardGridPanel : Panel
         return finalSize;
     }
 }
+
+/// <summary>Width of a scrolling or wrapping band minus the gap it absorbs (for full-row items).</summary>
+public sealed class MinusGapConverter : System.Windows.Data.IValueConverter
+{
+    public static MinusGapConverter Instance { get; } = new();
+
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) =>
+        Math.Max(0, (double)value - DashboardViewModel.Gap);
+
+    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) =>
+        throw new NotSupportedException();
+}

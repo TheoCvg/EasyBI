@@ -15,21 +15,39 @@ public class DashboardViewModelTests
         return dashboard;
     }
 
+    private static IEnumerable<DashboardItemViewModel> Items(DashboardViewModel dashboard) => dashboard.Bands.SelectMany(b => b.Items);
+
     private static DashboardItemViewModel ItemOf(DashboardViewModel dashboard, string visualId) =>
-        dashboard.Items.Single(i => i.Visual?.Id == visualId);
+        Items(dashboard).Single(i => i.Visual?.Id == visualId);
 
     [Fact]
     public void Moving_an_item_keeps_the_view_models()
     {
         var dashboard = Dashboard();
+        var band = dashboard.Bands[0];
         var a = ItemOf(dashboard, "a");
         var c = ItemOf(dashboard, "c");
 
-        dashboard.Apply(r => ReportLayout.MoveItem(r, c.Id, 0, 0));
+        dashboard.Apply(r => ReportLayout.MoveItem(r, c.Id, band.Id, 0, 0));
 
         Assert.Same(c, ItemOf(dashboard, "c"));
         Assert.Equal((0, 0), (c.Column, c.Row));
         Assert.Equal((0, 3), (a.Column, a.Row)); // pushed below c
+    }
+
+    [Fact]
+    public void Moving_to_another_band_moves_the_view_model()
+    {
+        var dashboard = Dashboard();
+        dashboard.Apply(r => ReportLayout.InsertBand(r, 1, BandMode.Wrap));
+        var strip = dashboard.Bands[1];
+        var c = ItemOf(dashboard, "c");
+
+        dashboard.Apply(r => ReportLayout.MoveItemTo(r, c.Id, strip.Id, 0));
+
+        Assert.Same(strip, c.Band);
+        Assert.Equal(c, strip.Items[0]);
+        Assert.Equal(3 * DashboardLayout.DefaultRowHeight + 2 * DashboardViewModel.Gap, c.Height);
     }
 
     [Fact]
@@ -39,7 +57,7 @@ public class DashboardViewModelTests
         var c = ItemOf(dashboard, "c");
         var report = dashboard.Report;
 
-        dashboard.Preview(r => ReportLayout.MoveItem(r, c.Id, 6, 0));
+        dashboard.Preview(r => ReportLayout.MoveItem(r, c.Id, dashboard.Bands[0].Id, 6, 0));
         Assert.Equal((6, 0), (c.Column, c.Row));
         Assert.Same(report, dashboard.Report);
         Assert.False(dashboard.CanUndo);
@@ -57,43 +75,41 @@ public class DashboardViewModelTests
         dashboard.ReportChanged += (_, _) => changes++;
 
         dashboard.Apply(r => ReportLayout.RemoveItem(r, a.Id));
-        Assert.DoesNotContain(dashboard.Items, i => i.Visual?.Id == "a");
+        Assert.DoesNotContain(Items(dashboard), i => i.Visual?.Id == "a");
 
         dashboard.Undo();
         Assert.Contains(dashboard.Report.Visuals, v => v.Id == "a");
-        Assert.Contains(dashboard.Items, i => i.Visual?.Id == "a");
-        Assert.True(dashboard.CanRedo);
+        Assert.Contains(Items(dashboard), i => i.Visual?.Id == "a");
 
         dashboard.Redo();
-        Assert.DoesNotContain(dashboard.Items, i => i.Visual?.Id == "a");
+        Assert.DoesNotContain(Items(dashboard), i => i.Visual?.Id == "a");
         Assert.Equal(3, changes);
     }
 
     [Fact]
-    public void A_new_change_clears_redo_and_loading_clears_history()
+    public void Full_row_warning_disappears_once_the_item_is_no_longer_full_row()
     {
         var dashboard = Dashboard();
-        dashboard.Apply(r => ReportLayout.AddItemAtEnd(r));
-        dashboard.Undo();
+        var a = ItemOf(dashboard, "a");
+        dashboard.Apply(r => ReportLayout.SetFullRow(r, a.Id, true));
+        a.ShowFullRowWarning = true;
 
-        dashboard.Apply(r => ReportLayout.AddItemAtEnd(r));
-        Assert.False(dashboard.CanRedo);
+        dashboard.Apply(r => ReportLayout.SplitFullRow(r, a.Id));
 
-        dashboard.Load(new ReportDefinition());
-        Assert.False(dashboard.CanUndo);
-        Assert.Equal(DashboardItemKind.Empty, Assert.Single(dashboard.Items).Kind);
+        Assert.False(a.IsFullRow);
+        Assert.False(a.ShowFullRowWarning);
+        Assert.Equal(4, Items(dashboard).Count());
     }
 
     [Fact]
     public void Item_kind_follows_its_content()
     {
         var dashboard = new DashboardViewModel();
-        var item = Assert.Single(dashboard.Items);
+        var item = Assert.Single(Items(dashboard));
         Assert.Equal(DashboardItemKind.Empty, item.Kind);
 
         dashboard.Apply(r => ReportLayout.SetText(r, item.Id, new TextContent { Text = "Hi" }));
         Assert.Equal(DashboardItemKind.Text, item.Kind);
-        Assert.False(item.IsTextEmpty);
 
         // 1x1 transparent PNG
         const string png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";

@@ -67,7 +67,7 @@
     <value>  Designer  </value>
   </data>
   <data name="Tip" xml:space="preserve">
-    <value>Tip: click a bar, a slice or a table row to filter the other visuals. Hover the right or bottom edge of an item to add one, drag ⠿ to move it, drag ◢ to resize it.</value>
+    <value>Tip: click a bar, a slice or a table row to filter the other visuals. Hover the edges of an item to add one, drag ⠿ to move it, ◢ to resize it, ↔ for a full row; ⋮ sets a band to fit, scroll or wrap.</value>
   </data>
   <data name="NewVisual" xml:space="preserve">
     <value>New visual</value>
@@ -110,6 +110,9 @@
   </data>
   <data name="RevenueByCategory" xml:space="preserve">
     <value>Revenue by category</value>
+  </data>
+  <data name="RevenueByProduct" xml:space="preserve">
+    <value>Revenue by product</value>
   </data>
   <data name="DashboardHeading" xml:space="preserve">
     <value>Sales overview 2023–2025</value>

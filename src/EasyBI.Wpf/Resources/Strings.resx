@@ -150,6 +150,36 @@
   <data name="ImageUnreadable" xml:space="preserve">
     <value>This file is not a readable image.</value>
   </data>
+  <data name="BandOptions" xml:space="preserve">
+    <value>Band options</value>
+  </data>
+  <data name="BandFit" xml:space="preserve">
+    <value>Fit (grid)</value>
+  </data>
+  <data name="BandScroll" xml:space="preserve">
+    <value>Scroll horizontally</value>
+  </data>
+  <data name="BandWrap" xml:space="preserve">
+    <value>Wrap</value>
+  </data>
+  <data name="InsertBand" xml:space="preserve">
+    <value>Insert a band below</value>
+  </data>
+  <data name="RemoveBand" xml:space="preserve">
+    <value>Remove band</value>
+  </data>
+  <data name="AddBand" xml:space="preserve">
+    <value>Add a band here</value>
+  </data>
+  <data name="FullRow" xml:space="preserve">
+    <value>Full row</value>
+  </data>
+  <data name="FullRowWarning" xml:space="preserve">
+    <value>This item takes the whole row. Adding an item next to it removes this setting.</value>
+  </data>
+  <data name="FullRowProceed" xml:space="preserve">
+    <value>Remove full row and add</value>
+  </data>
   <data name="EditorTitle" xml:space="preserve">
     <value>Visual</value>
   </data>

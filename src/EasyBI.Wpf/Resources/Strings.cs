@@ -25,6 +25,11 @@ internal static class Strings
     public static string ImageTooLarge => Get();
     public static string ImageUnreadable => Get();
     public static string ChangeImage => Get();
+    public static string BandFit => Get();
+    public static string BandScroll => Get();
+    public static string BandWrap => Get();
+    public static string InsertBand => Get();
+    public static string RemoveBand => Get();
 
     public static string Format(string format, params object?[] args) =>
         string.Format(EasyBILocalization.FormatCulture, format, args);

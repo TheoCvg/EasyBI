@@ -52,7 +52,7 @@ public static class ReportValidator
         // Layout: ReportLayout.Normalize repairs these on load, but the user should know something was lost
         var visualIds = report.Visuals.Select(v => v.Id).ToHashSet();
         var placed = new HashSet<string>();
-        foreach (var id in report.Layout?.Items.Select(i => i.VisualId).OfType<string>() ?? [])
+        foreach (var id in report.Layout?.Bands.SelectMany(b => b.Items).Select(i => i.VisualId).OfType<string>() ?? [])
         {
             if (!visualIds.Contains(id))
                 problems.Add(Strings.Format(Strings.ReportLayoutUnknownVisual, id));

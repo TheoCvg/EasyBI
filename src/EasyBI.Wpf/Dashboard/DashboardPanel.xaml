@@ -74,16 +74,15 @@
             </Setter>
         </Style>
 
+        <!-- One item: a visual, a text, an image or an empty placeholder -->
         <DataTemplate x:Key="ItemTemplate" DataType="{x:Type local:DashboardItemViewModel}">
             <Grid x:Name="Root" Background="Transparent">
                 <Border x:Name="Card" Background="White" CornerRadius="8" BorderBrush="{StaticResource LineBrush}"
                         BorderThickness="1" Padding="12,22,12,12" ClipToBounds="True">
                     <Grid>
-                        <!-- Visual -->
                         <bi:VisualView x:Name="View" Definition="{Binding Visual}" Visibility="Collapsed"
                                        Context="{Binding Context, RelativeSource={RelativeSource AncestorType=local:DashboardPanel}}" />
 
-                        <!-- Text: shown, or edited in place -->
                         <TextBlock x:Name="TextDisplay" Visibility="Collapsed" TextWrapping="Wrap"
                                    Text="{Binding Text.Text}" FontSize="{Binding Text.FontSize}"
                                    Background="Transparent" MouseLeftButtonDown="OnTextMouseDown" />
@@ -95,10 +94,8 @@
                                  IsVisibleChanged="OnTextEditorVisibleChanged" LostKeyboardFocus="OnTextEditorLostFocus"
                                  PreviewKeyDown="OnTextEditorKeyDown" />
 
-                        <!-- Image -->
                         <Image x:Name="Picture" Visibility="Collapsed" Source="{Binding ImageSource}" Stretch="Uniform" />
 
-                        <!-- Empty item: choose its content -->
                         <WrapPanel x:Name="Choices" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Button Content="{bi:Localize AddVisual}" Style="{StaticResource ChoiceButton}" Click="OnAddVisual" />
                             <Button Content="{bi:Localize AddText}" Style="{StaticResource ChoiceButton}" Click="OnAddText" />
@@ -107,7 +104,18 @@
                     </Grid>
                 </Border>
 
-                <!-- Hover toolbar: drag grip on the left, actions on the right -->
+                <!-- Banner shown when "+" is used next to a full-row item -->
+                <Border x:Name="FullRowBanner" Visibility="Collapsed" VerticalAlignment="Top" Margin="6,26,6,0" Padding="10,8"
+                        Background="#FFF7E6" BorderBrush="#F5C26B" BorderThickness="1" CornerRadius="6">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+                            <Button Content="{bi:Localize FullRowProceed}" Padding="8,2" Click="OnFullRowProceed" />
+                            <Button Content="{bi:Localize Cancel}" Padding="8,2" Margin="6,0,0,0" Click="OnFullRowCancel" />
+                        </StackPanel>
+                        <TextBlock Text="{bi:Localize FullRowWarning}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                    </DockPanel>
+                </Border>
+
                 <TextBlock x:Name="Grip" Text="⠿" FontSize="16" Margin="8,2,0,0" Cursor="SizeAll"
                            HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="{StaticResource MutedBrush}"
                            Visibility="Hidden" ToolTip="{bi:Localize MoveItem}" Background="Transparent"
@@ -123,6 +131,8 @@
                     </StackPanel>
                     <Button x:Name="FitButton" Style="{StaticResource IconButton}" Content="⤢" Visibility="Collapsed"
                             Click="OnImageFit" ToolTip="{bi:Localize ImageFit}" />
+                    <Button x:Name="FullRowButton" Style="{StaticResource IconButton}" Content="↔" Click="OnToggleFullRow"
+                            ToolTip="{bi:Localize FullRow}" />
                     <Button x:Name="EditButton" Style="{StaticResource IconButton}" Content="✎" Visibility="Collapsed"
                             Click="OnEditItem" ToolTip="{bi:Localize EditVisual}" />
                     <Button Style="{StaticResource IconButton}" Content="✕" FontSize="10" Click="OnRemoveItem"
@@ -201,6 +211,20 @@
                     <Setter TargetName="Card" Property="BorderBrush" Value="#C9CED6" />
                     <Setter TargetName="Card" Property="Background" Value="#FAFBFC" />
                 </DataTrigger>
+                <DataTrigger Binding="{Binding IsFullRow}" Value="True">
+                    <Setter TargetName="FullRowButton" Property="Foreground" Value="{StaticResource AccentBrush}" />
+                    <Setter TargetName="FullRowButton" Property="FontWeight" Value="Bold" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding ShowFullRowWarning}" Value="True">
+                    <Setter TargetName="FullRowBanner" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <!-- In scrolling and wrapping bands items follow each other: "+" only on the right -->
+                <DataTrigger Binding="{Binding Band.Mode}" Value="{x:Static core:BandMode.Scroll}">
+                    <Setter TargetName="BottomZone" Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Band.Mode}" Value="{x:Static core:BandMode.Wrap}">
+                    <Setter TargetName="BottomZone" Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
                 <Trigger SourceName="Root" Property="IsMouseOver" Value="True">
                     <Setter TargetName="Grip" Property="Visibility" Value="Visible" />
                     <Setter TargetName="Toolbar" Property="Visibility" Value="Visible" />
@@ -212,7 +236,6 @@
                 <Trigger SourceName="BottomZone" Property="IsMouseOver" Value="True">
                     <Setter TargetName="BottomPlus" Property="Visibility" Value="Visible" />
                 </Trigger>
-                <!-- Read-only dashboard: no editing affordance at all -->
                 <DataTrigger Binding="{Binding IsLayoutEditable, RelativeSource={RelativeSource AncestorType=local:DashboardPanel}}" Value="False">
                     <Setter TargetName="Grip" Property="Opacity" Value="0" />
                     <Setter TargetName="Grip" Property="IsHitTestVisible" Value="False" />
@@ -227,37 +250,147 @@
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
+
+        <!-- Items of a band, laid out according to its mode -->
+        <Style x:Key="BandItems" TargetType="ItemsControl">
+            <Setter Property="ItemTemplate" Value="{StaticResource ItemTemplate}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="AllowDrop" Value="True" />
+            <!-- Fit: a grid of cells -->
+            <Setter Property="ItemsPanel">
+                <Setter.Value>
+                    <ItemsPanelTemplate>
+                        <local:DashboardGridPanel Columns="{Binding Columns}" RowHeight="{Binding RowHeight}" Gap="14"
+                                                  Loaded="OnGridLoaded" />
+                    </ItemsPanelTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ContentPresenter">
+                        <Setter Property="local:DashboardGridPanel.Column" Value="{Binding Column}" />
+                        <Setter Property="local:DashboardGridPanel.Row" Value="{Binding Row}" />
+                        <Setter Property="local:DashboardGridPanel.ColumnSpan" Value="{Binding ColumnSpan}" />
+                        <Setter Property="local:DashboardGridPanel.RowSpan" Value="{Binding RowSpan}" />
+                        <Style.Triggers>
+                            <!-- The hovered item draws over its neighbours, so its "+" is never hidden -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Panel.ZIndex" Value="1" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Mode}" Value="{x:Static core:BandMode.Scroll}">
+                    <Setter Property="Margin" Value="0,0,-14,0" />
+                    <Setter Property="ItemsPanel">
+                        <Setter.Value>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </Setter.Value>
+                    </Setter>
+                    <Setter Property="ItemContainerStyle" Value="{DynamicResource StripItem}" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ItemsControl">
+                                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                                              Background="{TemplateBinding Background}">
+                                    <ItemsPresenter />
+                                </ScrollViewer>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Mode}" Value="{x:Static core:BandMode.Wrap}">
+                    <Setter Property="Margin" Value="0,0,-14,0" />
+                    <Setter Property="ItemsPanel">
+                        <Setter.Value>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </Setter.Value>
+                    </Setter>
+                    <Setter Property="ItemContainerStyle" Value="{DynamicResource StripItem}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Item of a scrolling or wrapping band: its own width (or the whole band), a height in grid rows -->
+        <Style x:Key="StripItem" TargetType="ContentPresenter">
+            <Setter Property="Width" Value="{Binding Width}" />
+            <Setter Property="Height" Value="{Binding Height}" />
+            <Setter Property="Margin" Value="0,0,14,14" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsFullRow}" Value="True">
+                    <!-- The band is one gap wider than what is visible (it absorbs the last item's margin) -->
+                    <Setter Property="Width" Value="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=ItemsControl},
+                            Converter={x:Static local:MinusGapConverter.Instance}}" />
+                </DataTrigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Panel.ZIndex" Value="1" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- One band: options gutter on the left, items, then a gap with "+" to insert a band -->
+        <DataTemplate x:Key="BandTemplate" DataType="{x:Type local:DashboardBandViewModel}">
+            <Grid x:Name="BandRoot" Background="Transparent">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="24" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="20" />
+                </Grid.RowDefinitions>
+
+                <Button x:Name="BandOptions" Style="{StaticResource IconButton}" Content="⋮" FontSize="14"
+                        VerticalAlignment="Top" Margin="0,4,2,0" Visibility="Hidden" Click="OnBandOptions"
+                        ToolTip="{bi:Localize BandOptions}" />
+
+                <ItemsControl Grid.Column="1" ItemsSource="{Binding Items}" Style="{StaticResource BandItems}"
+                              DragEnter="OnBandDragOver" DragOver="OnBandDragOver" Drop="OnBandDrop" />
+
+                <Grid x:Name="BandGap" Grid.Row="1" Grid.Column="1" Background="Transparent">
+                    <Canvas Width="0" Height="0" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Button x:Name="BandPlus" Canvas.Left="-11" Canvas.Top="-11" Style="{StaticResource PlusButton}"
+                                Click="OnInsertBand" ToolTip="{bi:Localize AddBand}" />
+                    </Canvas>
+                </Grid>
+            </Grid>
+            <DataTemplate.Triggers>
+                <Trigger SourceName="BandRoot" Property="IsMouseOver" Value="True">
+                    <Setter TargetName="BandOptions" Property="Visibility" Value="Visible" />
+                </Trigger>
+                <Trigger SourceName="BandGap" Property="IsMouseOver" Value="True">
+                    <Setter TargetName="BandPlus" Property="Visibility" Value="Visible" />
+                </Trigger>
+                <DataTrigger Binding="{Binding IsLayoutEditable, RelativeSource={RelativeSource AncestorType=local:DashboardPanel}}" Value="False">
+                    <Setter TargetName="BandOptions" Property="Opacity" Value="0" />
+                    <Setter TargetName="BandOptions" Property="IsHitTestVisible" Value="False" />
+                    <Setter TargetName="BandGap" Property="IsHitTestVisible" Value="False" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
     </UserControl.Resources>
 
     <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="16,8,16,16">
-            <!-- The whole surface accepts drops: the target cell follows the pointer -->
-            <Grid x:Name="Surface" AllowDrop="True" Background="Transparent"
-                  DragEnter="OnSurfaceDragOver" DragOver="OnSurfaceDragOver" Drop="OnSurfaceDrop">
-                <ItemsControl x:Name="ItemList" ItemTemplate="{StaticResource ItemTemplate}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <local:DashboardGridPanel Columns="{Binding Columns}" RowHeight="{Binding RowHeight}" Gap="14"
-                                                      Loaded="OnGridLoaded" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemContainerStyle>
-                        <Style TargetType="ContentPresenter">
-                            <Setter Property="local:DashboardGridPanel.Column" Value="{Binding Column}" />
-                            <Setter Property="local:DashboardGridPanel.Row" Value="{Binding Row}" />
-                            <Setter Property="local:DashboardGridPanel.ColumnSpan" Value="{Binding ColumnSpan}" />
-                            <Setter Property="local:DashboardGridPanel.RowSpan" Value="{Binding RowSpan}" />
-                            <Style.Triggers>
-                                <!-- The hovered item draws over its neighbours, so its "+" is never hidden -->
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Panel.ZIndex" Value="1" />
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ItemsControl.ItemContainerStyle>
-                </ItemsControl>
-            </Grid>
-            <Button x:Name="AddAtEnd" Content="{bi:Localize AddAtEnd}" HorizontalAlignment="Center" Margin="0,16,0,0"
+        <StackPanel Margin="0,8,16,16">
+            <ItemsControl x:Name="BandList" ItemTemplate="{StaticResource BandTemplate}">
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ContentPresenter">
+                        <Style.Triggers>
+                            <!-- The hovered band draws over the next one, so a "+" overflowing it stays visible -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Panel.ZIndex" Value="1" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+            </ItemsControl>
+            <Button x:Name="AddAtEnd" Content="{bi:Localize AddAtEnd}" HorizontalAlignment="Center" Margin="24,0,0,0"
                     Padding="14,6" Cursor="Hand" Click="OnAddAtEnd" />
         </StackPanel>
     </ScrollViewer>

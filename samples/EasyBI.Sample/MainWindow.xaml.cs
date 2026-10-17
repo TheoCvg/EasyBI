@@ -131,27 +131,51 @@ public partial class MainWindow : Window
             Axis = [new("Product.Category")],
             Values = [new("Amount")],
         };
+        VisualDefinition byProduct = new()
+        {
+            Title = Text("RevenueByProduct"),
+            Model = "sales",
+            Mark = MarkType.Table,
+            Axis = [new("Product.Name")],
+            Values = [new("Amount"), new("Quantity")],
+            Sort = new("Amount", Descending: true),
+        };
 
         static LayoutItem Show(VisualDefinition visual, int column, int row, int columnSpan, int rowSpan) =>
             new() { VisualId = visual.Id, Column = column, Row = row, ColumnSpan = columnSpan, RowSpan = rowSpan };
         return new ReportDefinition
         {
-            Visuals = [kpis, byQuarter, byRegion, byCategory],
+            Visuals = [kpis, byQuarter, byRegion, byCategory, byProduct],
             Layout = new DashboardLayout
             {
-                Items =
+                Bands =
                 [
-                    new LayoutItem
+                    // A grid band: heading and KPIs take the full row, the quarterly trend covers four rows
+                    new LayoutBand
                     {
-                        ColumnSpan = 12,
-                        RowSpan = 1,
-                        Text = new TextContent { Text = Text("DashboardHeading"), FontSize = 22, IsBold = true },
+                        Items =
+                        [
+                            new LayoutItem
+                            {
+                                IsFullRow = true,
+                                RowSpan = 1,
+                                Text = new TextContent { Text = Text("DashboardHeading"), FontSize = 22, IsBold = true },
+                            },
+                            Show(kpis, 0, 1, 12, 2) with { IsFullRow = true },
+                            Show(byQuarter, 0, 3, 8, 4),
+                            Show(byCategory, 8, 3, 4, 4),
+                        ],
                     },
-                    Show(kpis, 0, 1, 12, 2),
-                    // The quarterly trend covers two rows of the grid, next to the category split
-                    Show(byQuarter, 0, 3, 8, 4),
-                    Show(byCategory, 8, 3, 4, 4),
-                    Show(byRegion, 0, 7, 12, 3),
+                    // A scrolling band: details side by side at a fixed width
+                    new LayoutBand
+                    {
+                        Mode = BandMode.Scroll,
+                        Items =
+                        [
+                            new LayoutItem { VisualId = byRegion.Id, Width = 760, RowSpan = 3 },
+                            new LayoutItem { VisualId = byProduct.Id, Width = 520, RowSpan = 3 },
+                        ],
+                    },
                 ],
             },
         };
