@@ -15,23 +15,75 @@ public sealed class OxyPlotRenderer : IVisualRenderer
 {
     public string Name => "OxyPlot";
 
-    public RendererCapabilities Capabilities { get; } =
-        new(new HashSet<MarkType> { MarkType.Bar, MarkType.Line, MarkType.Pie });
+    public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType>
+    {
+        MarkType.Bar, MarkType.StackedBar, MarkType.Line, MarkType.Area, MarkType.Scatter, MarkType.Pie,
+    });
 
     public FrameworkElement Render(RenderRequest request)
     {
         var model = request.Visual.Mark switch
         {
             MarkType.Pie => BuildPie(request),
-            MarkType.Bar or MarkType.Line => BuildCartesian(request),
+            var mark when mark.IsCartesian() => BuildCartesian(request),
             _ => throw new NotSupportedException($"OxyPlotRenderer does not support '{request.Visual.Mark}'."),
         };
         model.PlotAreaBorderThickness = new OxyThickness(0);
-        model.TextColor = OxyColor.FromRgb(0x37, 0x41, 0x51);
+        ApplyTheme(model, request.Theme);
         var view = new PlotView { Model = model, Background = System.Windows.Media.Brushes.Transparent };
+        // Legend, labels and axis title adapt to the room the chart actually gets
+        view.SizeChanged += (_, _) => Fit(view, model, request);
         if (request.Select is { } select)
             view.Controller = SelectionController(model, select);
         return view;
+    }
+
+    private static void Fit(PlotView view, PlotModel model, RenderRequest request)
+    {
+        if (view.ActualWidth <= 0) return;
+        var changed = request.Visual.Mark == MarkType.Pie
+            ? FitPie(model, ChartFitting.Pie(request.Chart, view.ActualWidth, view.ActualHeight))
+            : FitCartesian(model, request.Chart, ChartFitting.Cartesian(request.Chart, view.ActualWidth, view.ActualHeight));
+        // Only redraw when something changed: SizeChanged fires continuously while a dashboard cell is resized
+        if (changed) model.InvalidatePlot(false);
+    }
+
+    private static bool FitCartesian(PlotModel model, ChartData chart, ChartFit fit)
+    {
+        var changed = false;
+        var axis = (CategoryAxis)model.Axes.First(a => a.Key == CategoryAxisKey);
+        if (axis.Angle != fit.LabelRotation) (axis.Angle, changed) = (fit.LabelRotation, true);
+        if (axis.MajorStep != fit.LabelStep) (axis.MajorStep, changed) = (fit.LabelStep, true);
+        var title = fit.ShowAxisTitles ? chart.CategoryCaption : null;
+        if (axis.Title != title) (axis.Title, changed) = (title, true);
+
+        var visible = fit.Legend != ChartLegend.Hidden;
+        if (model.IsLegendVisible != visible) (model.IsLegendVisible, changed) = (visible, true);
+        if (visible && model.Legends.FirstOrDefault() is { } legend)
+        {
+            var position = fit.Legend == ChartLegend.Bottom ? LegendPosition.BottomCenter : LegendPosition.RightTop;
+            if (legend.LegendPosition != position)
+            {
+                legend.LegendPosition = position;
+                legend.LegendOrientation = fit.Legend == ChartLegend.Bottom ? LegendOrientation.Horizontal : LegendOrientation.Vertical;
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    /// <summary>
+    /// OxyPlot draws the category names around the pie instead of in a legend: they are dropped when the fit has no
+    /// room for a legend. The donut hole is relative to the pie, so it already keeps its proportions.
+    /// </summary>
+    private static bool FitPie(PlotModel model, ChartFit fit)
+    {
+        var pie = (PieSeries)model.Series[0];
+        var format = fit.Legend == ChartLegend.Hidden ? null : PieOutsideLabelFormat;
+        if (pie.OutsideLabelFormat == format) return false;
+        pie.OutsideLabelFormat = format;
+        (pie.TickHorizontalLength, pie.TickRadialLength) = format is null ? (0, 0) : (8, 6);
+        return true;
     }
 
     /// <summary>Left click: shows the tracker as usual, and selects the element that was hit.</summary>
@@ -59,81 +111,123 @@ public sealed class OxyPlotRenderer : IVisualRenderer
                     return new CategorySelection(categories[pie.Slices.IndexOf(slice)]);
                 case BarSeries:
                     return new CategorySelection((int)hit.Index, s);
-                case LineSeries when hit.Position.DistanceTo(position) <= tolerance:
+                case LineSeries or ScatterSeries when hit.Position.DistanceTo(position) <= tolerance:
                     return new CategorySelection((int)Math.Round(hit.DataPoint.X), s);
             }
         }
         return null;
     }
 
+    private const string CategoryAxisKey = "categories";
+    private const string PrimaryAxisKey = "values";
+    private const string SecondaryAxisKey = "values2";
+
+    /// <summary>
+    /// Bars, stacked bars, lines, areas and points in one chart: each series is drawn with its own
+    /// <see cref="ChartSeries.Mark"/>, against the left axis or, for <see cref="ChartSeries.SecondaryAxis"/>, the right one.
+    /// </summary>
     private static PlotModel BuildCartesian(RenderRequest request)
     {
         var chart = request.Chart;
-        var format = chart.Series.FirstOrDefault()?.Format;
         var model = new PlotModel();
 
         var categoryAxis = new CategoryAxis
         {
             Position = AxisPosition.Bottom,
             Title = chart.CategoryCaption,
-            Angle = chart.Categories.Count > 8 ? -45 : 0,
             AxisTitleDistance = 10,
-            Key = "categories",
+            Key = CategoryAxisKey,
         };
         categoryAxis.Labels.AddRange(chart.Categories);
         model.Axes.Add(categoryAxis);
-        model.Axes.Add(new LinearAxis
-        {
-            Position = AxisPosition.Left,
-            Key = "values",
-            LabelFormatter = value => ValueFormatter.Format(value, format),
-            MajorGridlineStyle = LineStyle.Solid,
-            MajorGridlineColor = OxyColor.FromRgb(0xE5, 0xE7, 0xEB),
-            MinimumPadding = request.Visual.Mark == MarkType.Bar ? 0 : 0.05,
-            MaximumPadding = 0.08,
-            AbsoluteMinimum = request.Visual.Mark == MarkType.Bar ? 0 : double.MinValue,
-        });
+        model.Axes.Add(ValueAxis(chart, secondary: false));
+        if (chart.Series.Any(s => s.SecondaryAxis))
+            model.Axes.Add(ValueAxis(chart, secondary: true));
 
         for (var i = 0; i < chart.Series.Count; i++)
-        {
-            var source = chart.Series[i];
-            var color = Color(request.Theme, i);
-            if (request.Visual.Mark == MarkType.Line)
-            {
-                var line = new LineSeries
-                {
-                    Title = source.Name,
-                    Color = color,
-                    StrokeThickness = 3,
-                    MarkerType = MarkerType.Circle,
-                    MarkerSize = 4,
-                    MarkerFill = color,
-                    TrackerFormatString = "{0}\n{2}: {4:" + (format ?? "#,##0.##") + "}",
-                };
-                // DataPoint.Undefined = missing point: OxyPlot breaks the line.
-                line.Points.AddRange(source.Values.Select((v, x) => v is null ? DataPoint.Undefined : new DataPoint(x, v.Value)));
-                model.Series.Add(line);
-            }
-            else
-            {
-                // Since OxyPlot 2.1, BarSeries follows its axes: categories at the bottom = columns.
-                var bars = new BarSeries
-                {
-                    Title = source.Name,
-                    FillColor = color,
-                    XAxisKey = model.Axes[1].Key,
-                    YAxisKey = categoryAxis.Key,
-                    TrackerFormatString = "{0}\n{1}: {2:" + (format ?? "#,##0.##") + "}",
-                };
-                bars.Items.AddRange(source.Values.Select(v => new BarItem(v ?? 0)));
-                model.Series.Add(bars);
-            }
-        }
+            model.Series.Add(CreateSeries(chart.Series[i], Color(request.Theme, i)));
 
         if (chart.Series.Count > 1)
             model.Legends.Add(new Legend { LegendPosition = LegendPosition.RightTop, LegendPlacement = LegendPlacement.Outside });
         return model;
     }
+
+    /// <summary>A value axis formatted like the first series drawn against it; bars start at zero.</summary>
+    private static LinearAxis ValueAxis(ChartData chart, bool secondary)
+    {
+        var series = chart.Series.Where(s => s.SecondaryAxis == secondary).ToList();
+        var format = series.FirstOrDefault()?.Format;
+        var onlyBars = series.Count > 0 && series.All(s => s.Mark is MarkType.Bar or MarkType.StackedBar);
+        return new LinearAxis
+        {
+            Position = secondary ? AxisPosition.Right : AxisPosition.Left,
+            Key = secondary ? SecondaryAxisKey : PrimaryAxisKey,
+            LabelFormatter = value => ValueFormatter.Format(value, format),
+            // Grid lines come from the left axis only, so that the two scales do not draw two grids
+            MajorGridlineStyle = secondary ? LineStyle.None : LineStyle.Solid,
+            MajorGridlineColor = OxyColor.FromRgb(0xE5, 0xE7, 0xEB),
+            MinimumPadding = onlyBars ? 0 : 0.05,
+            MaximumPadding = 0.08,
+            AbsoluteMinimum = onlyBars ? 0 : double.MinValue,
+        };
+    }
+
+    private static Series CreateSeries(ChartSeries source, OxyColor color)
+    {
+        var valueAxis = source.SecondaryAxis ? SecondaryAxisKey : PrimaryAxisKey;
+        var valueFormat = "{4:" + (source.Format ?? "#,##0.##") + "}";
+        switch (source.Mark)
+        {
+            case MarkType.Line or MarkType.Area:
+                var line = source.Mark == MarkType.Area
+                    ? new AreaSeries { Fill = OxyColor.FromAColor(0x55, color), Color2 = OxyColors.Transparent, ConstantY2 = 0 }
+                    : new LineSeries { MarkerType = MarkerType.Circle, MarkerSize = 4, MarkerFill = color };
+                line.Title = source.Name;
+                line.Color = color;
+                line.StrokeThickness = 3;
+                line.XAxisKey = CategoryAxisKey;
+                line.YAxisKey = valueAxis;
+                line.TrackerFormatString = "{0}\n{2}: " + valueFormat;
+                // DataPoint.Undefined = missing point: OxyPlot breaks the line.
+                line.Points.AddRange(source.Values.Select((v, x) => v is null ? DataPoint.Undefined : new DataPoint(x, v.Value)));
+                return line;
+
+            case MarkType.Scatter:
+                var points = new ScatterSeries
+                {
+                    Title = source.Name,
+                    MarkerType = MarkerType.Circle,
+                    MarkerSize = 6,
+                    MarkerFill = color,
+                    XAxisKey = CategoryAxisKey,
+                    YAxisKey = valueAxis,
+                    TrackerFormatString = "{0}\n{2}: " + valueFormat,
+                };
+                points.Points.AddRange(source.Values
+                    .Select((v, x) => (Value: v, X: x))
+                    .Where(p => p.Value is not null)
+                    .Select(p => new ScatterPoint(p.X, p.Value!.Value)));
+                return points;
+
+            default:
+                // Since OxyPlot 2.1, BarSeries follows its axes: categories at the bottom = columns.
+                var bars = new BarSeries
+                {
+                    Title = source.Name,
+                    FillColor = color,
+                    XAxisKey = valueAxis,
+                    YAxisKey = CategoryAxisKey,
+                    IsStacked = source.Mark == MarkType.StackedBar,
+                    // Series on the right axis stack separately from those on the left
+                    StackGroup = source.SecondaryAxis ? SecondaryAxisKey : PrimaryAxisKey,
+                    TrackerFormatString = "{0}\n{1}: {2:" + (source.Format ?? "#,##0.##") + "}",
+                };
+                bars.Items.AddRange(source.Values.Select(v => new BarItem(v ?? 0)));
+                return bars;
+        }
+    }
+
+    private const string PieOutsideLabelFormat = "{1}";
 
     private static PlotModel BuildPie(RenderRequest request)
     {
@@ -147,7 +241,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
             InsideLabelPosition = 0.75,
             InsideLabelColor = OxyColors.White,
             InsideLabelFormat = "{2:0}%",
-            OutsideLabelFormat = "{1}",
+            OutsideLabelFormat = PieOutsideLabelFormat,
             AngleSpan = 360,
             StartAngle = -90,
             TrackerFormatString = "{1}: {2:" + (source.Format ?? "#,##0.##") + "}",
@@ -167,4 +261,23 @@ public sealed class OxyPlotRenderer : IVisualRenderer
     }
 
     private static OxyColor Color(BiTheme theme, int index) => OxyColor.Parse(theme.ColorAt(index));
+
+    /// <summary>Text, axes, grid lines and slice borders in the theme's colors (EasyBI's light colors when it has none).</summary>
+    private static void ApplyTheme(PlotModel model, BiTheme theme)
+    {
+        model.TextColor = Parse(theme.Foreground) ?? OxyColor.FromRgb(0x37, 0x41, 0x51);
+        var grid = Parse(theme.GridLine) ?? OxyColor.FromRgb(0xE5, 0xE7, 0xEB);
+        foreach (var axis in model.Axes)
+        {
+            axis.MajorGridlineColor = grid;
+            axis.TicklineColor = grid;
+            axis.AxislineColor = grid;
+            if (Parse(theme.MutedForeground) is { } labels) axis.TextColor = labels;
+        }
+        // Slices are separated by the color they are drawn on
+        foreach (var pie in model.Series.OfType<PieSeries>())
+            pie.Stroke = Parse(theme.Background) ?? OxyColors.White;
+    }
+
+    private static OxyColor? Parse(string? color) => color is null ? null : OxyColor.Parse(color);
 }

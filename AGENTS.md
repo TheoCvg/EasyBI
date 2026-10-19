@@ -18,6 +18,7 @@ Source (IQueryable) ─▶ Semantic model ─▶ AnalyticQuery ─▶ ResultSet 
 | `src/EasyBI.Core` | Query engine (expression trees), pivot, filtering, JSON, validation | Abstractions |
 | `src/EasyBI.Wpf` | `VisualView`, `ReportDesigner`, `FilterBar`, built-in KPI/Table renderers | Core |
 | `src/EasyBI.Renderers.*` | One connector per charting library | Wpf + that library |
+| `src/EasyBI.Themes.*` | One theme mapping per control library (`EasyBIThemeMapping`) | Wpf + that library |
 | `samples/EasyBI.Sample` | Demo application | everything |
 | `tests/EasyBI.Core.Tests` | Engine, filtering, serialization tests (`net8.0`) | Core |
 | `tests/EasyBI.Wpf.Tests` | Designer view-model tests (`net8.0-windows`) | Wpf |
@@ -77,6 +78,10 @@ Follow the style already in the codebase:
 - One main type per file; small closely related types (records, enums) may share a file.
 - No new third-party dependency in `Abstractions` or `Core` without discussing it first.
 - WPF: keep logic in view-models or `Core`, not in code-behind; update UI only on the dispatcher.
+- WPF: no hard-coded colors. Draw with the `EasyBITheme` keys, as `DynamicResource` (`SetResourceReference` in code)
+  so that theme changes apply at runtime; add a key to `EasyBITheme`, `Light.xaml` and `Dark.xaml` when none fits
+  (a test checks that both themes define every key). Do not give standard controls an explicit style without
+  `BasedOn` their implicit one, so that the application's control library still applies.
 
 ## Tests
 

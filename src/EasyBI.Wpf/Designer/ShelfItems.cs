@@ -18,9 +18,23 @@ public sealed class ShelfItemViewModel : ObservableObject
             .Select(a => new Option<Aggregation>(a, () => Aggregations.Caption(a)))
             .ToArray();
 
+    /// <summary>Chart types a measure can take in a cartesian chart; null follows the visual's type.</summary>
+    public static IReadOnlyList<Option<MarkType?>> SeriesMarkOptions { get; } =
+    [
+        new(null, () => Strings.SeriesMarkDefault),
+        new(MarkType.Bar, () => Strings.MarkBar),
+        new(MarkType.StackedBar, () => Strings.MarkStackedBar),
+        new(MarkType.Line, () => Strings.MarkLine),
+        new(MarkType.Area, () => Strings.MarkArea),
+        new(MarkType.Scatter, () => Strings.MarkScatter),
+    ];
+
     private readonly Action _changed;
     private DateGrain _grain;
     private Aggregation _aggregation;
+    private MarkType? _seriesMark;
+    private bool _secondaryAxis;
+    private bool _showSeriesOptions;
 
     public ShelfItemViewModel(FieldDescriptor field, Shelf shelf, Action changed)
     {
@@ -53,9 +67,46 @@ public sealed class ShelfItemViewModel : ObservableObject
         set { if (SetProperty(ref _aggregation, value)) _changed(); }
     }
 
+    /// <summary>Chart type of this measure (Values shelf, cartesian chart); null follows the visual's type.</summary>
+    public MarkType? SeriesMark
+    {
+        get => _seriesMark;
+        set
+        {
+            if (!SetProperty(ref _seriesMark, value)) return;
+            OnPropertyChanged(nameof(SeriesMarkOption));
+            _changed();
+        }
+    }
+
+    /// <summary><see cref="SeriesMark"/> as a list option (a combo box cannot select a null value).</summary>
+    public Option<MarkType?> SeriesMarkOption
+    {
+        get => SeriesMarkOptions.First(o => o.Value == _seriesMark);
+        set => SeriesMark = value?.Value;
+    }
+
+    /// <summary>Draws this measure against the second value axis.</summary>
+    public bool SecondaryAxis
+    {
+        get => _secondaryAxis;
+        set { if (SetProperty(ref _secondaryAxis, value)) _changed(); }
+    }
+
+    /// <summary>True while the chart type and axis of this measure can be chosen (a measure of a cartesian chart).</summary>
+    public bool ShowSeriesOptions
+    {
+        get => _showSeriesOptions;
+        internal set => SetProperty(ref _showSeriesOptions, value);
+    }
+
     public FieldRef ToFieldRef() => new(Field.Name, Grain);
 
-    public MeasureRef ToMeasureRef() => new(Field.Name, Aggregation == Field.DefaultAggregation ? null : Aggregation);
+    public MeasureRef ToMeasureRef() => new(Field.Name, Aggregation == Field.DefaultAggregation ? null : Aggregation)
+    {
+        Mark = SeriesMark,
+        SecondaryAxis = SecondaryAxis,
+    };
 }
 
 /// <summary>

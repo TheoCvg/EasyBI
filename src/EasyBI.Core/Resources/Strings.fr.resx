@@ -69,6 +69,12 @@
   <data name="ValidationPie" xml:space="preserve">
     <value>Un camembert demande une dimension en « Axe », une seule mesure et pas de légende.</value>
   </data>
+  <data name="ValidationNoImage" xml:space="preserve">
+    <value>Choisissez une image à afficher.</value>
+  </data>
+  <data name="ValidationSeriesMark" xml:space="preserve">
+    <value>Une mesure d'un graphique ne peut être dessinée qu'en barres, barres empilées, ligne, aire ou points.</value>
+  </data>
   <data name="ReportUntitledVisual" xml:space="preserve">
     <value>Visuel {0}</value>
   </data>

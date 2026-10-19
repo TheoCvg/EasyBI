@@ -87,4 +87,127 @@
   <data name="LabelSuffix" xml:space="preserve">
     <value> :</value>
   </data>
+  <data name="AddVisual" xml:space="preserve">
+    <value>+ Visuel</value>
+  </data>
+  <data name="AddText" xml:space="preserve">
+    <value>+ Texte</value>
+  </data>
+  <data name="AddImage" xml:space="preserve">
+    <value>+ Image</value>
+  </data>
+  <data name="EditVisual" xml:space="preserve">
+    <value>Modifier le visuel</value>
+  </data>
+  <data name="EditText" xml:space="preserve">
+    <value>Modifier le texte</value>
+  </data>
+  <data name="ChangeImage" xml:space="preserve">
+    <value>Changer l'image</value>
+  </data>
+  <data name="RemoveItem" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="MoveItem" xml:space="preserve">
+    <value>Glisser pour déplacer</value>
+  </data>
+  <data name="ResizeItem" xml:space="preserve">
+    <value>Glisser pour redimensionner</value>
+  </data>
+  <data name="AddRight" xml:space="preserve">
+    <value>Ajouter un élément à droite</value>
+  </data>
+  <data name="AddBelow" xml:space="preserve">
+    <value>Ajouter un élément en dessous</value>
+  </data>
+  <data name="TextSmaller" xml:space="preserve">
+    <value>Texte plus petit</value>
+  </data>
+  <data name="TextLarger" xml:space="preserve">
+    <value>Texte plus grand</value>
+  </data>
+  <data name="TextBold" xml:space="preserve">
+    <value>Gras</value>
+  </data>
+  <data name="TextAlignment" xml:space="preserve">
+    <value>Alignement</value>
+  </data>
+  <data name="TextPlaceholder" xml:space="preserve">
+    <value>Double-cliquez pour écrire</value>
+  </data>
+  <data name="ImageFit" xml:space="preserve">
+    <value>Ajustement : contenir, couvrir ou étirer</value>
+  </data>
+  <data name="ImageFilter" xml:space="preserve">
+    <value>Images|*.png;*.jpg;*.jpeg;*.gif;*.bmp</value>
+  </data>
+  <data name="ImageTooLarge" xml:space="preserve">
+    <value>L'image dépasse {0} Mo.</value>
+  </data>
+  <data name="ImageUnreadable" xml:space="preserve">
+    <value>Ce fichier n'est pas une image lisible.</value>
+  </data>
+  <data name="BandOptions" xml:space="preserve">
+    <value>Options de la bande</value>
+  </data>
+  <data name="BandFit" xml:space="preserve">
+    <value>Ajuster (grille)</value>
+  </data>
+  <data name="BandScroll" xml:space="preserve">
+    <value>Défilement horizontal</value>
+  </data>
+  <data name="BandWrap" xml:space="preserve">
+    <value>Retour à la ligne</value>
+  </data>
+  <data name="InsertBand" xml:space="preserve">
+    <value>Insérer une bande en dessous</value>
+  </data>
+  <data name="RemoveBand" xml:space="preserve">
+    <value>Supprimer la bande</value>
+  </data>
+  <data name="AddBand" xml:space="preserve">
+    <value>Ajouter une bande ici</value>
+  </data>
+  <data name="AddLine" xml:space="preserve">
+    <value>Ajouter une ligne ici</value>
+  </data>
+  <data name="AddHere" xml:space="preserve">
+    <value>Ajouter un élément ici</value>
+  </data>
+  <data name="AutoSize" xml:space="preserve">
+    <value>Taille automatique : prendre la place disponible</value>
+  </data>
+  <data name="EditorTitle" xml:space="preserve">
+    <value>Visuel</value>
+  </data>
+  <data name="Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="MarkArea" xml:space="preserve">
+    <value>Aires</value>
+  </data>
+  <data name="MarkScatter" xml:space="preserve">
+    <value>Points</value>
+  </data>
+  <data name="MarkStackedBar" xml:space="preserve">
+    <value>Empilées</value>
+  </data>
+  <data name="SeriesMarkDefault" xml:space="preserve">
+    <value>Comme le visuel</value>
+  </data>
+  <data name="SeriesMarkHint" xml:space="preserve">
+    <value>Comment cette mesure est dessinée</value>
+  </data>
+  <data name="SecondaryAxis" xml:space="preserve">
+    <value>Y2</value>
+  </data>
+  <data name="SecondaryAxisHint" xml:space="preserve">
+    <value>Dessiner cette mesure sur un second axe, à droite</value>
+  </data>
+  <data name="VisualTitleBy" xml:space="preserve">
+    <value>{0} par {1}</value>
+  </data>
 </root>

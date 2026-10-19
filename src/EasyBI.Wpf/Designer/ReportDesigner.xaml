@@ -3,46 +3,56 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:bi="clr-namespace:EasyBI.Wpf"
              xmlns:local="clr-namespace:EasyBI.Wpf.Designer"
+             xmlns:dnd="clr-namespace:EasyBI.Wpf.DragAndDrop"
+             Background="{DynamicResource {x:Static bi:EasyBITheme.BackgroundBrushKey}}" Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}"
 >
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
-        <SolidColorBrush x:Key="AccentBrush" Color="#2E6BE6" />
-        <SolidColorBrush x:Key="LineBrush" Color="#DDE1E7" />
-        <SolidColorBrush x:Key="MutedBrush" Color="#6B7280" />
-        <SolidColorBrush x:Key="ShelfBrush" Color="#F4F6F9" />
+
+        <!-- Dragged chip: its caption only (the chip's own combo boxes stay on the shelf) -->
+        <DataTemplate x:Key="ChipPreviewTemplate">
+            <TextBlock Text="{Binding Caption}" Margin="6,2" />
+        </DataTemplate>
 
         <Style x:Key="SectionHeader" TargetType="TextBlock">
             <Setter Property="FontSize" Value="11" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
             <Setter Property="Margin" Value="0,14,0,6" />
         </Style>
 
-        <Style x:Key="FieldList" TargetType="ListBox">
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
-            <Setter Property="ToolTip" Value="{bi:Localize FieldListHint}" />
-        </Style>
+        <ItemsPanelTemplate x:Key="WrapItems">
+            <WrapPanel />
+        </ItemsPanelTemplate>
 
-        <Style x:Key="ShelfBorder" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource ShelfBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="6" />
-            <Setter Property="MinHeight" Value="38" />
-            <Setter Property="Padding" Value="3" />
+        <!-- A shelf: fields are dropped on it, its chips are dragged to reorder them or move them to another shelf -->
+        <Style x:Key="Shelf" TargetType="ItemsControl">
+            <Setter Property="ItemsPanel" Value="{StaticResource WrapItems}" />
             <Setter Property="Margin" Value="0,3" />
-            <Setter Property="AllowDrop" Value="True" />
-            <EventSetter Event="DragEnter" Handler="OnShelfDragOver" />
-            <EventSetter Event="DragOver" Handler="OnShelfDragOver" />
-            <EventSetter Event="DragLeave" Handler="OnShelfDragLeave" />
-            <EventSetter Event="Drop" Handler="OnShelfDrop" />
+            <Setter Property="dnd:DropTarget.Handler" Value="{Binding}" />
+            <Setter Property="dnd:DragSource.IsEnabled" Value="True" />
+            <Setter Property="dnd:DragSource.AllowedEffects" Value="Move" />
+            <Setter Property="dnd:DragSource.PreviewTemplate" Value="{StaticResource ChipPreviewTemplate}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ItemsControl">
+                        <Border x:Name="Bd" Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceAltBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}"
+                                BorderThickness="1" CornerRadius="6" MinHeight="38" Padding="3">
+                            <ItemsPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="dnd:DropTarget.IsDragOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="ShelfLabel" TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
@@ -53,7 +63,7 @@
             <Setter Property="Height" Value="18" />
             <Setter Property="Margin" Value="4,0,0,0" />
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
             <Setter Property="Command" Value="{Binding DataContext.RemoveCommand, ElementName=LayoutRoot}" />
             <Setter Property="CommandParameter" Value="{Binding}" />
             <Setter Property="Template">
@@ -64,7 +74,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="#22000000" />
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.HoverBrushKey}}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -72,45 +82,42 @@
             </Setter>
         </Style>
 
-        <Style x:Key="ChipCombo" TargetType="ComboBox">
-            <Setter Property="Margin" Value="6,0,0,0" />
-            <Setter Property="FontSize" Value="11" />
-            <Setter Property="Padding" Value="4,1" />
-            <Setter Property="MinWidth" Value="70" />
-            <Setter Property="DisplayMemberPath" Value="Label" />
-            <Setter Property="SelectedValuePath" Value="Value" />
-        </Style>
-
-        <ItemsPanelTemplate x:Key="WrapItems">
-            <WrapPanel />
-        </ItemsPanelTemplate>
-
         <DataTemplate x:Key="ChipTemplate" DataType="{x:Type local:ShelfItemViewModel}">
-            <Border Background="#E3ECFD" BorderBrush="#C3D5FA" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
+            <!-- Combo boxes take local values, not a style: the application's ComboBox style still applies -->
+            <Border Background="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBorderBrushKey}}" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{Binding Caption}" VerticalAlignment="Center" />
-                    <ComboBox Style="{StaticResource ChipCombo}"
+                    <ComboBox Margin="6,0,0,0" FontSize="11" Padding="4,1" MinWidth="70" DisplayMemberPath="Label" SelectedValuePath="Value"
                               Visibility="{Binding HasGrain, Converter={StaticResource BoolToVisibility}}"
                               ItemsSource="{x:Static local:ShelfItemViewModel.GrainOptions}"
                               SelectedValue="{Binding Grain, Mode=TwoWay}" />
-                    <ComboBox Style="{StaticResource ChipCombo}"
+                    <ComboBox Margin="6,0,0,0" FontSize="11" Padding="4,1" MinWidth="70" DisplayMemberPath="Label" SelectedValuePath="Value"
                               Visibility="{Binding HasAggregation, Converter={StaticResource BoolToVisibility}}"
                               ItemsSource="{x:Static local:ShelfItemViewModel.AggregationOptions}"
                               SelectedValue="{Binding Aggregation, Mode=TwoWay}" />
+                    <!-- Measures of a cartesian chart: chart type and value axis of their series -->
+                    <ComboBox Margin="6,0,0,0" FontSize="11" Padding="4,1" MinWidth="70" DisplayMemberPath="Label" SelectedValuePath="Value" ToolTip="{bi:Localize SeriesMarkHint}"
+                              Visibility="{Binding ShowSeriesOptions, Converter={StaticResource BoolToVisibility}}"
+                              ItemsSource="{x:Static local:ShelfItemViewModel.SeriesMarkOptions}"
+                              SelectedItem="{Binding SeriesMarkOption, Mode=TwoWay}" />
+                    <ToggleButton Content="{bi:Localize SecondaryAxis}" ToolTip="{bi:Localize SecondaryAxisHint}"
+                                  Margin="4,0,0,0" Padding="5,0" FontSize="11" Cursor="Hand"
+                                  Visibility="{Binding ShowSeriesOptions, Converter={StaticResource BoolToVisibility}}"
+                                  IsChecked="{Binding SecondaryAxis, Mode=TwoWay}" />
                     <Button Style="{StaticResource ChipButton}" />
                 </StackPanel>
             </Border>
         </DataTemplate>
 
         <DataTemplate x:Key="FilterChipTemplate" DataType="{x:Type local:FilterItemViewModel}">
-            <Border Background="#FDF0E3" BorderBrush="#F5D3B0" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
+            <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SecondarySoftBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.SecondarySoftBorderBrushKey}}" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock VerticalAlignment="Center"><Run Text="{Binding Caption, Mode=OneWay}" /><Run Text="{bi:Localize LabelSuffix}" /></TextBlock>
                     <ToggleButton x:Name="Toggle" Margin="6,0,0,0" Padding="6,1" FontSize="11"
                                   Content="{Binding Summary}" IsEnabled="{Binding IsLoading, Converter={x:Static local:InverseBooleanConverter.Instance}}" />
                     <Popup IsOpen="{Binding IsChecked, ElementName=Toggle}" StaysOpen="False"
                            PlacementTarget="{Binding ElementName=Toggle}" Placement="Bottom" AllowsTransparency="True">
-                        <Border Background="White" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
+                        <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="1"
                                 CornerRadius="6" Padding="8" MaxHeight="300" MinWidth="160">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                                 <ItemsControl ItemsSource="{Binding Values}">
@@ -136,42 +143,10 @@
         </Grid.ColumnDefinitions>
 
         <!-- Field panel -->
-        <Border Background="#FAFBFC" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,1,0" Padding="14,4,14,14">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <TextBlock Text="{bi:Localize ModelHeader}" Style="{StaticResource SectionHeader}" />
-                <ComboBox Grid.Row="1" ItemsSource="{Binding Models}" SelectedValuePath="Value"
-                          SelectedValue="{Binding SelectedModel}" DisplayMemberPath="Label" />
-                <TextBlock Grid.Row="2" Text="{bi:Localize DimensionsHeader}" Style="{StaticResource SectionHeader}" />
-                <ListBox Grid.Row="3" x:Name="DimensionList" ItemsSource="{Binding Dimensions}" Style="{StaticResource FieldList}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="◆" Foreground="{StaticResource AccentBrush}" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                <TextBlock Text="{Binding Caption}" Padding="0,3" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-                <TextBlock Grid.Row="4" Text="{bi:Localize MeasuresHeader}" Style="{StaticResource SectionHeader}" />
-                <ListBox Grid.Row="5" x:Name="MeasureList" ItemsSource="{Binding Measures}" Style="{StaticResource FieldList}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Σ" Foreground="#2BA37B" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,7,0" />
-                                <TextBlock Text="{Binding Caption}" Padding="0,3" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Grid>
+        <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceAltBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="0,0,1,0" Padding="14,4,14,14">
+            <!-- Fields are dragged onto the shelves; a double-click puts one on its default shelf -->
+            <bi:FieldList Context="{Binding Context}" SelectedModel="{Binding SelectedModel, Mode=TwoWay}"
+                          ActivateCommand="{Binding AddFieldCommand}" ToolTip="{bi:Localize FieldListHint}" />
         </Border>
 
         <!-- Visual builder -->
@@ -198,17 +173,17 @@
                                 <Setter.Value>
                                     <ControlTemplate TargetType="ListBoxItem">
                                         <Border x:Name="Bg" Padding="12,5" Margin="2,0" CornerRadius="5"
-                                                BorderBrush="{StaticResource LineBrush}" BorderThickness="1" Background="White">
-                                            <TextBlock x:Name="Text" Text="{Binding Label}" />
+                                                BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="1" Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}">
+                                            <TextBlock x:Name="Text" Text="{Binding Label}" Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}" />
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsSelected" Value="True">
-                                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource AccentBrush}" />
-                                                <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-                                                <Setter TargetName="Text" Property="Foreground" Value="White" />
+                                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
+                                                <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
+                                                <Setter TargetName="Text" Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentForegroundBrushKey}}" />
                                             </Trigger>
                                             <Trigger Property="IsEnabled" Value="False">
-                                                <Setter TargetName="Text" Property="Foreground" Value="#B8BEC7" />
+                                                <Setter TargetName="Text" Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.DisabledForegroundBrushKey}}" />
                                                 <Setter Property="ToolTip" Value="{bi:Localize NotSupportedByRenderer}" />
                                             </Trigger>
                                         </ControlTemplate.Triggers>
@@ -235,28 +210,24 @@
                 </Grid.RowDefinitions>
 
                 <TextBlock Text="{bi:Localize Axis}" Style="{StaticResource ShelfLabel}" />
-                <Border Grid.Column="1" Style="{StaticResource ShelfBorder}" Tag="{x:Static local:Shelf.Axis}">
-                    <ItemsControl ItemsSource="{Binding Axis}" ItemTemplate="{StaticResource ChipTemplate}" ItemsPanel="{StaticResource WrapItems}" />
-                </Border>
+                <ItemsControl Grid.Column="1" Style="{StaticResource Shelf}" dnd:DropTarget.Key="{x:Static local:Shelf.Axis}"
+                              ItemsSource="{Binding Axis}" ItemTemplate="{StaticResource ChipTemplate}" />
 
                 <TextBlock Grid.Row="1" Text="{bi:Localize Legend}" Style="{StaticResource ShelfLabel}" />
-                <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource ShelfBorder}" Tag="{x:Static local:Shelf.Legend}">
-                    <ItemsControl ItemsSource="{Binding Legend}" ItemTemplate="{StaticResource ChipTemplate}" ItemsPanel="{StaticResource WrapItems}" />
-                </Border>
+                <ItemsControl Grid.Row="1" Grid.Column="1" Style="{StaticResource Shelf}" dnd:DropTarget.Key="{x:Static local:Shelf.Legend}"
+                              ItemsSource="{Binding Legend}" ItemTemplate="{StaticResource ChipTemplate}" />
 
                 <TextBlock Grid.Row="2" Text="{bi:Localize Values}" Style="{StaticResource ShelfLabel}" />
-                <Border Grid.Row="2" Grid.Column="1" Style="{StaticResource ShelfBorder}" Tag="{x:Static local:Shelf.Values}">
-                    <ItemsControl ItemsSource="{Binding Values}" ItemTemplate="{StaticResource ChipTemplate}" ItemsPanel="{StaticResource WrapItems}" />
-                </Border>
+                <ItemsControl Grid.Row="2" Grid.Column="1" Style="{StaticResource Shelf}" dnd:DropTarget.Key="{x:Static local:Shelf.Values}"
+                              ItemsSource="{Binding Values}" ItemTemplate="{StaticResource ChipTemplate}" />
 
                 <TextBlock Grid.Row="3" Text="{bi:Localize Filters}" Style="{StaticResource ShelfLabel}" />
-                <Border Grid.Row="3" Grid.Column="1" Style="{StaticResource ShelfBorder}" Tag="{x:Static local:Shelf.Filters}">
-                    <ItemsControl ItemsSource="{Binding Filters}" ItemTemplate="{StaticResource FilterChipTemplate}" ItemsPanel="{StaticResource WrapItems}" />
-                </Border>
+                <ItemsControl Grid.Row="3" Grid.Column="1" Style="{StaticResource Shelf}" dnd:DropTarget.Key="{x:Static local:Shelf.Filters}"
+                              ItemsSource="{Binding Filters}" ItemTemplate="{StaticResource FilterChipTemplate}" />
             </Grid>
 
-            <Border Grid.Row="2" Margin="0,14,0,0" Padding="14" Background="White" CornerRadius="8"
-                    BorderBrush="{StaticResource LineBrush}" BorderThickness="1">
+            <Border Grid.Row="2" Margin="0,14,0,0" Padding="14" Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" CornerRadius="{DynamicResource {x:Static bi:EasyBITheme.CornerRadiusKey}}"
+                    BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="1">
                 <bi:VisualView x:Name="Preview" Context="{Binding Context}" Definition="{Binding Visual}" />
             </Border>
         </Grid>

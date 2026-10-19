@@ -69,6 +69,12 @@
   <data name="ValidationPie" xml:space="preserve">
     <value>A pie chart needs one dimension on “Axis”, a single measure and no legend.</value>
   </data>
+  <data name="ValidationNoImage" xml:space="preserve">
+    <value>Choose an image to show.</value>
+  </data>
+  <data name="ValidationSeriesMark" xml:space="preserve">
+    <value>A measure of a chart can only be drawn as bars, stacked bars, a line, an area or points.</value>
+  </data>
   <data name="ReportUntitledVisual" xml:space="preserve">
     <value>{0} visual</value>
   </data>
