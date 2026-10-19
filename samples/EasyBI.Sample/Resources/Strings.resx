@@ -129,6 +129,9 @@
   <data name="Theme" xml:space="preserve">
     <value>Theme</value>
   </data>
+  <data name="ThemeLibrary" xml:space="preserve">
+    <value>Style</value>
+  </data>
   <data name="ThemeLight" xml:space="preserve">
     <value>Light</value>
   </data>

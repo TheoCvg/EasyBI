@@ -365,6 +365,9 @@ or an application's own design system, derive from `EasyBIThemeMapping` and map 
 EasyBI's light values, and the chart palette follows the mapped background (light or dark palette). If the library
 switches theme by swapping dictionaries without notifying, call `Refresh()` on the mapping afterwards.
 
+`ApplicationThemeManager.Apply` sets the main window's `Background` itself: put an EasyBI background on the window's root
+panel rather than on the window (as the sample does).
+
 ```csharp
 public sealed class MyTheme() : EasyBIThemeMapping(new Dictionary<ComponentResourceKey, object>
 {

@@ -4,12 +4,8 @@
              xmlns:local="clr-namespace:EasyBI.Sample"
              xmlns:bi="https://github.com/TheoCvg/EasyBI"
              StartupUri="MainWindow.xaml">
+    <!-- The theme dictionaries (EasyBI's own, WPF UI or Material Design) are merged by App.SetTheme -->
     <Application.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <!-- EasyBI's light or dark theme; the theme picker changes its Mode -->
-                <bi:EasyBIThemeDictionary />
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
+        <ResourceDictionary />
     </Application.Resources>
 </Application>

@@ -50,8 +50,8 @@ public partial class MainWindow : Window
 
     private void OnThemeChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (ThemePicker.SelectedItem is ComboBoxItem { Tag: string mode } && IsLoaded)
-            App.SetTheme(Enum.Parse<EasyBIThemeMode>(mode));
+        if (IsLoaded && LibraryPicker.SelectedItem is ComboBoxItem { Tag: string library } && ThemePicker.SelectedItem is ComboBoxItem { Tag: string mode })
+            App.SetTheme(Enum.Parse<ThemeLibrary>(library), Enum.Parse<EasyBIThemeMode>(mode));
     }
 
     private void OnRendererChanged(object sender, SelectionChangedEventArgs e) =>
