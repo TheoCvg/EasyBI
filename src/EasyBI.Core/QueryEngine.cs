@@ -17,6 +17,8 @@ internal static class QueryEngine<T>
     private const int MaxGroupFields = 4;
     private const int MaxDistinctValues = 1000;
 
+    private static readonly Type[] GroupKeyTypes = [typeof(GroupKey<>), typeof(GroupKey<,>), typeof(GroupKey<,,>), typeof(GroupKey<,,,>)];
+
     public static async Task<ResultSet> ExecuteAsync(
         IQueryable<T> source,
         ModelMetadata metadata,
@@ -48,13 +50,11 @@ internal static class QueryEngine<T>
             columns.Add(new ResultColumn(fieldRef.Key, caption, FieldKind.Dimension, dataType));
         }
 
-        var slotTypes = keyBodies.Select(b => b.Type)
-            .Concat(Enumerable.Repeat(typeof(int), MaxGroupFields - keyBodies.Count))
-            .ToArray();
-        var keyType = typeof(GroupKey<,,,>).MakeGenericType(slotTypes);
-        var bindings = Enumerable.Range(0, MaxGroupFields).Select(i => Expression.Bind(
-            keyType.GetProperty($"K{i + 1}")!,
-            i < keyBodies.Count ? keyBodies[i] : Expression.Constant(0)));
+        // One slot per grouped field: a constant slot would end up in SQL's GROUP BY, behind a subquery, and slow the
+        // database down. Without grouping (KPIs), one constant puts every row in the same group.
+        Expression[] slots = keyBodies.Count > 0 ? [.. keyBodies] : [Expression.Constant(0)];
+        var keyType = GroupKeyTypes[slots.Length - 1].MakeGenericType(slots.Select(s => s.Type).ToArray());
+        var bindings = slots.Select((slot, i) => Expression.Bind(keyType.GetProperty($"K{i + 1}")!, slot));
         var keySelector = Expression.Lambda(Expression.MemberInit(Expression.New(keyType), bindings), parameter);
 
         // Projection: keys then aggregates. The same expressions are reused for sorting.
@@ -275,7 +275,52 @@ internal static class QueryEngine<T>
     }
 }
 
-/// <summary>Composite grouping key (unused slots hold a constant).</summary>
+// Grouping keys of 1 to 4 fields. Classes initialized by member, which providers such as EF Core translate into
+// GROUP BY columns; LINQ to objects compares them by value.
+
+internal sealed class GroupKey<T1> : IEquatable<GroupKey<T1>>
+{
+    public T1 K1 { get; set; } = default!;
+
+    public bool Equals(GroupKey<T1>? other) => other is not null && EqualityComparer<T1>.Default.Equals(K1, other.K1);
+
+    public override bool Equals(object? obj) => Equals(obj as GroupKey<T1>);
+
+    public override int GetHashCode() => HashCode.Combine(K1);
+}
+
+internal sealed class GroupKey<T1, T2> : IEquatable<GroupKey<T1, T2>>
+{
+    public T1 K1 { get; set; } = default!;
+    public T2 K2 { get; set; } = default!;
+
+    public bool Equals(GroupKey<T1, T2>? other) =>
+        other is not null
+        && EqualityComparer<T1>.Default.Equals(K1, other.K1)
+        && EqualityComparer<T2>.Default.Equals(K2, other.K2);
+
+    public override bool Equals(object? obj) => Equals(obj as GroupKey<T1, T2>);
+
+    public override int GetHashCode() => HashCode.Combine(K1, K2);
+}
+
+internal sealed class GroupKey<T1, T2, T3> : IEquatable<GroupKey<T1, T2, T3>>
+{
+    public T1 K1 { get; set; } = default!;
+    public T2 K2 { get; set; } = default!;
+    public T3 K3 { get; set; } = default!;
+
+    public bool Equals(GroupKey<T1, T2, T3>? other) =>
+        other is not null
+        && EqualityComparer<T1>.Default.Equals(K1, other.K1)
+        && EqualityComparer<T2>.Default.Equals(K2, other.K2)
+        && EqualityComparer<T3>.Default.Equals(K3, other.K3);
+
+    public override bool Equals(object? obj) => Equals(obj as GroupKey<T1, T2, T3>);
+
+    public override int GetHashCode() => HashCode.Combine(K1, K2, K3);
+}
+
 internal sealed class GroupKey<T1, T2, T3, T4> : IEquatable<GroupKey<T1, T2, T3, T4>>
 {
     public T1 K1 { get; set; } = default!;
