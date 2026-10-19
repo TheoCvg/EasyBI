@@ -305,6 +305,17 @@ inherited property), it is used by the `FilterBar` and by every `VisualView`:
   the same model on the element's dimensions (axis, plus legend for a bar). Clicking the same element
   again clears the selection. The source visual is not filtered and shows the current selection.
   Periods (quarter, month...) filter through `FilterSpec.Grain`.
+- **Period filters**: a date dimension, in the `FilterBar` or on the designer's Filters shelf, is filtered on a
+  period rather than on a list of values: between two dates, the current day / month / quarter / year, the last n
+  (current one included: "Last 12 months") or the n previous complete ones ("Last month"). Relative periods are
+  resolved when the query runs, so a saved report keeps showing the last 12 months; the date column is compared to
+  the period's bounds (`date >= start AND date < end`), so a database can use an index on it.
+
+```csharp
+PeriodFilters.Relative("Date", FilterOperator.Last, DateGrain.Month, 12);     // last 12 months
+PeriodFilters.Between("Date", new DateOnly(2024, 1, 1), null);                // since January 1st, 2024
+PeriodFilters.Describe(filter);                                               // "Last 12 months", localized
+```
 
 A connector only has to call `request.Select?.Invoke(new CategorySelection(category, series))` on
 click (or `RowSelection` for a table): `Select` is null when interactivity is disabled, for example
@@ -497,7 +508,10 @@ the types that no renderer can draw.
       "axis": [ { "field": "Region", "grain": "None" } ],
       "legend": { "field": "Channel", "grain": "None" },
       "values": [ { "measure": "Amount" }, { "measure": "Count", "mark": "Line", "secondaryAxis": true } ],
-      "filters": [ { "field": "Product.Category", "operator": "In", "values": [ "Services" ] } ]
+      "filters": [
+        { "field": "Product.Category", "operator": "In", "values": [ "Services" ] },
+        { "field": "Date", "operator": "Last", "values": [ "12" ], "grain": "Month" }
+      ]
     }
   ],
   "filters": [
@@ -506,7 +520,9 @@ the types that no renderer can draw.
 }
 ```
 
-`null` in `values` means a missing value. `EasyBIContext.Validate(report)` reports the unknown
+`null` in `values` means a missing value. Besides `In` and `NotIn`, a date filter's `operator` can be `Between`
+(values: from and to as `yyyy-MM-dd`, inclusive, `null` for an open end), `Current`, `Last` or `Previous` (value: the
+number of periods; `grain` is their unit). `EasyBIContext.Validate(report)` reports the unknown
 models and fields of a loaded report, and the formulas that no longer match their model.
 
 Calculated measures created by the end user are saved with the report (the property is omitted when there are none),
@@ -573,7 +589,9 @@ See [AGENTS.md](AGENTS.md) for the code style, language rules and Git workflow.
 
 - Cross-filtering: one selection at a time; the selected element is not yet highlighted in the
   source chart (a "Sélection : ..." banner shows it).
-- Designer and `FilterBar` filters: "one of" only, on non-date dimensions; no date ranges.
+- Designer and `FilterBar` filters: "one of" a list of values, or a period for a date dimension; no ranges on numbers.
+- Relative periods ("last 12 months") are resolved in the local time zone when a visual queries; an open dashboard does
+  not query again at midnight.
 - `Top` applies to aggregated rows, not to categories when a legend is present.
 - Grouping, sorting and `Top` are pushed down to the provider, and execution is asynchronous when the
   source implements `IAsyncEnumerable` (EF Core). The SQL translation was checked manually with EF Core 8 on SQLite

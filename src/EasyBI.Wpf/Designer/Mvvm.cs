@@ -50,5 +50,8 @@ public class Option<T> : ObservableObject
 
     public string Label => _label();
 
+    // What screen readers and UI Automation announce for an item of a combo box
+    public override string ToString() => Label;
+
     private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e) => OnPropertyChanged(nameof(Label));
 }

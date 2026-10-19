@@ -62,6 +62,14 @@ internal static class Strings
     public static string EditorTitle => Get();
     public static string Ok => Get();
     public static string Cancel => Get();
+    public static string PeriodKindAny => Get();
+    public static string PeriodKindBetween => Get();
+    public static string PeriodKindCurrent => Get();
+    public static string PeriodKindLast => Get();
+    public static string PeriodKindPrevious => Get();
+    public static string PeriodFrom => Get();
+    public static string PeriodTo => Get();
+    public static string PeriodCount => Get();
     public static string FormatNumber => Get();
     public static string FormatInteger => Get();
     public static string FormatPercent => Get();

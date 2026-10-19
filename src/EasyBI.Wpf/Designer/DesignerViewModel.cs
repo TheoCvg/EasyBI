@@ -131,7 +131,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         Shelf.Values => field.Kind == FieldKind.Measure,
         Shelf.Axis => field.Kind == FieldKind.Dimension && Axis.Count < MaxAxisFields && Axis.All(a => a.Field != field),
         Shelf.Legend => field.Kind == FieldKind.Dimension,
-        Shelf.Filters => field.Kind == FieldKind.Dimension && field.DataType != DataType.Date && Filters.All(f => f.Field != field),
+        Shelf.Filters => field.Kind == FieldKind.Dimension && Filters.All(f => f.Field != field),
         _ => false,
     };
 
@@ -281,9 +281,9 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         }
         foreach (var f in visual.Filters)
         {
-            // Period filters (with a granularity) have no shelf: they are kept without being shown
-            if (f.Grain == DateGrain.None)
-                Filters.Add(new(metadata.GetField(f.Field), model, Rebuild, f.Values, f.Operator));
+            // Filters on period keys (a clicked quarter...) have no shelf: they are kept without being shown
+            if (f.Grain == DateGrain.None || f.Operator.IsPeriod())
+                Filters.Add(new(metadata.GetField(f.Field), model, Rebuild, f.Values, f.Operator, f.Grain));
             else
                 _hiddenFilters = [.. _hiddenFilters, f];
         }
