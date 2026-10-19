@@ -68,8 +68,16 @@ internal static class QueryEngine<T>
         foreach (var measureRef in query.Measures)
         {
             var field = RequireKind(metadata.GetField(measureRef.Measure), FieldKind.Measure);
+            var selector = selectors[field.Name];
+            if (field.IsCalculated)
+            {
+                // Computed from the group's rows by the model: an aggregation saved with the visual does not apply
+                cells.Add(new ParameterReplacer(selector.Parameters[0], group).Visit(selector.Body));
+                columns.Add(new ResultColumn(measureRef.Key, field.Caption, FieldKind.Measure, DataType.Number, field.Format));
+                continue;
+            }
             var aggregation = measureRef.Aggregation ?? field.DefaultAggregation ?? Aggregation.Sum;
-            cells.Add(Aggregate(group, selectors[field.Name], aggregation));
+            cells.Add(Aggregate(group, selector, aggregation));
             var caption = measureRef.Aggregation is null ? field.Caption : $"{field.Caption} ({Aggregations.Caption(aggregation)})";
             columns.Add(new ResultColumn(measureRef.Key, caption, FieldKind.Measure, DataType.Number, field.Format));
         }

@@ -10,14 +10,18 @@ public enum Aggregation { Sum, Count, Average, Min, Max }
 /// <summary>Granularity applied to a date dimension.</summary>
 public enum DateGrain { None, Year, Quarter, Month, Day }
 
-/// <summary>Description of a field exposed to the end user.</summary>
+/// <summary>
+/// Description of a field exposed to the end user. A calculated measure (a ratio...) is computed from the rows of each
+/// group by the model: it has no aggregation to choose.
+/// </summary>
 public sealed record FieldDescriptor(
     string Name,
     string Caption,
     FieldKind Kind,
     DataType DataType,
     Aggregation? DefaultAggregation = null,
-    string? Format = null);
+    string? Format = null,
+    bool IsCalculated = false);
 
 /// <summary>Metadata of a semantic model: what the user is allowed to analyze.</summary>
 public sealed record ModelMetadata(string Name, string Caption, IReadOnlyList<FieldDescriptor> Fields)

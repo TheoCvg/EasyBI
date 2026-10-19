@@ -162,4 +162,10 @@
   <data name="DataSourceUnavailable" xml:space="preserve">
     <value>Data source unavailable</value>
   </data>
+  <data name="MarginRate" xml:space="preserve">
+    <value>Margin rate</value>
+  </data>
+  <data name="AverageBasket" xml:space="preserve">
+    <value>Average basket</value>
+  </data>
 </root>

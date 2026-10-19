@@ -79,6 +79,23 @@ Context.RefreshData("sales");   // the visuals of this model; RefreshData() for 
 <bi:VisualView Context="{Binding Context}" Definition="{Binding Visual}" />   <!-- display -->
 ```
 
+### Calculated measures
+
+A measure is a row value that the end user aggregates (sum, average...). Ratios need more: the margin rate of a region
+is its total margin divided by its total revenue, not the average of its sales' rates. Calculated measures are
+computed from the rows of each group, inside the same query (in SQL with EF Core), and can be sorted and limited like
+the others; the end user cannot change their aggregation.
+
+```csharp
+model
+    .Ratio(s => s.Margin, s => s.Amount, "Margin rate", "MarginRate", format: "P1")      // Σ margin / Σ revenue
+    .Ratio(s => s.Amount, s => 1, "Average basket", "AverageBasket", format: "#,##0 €")   // Σ revenue / number of sales
+    .Calculated(g => g.Sum(s => s.Amount) - g.Sum(s => s.Cost), "Gross profit", "GrossProfit");
+```
+
+`Ratio` is empty when the denominator sums to zero. With `Calculated`, guard divisions yourself: some databases fail
+on a division by zero.
+
 ### Combined charts
 
 The cartesian chart types (`Bar`, `StackedBar`, `Line`, `Area`, `Scatter`) can be mixed in one chart, **one per

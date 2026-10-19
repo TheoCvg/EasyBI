@@ -171,7 +171,7 @@ public partial class MainWindow : Window
             Title = Text("KeyIndicators"),
             Model = "sales",
             Mark = MarkType.Kpi,
-            Values = [new("Amount"), new("Margin"), new("Count")],
+            Values = [new("Amount"), new("Margin"), new("MarginRate"), new("Count")],
         };
         VisualDefinition quarters = new()
         {
