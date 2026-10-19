@@ -12,23 +12,6 @@
             <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
             <Setter Property="Margin" Value="0,14,0,6" />
         </Style>
-
-        <!-- Fields are dragged as ModelField items -->
-        <Style x:Key="Fields" TargetType="ListBox">
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
-            <Setter Property="dnd:DragSource.IsEnabled" Value="True" />
-            <Setter Property="dnd:DragSource.AllowedEffects" Value="Copy" />
-            <!-- Items follow the theme's text color (the system's item style does not inherit it) -->
-            <Setter Property="ItemContainerStyle">
-                <Setter.Value>
-                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
-                        <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}" />
-                    </Style>
-                </Setter.Value>
-            </Setter>
-        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -43,7 +26,13 @@
         <TextBlock Text="{bi:Localize ModelHeader}" Style="{StaticResource SectionHeader}" />
         <ComboBox Grid.Row="1" x:Name="ModelPicker" SelectedValuePath="Value" DisplayMemberPath="Label" />
         <TextBlock Grid.Row="2" Text="{bi:Localize DimensionsHeader}" Style="{StaticResource SectionHeader}" />
-        <ListBox Grid.Row="3" x:Name="DimensionList" Style="{StaticResource Fields}">
+        <!-- Fields are dragged as ModelField items. Local values rather than a style, so that the application's ListBox
+             and ListBoxItem styles (a control library's) still apply, even when it changes them at runtime; the
+             foreground is set because the system's ListBox style does not inherit it -->
+        <ListBox Grid.Row="3" x:Name="DimensionList" BorderThickness="0" Background="Transparent"
+                 Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 dnd:DragSource.IsEnabled="True" dnd:DragSource.AllowedEffects="Copy">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Orientation="Horizontal">
@@ -54,7 +43,10 @@
             </ListBox.ItemTemplate>
         </ListBox>
         <TextBlock Grid.Row="4" Text="{bi:Localize MeasuresHeader}" Style="{StaticResource SectionHeader}" />
-        <ListBox Grid.Row="5" x:Name="MeasureList" Style="{StaticResource Fields}">
+        <ListBox Grid.Row="5" x:Name="MeasureList" BorderThickness="0" Background="Transparent"
+                 Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 dnd:DragSource.IsEnabled="True" dnd:DragSource.AllowedEffects="Copy">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Orientation="Horizontal">

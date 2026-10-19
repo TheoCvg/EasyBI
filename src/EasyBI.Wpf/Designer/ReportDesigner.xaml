@@ -82,29 +82,21 @@
             </Setter>
         </Style>
 
-        <Style x:Key="ChipCombo" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
-            <Setter Property="Margin" Value="6,0,0,0" />
-            <Setter Property="FontSize" Value="11" />
-            <Setter Property="Padding" Value="4,1" />
-            <Setter Property="MinWidth" Value="70" />
-            <Setter Property="DisplayMemberPath" Value="Label" />
-            <Setter Property="SelectedValuePath" Value="Value" />
-        </Style>
-
         <DataTemplate x:Key="ChipTemplate" DataType="{x:Type local:ShelfItemViewModel}">
+            <!-- Combo boxes take local values, not a style: the application's ComboBox style still applies -->
             <Border Background="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBorderBrushKey}}" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{Binding Caption}" VerticalAlignment="Center" />
-                    <ComboBox Style="{StaticResource ChipCombo}"
+                    <ComboBox Margin="6,0,0,0" FontSize="11" Padding="4,1" MinWidth="70" DisplayMemberPath="Label" SelectedValuePath="Value"
                               Visibility="{Binding HasGrain, Converter={StaticResource BoolToVisibility}}"
                               ItemsSource="{x:Static local:ShelfItemViewModel.GrainOptions}"
                               SelectedValue="{Binding Grain, Mode=TwoWay}" />
-                    <ComboBox Style="{StaticResource ChipCombo}"
+                    <ComboBox Margin="6,0,0,0" FontSize="11" Padding="4,1" MinWidth="70" DisplayMemberPath="Label" SelectedValuePath="Value"
                               Visibility="{Binding HasAggregation, Converter={StaticResource BoolToVisibility}}"
                               ItemsSource="{x:Static local:ShelfItemViewModel.AggregationOptions}"
                               SelectedValue="{Binding Aggregation, Mode=TwoWay}" />
                     <!-- Measures of a cartesian chart: chart type and value axis of their series -->
-                    <ComboBox Style="{StaticResource ChipCombo}" ToolTip="{bi:Localize SeriesMarkHint}"
+                    <ComboBox Margin="6,0,0,0" FontSize="11" Padding="4,1" MinWidth="70" DisplayMemberPath="Label" SelectedValuePath="Value" ToolTip="{bi:Localize SeriesMarkHint}"
                               Visibility="{Binding ShowSeriesOptions, Converter={StaticResource BoolToVisibility}}"
                               ItemsSource="{x:Static local:ShelfItemViewModel.SeriesMarkOptions}"
                               SelectedItem="{Binding SeriesMarkOption, Mode=TwoWay}" />

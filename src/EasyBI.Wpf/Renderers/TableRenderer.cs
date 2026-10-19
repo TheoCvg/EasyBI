@@ -41,7 +41,8 @@ public sealed class TableRenderer : IVisualRenderer
             GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
             Background = Brushes.Transparent,
             RowBackground = Brushes.Transparent,
-            RowHeight = 26,
+            // A minimum, not a fixed height: control libraries give cells larger paddings
+            MinRowHeight = 26,
             BorderThickness = new Thickness(0),
             ItemsSource = request.Result.Rows,
             ColumnHeaderStyle = HeaderStyle,
