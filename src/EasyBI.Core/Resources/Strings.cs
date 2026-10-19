@@ -38,6 +38,17 @@ internal static class Strings
     public static string ReportMissingField => Get();
     public static string ReportNotADimension => Get();
     public static string ReportNotAMeasure => Get();
+    public static string FormulaEmpty => Get();
+    public static string FormulaUnexpected => Get();
+    public static string FormulaExpectedOperand => Get();
+    public static string FormulaMissingParenthesis => Get();
+    public static string FormulaMissingBracket => Get();
+    public static string FormulaDecimalComma => Get();
+    public static string FormulaUnknownMeasure => Get();
+    public static string FormulaNotAMeasure => Get();
+    public static string FormulaAmbiguous => Get();
+    public static string ReportCalculatedMeasure => Get();
+    public static string ReportInvalidFormula => Get();
 
     public static string Format(string format, params object?[] args) =>
         string.Format(EasyBILocalization.FormatCulture, format, args);

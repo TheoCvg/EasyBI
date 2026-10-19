@@ -67,18 +67,18 @@ internal static class QueryEngine<T>
 
         foreach (var measureRef in query.Measures)
         {
-            var field = RequireKind(metadata.GetField(measureRef.Measure), FieldKind.Measure);
-            var selector = selectors[field.Name];
-            if (field.IsCalculated)
+            if (query.Calculations?.FirstOrDefault(c => c.Name == measureRef.Measure) is { } calculation)
             {
-                // Computed from the group's rows by the model: an aggregation saved with the visual does not apply
-                cells.Add(new ParameterReplacer(selector.Parameters[0], group).Visit(selector.Body));
-                columns.Add(new ResultColumn(measureRef.Key, field.Caption, FieldKind.Measure, DataType.Number, field.Format));
+                // The end user's formula over the model's measures, each aggregated as the model declares it
+                cells.Add(MeasureFormula.Build(calculation.Formula, name => MeasureCell(group, metadata, selectors, name, null)));
+                columns.Add(new ResultColumn(measureRef.Key, calculation.Caption, FieldKind.Measure, DataType.Number, calculation.Format));
                 continue;
             }
-            var aggregation = measureRef.Aggregation ?? field.DefaultAggregation ?? Aggregation.Sum;
-            cells.Add(Aggregate(group, selector, aggregation));
-            var caption = measureRef.Aggregation is null ? field.Caption : $"{field.Caption} ({Aggregations.Caption(aggregation)})";
+            var field = RequireKind(metadata.GetField(measureRef.Measure), FieldKind.Measure);
+            // A calculated measure is computed from the group's rows by the model: an aggregation saved with the visual does not apply
+            var aggregation = field.IsCalculated ? null : measureRef.Aggregation;
+            cells.Add(MeasureCell(group, metadata, selectors, field.Name, aggregation));
+            var caption = aggregation is { } chosen ? $"{field.Caption} ({Aggregations.Caption(chosen)})" : field.Caption;
             columns.Add(new ResultColumn(measureRef.Key, caption, FieldKind.Measure, DataType.Number, field.Format));
         }
 
@@ -216,6 +216,21 @@ internal static class QueryEngine<T>
         if (field.DataType != DataType.Date)
             throw new InvalidOperationException($"Granularity '{grain}' requires a date dimension ('{field.Name}').");
         return DateGrains.Apply(body, grain);
+    }
+
+    /// <summary>The value of a model's measure for a group: its own expression when calculated, otherwise aggregated.</summary>
+    private static Expression MeasureCell(
+        ParameterExpression group,
+        ModelMetadata metadata,
+        IReadOnlyDictionary<string, LambdaExpression> selectors,
+        string name,
+        Aggregation? aggregation)
+    {
+        var field = RequireKind(metadata.GetField(name), FieldKind.Measure);
+        var selector = selectors[field.Name];
+        return field.IsCalculated
+            ? new ParameterReplacer(selector.Parameters[0], group).Visit(selector.Body)
+            : Aggregate(group, selector, aggregation ?? field.DefaultAggregation ?? Aggregation.Sum);
     }
 
     private static Expression Aggregate(Expression group, LambdaExpression selector, Aggregation aggregation)
