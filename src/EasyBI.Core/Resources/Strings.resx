@@ -102,4 +102,112 @@
   <data name="ReportNotAMeasure" xml:space="preserve">
     <value>{0}: '{1}' is not a measure.</value>
   </data>
+  <data name="FormulaEmpty" xml:space="preserve">
+    <value>The formula is empty.</value>
+  </data>
+  <data name="FormulaUnexpected" xml:space="preserve">
+    <value>Unexpected “{0}” at position {1}.</value>
+  </data>
+  <data name="FormulaExpectedOperand" xml:space="preserve">
+    <value>A measure, a number or “(” is expected at position {0}.</value>
+  </data>
+  <data name="FormulaMissingParenthesis" xml:space="preserve">
+    <value>A closing parenthesis is missing.</value>
+  </data>
+  <data name="FormulaMissingBracket" xml:space="preserve">
+    <value>A closing bracket “]” is missing.</value>
+  </data>
+  <data name="FormulaDecimalComma" xml:space="preserve">
+    <value>Write decimal numbers with a point (0.5).</value>
+  </data>
+  <data name="FormulaUnknownMeasure" xml:space="preserve">
+    <value>Unknown measure: “{0}”.</value>
+  </data>
+  <data name="FormulaNotAMeasure" xml:space="preserve">
+    <value>“{0}” is not a measure.</value>
+  </data>
+  <data name="FormulaAmbiguous" xml:space="preserve">
+    <value>Several measures are named “{0}”.</value>
+  </data>
+  <data name="ReportCalculatedMeasure" xml:space="preserve">
+    <value>Calculated measure “{0}”</value>
+  </data>
+  <data name="ReportInvalidFormula" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="PeriodAny" xml:space="preserve">
+    <value>Any date</value>
+  </data>
+  <data name="PeriodBetween" xml:space="preserve">
+    <value>{0} – {1}</value>
+  </data>
+  <data name="PeriodSince" xml:space="preserve">
+    <value>Since {0}</value>
+  </data>
+  <data name="PeriodUntil" xml:space="preserve">
+    <value>Until {0}</value>
+  </data>
+  <data name="PeriodCurrentDay" xml:space="preserve">
+    <value>Today</value>
+  </data>
+  <data name="PeriodCurrentMonth" xml:space="preserve">
+    <value>This month</value>
+  </data>
+  <data name="PeriodCurrentQuarter" xml:space="preserve">
+    <value>This quarter</value>
+  </data>
+  <data name="PeriodCurrentYear" xml:space="preserve">
+    <value>This year</value>
+  </data>
+  <data name="PeriodLastDay" xml:space="preserve">
+    <value>Last {0} days</value>
+  </data>
+  <data name="PeriodLastMonth" xml:space="preserve">
+    <value>Last {0} months</value>
+  </data>
+  <data name="PeriodLastQuarter" xml:space="preserve">
+    <value>Last {0} quarters</value>
+  </data>
+  <data name="PeriodLastYear" xml:space="preserve">
+    <value>Last {0} years</value>
+  </data>
+  <data name="PeriodPreviousDay" xml:space="preserve">
+    <value>Previous {0} days</value>
+  </data>
+  <data name="PeriodPreviousMonth" xml:space="preserve">
+    <value>Previous {0} months</value>
+  </data>
+  <data name="PeriodPreviousQuarter" xml:space="preserve">
+    <value>Previous {0} quarters</value>
+  </data>
+  <data name="PeriodPreviousYear" xml:space="preserve">
+    <value>Previous {0} years</value>
+  </data>
+  <data name="PeriodPreviousOneDay" xml:space="preserve">
+    <value>Yesterday</value>
+  </data>
+  <data name="PeriodPreviousOneMonth" xml:space="preserve">
+    <value>Last month</value>
+  </data>
+  <data name="PeriodPreviousOneQuarter" xml:space="preserve">
+    <value>Last quarter</value>
+  </data>
+  <data name="PeriodPreviousOneYear" xml:space="preserve">
+    <value>Last year</value>
+  </data>
+  <data name="ReportPeriodOnNonDate" xml:space="preserve">
+    <value>{0}: period filter on &apos;{1}&apos;, which is not a date.</value>
+  </data>
+  <data name="TimePreviousYear" xml:space="preserve">
+    <value>{0}, previous year</value>
+  </data>
+  <data name="TimeChangeFromPreviousYear" xml:space="preserve">
+    <value>{0}, change vs previous year</value>
+  </data>
+  <data name="TimePercentChangeFromPreviousYear" xml:space="preserve">
+    <value>{0}, % change vs previous year</value>
+  </data>
+  <data name="TimeYearToDate" xml:space="preserve">
+    <value>{0}, year to date</value>
+  </data>
 </root>

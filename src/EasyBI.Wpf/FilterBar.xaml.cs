@@ -104,16 +104,16 @@ public partial class FilterBar : UserControl
             if (context.Models.FirstOrDefault(m => m.Metadata.Name == filter.Model) is not { } model
                 || model.Metadata.Fields.FirstOrDefault(f => f.Name == filter.Filter.Field) is not { } field)
                 continue;
-            _slicers.Add(CreateSlicer(model, field, filter.Filter.Values, filter.Filter.Operator));
+            _slicers.Add(CreateSlicer(model, field, filter.Filter.Values, filter.Filter.Operator, filter.Filter.Grain));
         }
     }
 
-    private SlicerViewModel CreateSlicer(ISemanticModel model, FieldDescriptor field, IEnumerable<string?>? values, FilterOperator @operator)
+    private SlicerViewModel CreateSlicer(ISemanticModel model, FieldDescriptor field, IEnumerable<string?>? values, FilterOperator @operator, DateGrain grain = DateGrain.None)
     {
         SlicerViewModel? slicer = null;
         var caption = Context!.Models.Count > 1 ? $"{model.Metadata.Caption} › {field.Caption}" : field.Caption;
         slicer = new SlicerViewModel(model.Metadata.Name, caption,
-            new FilterItemViewModel(field, model, () => Apply(slicer!), values, @operator));
+            new FilterItemViewModel(field, model, () => Apply(slicer!), values, @operator, grain));
         return slicer;
     }
 
@@ -131,9 +131,7 @@ public partial class FilterBar : UserControl
         var menu = new ContextMenu { PlacementTarget = AddButton };
         foreach (var model in context.Models)
         {
-            // Same rules as the designer's "Filters" shelf: non-date dimensions
             var fields = model.Metadata.Dimensions
-                .Where(f => f.DataType != DataType.Date)
                 .Where(f => !_slicers.Any(s => s.Model == model.Metadata.Name && s.Filter.Field == f));
             var parent = context.Models.Count > 1 ? new MenuItem { Header = model.Metadata.Caption } : null;
             foreach (var field in fields)

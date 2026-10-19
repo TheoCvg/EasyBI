@@ -22,7 +22,16 @@ public sealed class EasyBIContext
     /// <summary>Raised when the active renderer or the theme changes: visuals redraw.</summary>
     public event EventHandler? Changed;
 
+    /// <summary>Raised by <see cref="RefreshData"/>: the visuals of the model query again.</summary>
+    public event EventHandler<DataChangedEventArgs>? DataChanged;
+
     public IReadOnlyList<ISemanticModel> Models => _models;
+
+    /// <summary>
+    /// The calculated measures the end user defined in the open report: field lists offer them with the model's
+    /// measures, and visuals compute them. A <see cref="Dashboard.DashboardView"/> loads and saves them with its document.
+    /// </summary>
+    public MeasureContext Measures { get; } = new();
 
     public IReadOnlyList<IVisualRenderer> Renderers => _renderers;
 
@@ -60,6 +69,20 @@ public sealed class EasyBIContext
         return this;
     }
 
+    /// <summary>
+    /// Tells the visuals that the data behind a model changed (rows added, source replaced): they query again, although
+    /// their query is the same. Without a model name, every visual queries again. Can be called from any thread.
+    /// </summary>
+    public void RefreshData(string? model = null) => DataChanged?.Invoke(this, new DataChangedEventArgs(model));
+
+    /// <summary>The measures a user can pick in a model: the model's own, then the calculated measures of the report.</summary>
+    public IEnumerable<FieldDescriptor> MeasuresOf(ISemanticModel model) =>
+        model.Metadata.Measures.Concat(Measures.For(model.Metadata.Name).Select(MeasureContext.ToField));
+
+    /// <summary>A field of a model, or one of the report's calculated measures on it.</summary>
+    public FieldDescriptor GetField(ISemanticModel model, string name) =>
+        Measures.Find(model.Metadata.Name, name) is { } measure ? MeasureContext.ToField(measure) : model.Metadata.GetField(name);
+
     public ISemanticModel GetModel(string name) =>
         _models.FirstOrDefault(m => m.Metadata.Name == name)
         ?? throw new KeyNotFoundException($"Model '{name}' is not registered.");
@@ -85,4 +108,10 @@ public sealed class EasyBIContext
         if (_activeRenderer is not null && marks.IsSubsetOf(_activeRenderer.Capabilities.Marks)) return _activeRenderer;
         return _renderers.Concat(BuiltInRenderers).FirstOrDefault(r => marks.IsSubsetOf(r.Capabilities.Marks));
     }
+}
+
+/// <summary>Which model's data changed; null for every model.</summary>
+public sealed class DataChangedEventArgs(string? model) : EventArgs
+{
+    public string? Model { get; } = model;
 }

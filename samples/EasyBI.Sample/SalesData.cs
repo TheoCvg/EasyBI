@@ -54,5 +54,8 @@ public static class SalesData
             .Measure(s => s.Margin, "Margin", format: "#,##0 €")
             .Measure(s => s.Quantity, "Quantity", format: "N0")
             .Count("SalesCount")
+            // Ratios of sums per group: the margin rate of a region is not the average of its sales' rates
+            .Ratio(s => s.Margin, s => s.Amount, "MarginRate", "MarginRate", format: "P1")
+            .Ratio(s => s.Amount, s => 1, "AverageBasket", "AverageBasket", format: "#,##0 €")
             .Localize(captions);
 }

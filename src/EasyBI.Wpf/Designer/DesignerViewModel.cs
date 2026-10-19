@@ -65,6 +65,8 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             if (Unwrap(item) is FieldDescriptor field) AddToDefaultShelf(field);
         });
         context.Changed += (_, _) => RefreshAvailability();
+        // Weak: a designer (a dialog's) may be shorter-lived than the shared context
+        WeakEventManager<MeasureContext, EventArgs>.AddHandler(context.Measures, nameof(MeasureContext.Changed), OnMeasuresChanged);
         PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, OnLanguageChanged, string.Empty);
         RefreshAvailability();
         SelectedModel = context.Models.FirstOrDefault();
@@ -91,7 +93,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
 
     public IEnumerable<FieldDescriptor> Dimensions => _selectedModel?.Metadata.Dimensions ?? [];
 
-    public IEnumerable<FieldDescriptor> Measures => _selectedModel?.Metadata.Measures ?? [];
+    public IEnumerable<FieldDescriptor> Measures => _selectedModel is { } model ? Context.MeasuresOf(model) : [];
 
     public ISemanticModel? SelectedModel
     {
@@ -129,7 +131,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         Shelf.Values => field.Kind == FieldKind.Measure,
         Shelf.Axis => field.Kind == FieldKind.Dimension && Axis.Count < MaxAxisFields && Axis.All(a => a.Field != field),
         Shelf.Legend => field.Kind == FieldKind.Dimension,
-        Shelf.Filters => field.Kind == FieldKind.Dimension && field.DataType != DataType.Date && Filters.All(f => f.Field != field),
+        Shelf.Filters => field.Kind == FieldKind.Dimension && Filters.All(f => f.Field != field),
         _ => false,
     };
 
@@ -269,19 +271,20 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             Legend.Add(new(metadata.GetField(legend.Field), Shelf.Legend, Rebuild) { Grain = legend.Grain });
         foreach (var v in visual.Values)
         {
-            var field = metadata.GetField(v.Measure);
+            var field = Context.GetField(model, v.Measure);
             Values.Add(new(field, Shelf.Values, Rebuild)
             {
                 Aggregation = v.Aggregation ?? field.DefaultAggregation ?? Aggregation.Sum,
                 SeriesMark = v.Mark,
                 SecondaryAxis = v.SecondaryAxis,
+                Time = v.Time,
             });
         }
         foreach (var f in visual.Filters)
         {
-            // Period filters (with a granularity) have no shelf: they are kept without being shown
-            if (f.Grain == DateGrain.None)
-                Filters.Add(new(metadata.GetField(f.Field), model, Rebuild, f.Values, f.Operator));
+            // Filters on period keys (a clicked quarter...) have no shelf: they are kept without being shown
+            if (f.Grain == DateGrain.None || f.Operator.IsPeriod())
+                Filters.Add(new(metadata.GetField(f.Field), model, Rebuild, f.Values, f.Operator, f.Grain));
             else
                 _hiddenFilters = [.. _hiddenFilters, f];
         }
@@ -336,6 +339,19 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         OnPropertyChanged(nameof(Dimensions));
         OnPropertyChanged(nameof(Measures));
         if (Visual is { } visual) Load(visual);
+    }
+
+    /// <summary>
+    /// A calculated measure was changed or removed: the visual is loaded again, so that its shelves show the new
+    /// caption, and without the measures that no longer exist.
+    /// </summary>
+    private void OnMeasuresChanged(object? sender, EventArgs e)
+    {
+        OnPropertyChanged(nameof(Measures));
+        if (Visual is not { } visual || _selectedModel is not { } model) return;
+        var calculated = visual.Values.Where(v => !model.Metadata.Fields.Any(f => f.Name == v.Measure)).ToArray();
+        if (calculated.Length == 0) return;
+        Load(visual with { Values = visual.Values.Where(v => !calculated.Contains(v) || Context.Measures.Find(model.Metadata.Name, v.Measure) is not null).ToArray() });
     }
 
     private void RefreshAvailability()

@@ -29,8 +29,19 @@ public sealed class ShelfItemViewModel : ObservableObject
         new(MarkType.Scatter, () => Strings.MarkScatter),
     ];
 
+    /// <summary>How a measure can be seen through time.</summary>
+    public static IReadOnlyList<Option<TimeCalculation>> TimeOptions { get; } =
+    [
+        new(TimeCalculation.None, () => Strings.TimeNone),
+        new(TimeCalculation.PreviousYear, () => Strings.TimePreviousYear),
+        new(TimeCalculation.ChangeFromPreviousYear, () => Strings.TimeChangeFromPreviousYear),
+        new(TimeCalculation.PercentChangeFromPreviousYear, () => Strings.TimePercentChangeFromPreviousYear),
+        new(TimeCalculation.YearToDate, () => Strings.TimeYearToDate),
+    ];
+
     private readonly Action _changed;
     private DateGrain _grain;
+    private TimeCalculation _time;
     private Aggregation _aggregation;
     private MarkType? _seriesMark;
     private bool _secondaryAxis;
@@ -53,7 +64,17 @@ public sealed class ShelfItemViewModel : ObservableObject
 
     public bool HasGrain => Field.Kind == FieldKind.Dimension && Field.DataType == DataType.Date;
 
-    public bool HasAggregation => Field.Kind == FieldKind.Measure && Field.DefaultAggregation != Aggregation.Count;
+    /// <summary>A measure of the Values shelf: it can be seen through time.</summary>
+    public bool IsValue => Field.Kind == FieldKind.Measure && Shelf == Shelf.Values;
+
+    public TimeCalculation Time
+    {
+        get => _time;
+        set { if (SetProperty(ref _time, value)) _changed(); }
+    }
+
+    // A row count and a calculated measure (ratio...) have no other meaningful aggregation
+    public bool HasAggregation => Field.Kind == FieldKind.Measure && !Field.IsCalculated && Field.DefaultAggregation != Aggregation.Count;
 
     public DateGrain Grain
     {
@@ -102,33 +123,59 @@ public sealed class ShelfItemViewModel : ObservableObject
 
     public FieldRef ToFieldRef() => new(Field.Name, Grain);
 
-    public MeasureRef ToMeasureRef() => new(Field.Name, Aggregation == Field.DefaultAggregation ? null : Aggregation)
+    public MeasureRef ToMeasureRef() => new(Field.Name, HasAggregation && Aggregation != Field.DefaultAggregation ? Aggregation : null)
     {
         Mark = SeriesMark,
         SecondaryAxis = SecondaryAxis,
+        Time = Time,
     };
 }
 
 /// <summary>
-/// A filter on a dimension, with the list of checkable values: "one of" (In)
-/// or, for an existing filter loaded as-is, "all except" (NotIn).
+/// A filter on a dimension. Most dimensions list their values to check: "one of" (In) or, for an existing filter
+/// loaded as-is, "all except" (NotIn). A date dimension filters on a period instead: between two dates, or relative to
+/// today (the current, last or previous months...).
 /// </summary>
 public sealed class FilterItemViewModel : ObservableObject
 {
     private readonly Action _changed;
     private HashSet<string?>? _pendingSelection;
     private bool _isLoading = true;
+    private Option<FilterOperator?> _periodKind;
+    private DateTime? _from;
+    private DateTime? _to;
+    private int _count = 12;
+    private Option<DateGrain> _unit;
 
     public FilterItemViewModel(
         FieldDescriptor field,
         ISemanticModel model,
         Action changed,
         IEnumerable<string?>? selection = null,
-        FilterOperator @operator = FilterOperator.In)
+        FilterOperator @operator = FilterOperator.In,
+        DateGrain grain = DateGrain.None)
     {
         Field = field;
         Operator = @operator;
         _changed = changed;
+        PeriodKinds =
+        [
+            new(null, () => Strings.PeriodKindAny),
+            new(FilterOperator.Between, () => Strings.PeriodKindBetween),
+            new(FilterOperator.Current, () => Strings.PeriodKindCurrent),
+            new(FilterOperator.Last, () => Strings.PeriodKindLast),
+            new(FilterOperator.Previous, () => Strings.PeriodKindPrevious),
+        ];
+        Units = new[] { DateGrain.Day, DateGrain.Month, DateGrain.Quarter, DateGrain.Year }
+            .Select(g => new Option<DateGrain>(g, () => DateGrains.Caption(g))).ToArray();
+        _periodKind = PeriodKinds[0];
+        _unit = Units[1];
+        if (IsPeriod)
+        {
+            LoadPeriod(new FilterSpec(field.Name, @operator, selection?.ToArray() ?? [], grain));
+            _isLoading = false;
+            return;
+        }
         _pendingSelection = selection?.ToHashSet();
         _ = LoadAsync(model);
     }
@@ -139,6 +186,11 @@ public sealed class FilterItemViewModel : ObservableObject
 
     public string Caption => Field.Caption;
 
+    /// <summary>A date dimension: filtered on a period rather than on a list of values.</summary>
+    public bool IsPeriod => Field.DataType == DataType.Date;
+
+    public bool IsValueList => !IsPeriod;
+
     public ObservableCollection<FilterValueViewModel> Values { get; } = [];
 
     public bool IsLoading
@@ -147,10 +199,60 @@ public sealed class FilterItemViewModel : ObservableObject
         private set => SetProperty(ref _isLoading, value);
     }
 
+    public IReadOnlyList<Option<FilterOperator?>> PeriodKinds { get; }
+
+    public IReadOnlyList<Option<DateGrain>> Units { get; }
+
+    /// <summary>How the period is chosen; "any date" (null) does not filter.</summary>
+    public Option<FilterOperator?> PeriodKind
+    {
+        get => _periodKind;
+        set
+        {
+            if (!SetProperty(ref _periodKind, value)) return;
+            OnPropertyChanged(nameof(ShowDates));
+            OnPropertyChanged(nameof(ShowCount));
+            OnPropertyChanged(nameof(ShowUnit));
+            OnPeriodChanged();
+        }
+    }
+
+    public DateTime? From
+    {
+        get => _from;
+        set { if (SetProperty(ref _from, value)) OnPeriodChanged(); }
+    }
+
+    public DateTime? To
+    {
+        get => _to;
+        set { if (SetProperty(ref _to, value)) OnPeriodChanged(); }
+    }
+
+    /// <summary>How many periods (last or previous ones).</summary>
+    public int Count
+    {
+        get => _count;
+        set { if (SetProperty(ref _count, Math.Max(1, value))) OnPeriodChanged(); }
+    }
+
+    public Option<DateGrain> Unit
+    {
+        get => _unit;
+        set { if (SetProperty(ref _unit, value)) OnPeriodChanged(); }
+    }
+
+    public bool ShowDates => PeriodKind.Value == FilterOperator.Between;
+
+    public bool ShowCount => PeriodKind.Value is FilterOperator.Last or FilterOperator.Previous;
+
+    public bool ShowUnit => PeriodKind.Value is FilterOperator.Current or FilterOperator.Last or FilterOperator.Previous;
+
     public string Summary
     {
         get
         {
+            if (IsPeriod) return ToFilterSpec() is { } period ? PeriodFilters.Describe(period) : Strings.FilterAll;
             var selected = Values.Where(v => v.IsChecked).Select(v => v.Label).ToList();
             var summary = selected.Count switch
             {
@@ -164,10 +266,43 @@ public sealed class FilterItemViewModel : ObservableObject
 
     public FilterSpec? ToFilterSpec()
     {
+        if (IsPeriod)
+        {
+            return PeriodKind.Value switch
+            {
+                null => null,
+                FilterOperator.Between when From is null && To is null => null,
+                FilterOperator.Between => PeriodFilters.Between(Field.Name, Day(From), Day(To)),
+                var relative => PeriodFilters.Relative(Field.Name, relative.Value, Unit.Value, Count),
+            };
+        }
         // While values are loading, keep the original selection
         var selected = _pendingSelection?.ToArray()
             ?? Values.Where(v => v.IsChecked).Select(v => InvariantValue.Format(v.Value)).ToArray();
         return selected.Length == 0 ? null : new FilterSpec(Field.Name, Operator, selected);
+    }
+
+    private static DateOnly? Day(DateTime? date) => date is { } d ? DateOnly.FromDateTime(d) : null;
+
+    private void LoadPeriod(FilterSpec filter)
+    {
+        if (!filter.Operator.IsPeriod()) return;
+        _periodKind = PeriodKinds.First(k => k.Value == filter.Operator);
+        if (filter.Operator == FilterOperator.Between)
+        {
+            var (from, to) = PeriodFilters.Bounds(filter);
+            _from = from?.ToDateTime(TimeOnly.MinValue);
+            _to = to?.ToDateTime(TimeOnly.MinValue);
+            return;
+        }
+        _count = PeriodFilters.Count(filter);
+        _unit = Units.FirstOrDefault(u => u.Value == filter.Grain) ?? _unit;
+    }
+
+    private void OnPeriodChanged()
+    {
+        OnPropertyChanged(nameof(Summary));
+        _changed();
     }
 
     private async Task LoadAsync(ISemanticModel model)

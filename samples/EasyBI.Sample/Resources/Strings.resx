@@ -138,4 +138,37 @@
   <data name="ThemeDark" xml:space="preserve">
     <value>Dark</value>
   </data>
+  <data name="DataSource" xml:space="preserve">
+    <value>Data</value>
+  </data>
+  <data name="DataSourceMemory" xml:space="preserve">
+    <value>In memory (20,000 sales)</value>
+  </data>
+  <data name="DataSourceSqlite1M" xml:space="preserve">
+    <value>SQLite (1 million sales)</value>
+  </data>
+  <data name="DataSourceSqlite5M" xml:space="preserve">
+    <value>SQLite (5 million sales)</value>
+  </data>
+  <data name="GeneratingDatabase" xml:space="preserve">
+    <value>Generating the database ({0:N0} sales), once…</value>
+  </data>
+  <data name="QueriesRunning" xml:space="preserve">
+    <value>{0} queries running…</value>
+  </data>
+  <data name="LastRefresh" xml:space="preserve">
+    <value>Last refresh: {0} queries in {1:N0} ms (slowest {2:N0} ms)</value>
+  </data>
+  <data name="DataSourceUnavailable" xml:space="preserve">
+    <value>Data source unavailable</value>
+  </data>
+  <data name="MarginRate" xml:space="preserve">
+    <value>Margin rate</value>
+  </data>
+  <data name="AverageBasket" xml:space="preserve">
+    <value>Average basket</value>
+  </data>
+  <data name="LastYearComparison" xml:space="preserve">
+    <value>2025 compared with 2024</value>
+  </data>
 </root>

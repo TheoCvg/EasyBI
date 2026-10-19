@@ -21,7 +21,7 @@
                 </DockPanel>
                 <!-- Theme: EasyBI alone or following a control library, light or dark. No explicit control styles in
                      the demo: they would hide the library's implicit ones -->
-                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <WrapPanel Margin="0,10,0,0">
                     <TextBlock Text="{bi:Localize ThemeLibrary, Source={x:Static local:App.Texts}}" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
                     <ComboBox x:Name="LibraryPicker" Width="150" SelectionChanged="OnThemeChanged">
                         <ComboBoxItem Tag="EasyBI" Content="EasyBI" IsSelected="True" />
@@ -37,7 +37,15 @@
                     <ComboBox x:Name="LanguagePicker" Width="150" DisplayMemberPath="NativeName" SelectionChanged="OnLanguageChanged" />
                     <TextBlock Text="{bi:Localize Renderer, Source={x:Static local:App.Texts}}" VerticalAlignment="Center" Margin="18,0,8,0" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
                     <ComboBox x:Name="RendererPicker" Width="140" DisplayMemberPath="Name" SelectionChanged="OnRendererChanged" />
-                </StackPanel>
+                    <!-- Data source: the same sales in memory or in a SQLite database of millions of rows -->
+                    <TextBlock Text="{bi:Localize DataSource, Source={x:Static local:App.Texts}}" VerticalAlignment="Center" Margin="18,0,8,0" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                    <ComboBox x:Name="SourcePicker" Width="220" SelectionChanged="OnSourceChanged">
+                        <ComboBoxItem Tag="0" Content="{bi:Localize DataSourceMemory, Source={x:Static local:App.Texts}}" IsSelected="True" />
+                        <ComboBoxItem Tag="1000000" Content="{bi:Localize DataSourceSqlite1M, Source={x:Static local:App.Texts}}" />
+                        <ComboBoxItem Tag="5000000" Content="{bi:Localize DataSourceSqlite5M, Source={x:Static local:App.Texts}}" />
+                    </ComboBox>
+                    <TextBlock x:Name="QueryStatus" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                </WrapPanel>
             </StackPanel>
         </Border>
 

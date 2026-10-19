@@ -26,16 +26,19 @@ public static class VisualPipeline
     public static RenderRequest PrepareContent(VisualDefinition visual, BiTheme? theme = null) =>
         new(visual, new ResultSet([], []), new ChartData(null, [], []), theme ?? BiTheme.Default);
 
-    public static AnalyticQuery ToQuery(this VisualDefinition visual)
+    /// <summary>The query of a visual; those of the end user's calculated <c>measures</c> it shows go with it.</summary>
+    public static AnalyticQuery ToQuery(this VisualDefinition visual, IEnumerable<CalculatedMeasure>? measures = null)
     {
         var groupBy = visual.Legend is null ? visual.Axis : [.. visual.Axis, visual.Legend];
+        var used = measures?.Where(m => m.Model == visual.Model && visual.Values.Any(v => v.Measure == m.Name)).ToArray();
         return new AnalyticQuery(
             groupBy,
             // Chart types and axes only change the drawing: changing them must not query again
             visual.Values.Select(v => v with { Mark = null, SecondaryAxis = false }).ToArray(),
             visual.Filters,
             visual.Sort is null ? null : [visual.Sort],
-            visual.Top);
+            visual.Top,
+            used is { Length: > 0 } ? used : null);
     }
 
     /// <summary>
@@ -45,13 +48,15 @@ public static class VisualPipeline
     public static RenderRequest Redraw(RenderRequest previous, VisualDefinition visual) =>
         previous with { Visual = visual, Chart = ChartDataBuilder.Build(visual, previous.Result) };
 
+    /// <summary>Queries the model for a visual, with the end user's calculated <c>measures</c> it may show.</summary>
     public static async Task<RenderRequest> PrepareAsync(
         ISemanticModel model,
         VisualDefinition visual,
         BiTheme? theme = null,
+        IEnumerable<CalculatedMeasure>? measures = null,
         CancellationToken cancellationToken = default)
     {
-        var result = await model.ExecuteAsync(visual.ToQuery(), cancellationToken).ConfigureAwait(false);
+        var result = await model.ExecuteWithTimeAsync(visual.ToQuery(measures), cancellationToken).ConfigureAwait(false);
         return new RenderRequest(visual, result, ChartDataBuilder.Build(visual, result), theme ?? BiTheme.Default);
     }
 }

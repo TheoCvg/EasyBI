@@ -28,10 +28,11 @@ public static class ReportValidator
             }
             foreach (var axis in visual.Axis.Append(visual.Legend).OfType<FieldRef>())
                 CheckDimension(model, axis.Field, axis.Grain, where, problems);
-            foreach (var value in visual.Values)
+            // The report's calculated measures are checked once, below
+            foreach (var value in visual.Values.Where(v => !report.Measures.Any(m => m.Model == visual.Model && m.Name == v.Measure)))
                 CheckField(model, value.Measure, FieldKind.Measure, where, problems);
             foreach (var filter in visual.Filters)
-                CheckDimension(model, filter.Field, filter.Grain, where, problems);
+                CheckFilter(model, filter, where, problems);
 
             if (visual.Sort is { } sort)
             {
@@ -47,9 +48,26 @@ public static class ReportValidator
             if (!byName.TryGetValue(filter.Model, out var model))
                 problems.Add(Strings.Format(Strings.ReportUnknownModel, Strings.ReportFilter, filter.Model));
             else
-                CheckDimension(model, filter.Filter.Field, filter.Filter.Grain, Strings.ReportFilter, problems);
+                CheckFilter(model, filter.Filter, Strings.ReportFilter, problems);
+        }
+
+        foreach (var measure in report.Measures)
+        {
+            var where = Strings.Format(Strings.ReportCalculatedMeasure, measure.Caption);
+            if (!byName.TryGetValue(measure.Model, out var model))
+                problems.Add(Strings.Format(Strings.ReportUnknownModel, where, measure.Model));
+            else if (MeasureFormula.Validate(measure.Formula, model) is { } problem)
+                problems.Add(Strings.Format(Strings.ReportInvalidFormula, where, problem));
         }
         return problems;
+    }
+
+    private static void CheckFilter(ModelMetadata model, FilterSpec filter, string where, List<string> problems)
+    {
+        if (!filter.Operator.IsPeriod())
+            CheckDimension(model, filter.Field, filter.Grain, where, problems);
+        else if (CheckField(model, filter.Field, FieldKind.Dimension, where, problems) is { DataType: not DataType.Date })
+            problems.Add(Strings.Format(Strings.ReportPeriodOnNonDate, where, filter.Field));
     }
 
     private static void CheckDimension(ModelMetadata model, string name, DateGrain grain, string where, List<string> problems)

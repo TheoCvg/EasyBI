@@ -17,6 +17,8 @@ internal static class QueryEngine<T>
     private const int MaxGroupFields = 4;
     private const int MaxDistinctValues = 1000;
 
+    private static readonly Type[] GroupKeyTypes = [typeof(GroupKey<>), typeof(GroupKey<,>), typeof(GroupKey<,,>), typeof(GroupKey<,,,>)];
+
     public static async Task<ResultSet> ExecuteAsync(
         IQueryable<T> source,
         ModelMetadata metadata,
@@ -48,13 +50,11 @@ internal static class QueryEngine<T>
             columns.Add(new ResultColumn(fieldRef.Key, caption, FieldKind.Dimension, dataType));
         }
 
-        var slotTypes = keyBodies.Select(b => b.Type)
-            .Concat(Enumerable.Repeat(typeof(int), MaxGroupFields - keyBodies.Count))
-            .ToArray();
-        var keyType = typeof(GroupKey<,,,>).MakeGenericType(slotTypes);
-        var bindings = Enumerable.Range(0, MaxGroupFields).Select(i => Expression.Bind(
-            keyType.GetProperty($"K{i + 1}")!,
-            i < keyBodies.Count ? keyBodies[i] : Expression.Constant(0)));
+        // One slot per grouped field: a constant slot would end up in SQL's GROUP BY, behind a subquery, and slow the
+        // database down. Without grouping (KPIs), one constant puts every row in the same group.
+        Expression[] slots = keyBodies.Count > 0 ? [.. keyBodies] : [Expression.Constant(0)];
+        var keyType = GroupKeyTypes[slots.Length - 1].MakeGenericType(slots.Select(s => s.Type).ToArray());
+        var bindings = slots.Select((slot, i) => Expression.Bind(keyType.GetProperty($"K{i + 1}")!, slot));
         var keySelector = Expression.Lambda(Expression.MemberInit(Expression.New(keyType), bindings), parameter);
 
         // Projection: keys then aggregates. The same expressions are reused for sorting.
@@ -67,10 +67,18 @@ internal static class QueryEngine<T>
 
         foreach (var measureRef in query.Measures)
         {
+            if (query.Calculations?.FirstOrDefault(c => c.Name == measureRef.Measure) is { } calculation)
+            {
+                // The end user's formula over the model's measures, each aggregated as the model declares it
+                cells.Add(MeasureFormula.Build(calculation.Formula, name => MeasureCell(group, metadata, selectors, name, null)));
+                columns.Add(new ResultColumn(measureRef.Key, calculation.Caption, FieldKind.Measure, DataType.Number, calculation.Format));
+                continue;
+            }
             var field = RequireKind(metadata.GetField(measureRef.Measure), FieldKind.Measure);
-            var aggregation = measureRef.Aggregation ?? field.DefaultAggregation ?? Aggregation.Sum;
-            cells.Add(Aggregate(group, selectors[field.Name], aggregation));
-            var caption = measureRef.Aggregation is null ? field.Caption : $"{field.Caption} ({Aggregations.Caption(aggregation)})";
+            // A calculated measure is computed from the group's rows by the model: an aggregation saved with the visual does not apply
+            var aggregation = field.IsCalculated ? null : measureRef.Aggregation;
+            cells.Add(MeasureCell(group, metadata, selectors, field.Name, aggregation));
+            var caption = aggregation is { } chosen ? $"{field.Caption} ({Aggregations.Caption(chosen)})" : field.Caption;
             columns.Add(new ResultColumn(measureRef.Key, caption, FieldKind.Measure, DataType.Number, field.Format));
         }
 
@@ -182,6 +190,11 @@ internal static class QueryEngine<T>
         foreach (var filter in filters)
         {
             var field = RequireKind(metadata.GetField(filter.Field), FieldKind.Dimension);
+            if (filter.Operator.IsPeriod())
+            {
+                source = source.Where(InPeriod(field, Rebind(selectors[field.Name], parameter), filter, parameter));
+                continue;
+            }
             var selector = ApplyGrain(field, Rebind(selectors[field.Name], parameter), filter.Grain);
             var valueType = selector.Type;
             var acceptsNull = !valueType.IsValueType || Nullable.GetUnderlyingType(valueType) is not null;
@@ -202,12 +215,56 @@ internal static class QueryEngine<T>
         return source;
     }
 
+    /// <summary>
+    /// date &gt;= start AND date &lt; end, resolved today. The date itself is compared, not a period key, so that a
+    /// database can use an index on it.
+    /// </summary>
+    private static Expression<Func<T, bool>> InPeriod(FieldDescriptor field, Expression date, FilterSpec filter, ParameterExpression parameter)
+    {
+        if (field.DataType != DataType.Date)
+            throw new InvalidOperationException($"A period filter requires a date dimension ('{field.Name}').");
+        var (start, end) = PeriodFilters.Range(filter, DateOnly.FromDateTime(DateTime.Today));
+        Expression? body = null;
+        if (start is { } from) body = Expression.GreaterThanOrEqual(date, Bound(from, date.Type));
+        if (end is { } to)
+        {
+            var before = Expression.LessThan(date, Bound(to, date.Type));
+            body = body is null ? before : Expression.AndAlso(body, before);
+        }
+        return Expression.Lambda<Func<T, bool>>(body ?? Expression.Constant(true), parameter);
+    }
+
+    private static ConstantExpression Bound(DateTime day, Type dateType)
+    {
+        var type = Nullable.GetUnderlyingType(dateType) ?? dateType;
+        // Boxed one by one: a conditional would turn the DateTime into a DateTimeOffset
+        object value = type == typeof(DateOnly) ? (object)DateOnly.FromDateTime(day)
+            : type == typeof(DateTimeOffset) ? (object)new DateTimeOffset(day)
+            : day;
+        return Expression.Constant(value, dateType);
+    }
+
     private static Expression ApplyGrain(FieldDescriptor field, Expression body, DateGrain grain)
     {
         if (grain == DateGrain.None) return body;
         if (field.DataType != DataType.Date)
             throw new InvalidOperationException($"Granularity '{grain}' requires a date dimension ('{field.Name}').");
         return DateGrains.Apply(body, grain);
+    }
+
+    /// <summary>The value of a model's measure for a group: its own expression when calculated, otherwise aggregated.</summary>
+    private static Expression MeasureCell(
+        ParameterExpression group,
+        ModelMetadata metadata,
+        IReadOnlyDictionary<string, LambdaExpression> selectors,
+        string name,
+        Aggregation? aggregation)
+    {
+        var field = RequireKind(metadata.GetField(name), FieldKind.Measure);
+        var selector = selectors[field.Name];
+        return field.IsCalculated
+            ? new ParameterReplacer(selector.Parameters[0], group).Visit(selector.Body)
+            : Aggregate(group, selector, aggregation ?? field.DefaultAggregation ?? Aggregation.Sum);
     }
 
     private static Expression Aggregate(Expression group, LambdaExpression selector, Aggregation aggregation)
@@ -275,7 +332,52 @@ internal static class QueryEngine<T>
     }
 }
 
-/// <summary>Composite grouping key (unused slots hold a constant).</summary>
+// Grouping keys of 1 to 4 fields. Classes initialized by member, which providers such as EF Core translate into
+// GROUP BY columns; LINQ to objects compares them by value.
+
+internal sealed class GroupKey<T1> : IEquatable<GroupKey<T1>>
+{
+    public T1 K1 { get; set; } = default!;
+
+    public bool Equals(GroupKey<T1>? other) => other is not null && EqualityComparer<T1>.Default.Equals(K1, other.K1);
+
+    public override bool Equals(object? obj) => Equals(obj as GroupKey<T1>);
+
+    public override int GetHashCode() => HashCode.Combine(K1);
+}
+
+internal sealed class GroupKey<T1, T2> : IEquatable<GroupKey<T1, T2>>
+{
+    public T1 K1 { get; set; } = default!;
+    public T2 K2 { get; set; } = default!;
+
+    public bool Equals(GroupKey<T1, T2>? other) =>
+        other is not null
+        && EqualityComparer<T1>.Default.Equals(K1, other.K1)
+        && EqualityComparer<T2>.Default.Equals(K2, other.K2);
+
+    public override bool Equals(object? obj) => Equals(obj as GroupKey<T1, T2>);
+
+    public override int GetHashCode() => HashCode.Combine(K1, K2);
+}
+
+internal sealed class GroupKey<T1, T2, T3> : IEquatable<GroupKey<T1, T2, T3>>
+{
+    public T1 K1 { get; set; } = default!;
+    public T2 K2 { get; set; } = default!;
+    public T3 K3 { get; set; } = default!;
+
+    public bool Equals(GroupKey<T1, T2, T3>? other) =>
+        other is not null
+        && EqualityComparer<T1>.Default.Equals(K1, other.K1)
+        && EqualityComparer<T2>.Default.Equals(K2, other.K2)
+        && EqualityComparer<T3>.Default.Equals(K3, other.K3);
+
+    public override bool Equals(object? obj) => Equals(obj as GroupKey<T1, T2, T3>);
+
+    public override int GetHashCode() => HashCode.Combine(K1, K2, K3);
+}
+
 internal sealed class GroupKey<T1, T2, T3, T4> : IEquatable<GroupKey<T1, T2, T3, T4>>
 {
     public T1 K1 { get; set; } = default!;

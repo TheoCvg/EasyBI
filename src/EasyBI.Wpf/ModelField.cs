@@ -3,12 +3,17 @@ using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf;
 
-/// <summary>A field of a semantic model: what a <see cref="FieldList"/> drags (to a designer shelf, to a dashboard...).</summary>
-public sealed record ModelField(ISemanticModel Model, FieldDescriptor Field)
+/// <summary>
+/// A field of a semantic model: what a <see cref="FieldList"/> drags (to a designer shelf, to a dashboard...).
+/// <paramref name="Measure"/> is the definition of a calculated measure of the report, which the user can edit.
+/// </summary>
+public sealed record ModelField(ISemanticModel Model, FieldDescriptor Field, CalculatedMeasure? Measure = null)
 {
     public string Caption => Field.Caption;
 
     public bool IsMeasure => Field.Kind == FieldKind.Measure;
+
+    public bool IsEditable => Measure is not null;
 }
 
 /// <summary>

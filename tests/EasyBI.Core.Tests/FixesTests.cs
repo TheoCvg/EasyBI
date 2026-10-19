@@ -88,6 +88,24 @@ public class FixesTests
         Assert.Contains("Take(2)", expression);
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task The_grouping_key_holds_only_the_grouped_fields(int fields)
+    {
+        // A constant in the key ends up in SQL's GROUP BY (and a subquery), which slows databases down
+        var source = new RecordingQueryable<Row>(new Row[] { new("Nord", "A", 1m), new("Sud", "B", 3m), new("Nord", "B", 2m) });
+        var model = SemanticModel.For(source, "m").Dimension(r => r.Region, "Région").Dimension(r => r.Category, "Catégorie").Measure(r => r.Amount, "CA");
+        FieldRef[] groupBy = [new("Region"), new("Category")];
+
+        var result = await model.ExecuteAsync(new(groupBy[..fields], [new("Amount")]));
+
+        Assert.Equal(fields == 1 ? 2 : 3, result.Rows.Count);
+        var expression = Assert.Single(source.Log.Executed);
+        Assert.DoesNotMatch(@"K\d = 0\b", expression);
+        Assert.Contains("K1 = x.Region", expression);
+    }
+
     [Fact]
     public async Task Cancelled_query_throws()
     {

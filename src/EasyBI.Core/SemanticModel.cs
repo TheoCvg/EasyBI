@@ -108,6 +108,42 @@ public sealed class QueryableSemanticModel<T> : ISemanticModel
         return Add(new FieldDescriptor(name ?? NameOf(selector), caption, FieldKind.Measure, DataType.Number, aggregation, format), selector);
     }
 
+    /// <summary>
+    /// Measure computed from the rows of each group, such as <c>g => g.Sum(s => s.Margin) - g.Sum(s => s.Cost)</c>. The
+    /// expression runs inside the query (in SQL with EF Core), so sorting and Top apply to it; the end user cannot change
+    /// its aggregation. Guard divisions (or use <see cref="Ratio{TNumerator, TDenominator}"/>): some databases fail on a
+    /// division by zero.
+    /// </summary>
+    public QueryableSemanticModel<T> Calculated<TValue>(
+        Expression<Func<IEnumerable<T>, TValue>> aggregate,
+        string caption,
+        string name,
+        string? format = null) =>
+        Add(new FieldDescriptor(name, caption, FieldKind.Measure, DataType.Number, Format: format, IsCalculated: true), aggregate);
+
+    /// <summary>
+    /// Ratio of two sums for each group: margin rate (margin / revenue), average basket (revenue / <c>_ => 1</c>)...
+    /// Summing before dividing gives the right ratio of a group, unlike averaging the rows' ratios. Empty when the
+    /// denominator sums to zero.
+    /// </summary>
+    public QueryableSemanticModel<T> Ratio<TNumerator, TDenominator>(
+        Expression<Func<T, TNumerator>> numerator,
+        Expression<Func<T, TDenominator>> denominator,
+        string caption,
+        string name,
+        string? format = null)
+    {
+        var rows = Expression.Parameter(typeof(IEnumerable<T>), "g");
+        Expression Sum(LambdaExpression selector) => Expression.Convert(
+            Expression.Call(typeof(Enumerable), nameof(Enumerable.Sum), [typeof(T)], rows, selector), typeof(double?));
+        var (top, bottom) = (Sum(numerator), Sum(denominator));
+        var ratio = Expression.Condition(
+            Expression.Equal(bottom, Expression.Constant(0d, typeof(double?))),
+            Expression.Constant(null, typeof(double?)),
+            Expression.Divide(top, bottom));
+        return Calculated(Expression.Lambda<Func<IEnumerable<T>, double?>>(ratio, rows), caption, name, format);
+    }
+
     /// <summary>Measure that counts rows.</summary>
     public QueryableSemanticModel<T> Count(string caption, string name = "Count") =>
         Add(new FieldDescriptor(name, caption, FieldKind.Measure, DataType.Number, Aggregation.Count, "N0"),

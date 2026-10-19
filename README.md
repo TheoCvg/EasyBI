@@ -64,10 +64,69 @@ var model = SemanticModel.For(() => dbFactory.CreateDbContext(), db => db.Sales,
     .Dimension(s => s.Region, "Region") /* ... */;
 ```
 
+Each visual becomes one database query (filters, grouping, aggregates, sort and top in SQL): only the aggregated
+rows reach the application, whatever the number of rows in the table.
+
+Visuals cache their last result and query again only when their query changes. When the data behind a model changes
+(new rows, another source), tell them, from any thread:
+
+```csharp
+Context.RefreshData("sales");   // the visuals of this model; RefreshData() for all of them
+```
+
 ```xml
 <bi:ReportDesigner Context="{Binding Context}" />                             <!-- design -->
 <bi:VisualView Context="{Binding Context}" Definition="{Binding Visual}" />   <!-- display -->
 ```
+
+### Calculated measures
+
+A measure is a row value that the end user aggregates (sum, average...). Ratios need more: the margin rate of a region
+is its total margin divided by its total revenue, not the average of its sales' rates. Calculated measures are
+computed from the rows of each group, inside the same query (in SQL with EF Core), and can be sorted and limited like
+the others; the end user cannot change their aggregation.
+
+```csharp
+model
+    .Ratio(s => s.Margin, s => s.Amount, "Margin rate", "MarginRate", format: "P1")      // Σ margin / Σ revenue
+    .Ratio(s => s.Amount, s => 1, "Average basket", "AverageBasket", format: "#,##0 €")   // Σ revenue / number of sales
+    .Calculated(g => g.Sum(s => s.Amount) - g.Sum(s => s.Cost), "Gross profit", "GrossProfit");
+```
+
+`Ratio` is empty when the denominator sums to zero. With `Calculated`, guard divisions yourself: some databases fail
+on a division by zero.
+
+End users create their own from the field list (**+ Calculated measure**, then ✎ and ✕ on hover): a name, a format
+and a formula over the model's measures, typed with their captions and checked as it is typed, with its total as a
+preview:
+
+```
+[Margin] / [Revenue]            ([Revenue] - [Margin]) / [Number of sales]            [Margin] * 100 / [Revenue]
+```
+
+Measures in brackets are aggregated as in the field list; the operators are `+ - * /` with parentheses and numbers
+with a decimal point; a division by zero gives an empty value. The formula runs in the same query as the other
+measures. These measures live in `EasyBIContext.Measures` (one context per open report): every field list, designer
+and visual of the context sees them, and a `DashboardView` loads and saves them with its document (undo does not
+remove them). An application that saves reports without a dashboard puts `Context.Measures.Measures` in
+`ReportDefinition.Measures` and loads them back with `Context.Measures.Load(...)`.
+
+### Comparisons over time
+
+Each measure of a visual can be seen through time (`MeasureRef.Time`, the "Calculation" list of a measure chip in the
+designer): its value, its value the previous year, the change since (in value or in %), or its total since the start of
+the year along the date axis.
+
+```csharp
+Values = [new("Amount"), new("Amount") { Time = TimeCalculation.PercentChangeFromPreviousYear }],
+Filters = [PeriodFilters.Relative("Date", FilterOperator.Current, DateGrain.Year)],   // this year vs last year
+```
+
+The previous year is the same query with its dates shifted back one year (period filters, clicked periods), run once
+more and matched on the groups (each month with the same month a year earlier, per series). It needs a date on the axis
+or a date filter, and is empty otherwise. The year-to-date total adds the values up along the date axis and starts
+again each year. A KPI shows a change with ▲ / ▼ in the measures' or the error color. This runs in
+`VisualPipeline.PrepareAsync` (`ISemanticModel.ExecuteWithTimeAsync`) on top of any model.
 
 ### Combined charts
 
@@ -263,6 +322,17 @@ inherited property), it is used by the `FilterBar` and by every `VisualView`:
   the same model on the element's dimensions (axis, plus legend for a bar). Clicking the same element
   again clears the selection. The source visual is not filtered and shows the current selection.
   Periods (quarter, month...) filter through `FilterSpec.Grain`.
+- **Period filters**: a date dimension, in the `FilterBar` or on the designer's Filters shelf, is filtered on a
+  period rather than on a list of values: between two dates, the current day / month / quarter / year, the last n
+  (current one included: "Last 12 months") or the n previous complete ones ("Last month"). Relative periods are
+  resolved when the query runs, so a saved report keeps showing the last 12 months; the date column is compared to
+  the period's bounds (`date >= start AND date < end`), so a database can use an index on it.
+
+```csharp
+PeriodFilters.Relative("Date", FilterOperator.Last, DateGrain.Month, 12);     // last 12 months
+PeriodFilters.Between("Date", new DateOnly(2024, 1, 1), null);                // since January 1st, 2024
+PeriodFilters.Describe(filter);                                               // "Last 12 months", localized
+```
 
 A connector only has to call `request.Select?.Invoke(new CategorySelection(category, series))` on
 click (or `RowSelection` for a table): `Select` is null when interactivity is disabled, for example
@@ -455,7 +525,10 @@ the types that no renderer can draw.
       "axis": [ { "field": "Region", "grain": "None" } ],
       "legend": { "field": "Channel", "grain": "None" },
       "values": [ { "measure": "Amount" }, { "measure": "Count", "mark": "Line", "secondaryAxis": true } ],
-      "filters": [ { "field": "Product.Category", "operator": "In", "values": [ "Services" ] } ]
+      "filters": [
+        { "field": "Product.Category", "operator": "In", "values": [ "Services" ] },
+        { "field": "Date", "operator": "Last", "values": [ "12" ], "grain": "Month" }
+      ]
     }
   ],
   "filters": [
@@ -464,8 +537,19 @@ the types that no renderer can draw.
 }
 ```
 
-`null` in `values` means a missing value. `EasyBIContext.Validate(report)` reports the unknown
-models and fields of a loaded report.
+`null` in `values` means a missing value. Besides `In` and `NotIn`, a date filter's `operator` can be `Between`
+(values: from and to as `yyyy-MM-dd`, inclusive, `null` for an open end), `Current`, `Last` or `Previous` (value: the
+number of periods; `grain` is their unit). `EasyBIContext.Validate(report)` reports the unknown
+models and fields of a loaded report, and the formulas that no longer match their model.
+
+Calculated measures created by the end user are saved with the report (the property is omitted when there are none),
+and visuals reference them by name like a field:
+
+```json
+"measures": [
+  { "name": "calc_3f9a1c0d2b7e", "caption": "Margin rate", "model": "sales", "formula": "[Margin] / [Amount]", "format": "P1" }
+]
+```
 
 Text and image visuals carry their content and no model:
 
@@ -510,7 +594,9 @@ dotnet test
 dotnet run --project samples/EasyBI.Sample
 ```
 
-The demo starts in your system language (English or French) and has a language picker in its toolbar.
+The demo starts in your system language (English or French) and has a language picker in its toolbar. Its data
+picker switches the same sales between memory (20,000 rows) and a SQLite database of 1 or 5 million rows, generated
+once in `%LOCALAPPDATA%\EasyBI.Sample`; the toolbar shows how long the last refresh took.
 
 ## Contributing
 
@@ -520,11 +606,14 @@ See [AGENTS.md](AGENTS.md) for the code style, language rules and Git workflow.
 
 - Cross-filtering: one selection at a time; the selected element is not yet highlighted in the
   source chart (a "Sélection : ..." banner shows it).
-- Designer and `FilterBar` filters: "one of" only, on non-date dimensions; no date ranges.
+- Designer and `FilterBar` filters: "one of" a list of values, or a period for a date dimension; no ranges on numbers.
+- Relative periods ("last 12 months") are resolved in the local time zone when a visual queries; an open dashboard does
+  not query again at midnight.
 - `Top` applies to aggregated rows, not to categories when a legend is present.
 - Grouping, sorting and `Top` are pushed down to the provider, and execution is asynchronous when the
-  source implements `IAsyncEnumerable` (EF Core). EF Core's SQL translation (GroupBy on a composite
-  key, sort on an aggregate, projection to `object[]`) still has to be validated against a real database.
+  source implements `IAsyncEnumerable` (EF Core). The SQL translation was checked manually with EF Core 8 on SQLite
+  (every query shape, including date granularities, navigation properties and sort on an aggregate); there is no
+  automated test against a database. SQLite cannot sum `decimal` columns (EF Core refuses the query).
 - At most 4 grouping dimensions (axis + legend).
 - The built-in light and dark themes do not restyle standard controls (buttons, combo boxes...): use a control
   library for those (see [Following a control library](#following-a-control-library)).

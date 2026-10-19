@@ -138,4 +138,37 @@
   <data name="ThemeDark" xml:space="preserve">
     <value>Sombre</value>
   </data>
+  <data name="DataSource" xml:space="preserve">
+    <value>Données</value>
+  </data>
+  <data name="DataSourceMemory" xml:space="preserve">
+    <value>En mémoire (20 000 ventes)</value>
+  </data>
+  <data name="DataSourceSqlite1M" xml:space="preserve">
+    <value>SQLite (1 million de ventes)</value>
+  </data>
+  <data name="DataSourceSqlite5M" xml:space="preserve">
+    <value>SQLite (5 millions de ventes)</value>
+  </data>
+  <data name="GeneratingDatabase" xml:space="preserve">
+    <value>Génération de la base ({0:N0} ventes), une seule fois…</value>
+  </data>
+  <data name="QueriesRunning" xml:space="preserve">
+    <value>{0} requête(s) en cours…</value>
+  </data>
+  <data name="LastRefresh" xml:space="preserve">
+    <value>Dernier rafraîchissement : {0} requête(s) en {1:N0} ms (la plus lente : {2:N0} ms)</value>
+  </data>
+  <data name="DataSourceUnavailable" xml:space="preserve">
+    <value>Source de données indisponible</value>
+  </data>
+  <data name="MarginRate" xml:space="preserve">
+    <value>Taux de marge</value>
+  </data>
+  <data name="AverageBasket" xml:space="preserve">
+    <value>Panier moyen</value>
+  </data>
+  <data name="LastYearComparison" xml:space="preserve">
+    <value>2025 comparé à 2024</value>
+  </data>
 </root>

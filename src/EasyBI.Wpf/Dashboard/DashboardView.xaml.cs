@@ -45,6 +45,7 @@ public partial class DashboardView : UserControl
         nameof(UseDefaultBehaviors), typeof(bool), typeof(DashboardView), new PropertyMetadata(true));
 
     private ReportDefinition _report = new();
+    private IReadOnlyList<CalculatedMeasure>? _pendingMeasures;
     private DashboardDocument _committed = new();
     private int _editDepth;
     private bool _pushing;
@@ -152,11 +153,17 @@ public partial class DashboardView : UserControl
     /// </summary>
     public void Load(DashboardDocument document)
     {
+        // The report's calculated measures become the context's, before its visuals query them
+        if (Context is { } context) context.Measures.Load(document.Report.Measures);
+        else _pendingMeasures = document.Report.Measures;
         Show(document);
         DocumentLoaded?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Puts the dashboard back to a previous state (undo/redo): like <see cref="Load"/>, without starting a new history.</summary>
+    /// <summary>
+    /// Puts the dashboard back to a previous state (undo/redo): like <see cref="Load"/>, without starting a new history.
+    /// Calculated measures are left as they are: undoing a move must not remove a measure created since.
+    /// </summary>
     public void Restore(DashboardDocument document) => Show(document);
 
     private void Show(DashboardDocument document)
@@ -195,7 +202,8 @@ public partial class DashboardView : UserControl
         // Visuals are saved in reading order
         var visuals = Enumerable.Range(0, Panel.BandCount).SelectMany(Panel.ChildrenOf)
             .OfType<DashboardItem>().Select(i => i.Visual).OfType<VisualDefinition>().ToArray();
-        return new DashboardDocument { Report = _report with { Visuals = visuals }, Layout = layout };
+        var measures = Context?.Measures.Measures.ToArray() ?? _pendingMeasures ?? _report.Measures;
+        return new DashboardDocument { Report = _report with { Visuals = visuals, Measures = measures }, Layout = layout };
     }
 
     /// <summary>
@@ -248,6 +256,12 @@ public partial class DashboardView : UserControl
 
     private void OnContextChanged(EasyBIContext? context)
     {
+        // A document loaded before the context brought its calculated measures
+        if (context is not null && _pendingMeasures is { } measures)
+        {
+            _pendingMeasures = null;
+            context.Measures.Load(measures);
+        }
         foreach (var item in Items) item.Context = context;
     }
 

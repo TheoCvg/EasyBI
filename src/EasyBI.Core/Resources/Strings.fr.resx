@@ -102,4 +102,112 @@
   <data name="ReportNotAMeasure" xml:space="preserve">
     <value>{0} : '{1}' n'est pas une mesure.</value>
   </data>
+  <data name="FormulaEmpty" xml:space="preserve">
+    <value>La formule est vide.</value>
+  </data>
+  <data name="FormulaUnexpected" xml:space="preserve">
+    <value>« {0} » inattendu à la position {1}.</value>
+  </data>
+  <data name="FormulaExpectedOperand" xml:space="preserve">
+    <value>Une mesure, un nombre ou « ( » est attendu à la position {0}.</value>
+  </data>
+  <data name="FormulaMissingParenthesis" xml:space="preserve">
+    <value>Il manque une parenthèse fermante.</value>
+  </data>
+  <data name="FormulaMissingBracket" xml:space="preserve">
+    <value>Il manque un crochet fermant « ] ».</value>
+  </data>
+  <data name="FormulaDecimalComma" xml:space="preserve">
+    <value>Écrivez les nombres décimaux avec un point (0.5).</value>
+  </data>
+  <data name="FormulaUnknownMeasure" xml:space="preserve">
+    <value>Mesure inconnue : « {0} ».</value>
+  </data>
+  <data name="FormulaNotAMeasure" xml:space="preserve">
+    <value>« {0} » n&apos;est pas une mesure.</value>
+  </data>
+  <data name="FormulaAmbiguous" xml:space="preserve">
+    <value>Plusieurs mesures s&apos;appellent « {0} ».</value>
+  </data>
+  <data name="ReportCalculatedMeasure" xml:space="preserve">
+    <value>Mesure calculée « {0} »</value>
+  </data>
+  <data name="ReportInvalidFormula" xml:space="preserve">
+    <value>{0} : {1}</value>
+  </data>
+  <data name="PeriodAny" xml:space="preserve">
+    <value>Toutes les dates</value>
+  </data>
+  <data name="PeriodBetween" xml:space="preserve">
+    <value>{0} – {1}</value>
+  </data>
+  <data name="PeriodSince" xml:space="preserve">
+    <value>Depuis le {0}</value>
+  </data>
+  <data name="PeriodUntil" xml:space="preserve">
+    <value>Jusqu&apos;au {0}</value>
+  </data>
+  <data name="PeriodCurrentDay" xml:space="preserve">
+    <value>Aujourd&apos;hui</value>
+  </data>
+  <data name="PeriodCurrentMonth" xml:space="preserve">
+    <value>Mois en cours</value>
+  </data>
+  <data name="PeriodCurrentQuarter" xml:space="preserve">
+    <value>Trimestre en cours</value>
+  </data>
+  <data name="PeriodCurrentYear" xml:space="preserve">
+    <value>Année en cours</value>
+  </data>
+  <data name="PeriodLastDay" xml:space="preserve">
+    <value>{0} derniers jours</value>
+  </data>
+  <data name="PeriodLastMonth" xml:space="preserve">
+    <value>{0} derniers mois</value>
+  </data>
+  <data name="PeriodLastQuarter" xml:space="preserve">
+    <value>{0} derniers trimestres</value>
+  </data>
+  <data name="PeriodLastYear" xml:space="preserve">
+    <value>{0} dernières années</value>
+  </data>
+  <data name="PeriodPreviousDay" xml:space="preserve">
+    <value>{0} jours précédents</value>
+  </data>
+  <data name="PeriodPreviousMonth" xml:space="preserve">
+    <value>{0} mois précédents</value>
+  </data>
+  <data name="PeriodPreviousQuarter" xml:space="preserve">
+    <value>{0} trimestres précédents</value>
+  </data>
+  <data name="PeriodPreviousYear" xml:space="preserve">
+    <value>{0} années précédentes</value>
+  </data>
+  <data name="PeriodPreviousOneDay" xml:space="preserve">
+    <value>Hier</value>
+  </data>
+  <data name="PeriodPreviousOneMonth" xml:space="preserve">
+    <value>Mois précédent</value>
+  </data>
+  <data name="PeriodPreviousOneQuarter" xml:space="preserve">
+    <value>Trimestre précédent</value>
+  </data>
+  <data name="PeriodPreviousOneYear" xml:space="preserve">
+    <value>Année précédente</value>
+  </data>
+  <data name="ReportPeriodOnNonDate" xml:space="preserve">
+    <value>{0} : filtre de période sur &apos;{1}&apos;, qui n&apos;est pas une date.</value>
+  </data>
+  <data name="TimePreviousYear" xml:space="preserve">
+    <value>{0} N-1</value>
+  </data>
+  <data name="TimeChangeFromPreviousYear" xml:space="preserve">
+    <value>{0}, évolution vs N-1</value>
+  </data>
+  <data name="TimePercentChangeFromPreviousYear" xml:space="preserve">
+    <value>{0}, évolution % vs N-1</value>
+  </data>
+  <data name="TimeYearToDate" xml:space="preserve">
+    <value>{0}, cumul annuel</value>
+  </data>
 </root>
