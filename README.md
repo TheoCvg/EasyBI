@@ -18,6 +18,8 @@ end users build their visuals by drag-and-drop, and rendering is delegated to in
 | `EasyBI.Wpf` | `IVisualRenderer`, `EasyBIContext`, `VisualView`, `ReportDesigner`, `FilterBar`, dashboard (`DashboardPanel`, `DashboardView`, behaviors), built-in KPI, Table, Text and Image renderers | Core + Microsoft.Xaml.Behaviors.Wpf |
 | `EasyBI.Renderers.LiveCharts2` | LiveCharts2 connector (bars, stacked bars, lines, areas, points, combined charts, pies) | Wpf + LiveCharts2 |
 | `EasyBI.Renderers.OxyPlot` | OxyPlot connector (bars, stacked bars, lines, areas, points, combined charts, pies) | Wpf + OxyPlot |
+| `EasyBI.Themes.MaterialDesign` | EasyBI follows a Material Design in XAML theme | Wpf + MaterialDesignThemes |
+| `EasyBI.Themes.WpfUi` | EasyBI follows a WPF UI (lepoco) theme | Wpf + WPF-UI |
 | `samples/EasyBI.Sample` | Demo: dashboard + designer + renderer switch + JSON save/load | |
 | `tests/EasyBI.Core.Tests` | Engine, filtering and serialization tests | |
 | `tests/EasyBI.Wpf.Tests` | Designer and dashboard tests | |
@@ -27,6 +29,7 @@ end users build their visuals by drag-and-drop, and rendering is delegated to in
 ```
 dotnet add package EasyBI.Wpf
 dotnet add package EasyBI.Renderers.LiveCharts2   # and/or EasyBI.Renderers.OxyPlot
+dotnet add package EasyBI.Themes.WpfUi            # optional: if the application uses WPF UI or Material Design
 ```
 
 `EasyBI.Wpf` brings `EasyBI.Core` and `EasyBI.Abstractions`. Every public WPF type is available
@@ -335,6 +338,41 @@ implicit styles, so a control library (WPF UI, Material Design...) styles them t
 color EasyBI's surfaces, text and charts, not the standard controls: with the dark theme and no control library, they
 keep the system's light look.
 
+### Following a control library
+
+With WPF UI or Material Design in XAML, install the matching package and merge its dictionary **after** the library's:
+EasyBI's surfaces, text, accent and charts then take the library's colors, light or dark, and follow its theme switches
+(`ApplicationThemeManager.Apply`, `PaletteHelper.SetTheme`). Its classes are in the `bi:` XAML namespace.
+
+```xml
+<!-- dotnet add package EasyBI.Themes.WpfUi -->
+<ResourceDictionary.MergedDictionaries>
+    <ui:ThemesDictionary Theme="Dark" />
+    <ui:ControlsDictionary />
+    <bi:WpfUiTheme />
+</ResourceDictionary.MergedDictionaries>
+
+<!-- dotnet add package EasyBI.Themes.MaterialDesign -->
+<ResourceDictionary.MergedDictionaries>
+    <md:BundledTheme BaseTheme="Dark" PrimaryColor="DeepPurple" SecondaryColor="Lime" />
+    <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+    <bi:MaterialDesignTheme />
+</ResourceDictionary.MergedDictionaries>
+```
+
+`WpfUiTheme.Map` and `MaterialDesignTheme.Map` list which library resource each EasyBI key takes. For another library
+or an application's own design system, derive from `EasyBIThemeMapping` and map the keys you need; unmapped keys keep
+EasyBI's light values, and the chart palette follows the mapped background (light or dark palette). If the library
+switches theme by swapping dictionaries without notifying, call `Refresh()` on the mapping afterwards.
+
+```csharp
+public sealed class MyTheme() : EasyBIThemeMapping(new Dictionary<ComponentResourceKey, object>
+{
+    [EasyBITheme.BackgroundBrushKey] = "MyWindowBrush",
+    [EasyBITheme.AccentBrushKey] = "MyPrimaryBrush",
+});
+```
+
 ### Charts
 
 `VisualView` passes the theme to renderers in `RenderRequest.Theme` (`BiTheme`): the palette, and the `Foreground`,
@@ -486,5 +524,6 @@ See [AGENTS.md](AGENTS.md) for the code style, language rules and Git workflow.
   key, sort on an aggregate, projection to `object[]`) still has to be validated against a real database.
 - At most 4 grouping dimensions (axis + legend).
 - The built-in light and dark themes do not restyle standard controls (buttons, combo boxes...): use a control
-  library for those (see [Theming](#theming)).
+  library for those (see [Following a control library](#following-a-control-library)).
+- `EasyBI.Themes.WpfUi` is checked against WPF UI's light and dark themes; its high contrast themes are not verified.
 - Dashboard images are embedded in the file (2 MB by default, `DashboardView.MaxImageBytes`).

@@ -28,6 +28,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\EasyBI.Wpf\EasyBI.Wpf.csproj" />
+    <ProjectReference Include="..\..\src\EasyBI.Themes.MaterialDesign\EasyBI.Themes.MaterialDesign.csproj" />
+    <ProjectReference Include="..\..\src\EasyBI.Themes.WpfUi\EasyBI.Themes.WpfUi.csproj" />
   </ItemGroup>
 
 </Project>
