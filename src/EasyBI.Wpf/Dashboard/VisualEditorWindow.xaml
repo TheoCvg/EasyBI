@@ -4,15 +4,16 @@
         xmlns:bi="clr-namespace:EasyBI.Wpf"
         xmlns:designer="clr-namespace:EasyBI.Wpf.Designer"
         Title="{bi:Localize EditorTitle}" Width="1100" Height="720" MinWidth="700" MinHeight="450"
-        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Background="White" FontFamily="Segoe UI">
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource {x:Static bi:EasyBITheme.BackgroundBrushKey}}" Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}">
     <DockPanel>
-        <Border DockPanel.Dock="Bottom" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0" Padding="12,8">
+        <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="0,1,0,0" Padding="12,8">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <Button Content="{bi:Localize Ok}" IsDefault="True" MinWidth="90" Padding="12,4" Click="OnOk" />
                     <Button Content="{bi:Localize Cancel}" IsCancel="True" MinWidth="90" Padding="12,4" Margin="8,0,0,0" />
                 </StackPanel>
-                <TextBlock x:Name="Problem" Foreground="Firebrick" VerticalAlignment="Center" TextWrapping="Wrap" />
+                <TextBlock x:Name="Problem" Foreground="{DynamicResource {x:Static bi:EasyBITheme.ErrorBrushKey}}" VerticalAlignment="Center" TextWrapping="Wrap" />
             </DockPanel>
         </Border>
         <designer:ReportDesigner x:Name="Designer" />

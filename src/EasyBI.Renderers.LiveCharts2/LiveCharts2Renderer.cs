@@ -39,22 +39,24 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         var series = chart.Series.Select((s, i) => CreateSeries(s, Color(request.Theme, i))).ToArray();
         var hasSecondary = chart.Series.Any(s => s.SecondaryAxis);
 
-        var categoryAxis = new Axis
+        var theme = request.Theme;
+        var categoryAxis = Themed(new Axis
         {
             Labels = chart.Categories.ToArray(),
             Name = chart.CategoryCaption,
             NameTextSize = 13,
             TextSize = 12,
-        };
+        }, theme);
         var view = new CartesianChart
         {
             Series = series,
             XAxes = [categoryAxis],
             YAxes = hasSecondary
-                ? [ValueAxis(chart, secondary: false), ValueAxis(chart, secondary: true)]
-                : [ValueAxis(chart, secondary: false)],
+                ? [ValueAxis(chart, theme, secondary: false), ValueAxis(chart, theme, secondary: true)]
+                : [ValueAxis(chart, theme, secondary: false)],
             LegendPosition = chart.Series.Count > 1 ? LegendPosition.Right : LegendPosition.Hidden,
         };
+        ApplyTheme(view, theme);
         // Legend, labels and axis title adapt to the room the chart actually gets
         view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, chart);
 
@@ -100,7 +102,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
     };
 
     /// <summary>A value axis formatted like the first series drawn against it.</summary>
-    private static Axis ValueAxis(ChartData chart, bool secondary)
+    private static Axis ValueAxis(ChartData chart, BiTheme theme, bool secondary)
     {
         var series = chart.Series.Where(s => s.SecondaryAxis == secondary).ToList();
         var format = series.FirstOrDefault()?.Format;
@@ -108,16 +110,40 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         var barsFromZero = series.Count > 0
             && series.All(s => s.Mark is MarkType.Bar or MarkType.StackedBar)
             && series.SelectMany(s => s.Values).All(v => v is null or >= 0);
-        return new Axis
+        return Themed(new Axis
         {
             MinLimit = barsFromZero ? 0 : null,
             Labeler = value => ValueFormatter.Format(value, format),
             TextSize = 12,
             Position = secondary ? AxisPosition.End : AxisPosition.Start,
             // Grid lines come from the left axis only, so that the two scales do not draw two grids
-            SeparatorsPaint = secondary ? null : new SolidColorPaint(new SKColor(0xE5, 0xE7, 0xEB)),
-        };
+            SeparatorsPaint = secondary ? null : new SolidColorPaint(Parse(theme.GridLine) ?? new SKColor(0xE5, 0xE7, 0xEB)),
+        }, theme);
     }
+
+    /// <summary>Axis labels and title in the theme's colors (the library's defaults when the theme has none).</summary>
+    private static Axis Themed(Axis axis, BiTheme theme)
+    {
+        if (Parse(theme.MutedForeground) is { } labels) axis.LabelsPaint = new SolidColorPaint(labels);
+        if (Parse(theme.Foreground ?? theme.MutedForeground) is { } name) axis.NamePaint = new SolidColorPaint(name);
+        return axis;
+    }
+
+    /// <summary>Legend and tooltips in the theme's colors.</summary>
+    private static void ApplyTheme(System.Windows.Controls.Control view, BiTheme theme)
+    {
+        // The chart is drawn on the visual's own background
+        view.Background = System.Windows.Media.Brushes.Transparent;
+        if (view is not LiveChartsCore.Kernel.Sketches.IChartView chart) return;
+        if (Parse(theme.Foreground) is { } text)
+        {
+            chart.LegendTextPaint = new SolidColorPaint(text);
+            chart.TooltipTextPaint = new SolidColorPaint(text);
+        }
+        if (Parse(theme.Background) is { } background) chart.TooltipBackgroundPaint = new SolidColorPaint(background);
+    }
+
+    private static SKColor? Parse(string? color) => color is null ? null : SKColor.Parse(color);
 
     private static ISeries CreateSeries(ChartSeries source, SKColor color)
     {
@@ -195,6 +221,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         }
 
         var view = new PieChart { Series = slices.Keys.ToArray(), LegendPosition = LegendPosition.Right };
+        ApplyTheme(view, request.Theme);
         // Legend and donut hole adapt to the room the chart actually gets
         view.SizeChanged += (_, _) => FitPie(view, slices.Keys, chart);
         if (request.Select is { } select)

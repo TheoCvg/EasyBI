@@ -5,24 +5,30 @@
                     xmlns:behaviors="clr-namespace:EasyBI.Wpf.Dashboard.Behaviors"
                     xmlns:dnd="clr-namespace:EasyBI.Wpf.DragAndDrop">
 
+    <!-- Default values of the EasyBITheme keys: the light theme -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/Light.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
     <!-- Dashboard item: a card showing its visual, or the choices of an empty item -->
     <Style TargetType="local:DashboardItem">
-        <Setter Property="Background" Value="White" />
-        <Setter Property="BorderBrush" Value="#E5E7EB" />
+        <Setter Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" />
         <Setter Property="BorderThickness" Value="1" />
         <!-- The top padding leaves room for the grip and the toolbar shown on hover -->
         <Setter Property="Padding" Value="12,24,12,12" />
+        <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="local:DashboardItem">
                     <Grid>
                         <Border x:Name="Card" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{DynamicResource {x:Static bi:EasyBITheme.CornerRadiusKey}}"
                                 Padding="{TemplateBinding Padding}" ClipToBounds="True">
                             <Grid>
                                 <bi:VisualView x:Name="View" Definition="{TemplateBinding Visual}" Context="{TemplateBinding Context}" />
                                 <TextBlock x:Name="TextPlaceholder" Visibility="Collapsed" Text="{bi:Localize TextPlaceholder}"
-                                           Foreground="#9CA3AF" FontStyle="Italic" IsHitTestVisible="False" />
+                                           Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" FontStyle="Italic" IsHitTestVisible="False" />
                                 <WrapPanel x:Name="Choices" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <Button Content="{bi:Localize AddVisual}" Margin="4" Padding="12,6" Cursor="Hand"
                                             Command="{x:Static local:DashboardCommands.AddVisual}"
@@ -41,8 +47,8 @@
                         <Trigger Property="Kind" Value="Empty">
                             <Setter TargetName="View" Property="Visibility" Value="Collapsed" />
                             <Setter TargetName="Choices" Property="Visibility" Value="Visible" />
-                            <Setter TargetName="Card" Property="BorderBrush" Value="#C9CED6" />
-                            <Setter TargetName="Card" Property="Background" Value="#FAFBFC" />
+                            <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.BorderStrongBrushKey}}" />
+                            <Setter TargetName="Card" Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.SurfaceAltBrushKey}}" />
                         </Trigger>
                         <MultiDataTrigger>
                             <MultiDataTrigger.Conditions>
@@ -70,13 +76,13 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bg" Background="#2E6BE6" CornerRadius="11">
-                        <TextBlock Text="+" Foreground="White" FontSize="16" FontWeight="Bold"
+                    <Border x:Name="Bg" Background="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" CornerRadius="11">
+                        <TextBlock Text="+" Foreground="{DynamicResource {x:Static bi:EasyBITheme.AccentForegroundBrushKey}}" FontSize="16" FontWeight="Bold"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="#1E4FBF" />
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentHoverBrushKey}}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -91,19 +97,19 @@
         <Setter Property="Margin" Value="1,0,0,0" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Focusable" Value="False" />
-        <Setter Property="Foreground" Value="#6B7280" />
+        <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bg" Background="#F2FFFFFF" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                    <Border x:Name="Bg" Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" CornerRadius="4" Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="#E5E7EB" />
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.HoverBrushKey}}" />
                         </Trigger>
                         <Trigger Property="Tag" Value="Active">
-                            <Setter Property="Foreground" Value="#2E6BE6" />
+                            <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
                             <Setter Property="FontWeight" Value="Bold" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -119,7 +125,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ContentControl">
                     <Border Background="Transparent" Padding="4,0">
-                        <TextBlock Text="⠿" FontSize="16" Foreground="#6B7280" />
+                        <TextBlock Text="⠿" FontSize="16" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
                     </Border>
                 </ControlTemplate>
             </Setter.Value>
@@ -133,7 +139,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ContentControl">
                     <Border Background="Transparent" Width="18" Height="18">
-                        <TextBlock Text="◢" FontSize="11" Foreground="#6B7280"
+                        <TextBlock Text="◢" FontSize="11" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}"
                                    HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,3,1" />
                     </Border>
                 </ControlTemplate>
@@ -148,17 +154,17 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Grid Background="Transparent">
-                        <Rectangle x:Name="Frame" Stroke="#C9CED6" StrokeThickness="1.5" StrokeDashArray="4 3" RadiusX="8" RadiusY="8" />
-                        <Border x:Name="Plus" Width="28" Height="28" CornerRadius="14" Background="#2E6BE6" Opacity="0"
+                        <Rectangle x:Name="Frame" Stroke="{DynamicResource {x:Static bi:EasyBITheme.BorderStrongBrushKey}}" StrokeThickness="1.5" StrokeDashArray="4 3" RadiusX="8" RadiusY="8" />
+                        <Border x:Name="Plus" Width="28" Height="28" CornerRadius="14" Background="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" Opacity="0"
                                 HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <TextBlock Text="+" Foreground="White" FontSize="18" FontWeight="Bold"
+                            <TextBlock Text="+" Foreground="{DynamicResource {x:Static bi:EasyBITheme.AccentForegroundBrushKey}}" FontSize="18" FontWeight="Bold"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" />
                         </Border>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Frame" Property="Stroke" Value="#2E6BE6" />
-                            <Setter TargetName="Frame" Property="Fill" Value="#0A2E6BE6" />
+                            <Setter TargetName="Frame" Property="Stroke" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
+                            <Setter TargetName="Frame" Property="Fill" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBrushKey}}" />
                             <Setter TargetName="Plus" Property="Opacity" Value="1" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -171,7 +177,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ContentControl">
-                    <Rectangle Fill="#142E6BE6" Stroke="#2E6BE6" StrokeThickness="2" StrokeDashArray="4 3" RadiusX="8" RadiusY="8" />
+                    <Rectangle Fill="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBrushKey}}" Stroke="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" StrokeThickness="2" Opacity="0.9" StrokeDashArray="4 3" RadiusX="8" RadiusY="8" />
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -199,7 +205,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ContentControl">
-                    <Border Background="White" BorderBrush="#2E6BE6" BorderThickness="1" CornerRadius="6" Padding="4,2">
+                    <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" BorderThickness="1" CornerRadius="6" Padding="4,2">
                         <Border.Effect>
                             <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.25" />
                         </Border.Effect>
@@ -211,7 +217,7 @@
     </Style>
 
     <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type dnd:DropTarget}, ResourceId=InsertionLine}" TargetType="Border">
-        <Setter Property="Background" Value="#2E6BE6" />
+        <Setter Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
         <Setter Property="CornerRadius" Value="1" />
     </Style>
 </ResourceDictionary>

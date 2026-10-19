@@ -15,7 +15,9 @@ namespace EasyBI.Wpf;
 /// </summary>
 /// <remarks>
 /// The last result is cached: changing the renderer, theme, visual type or title redraws
-/// without querying the source again. With a <see cref="FilterContext"/> (inherited property,
+/// without querying the source again. Charts take their colors from the <see cref="EasyBITheme"/> resources
+/// (palette, text, grid lines, background), and redraw when the theme changes; a palette set on
+/// <see cref="EasyBIContext.Theme"/> takes precedence over the resources'. With a <see cref="FilterContext"/> (inherited property,
 /// set once on the dashboard container), the visual applies the global filters and becomes
 /// interactive: clicking an element filters the other visuals.
 /// </remarks>
@@ -37,12 +39,22 @@ public class VisualView : ContentControl
         nameof(FilterContext), typeof(FilterContext), typeof(VisualView),
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.Inherits, OnFilterContextChanged));
 
+    // Follow the theme: these properties take the theme's resources, and redraw the chart when they change
+    private static readonly DependencyProperty ForegroundProbeProperty = DependencyProperty.Register(
+        "ForegroundProbe", typeof(object), typeof(VisualView), new PropertyMetadata(null, OnThemeChanged));
+
+    private static readonly DependencyProperty PaletteProbeProperty = DependencyProperty.Register(
+        "PaletteProbe", typeof(object), typeof(VisualView), new PropertyMetadata(null, OnThemeChanged));
+
     private CancellationTokenSource? _pending;
+    private bool _redrawQueued;
     private RenderRequest? _last;
     private string? _lastQueryKey;
 
     public VisualView()
     {
+        SetResourceReference(ForegroundProbeProperty, EasyBITheme.ForegroundBrushKey);
+        SetResourceReference(PaletteProbeProperty, EasyBITheme.ChartPaletteKey);
         Loaded += (_, _) =>
         {
             Subscribe(Context, FilterContext);
@@ -89,6 +101,21 @@ public class VisualView : ContentControl
 
     /// <summary>Name of the renderer used for the last rendering (useful for debugging).</summary>
     public string? RenderedBy { get; private set; }
+
+    private static void OnThemeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        // Both probes change together when a theme is swapped: one redraw
+        var view = (VisualView)d;
+        if (view._redrawQueued) return;
+        view._redrawQueued = true;
+        view.Dispatcher.InvokeAsync(() =>
+        {
+            view._redrawQueued = false;
+            view.Draw();
+        });
+    }
+
+    private BiTheme ChartTheme(EasyBIContext context) => EasyBITheme.ChartTheme(this, context.Theme);
 
     private static void OnFilterContextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -153,7 +180,7 @@ public class VisualView : ContentControl
         {
             // Text and image: nothing to query
             Cancel();
-            _last = VisualPipeline.PrepareContent(visual, context.Theme);
+            _last = VisualPipeline.PrepareContent(visual, ChartTheme(context));
             Draw();
             return;
         }
@@ -179,7 +206,7 @@ public class VisualView : ContentControl
         try
         {
             var model = context.GetModel(visual.Model);
-            var request = await VisualPipeline.PrepareAsync(model, effective, context.Theme, cts.Token);
+            var request = await VisualPipeline.PrepareAsync(model, effective, ChartTheme(context), cts.Token);
             if (cts.IsCancellationRequested) return;
             _last = request;
             _pending = null;
@@ -194,7 +221,7 @@ public class VisualView : ContentControl
             {
                 _last = null;
                 _lastQueryKey = null;
-                Show(visual, Message(Strings.Format(Strings.Error, ex.Message), Brushes.Firebrick));
+                Show(visual, Message(Strings.Format(Strings.Error, ex.Message), EasyBITheme.ErrorBrushKey));
             }
         }
         finally
@@ -225,7 +252,7 @@ public class VisualView : ContentControl
         }
 
         var filters = FilterContext;
-        var request = VisualPipeline.Redraw(_last, filters?.Apply(visual) ?? visual) with { Theme = context.Theme };
+        var request = VisualPipeline.Redraw(_last, filters?.Apply(visual) ?? visual) with { Theme = ChartTheme(context) };
         if (filters is not null)
             request = request with { Select = selection => filters.Select(request, selection) };
 
@@ -236,7 +263,7 @@ public class VisualView : ContentControl
         }
         catch (Exception ex)
         {
-            Show(visual, Message(Strings.Format(Strings.Error, ex.Message), Brushes.Firebrick));
+            Show(visual, Message(Strings.Format(Strings.Error, ex.Message), EasyBITheme.ErrorBrushKey));
         }
     }
 
@@ -297,20 +324,27 @@ public class VisualView : ContentControl
             Margin = new Thickness(4, 0, 4, 6),
             Padding = new Thickness(10, 2, 4, 2),
             CornerRadius = new CornerRadius(11),
-            Background = new SolidColorBrush(Color.FromRgb(0xE3, 0xEC, 0xFD)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(0xC3, 0xD5, 0xFA)),
             BorderThickness = new Thickness(1),
-        };
+        }.Themed(Border.BackgroundProperty, EasyBITheme.AccentSoftBrushKey).Themed(Border.BorderBrushProperty, EasyBITheme.AccentSoftBorderBrushKey);
     }
 
-    private static TextBlock Message(string text, Brush? brush = null) => new()
+    private static TextBlock Message(string text, ComponentResourceKey? brush = null) => new TextBlock
     {
         Text = text,
-        Foreground = brush ?? Brushes.Gray,
         TextWrapping = TextWrapping.Wrap,
         TextAlignment = TextAlignment.Center,
         HorizontalAlignment = HorizontalAlignment.Center,
         VerticalAlignment = VerticalAlignment.Center,
         Margin = new Thickness(16),
-    };
+    }.Themed(TextBlock.ForegroundProperty, brush ?? EasyBITheme.MutedForegroundBrushKey);
+}
+
+internal static class ThemeExtensions
+{
+    /// <summary>Binds a property to a theme resource (dynamically, so that it follows theme changes).</summary>
+    public static T Themed<T>(this T element, DependencyProperty property, ComponentResourceKey key) where T : FrameworkElement
+    {
+        element.SetResourceReference(property, key);
+        return element;
+    }
 }

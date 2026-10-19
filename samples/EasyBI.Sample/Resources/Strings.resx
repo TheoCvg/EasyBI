@@ -126,4 +126,16 @@
   <data name="DashboardNote" xml:space="preserve">
     <value>Revenue is shown excluding tax. Use the ⋮ menu of a band to switch between grid, horizontal scroll and wrap.</value>
   </data>
+  <data name="Theme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="ThemeLibrary" xml:space="preserve">
+    <value>Style</value>
+  </data>
+  <data name="ThemeLight" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="ThemeDark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
 </root>

@@ -23,9 +23,24 @@ public sealed record ChartData(string? CategoryCaption, IReadOnlyList<string> Ca
     public IReadOnlyList<IReadOnlyList<object?>> CategoryValues { get; init; } = [];
 }
 
-/// <summary>Palette shared by all renderers (hexadecimal #RRGGBB colors).</summary>
+/// <summary>
+/// Colors shared by all renderers, as hexadecimal #RRGGBB or #AARRGGBB strings: the series palette, and the colors of
+/// the chart's text, axes, grid lines and background. A null color lets the renderer use its own default.
+/// </summary>
 public sealed record BiTheme(IReadOnlyList<string> Palette)
 {
+    /// <summary>Text of legends, titles and tooltips.</summary>
+    public string? Foreground { get; init; }
+
+    /// <summary>Axis labels and other secondary text.</summary>
+    public string? MutedForeground { get; init; }
+
+    /// <summary>Grid lines and axis lines.</summary>
+    public string? GridLine { get; init; }
+
+    /// <summary>What the chart is drawn on (tooltips, slice borders).</summary>
+    public string? Background { get; init; }
+
     public static BiTheme Default { get; } = new([
         "#2E6BE6", "#E8833A", "#2BA37B", "#D64550", "#8A5CD6",
         "#C9A227", "#3AA6C9", "#8C6D52", "#D46BAE", "#6B7A8F"]);

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\EasyBI.Wpf\EasyBI.Wpf.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MaterialDesignThemes" Version="5.3.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="EasyBI.Wpf.Tests" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Description>Material Design in XAML theme for EasyBI.Wpf: EasyBI's colors follow the Material Design theme, light or dark, and its controls take Material Design's styles.</Description>
+    <PackageTags>$(PackageTags);materialdesign;material;theme</PackageTags>
+  </PropertyGroup>
+
+</Project>

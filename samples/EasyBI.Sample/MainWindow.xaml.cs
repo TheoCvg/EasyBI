@@ -48,6 +48,12 @@ public partial class MainWindow : Window
     /// <summary>Global filters and cross-filtering of the dashboard.</summary>
     public FilterContext Filters { get; } = new();
 
+    private void OnThemeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (IsLoaded && LibraryPicker.SelectedItem is ComboBoxItem { Tag: string library } && ThemePicker.SelectedItem is ComboBoxItem { Tag: string mode })
+            App.SetTheme(Enum.Parse<ThemeLibrary>(library), Enum.Parse<EasyBIThemeMode>(mode));
+    }
+
     private void OnRendererChanged(object sender, SelectionChangedEventArgs e) =>
         Context.ActiveRenderer = (IVisualRenderer?)RendererPicker.SelectedItem;
 

@@ -126,4 +126,16 @@
   <data name="DashboardNote" xml:space="preserve">
     <value>Le chiffre d'affaires est affiché hors taxes. Le menu ⋮ d'une bande permet de passer en grille, défilement horizontal ou retour à la ligne.</value>
   </data>
+  <data name="Theme" xml:space="preserve">
+    <value>Thème</value>
+  </data>
+  <data name="ThemeLibrary" xml:space="preserve">
+    <value>Style</value>
+  </data>
+  <data name="ThemeLight" xml:space="preserve">
+    <value>Clair</value>
+  </data>
+  <data name="ThemeDark" xml:space="preserve">
+    <value>Sombre</value>
+  </data>
 </root>
