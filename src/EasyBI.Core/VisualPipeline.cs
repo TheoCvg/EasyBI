@@ -56,7 +56,7 @@ public static class VisualPipeline
         IEnumerable<CalculatedMeasure>? measures = null,
         CancellationToken cancellationToken = default)
     {
-        var result = await model.ExecuteAsync(visual.ToQuery(measures), cancellationToken).ConfigureAwait(false);
+        var result = await model.ExecuteWithTimeAsync(visual.ToQuery(measures), cancellationToken).ConfigureAwait(false);
         return new RenderRequest(visual, result, ChartDataBuilder.Build(visual, result), theme ?? BiTheme.Default);
     }
 }
