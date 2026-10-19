@@ -8,6 +8,10 @@
     <PackageReference Include="MaterialDesignThemes" Version="5.3.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="EasyBI.Wpf.Tests" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>

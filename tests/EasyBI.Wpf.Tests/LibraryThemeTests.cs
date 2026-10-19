@@ -42,6 +42,25 @@ public class LibraryThemeTests
         AssertMapsEveryBrush(MaterialDesignTheme.Map, library, $"Material Design {baseTheme}");
     });
 
+    [Fact]
+    public void Material_design_theme_switches_are_followed() => Sta.Run(() =>
+    {
+        var library = new ResourceDictionary();
+        library.MergedDictionaries.Add(new BundledTheme { BaseTheme = BaseTheme.Light, PrimaryColor = PrimaryColor.DeepPurple, SecondaryColor = SecondaryColor.Lime });
+        var element = new System.Windows.Controls.Border();
+        element.Resources.MergedDictionaries.Add(new MaterialDesignTheme(library));
+        element.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, EasyBITheme.BackgroundBrushKey);
+        var light = ((SolidColorBrush)element.Background).Color;
+
+        // What PaletteHelper.SetTheme does: new (frozen) brushes under the same keys
+        var theme = library.GetTheme();
+        theme.SetBaseTheme(BaseTheme.Dark);
+        library.SetTheme(theme);
+
+        Assert.Equal(((SolidColorBrush)library["MaterialDesign.Brush.Background"]).Color, ((SolidColorBrush)element.Background).Color);
+        Assert.NotEqual(light, ((SolidColorBrush)element.Background).Color);
+    });
+
     [Theory]
     [InlineData(ApplicationTheme.Light)]
     [InlineData(ApplicationTheme.Dark)]
