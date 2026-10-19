@@ -135,4 +135,67 @@
   <data name="ReportInvalidFormula" xml:space="preserve">
     <value>{0}: {1}</value>
   </data>
+  <data name="PeriodAny" xml:space="preserve">
+    <value>Any date</value>
+  </data>
+  <data name="PeriodBetween" xml:space="preserve">
+    <value>{0} – {1}</value>
+  </data>
+  <data name="PeriodSince" xml:space="preserve">
+    <value>Since {0}</value>
+  </data>
+  <data name="PeriodUntil" xml:space="preserve">
+    <value>Until {0}</value>
+  </data>
+  <data name="PeriodCurrentDay" xml:space="preserve">
+    <value>Today</value>
+  </data>
+  <data name="PeriodCurrentMonth" xml:space="preserve">
+    <value>This month</value>
+  </data>
+  <data name="PeriodCurrentQuarter" xml:space="preserve">
+    <value>This quarter</value>
+  </data>
+  <data name="PeriodCurrentYear" xml:space="preserve">
+    <value>This year</value>
+  </data>
+  <data name="PeriodLastDay" xml:space="preserve">
+    <value>Last {0} days</value>
+  </data>
+  <data name="PeriodLastMonth" xml:space="preserve">
+    <value>Last {0} months</value>
+  </data>
+  <data name="PeriodLastQuarter" xml:space="preserve">
+    <value>Last {0} quarters</value>
+  </data>
+  <data name="PeriodLastYear" xml:space="preserve">
+    <value>Last {0} years</value>
+  </data>
+  <data name="PeriodPreviousDay" xml:space="preserve">
+    <value>Previous {0} days</value>
+  </data>
+  <data name="PeriodPreviousMonth" xml:space="preserve">
+    <value>Previous {0} months</value>
+  </data>
+  <data name="PeriodPreviousQuarter" xml:space="preserve">
+    <value>Previous {0} quarters</value>
+  </data>
+  <data name="PeriodPreviousYear" xml:space="preserve">
+    <value>Previous {0} years</value>
+  </data>
+  <data name="PeriodPreviousOneDay" xml:space="preserve">
+    <value>Yesterday</value>
+  </data>
+  <data name="PeriodPreviousOneMonth" xml:space="preserve">
+    <value>Last month</value>
+  </data>
+  <data name="PeriodPreviousOneQuarter" xml:space="preserve">
+    <value>Last quarter</value>
+  </data>
+  <data name="PeriodPreviousOneYear" xml:space="preserve">
+    <value>Last year</value>
+  </data>
+  <data name="ReportPeriodOnNonDate" xml:space="preserve">
+    <value>{0}: period filter on &apos;{1}&apos;, which is not a date.</value>
+  </data>
 </root>

@@ -42,15 +42,7 @@
                            PlacementTarget="{Binding ElementName=Toggle}" Placement="Bottom" AllowsTransparency="True">
                         <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="1"
                                 CornerRadius="6" Padding="8" MaxHeight="300" MinWidth="160">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding Filter.Values}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}" Margin="0,2" />
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
+                            <designer:FilterEditor DataContext="{Binding Filter}" />
                         </Border>
                     </Popup>
                     <Button Style="{StaticResource ChipButton}" Click="OnRemoveSlicer" ToolTip="{bi:Localize RemoveFilter}" />

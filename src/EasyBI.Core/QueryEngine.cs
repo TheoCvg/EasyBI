@@ -190,6 +190,11 @@ internal static class QueryEngine<T>
         foreach (var filter in filters)
         {
             var field = RequireKind(metadata.GetField(filter.Field), FieldKind.Dimension);
+            if (filter.Operator.IsPeriod())
+            {
+                source = source.Where(InPeriod(field, Rebind(selectors[field.Name], parameter), filter, parameter));
+                continue;
+            }
             var selector = ApplyGrain(field, Rebind(selectors[field.Name], parameter), filter.Grain);
             var valueType = selector.Type;
             var acceptsNull = !valueType.IsValueType || Nullable.GetUnderlyingType(valueType) is not null;
@@ -208,6 +213,35 @@ internal static class QueryEngine<T>
             source = source.Where(Expression.Lambda<Func<T, bool>>(body, parameter));
         }
         return source;
+    }
+
+    /// <summary>
+    /// date &gt;= start AND date &lt; end, resolved today. The date itself is compared, not a period key, so that a
+    /// database can use an index on it.
+    /// </summary>
+    private static Expression<Func<T, bool>> InPeriod(FieldDescriptor field, Expression date, FilterSpec filter, ParameterExpression parameter)
+    {
+        if (field.DataType != DataType.Date)
+            throw new InvalidOperationException($"A period filter requires a date dimension ('{field.Name}').");
+        var (start, end) = PeriodFilters.Range(filter, DateOnly.FromDateTime(DateTime.Today));
+        Expression? body = null;
+        if (start is { } from) body = Expression.GreaterThanOrEqual(date, Bound(from, date.Type));
+        if (end is { } to)
+        {
+            var before = Expression.LessThan(date, Bound(to, date.Type));
+            body = body is null ? before : Expression.AndAlso(body, before);
+        }
+        return Expression.Lambda<Func<T, bool>>(body ?? Expression.Constant(true), parameter);
+    }
+
+    private static ConstantExpression Bound(DateTime day, Type dateType)
+    {
+        var type = Nullable.GetUnderlyingType(dateType) ?? dateType;
+        // Boxed one by one: a conditional would turn the DateTime into a DateTimeOffset
+        object value = type == typeof(DateOnly) ? (object)DateOnly.FromDateTime(day)
+            : type == typeof(DateTimeOffset) ? (object)new DateTimeOffset(day)
+            : day;
+        return Expression.Constant(value, dateType);
     }
 
     private static Expression ApplyGrain(FieldDescriptor field, Expression body, DateGrain grain)

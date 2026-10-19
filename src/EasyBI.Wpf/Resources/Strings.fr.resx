@@ -258,4 +258,28 @@
   <data name="DeleteMeasureConfirm" xml:space="preserve">
     <value>Supprimer la mesure « {0} » ? Les visuels qui l&apos;affichent indiqueront une erreur.</value>
   </data>
+  <data name="PeriodKindAny" xml:space="preserve">
+    <value>Toutes les dates</value>
+  </data>
+  <data name="PeriodKindBetween" xml:space="preserve">
+    <value>Entre deux dates</value>
+  </data>
+  <data name="PeriodKindCurrent" xml:space="preserve">
+    <value>Période en cours</value>
+  </data>
+  <data name="PeriodKindLast" xml:space="preserve">
+    <value>Dernières périodes, en cours incluse</value>
+  </data>
+  <data name="PeriodKindPrevious" xml:space="preserve">
+    <value>Périodes complètes précédentes</value>
+  </data>
+  <data name="PeriodFrom" xml:space="preserve">
+    <value>Du</value>
+  </data>
+  <data name="PeriodTo" xml:space="preserve">
+    <value>Au</value>
+  </data>
+  <data name="PeriodCount" xml:space="preserve">
+    <value>Nombre</value>
+  </data>
 </root>
