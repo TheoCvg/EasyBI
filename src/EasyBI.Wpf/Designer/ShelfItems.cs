@@ -29,8 +29,19 @@ public sealed class ShelfItemViewModel : ObservableObject
         new(MarkType.Scatter, () => Strings.MarkScatter),
     ];
 
+    /// <summary>How a measure can be seen through time.</summary>
+    public static IReadOnlyList<Option<TimeCalculation>> TimeOptions { get; } =
+    [
+        new(TimeCalculation.None, () => Strings.TimeNone),
+        new(TimeCalculation.PreviousYear, () => Strings.TimePreviousYear),
+        new(TimeCalculation.ChangeFromPreviousYear, () => Strings.TimeChangeFromPreviousYear),
+        new(TimeCalculation.PercentChangeFromPreviousYear, () => Strings.TimePercentChangeFromPreviousYear),
+        new(TimeCalculation.YearToDate, () => Strings.TimeYearToDate),
+    ];
+
     private readonly Action _changed;
     private DateGrain _grain;
+    private TimeCalculation _time;
     private Aggregation _aggregation;
     private MarkType? _seriesMark;
     private bool _secondaryAxis;
@@ -52,6 +63,15 @@ public sealed class ShelfItemViewModel : ObservableObject
     public string Caption => Field.Caption;
 
     public bool HasGrain => Field.Kind == FieldKind.Dimension && Field.DataType == DataType.Date;
+
+    /// <summary>A measure of the Values shelf: it can be seen through time.</summary>
+    public bool IsValue => Field.Kind == FieldKind.Measure && Shelf == Shelf.Values;
+
+    public TimeCalculation Time
+    {
+        get => _time;
+        set { if (SetProperty(ref _time, value)) _changed(); }
+    }
 
     // A row count and a calculated measure (ratio...) have no other meaningful aggregation
     public bool HasAggregation => Field.Kind == FieldKind.Measure && !Field.IsCalculated && Field.DefaultAggregation != Aggregation.Count;
@@ -107,6 +127,7 @@ public sealed class ShelfItemViewModel : ObservableObject
     {
         Mark = SeriesMark,
         SecondaryAxis = SecondaryAxis,
+        Time = Time,
     };
 }
 

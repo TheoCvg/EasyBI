@@ -9,10 +9,23 @@ public sealed record FieldRef(string Field, DateGrain Grain = DateGrain.None)
     public string Key => Grain == DateGrain.None ? Field : $"{Field}.{Grain}";
 }
 
+/// <summary>
+/// A measure seen through time: its value, its value a year earlier, how it changed since, or its total since the start
+/// of the year along a date axis.
+/// </summary>
+public enum TimeCalculation { None, PreviousYear, ChangeFromPreviousYear, PercentChangeFromPreviousYear, YearToDate }
+
 /// <summary>Reference to a measure; the model's default aggregation can be overridden.</summary>
 public sealed record MeasureRef(string Measure, Aggregation? Aggregation = null)
 {
-    public string Key => Aggregation is null ? Measure : $"{Measure}.{Aggregation}";
+    public string Key => (Aggregation is null ? Measure : $"{Measure}.{Aggregation}") + (Time == TimeCalculation.None ? "" : $".{Time}");
+
+    /// <summary>
+    /// How the measure is seen through time (see <see cref="TimeCalculation"/>). A year earlier means the same groups and
+    /// filters shifted by one year: it needs a date on the axis or a date filter, and is empty otherwise.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public TimeCalculation Time { get; init; }
 
     /// <summary>
     /// Chart type of this measure's series in a cartesian chart (bars, stacked bars, line, area, points); null follows

@@ -62,6 +62,12 @@ internal static class Strings
     public static string EditorTitle => Get();
     public static string Ok => Get();
     public static string Cancel => Get();
+    public static string TimeNone => Get();
+    public static string TimePreviousYear => Get();
+    public static string TimeChangeFromPreviousYear => Get();
+    public static string TimePercentChangeFromPreviousYear => Get();
+    public static string TimeYearToDate => Get();
+    public static string TimeHint => Get();
     public static string PeriodKindAny => Get();
     public static string PeriodKindBetween => Get();
     public static string PeriodKindCurrent => Get();

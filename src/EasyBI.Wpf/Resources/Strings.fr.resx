@@ -282,4 +282,22 @@
   <data name="PeriodCount" xml:space="preserve">
     <value>Nombre</value>
   </data>
+  <data name="TimeNone" xml:space="preserve">
+    <value>Valeur</value>
+  </data>
+  <data name="TimePreviousYear" xml:space="preserve">
+    <value>N-1</value>
+  </data>
+  <data name="TimeChangeFromPreviousYear" xml:space="preserve">
+    <value>Évolution vs N-1</value>
+  </data>
+  <data name="TimePercentChangeFromPreviousYear" xml:space="preserve">
+    <value>Évolution % vs N-1</value>
+  </data>
+  <data name="TimeYearToDate" xml:space="preserve">
+    <value>Cumul annuel</value>
+  </data>
+  <data name="TimeHint" xml:space="preserve">
+    <value>La mesure vue dans le temps : comparer à N-1 demande une date sur l&apos;axe ou un filtre de date.</value>
+  </data>
 </root>

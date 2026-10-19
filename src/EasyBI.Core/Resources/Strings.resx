@@ -198,4 +198,16 @@
   <data name="ReportPeriodOnNonDate" xml:space="preserve">
     <value>{0}: period filter on &apos;{1}&apos;, which is not a date.</value>
   </data>
+  <data name="TimePreviousYear" xml:space="preserve">
+    <value>{0}, previous year</value>
+  </data>
+  <data name="TimeChangeFromPreviousYear" xml:space="preserve">
+    <value>{0}, change vs previous year</value>
+  </data>
+  <data name="TimePercentChangeFromPreviousYear" xml:space="preserve">
+    <value>{0}, % change vs previous year</value>
+  </data>
+  <data name="TimeYearToDate" xml:space="preserve">
+    <value>{0}, year to date</value>
+  </data>
 </root>

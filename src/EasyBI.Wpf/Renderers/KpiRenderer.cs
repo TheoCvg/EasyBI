@@ -22,14 +22,22 @@ public sealed class KpiRenderer : IVisualRenderer
             var value = series.Values.FirstOrDefault();
             var accent = (Color)ColorConverter.ConvertFromString(request.Theme.ColorAt(i));
             var card = new StackPanel { Margin = new Thickness(24, 12, 24, 12) };
-            card.Children.Add(new TextBlock
+            var text = new TextBlock
             {
                 Text = value is null ? "—" : ValueFormatter.Format(value.Value, series.Format),
                 FontSize = 40,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(accent),
                 HorizontalAlignment = HorizontalAlignment.Center,
-            });
+            };
+            // A change since the previous year shows its trend: up in the measures' color, down in the error color
+            var time = request.Visual.Values.ElementAtOrDefault(i)?.Time;
+            if (time is TimeCalculation.ChangeFromPreviousYear or TimeCalculation.PercentChangeFromPreviousYear && value is { } change && change != 0)
+            {
+                text.Text = (change > 0 ? "▲ " : "▼ ") + text.Text;
+                text.Themed(TextBlock.ForegroundProperty, change > 0 ? EasyBITheme.MeasureBrushKey : EasyBITheme.ErrorBrushKey);
+            }
+            card.Children.Add(text);
             card.Children.Add(new TextBlock
             {
                 Text = series.Name,
