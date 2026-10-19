@@ -49,6 +49,14 @@ internal static class Strings
     public static string FormulaAmbiguous => Get();
     public static string ReportCalculatedMeasure => Get();
     public static string ReportInvalidFormula => Get();
+    public static string PeriodAny => Get();
+    public static string PeriodBetween => Get();
+    public static string PeriodSince => Get();
+    public static string PeriodUntil => Get();
+    public static string ReportPeriodOnNonDate => Get();
+
+    /// <summary>A text whose key is built (PeriodLastMonth...).</summary>
+    public static string Named(string key) => Get(key);
 
     public static string Format(string format, params object?[] args) =>
         string.Format(EasyBILocalization.FormatCulture, format, args);
