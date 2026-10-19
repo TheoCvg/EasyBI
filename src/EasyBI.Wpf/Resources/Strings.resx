@@ -282,4 +282,22 @@
   <data name="PeriodCount" xml:space="preserve">
     <value>Number</value>
   </data>
+  <data name="TimeNone" xml:space="preserve">
+    <value>Value</value>
+  </data>
+  <data name="TimePreviousYear" xml:space="preserve">
+    <value>Previous year</value>
+  </data>
+  <data name="TimeChangeFromPreviousYear" xml:space="preserve">
+    <value>Change vs previous year</value>
+  </data>
+  <data name="TimePercentChangeFromPreviousYear" xml:space="preserve">
+    <value>% change vs previous year</value>
+  </data>
+  <data name="TimeYearToDate" xml:space="preserve">
+    <value>Year to date</value>
+  </data>
+  <data name="TimeHint" xml:space="preserve">
+    <value>The measure seen through time: a year earlier needs a date on the axis or a date filter.</value>
+  </data>
 </root>

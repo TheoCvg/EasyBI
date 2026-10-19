@@ -205,10 +205,19 @@ public partial class MainWindow : Window
             Mark = MarkType.Text,
             Text = new TextContent { Text = Text("DashboardNote"), FontSize = 14 },
         };
+        // The demo's sales end in 2025: the last full year, and how it changed since the year before
+        VisualDefinition lastYear = new()
+        {
+            Title = Text("LastYearComparison"),
+            Model = "sales",
+            Mark = MarkType.Kpi,
+            Values = [new("Amount"), new("Amount") { Time = TimeCalculation.PercentChangeFromPreviousYear }],
+            Filters = [PeriodFilters.Between("Date", new DateOnly(2025, 1, 1), new DateOnly(2025, 12, 31))],
+        };
 
         return new DashboardDocument
         {
-            Report = new ReportDefinition { Title = Text("ReportTitle"), Visuals = [title, kpis, quarters, regions, categories, note] },
+            Report = new ReportDefinition { Title = Text("ReportTitle"), Visuals = [title, kpis, quarters, regions, categories, lastYear, note] },
             Layout = new DashboardLayoutDefinition
             {
                 Bands =
@@ -225,7 +234,7 @@ public partial class MainWindow : Window
                     new BandLayout
                     {
                         Mode = BandMode.Scroll,
-                        Items = [LayoutNode.Item(categories.Id), new LayoutNode { VisualId = note.Id, Width = 360 }],
+                        Items = [LayoutNode.Item(categories.Id), LayoutNode.Item(lastYear.Id), new LayoutNode { VisualId = note.Id, Width = 360 }],
                     },
                 ],
             },

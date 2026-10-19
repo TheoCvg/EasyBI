@@ -95,6 +95,11 @@
                               Visibility="{Binding HasAggregation, Converter={StaticResource BoolToVisibility}}"
                               ItemsSource="{x:Static local:ShelfItemViewModel.AggregationOptions}"
                               SelectedValue="{Binding Aggregation, Mode=TwoWay}" />
+                    <!-- A measure seen through time: previous year, change, year to date -->
+                    <ComboBox Margin="6,0,0,0" FontSize="11" Padding="4,1" MinWidth="70" DisplayMemberPath="Label" SelectedValuePath="Value" ToolTip="{bi:Localize TimeHint}"
+                              Visibility="{Binding IsValue, Converter={StaticResource BoolToVisibility}}"
+                              ItemsSource="{x:Static local:ShelfItemViewModel.TimeOptions}"
+                              SelectedValue="{Binding Time, Mode=TwoWay}" />
                     <!-- Measures of a cartesian chart: chart type and value axis of their series -->
                     <ComboBox Margin="6,0,0,0" FontSize="11" Padding="4,1" MinWidth="70" DisplayMemberPath="Label" SelectedValuePath="Value" ToolTip="{bi:Localize SeriesMarkHint}"
                               Visibility="{Binding ShowSeriesOptions, Converter={StaticResource BoolToVisibility}}"

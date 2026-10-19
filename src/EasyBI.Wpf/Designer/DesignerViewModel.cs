@@ -277,6 +277,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
                 Aggregation = v.Aggregation ?? field.DefaultAggregation ?? Aggregation.Sum,
                 SeriesMark = v.Mark,
                 SecondaryAxis = v.SecondaryAxis,
+                Time = v.Time,
             });
         }
         foreach (var f in visual.Filters)
