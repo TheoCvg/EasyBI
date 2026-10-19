@@ -67,4 +67,27 @@ public sealed record ReportDefinition
 
     /// <summary>Global filters (slicers) applied to every visual of the same model.</summary>
     public IReadOnlyList<ReportFilter> Filters { get; init; } = [];
+
+    /// <summary>Measures the end user defined with a formula; any visual of their model can show them.</summary>
+    public IReadOnlyList<CalculatedMeasure> Measures { get; init; } = [];
+}
+
+/// <summary>
+/// A measure the end user defines with a formula over the measures of a model, such as <c>[Margin] / [Amount]</c>:
+/// brackets hold field names, the operators are + - * / with parentheses and numbers (with a decimal point). Each
+/// measure is aggregated as the model declares it, then the formula is computed for each group; a division by zero
+/// gives an empty value. Visuals reference it by <see cref="Name"/>, like a field of the model.
+/// </summary>
+public sealed record CalculatedMeasure
+{
+    public string Name { get; init; } = "";
+
+    public string Caption { get; init; } = "";
+
+    public string Model { get; init; } = "";
+
+    public string Formula { get; init; } = "";
+
+    /// <summary>.NET format of the values ("P1", "N0"...); null for the default number format.</summary>
+    public string? Format { get; init; }
 }

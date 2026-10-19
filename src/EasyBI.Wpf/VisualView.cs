@@ -149,6 +149,7 @@ public class VisualView : ContentControl
         {
             context.Changed += OnContextUpdated;
             context.DataChanged += OnDataChanged;
+            context.Measures.Changed += OnMeasuresUpdated;
         }
         if (filters is not null) filters.Changed += OnFiltersUpdated;
     }
@@ -159,6 +160,7 @@ public class VisualView : ContentControl
         {
             context.Changed -= OnContextUpdated;
             context.DataChanged -= OnDataChanged;
+            context.Measures.Changed -= OnMeasuresUpdated;
         }
         if (filters is not null) filters.Changed -= OnFiltersUpdated;
     }
@@ -175,6 +177,9 @@ public class VisualView : ContentControl
     });
 
     private void OnFiltersUpdated(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Refresh);
+
+    // A calculated measure changed: only the visuals showing it get another query (it is part of the query key)
+    private void OnMeasuresUpdated(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Refresh);
 
     // Captions and formatted values come with the result: the culture is part of the query key
     private void OnCultureChanged(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Refresh);
@@ -205,7 +210,7 @@ public class VisualView : ContentControl
         var queryKey = JsonSerializer.Serialize(new
         {
             effective.Model,
-            Query = effective.ToQuery(),
+            Query = effective.ToQuery(context.Measures.Measures),
             Culture = EasyBILocalization.UICulture.Name,
             Format = EasyBILocalization.FormatCulture.Name,
         }, ReportSerializer.Options);
@@ -222,7 +227,7 @@ public class VisualView : ContentControl
         try
         {
             var model = context.GetModel(visual.Model);
-            var request = await VisualPipeline.PrepareAsync(model, effective, ChartTheme(context), cts.Token);
+            var request = await VisualPipeline.PrepareAsync(model, effective, ChartTheme(context), context.Measures.Measures, cts.Token);
             if (cts.IsCancellationRequested) return;
             _last = request;
             _pending = null;

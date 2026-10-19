@@ -102,4 +102,37 @@
   <data name="ReportNotAMeasure" xml:space="preserve">
     <value>{0}: '{1}' is not a measure.</value>
   </data>
+  <data name="FormulaEmpty" xml:space="preserve">
+    <value>The formula is empty.</value>
+  </data>
+  <data name="FormulaUnexpected" xml:space="preserve">
+    <value>Unexpected “{0}” at position {1}.</value>
+  </data>
+  <data name="FormulaExpectedOperand" xml:space="preserve">
+    <value>A measure, a number or “(” is expected at position {0}.</value>
+  </data>
+  <data name="FormulaMissingParenthesis" xml:space="preserve">
+    <value>A closing parenthesis is missing.</value>
+  </data>
+  <data name="FormulaMissingBracket" xml:space="preserve">
+    <value>A closing bracket “]” is missing.</value>
+  </data>
+  <data name="FormulaDecimalComma" xml:space="preserve">
+    <value>Write decimal numbers with a point (0.5).</value>
+  </data>
+  <data name="FormulaUnknownMeasure" xml:space="preserve">
+    <value>Unknown measure: “{0}”.</value>
+  </data>
+  <data name="FormulaNotAMeasure" xml:space="preserve">
+    <value>“{0}” is not a measure.</value>
+  </data>
+  <data name="FormulaAmbiguous" xml:space="preserve">
+    <value>Several measures are named “{0}”.</value>
+  </data>
+  <data name="ReportCalculatedMeasure" xml:space="preserve">
+    <value>Calculated measure “{0}”</value>
+  </data>
+  <data name="ReportInvalidFormula" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
 </root>

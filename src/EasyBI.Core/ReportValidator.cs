@@ -28,7 +28,8 @@ public static class ReportValidator
             }
             foreach (var axis in visual.Axis.Append(visual.Legend).OfType<FieldRef>())
                 CheckDimension(model, axis.Field, axis.Grain, where, problems);
-            foreach (var value in visual.Values)
+            // The report's calculated measures are checked once, below
+            foreach (var value in visual.Values.Where(v => !report.Measures.Any(m => m.Model == visual.Model && m.Name == v.Measure)))
                 CheckField(model, value.Measure, FieldKind.Measure, where, problems);
             foreach (var filter in visual.Filters)
                 CheckDimension(model, filter.Field, filter.Grain, where, problems);
@@ -48,6 +49,15 @@ public static class ReportValidator
                 problems.Add(Strings.Format(Strings.ReportUnknownModel, Strings.ReportFilter, filter.Model));
             else
                 CheckDimension(model, filter.Filter.Field, filter.Filter.Grain, Strings.ReportFilter, problems);
+        }
+
+        foreach (var measure in report.Measures)
+        {
+            var where = Strings.Format(Strings.ReportCalculatedMeasure, measure.Caption);
+            if (!byName.TryGetValue(measure.Model, out var model))
+                problems.Add(Strings.Format(Strings.ReportUnknownModel, where, measure.Model));
+            else if (MeasureFormula.Validate(measure.Formula, model) is { } problem)
+                problems.Add(Strings.Format(Strings.ReportInvalidFormula, where, problem));
         }
         return problems;
     }

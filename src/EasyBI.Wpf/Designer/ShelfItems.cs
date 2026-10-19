@@ -53,7 +53,8 @@ public sealed class ShelfItemViewModel : ObservableObject
 
     public bool HasGrain => Field.Kind == FieldKind.Dimension && Field.DataType == DataType.Date;
 
-    public bool HasAggregation => Field.Kind == FieldKind.Measure && Field.DefaultAggregation != Aggregation.Count;
+    // A row count and a calculated measure (ratio...) have no other meaningful aggregation
+    public bool HasAggregation => Field.Kind == FieldKind.Measure && !Field.IsCalculated && Field.DefaultAggregation != Aggregation.Count;
 
     public DateGrain Grain
     {
@@ -102,7 +103,7 @@ public sealed class ShelfItemViewModel : ObservableObject
 
     public FieldRef ToFieldRef() => new(Field.Name, Grain);
 
-    public MeasureRef ToMeasureRef() => new(Field.Name, Aggregation == Field.DefaultAggregation ? null : Aggregation)
+    public MeasureRef ToMeasureRef() => new(Field.Name, HasAggregation && Aggregation != Field.DefaultAggregation ? Aggregation : null)
     {
         Mark = SeriesMark,
         SecondaryAxis = SecondaryAxis,

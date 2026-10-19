@@ -51,6 +51,21 @@ public class DesignerViewModelTests
     }
 
     [Fact]
+    public void Calculated_measures_offer_no_aggregation_and_save_none()
+    {
+        var designer = new DesignerViewModel(EasyBIContext.Create().AddModel(
+            SemanticModel.For(new[] { new Sale("Nord", "Web", new(2024, 1, 1), 1m) }, "sales")
+                .Dimension(s => s.Region, "Région")
+                .Measure(s => s.Amount, "CA")
+                .Ratio(s => s.Amount, s => s.Amount, "Part", "Share")));
+
+        designer.Load(new VisualDefinition { Model = "sales", Axis = [new("Region")], Values = [new("Share")] });
+
+        Assert.False(designer.Values.Single().HasAggregation);
+        Assert.Null(designer.Visual!.Values.Single().Aggregation);
+    }
+
+    [Fact]
     public void Sort_is_dropped_when_its_column_is_removed()
     {
         var designer = Designer();

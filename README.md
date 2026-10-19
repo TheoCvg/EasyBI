@@ -79,6 +79,38 @@ Context.RefreshData("sales");   // the visuals of this model; RefreshData() for 
 <bi:VisualView Context="{Binding Context}" Definition="{Binding Visual}" />   <!-- display -->
 ```
 
+### Calculated measures
+
+A measure is a row value that the end user aggregates (sum, average...). Ratios need more: the margin rate of a region
+is its total margin divided by its total revenue, not the average of its sales' rates. Calculated measures are
+computed from the rows of each group, inside the same query (in SQL with EF Core), and can be sorted and limited like
+the others; the end user cannot change their aggregation.
+
+```csharp
+model
+    .Ratio(s => s.Margin, s => s.Amount, "Margin rate", "MarginRate", format: "P1")      // Σ margin / Σ revenue
+    .Ratio(s => s.Amount, s => 1, "Average basket", "AverageBasket", format: "#,##0 €")   // Σ revenue / number of sales
+    .Calculated(g => g.Sum(s => s.Amount) - g.Sum(s => s.Cost), "Gross profit", "GrossProfit");
+```
+
+`Ratio` is empty when the denominator sums to zero. With `Calculated`, guard divisions yourself: some databases fail
+on a division by zero.
+
+End users create their own from the field list (**+ Calculated measure**, then ✎ and ✕ on hover): a name, a format
+and a formula over the model's measures, typed with their captions and checked as it is typed, with its total as a
+preview:
+
+```
+[Margin] / [Revenue]            ([Revenue] - [Margin]) / [Number of sales]            [Margin] * 100 / [Revenue]
+```
+
+Measures in brackets are aggregated as in the field list; the operators are `+ - * /` with parentheses and numbers
+with a decimal point; a division by zero gives an empty value. The formula runs in the same query as the other
+measures. These measures live in `EasyBIContext.Measures` (one context per open report): every field list, designer
+and visual of the context sees them, and a `DashboardView` loads and saves them with its document (undo does not
+remove them). An application that saves reports without a dashboard puts `Context.Measures.Measures` in
+`ReportDefinition.Measures` and loads them back with `Context.Measures.Load(...)`.
+
 ### Combined charts
 
 The cartesian chart types (`Bar`, `StackedBar`, `Line`, `Area`, `Scatter`) can be mixed in one chart, **one per
@@ -475,7 +507,16 @@ the types that no renderer can draw.
 ```
 
 `null` in `values` means a missing value. `EasyBIContext.Validate(report)` reports the unknown
-models and fields of a loaded report.
+models and fields of a loaded report, and the formulas that no longer match their model.
+
+Calculated measures created by the end user are saved with the report (the property is omitted when there are none),
+and visuals reference them by name like a field:
+
+```json
+"measures": [
+  { "name": "calc_3f9a1c0d2b7e", "caption": "Margin rate", "model": "sales", "formula": "[Margin] / [Amount]", "format": "P1" }
+]
+```
 
 Text and image visuals carry their content and no model:
 

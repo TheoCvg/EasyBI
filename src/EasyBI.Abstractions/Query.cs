@@ -38,11 +38,13 @@ public sealed record SortSpec(string Key, bool Descending = false);
 
 /// <summary>
 /// Abstract analytic query: "group by ... and aggregate ...".
-/// It knows neither the data source nor the rendering.
+/// It knows neither the data source nor the rendering. <paramref name="Calculations"/> defines the end user's
+/// calculated measures that <paramref name="Measures"/> references.
 /// </summary>
 public sealed record AnalyticQuery(
     IReadOnlyList<FieldRef> GroupBy,
     IReadOnlyList<MeasureRef> Measures,
     IReadOnlyList<FilterSpec>? Filters = null,
     IReadOnlyList<SortSpec>? Sort = null,
-    int? Top = null);
+    int? Top = null,
+    IReadOnlyList<CalculatedMeasure>? Calculations = null);
