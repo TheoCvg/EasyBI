@@ -64,6 +64,16 @@ var model = SemanticModel.For(() => dbFactory.CreateDbContext(), db => db.Sales,
     .Dimension(s => s.Region, "Region") /* ... */;
 ```
 
+Each visual becomes one database query (filters, grouping, aggregates, sort and top in SQL): only the aggregated
+rows reach the application, whatever the number of rows in the table.
+
+Visuals cache their last result and query again only when their query changes. When the data behind a model changes
+(new rows, another source), tell them, from any thread:
+
+```csharp
+Context.RefreshData("sales");   // the visuals of this model; RefreshData() for all of them
+```
+
 ```xml
 <bi:ReportDesigner Context="{Binding Context}" />                             <!-- design -->
 <bi:VisualView Context="{Binding Context}" Definition="{Binding Visual}" />   <!-- display -->
@@ -510,7 +520,9 @@ dotnet test
 dotnet run --project samples/EasyBI.Sample
 ```
 
-The demo starts in your system language (English or French) and has a language picker in its toolbar.
+The demo starts in your system language (English or French) and has a language picker in its toolbar. Its data
+picker switches the same sales between memory (20,000 rows) and a SQLite database of 1 or 5 million rows, generated
+once in `%LOCALAPPDATA%\EasyBI.Sample`; the toolbar shows how long the last refresh took.
 
 ## Contributing
 
@@ -523,8 +535,9 @@ See [AGENTS.md](AGENTS.md) for the code style, language rules and Git workflow.
 - Designer and `FilterBar` filters: "one of" only, on non-date dimensions; no date ranges.
 - `Top` applies to aggregated rows, not to categories when a legend is present.
 - Grouping, sorting and `Top` are pushed down to the provider, and execution is asynchronous when the
-  source implements `IAsyncEnumerable` (EF Core). EF Core's SQL translation (GroupBy on a composite
-  key, sort on an aggregate, projection to `object[]`) still has to be validated against a real database.
+  source implements `IAsyncEnumerable` (EF Core). The SQL translation was checked manually with EF Core 8 on SQLite
+  (every query shape, including date granularities, navigation properties and sort on an aggregate); there is no
+  automated test against a database. SQLite cannot sum `decimal` columns (EF Core refuses the query).
 - At most 4 grouping dimensions (axis + legend).
 - The built-in light and dark themes do not restyle standard controls (buttons, combo boxes...): use a control
   library for those (see [Following a control library](#following-a-control-library)).
