@@ -15,11 +15,25 @@ namespace EasyBI.Sample;
 
 public partial class MainWindow : Window
 {
+    private readonly ISemanticModel _memorySales;
+    private readonly SwitchableModel _sales;
+
     public MainWindow()
     {
+        // The demo switches between data sources and times the queries; an application would add its model directly
+        _memorySales = SalesData.CreateModel(SalesData.Generate(), App.TextResources);
+        _sales = new SwitchableModel(_memorySales);
+        _sales.RunningChanged += (_, running) => Dispatcher.BeginInvoke(() =>
+        {
+            if (running > 0) QueryStatus.Text = string.Format(EasyBILocalization.FormatCulture, Text("QueriesRunning"), running);
+        });
+        _sales.BatchCompleted += (_, batch) => Dispatcher.BeginInvoke(() =>
+            QueryStatus.Text = string.Format(EasyBILocalization.FormatCulture, Text("LastRefresh"),
+                batch.Queries, batch.Duration.TotalMilliseconds, batch.Slowest.TotalMilliseconds));
+
         // --- All the WPF developer has to write: a model + renderers ---
         Context = EasyBIContext.Create()
-            .AddModel(SalesData.CreateModel(SalesData.Generate(), App.TextResources))
+            .AddModel(_sales)
             .UseRenderer(new LiveCharts2Renderer())
             .UseRenderer(new OxyPlotRenderer());
 
@@ -52,6 +66,34 @@ public partial class MainWindow : Window
     {
         if (IsLoaded && LibraryPicker.SelectedItem is ComboBoxItem { Tag: string library } && ThemePicker.SelectedItem is ComboBoxItem { Tag: string mode })
             App.SetTheme(Enum.Parse<ThemeLibrary>(library), Enum.Parse<EasyBIThemeMode>(mode));
+    }
+
+    private async void OnSourceChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded || SourcePicker.SelectedItem is not ComboBoxItem { Tag: string tag }) return;
+        var rows = int.Parse(tag, CultureInfo.InvariantCulture);
+        SourcePicker.IsEnabled = false;
+        try
+        {
+            if (rows > 0 && !SalesDatabase.Exists(rows))
+            {
+                QueryStatus.Text = string.Format(EasyBILocalization.FormatCulture, Text("GeneratingDatabase"), rows);
+                // SQLite runs synchronously even through the async API: keep the UI responsive
+                await Task.Run(() => SalesDatabase.EnsureCreatedAsync(rows));
+            }
+            _sales.Source = rows == 0 ? _memorySales : SalesDatabase.CreateModel(rows, App.TextResources);
+            // Same queries, other data: the dashboard and the designer's preview query again
+            Context.RefreshData(_sales.Metadata.Name);
+        }
+        catch (Exception ex)
+        {
+            QueryStatus.Text = "";
+            MessageBox.Show(this, ex.Message, Text("DataSourceUnavailable"), MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            SourcePicker.IsEnabled = true;
+        }
     }
 
     private void OnRendererChanged(object sender, SelectionChangedEventArgs e) =>

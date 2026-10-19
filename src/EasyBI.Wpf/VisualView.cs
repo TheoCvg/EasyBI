@@ -145,18 +145,34 @@ public class VisualView : ContentControl
 
     private void Subscribe(EasyBIContext? context, FilterContext? filters)
     {
-        if (context is not null) context.Changed += OnContextUpdated;
+        if (context is not null)
+        {
+            context.Changed += OnContextUpdated;
+            context.DataChanged += OnDataChanged;
+        }
         if (filters is not null) filters.Changed += OnFiltersUpdated;
     }
 
     private void Unsubscribe(EasyBIContext? context, FilterContext? filters)
     {
-        if (context is not null) context.Changed -= OnContextUpdated;
+        if (context is not null)
+        {
+            context.Changed -= OnContextUpdated;
+            context.DataChanged -= OnDataChanged;
+        }
         if (filters is not null) filters.Changed -= OnFiltersUpdated;
     }
 
     // Renderer or theme: the data did not change, so only redraw.
     private void OnContextUpdated(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Draw);
+
+    // The data changed behind the same query: forget the last one so that it runs again
+    private void OnDataChanged(object? sender, DataChangedEventArgs e) => Dispatcher.InvokeAsync(() =>
+    {
+        if (e.Model is not null && e.Model != Definition?.Model) return;
+        _lastQueryKey = null;
+        Refresh();
+    });
 
     private void OnFiltersUpdated(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Refresh);
 
