@@ -3,7 +3,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using EasyBI.Abstractions;
+using EasyBI.Core;
 using EasyBI.Wpf.Designer;
+using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf;
 
@@ -14,6 +16,8 @@ namespace EasyBI.Wpf;
 /// </summary>
 public partial class FieldList : UserControl
 {
+    private EasyBIContext? _followed;
+
     public static readonly DependencyProperty ContextProperty = DependencyProperty.Register(
         nameof(Context), typeof(EasyBIContext), typeof(FieldList),
         new PropertyMetadata(null, (d, _) => ((FieldList)d).OnContextChanged()));
@@ -69,6 +73,13 @@ public partial class FieldList : UserControl
 
     private void OnContextChanged()
     {
+        // The report's calculated measures are listed with the model's (weak: the list may be shorter-lived than the context)
+        if (_followed != Context)
+        {
+            if (_followed is not null) WeakEventManager<MeasureContext, EventArgs>.RemoveHandler(_followed.Measures, nameof(MeasureContext.Changed), OnMeasuresChanged);
+            _followed = Context;
+            if (_followed is not null) WeakEventManager<MeasureContext, EventArgs>.AddHandler(_followed.Measures, nameof(MeasureContext.Changed), OnMeasuresChanged);
+        }
         var models = Context?.Models ?? [];
         ModelPicker.ItemsSource = models.Select(m => new Option<ISemanticModel>(m, () => m.Metadata.Caption)).ToArray();
         if (SelectedModel is null || !models.Contains(SelectedModel)) SetCurrentValue(SelectedModelProperty, models.FirstOrDefault());
@@ -80,6 +91,33 @@ public partial class FieldList : UserControl
         ModelPicker.SelectedValue = SelectedModel;
         var model = SelectedModel;
         DimensionList.ItemsSource = model?.Metadata.Dimensions.Select(f => new ModelField(model, f)).ToArray();
-        MeasureList.ItemsSource = model?.Metadata.Measures.Select(f => new ModelField(model, f)).ToArray();
+        MeasureList.ItemsSource = model is null ? null : model.Metadata.Measures.Select(f => new ModelField(model, f))
+            .Concat(Context?.Measures.For(model.Metadata.Name).Select(m => new ModelField(model, MeasureContext.ToField(m), m)) ?? [])
+            .ToArray();
+        AddMeasureButton.Visibility = model is not null && Context is not null ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    private void OnMeasuresChanged(object? sender, EventArgs e) => Refresh();
+
+    private void OnAddMeasure(object sender, RoutedEventArgs e)
+    {
+        if (Context is { } context && SelectedModel is { } model) EditMeasure(new CalculatedMeasureEditor(context, model));
+    }
+
+    private void OnEditMeasure(object sender, RoutedEventArgs e)
+    {
+        if (Context is { } context && (sender as FrameworkElement)?.DataContext is ModelField { Measure: { } measure } field)
+            EditMeasure(new CalculatedMeasureEditor(context, field.Model, measure));
+    }
+
+    private void OnDeleteMeasure(object sender, RoutedEventArgs e)
+    {
+        if (Context is not { } context || (sender as FrameworkElement)?.DataContext is not ModelField { Measure: { } measure }) return;
+        var answer = MessageBox.Show(Window.GetWindow(this)!, Strings.Format(Strings.DeleteMeasureConfirm, measure.Caption),
+            Strings.DeleteMeasure, MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (answer == MessageBoxResult.OK) context.Measures.Remove(measure.Name);
+    }
+
+    private void EditMeasure(CalculatedMeasureEditor editor) =>
+        new CalculatedMeasureWindow(editor) { Owner = Window.GetWindow(this) }.ShowDialog();
 }

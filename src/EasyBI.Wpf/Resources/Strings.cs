@@ -62,6 +62,22 @@ internal static class Strings
     public static string EditorTitle => Get();
     public static string Ok => Get();
     public static string Cancel => Get();
+    public static string FormatNumber => Get();
+    public static string FormatInteger => Get();
+    public static string FormatPercent => Get();
+    public static string FormatCurrency => Get();
+    public static string MeasureCaptionRequired => Get();
+    public static string MeasureCaptionTaken => Get();
+    public static string CalculatedMeasureTitle => Get();
+    public static string NewCalculatedMeasure => Get();
+    public static string MeasureCaption => Get();
+    public static string MeasureFormat => Get();
+    public static string MeasureFormula => Get();
+    public static string MeasureFormulaHint => Get();
+    public static string MeasurePreview => Get();
+    public static string EditMeasure => Get();
+    public static string DeleteMeasure => Get();
+    public static string DeleteMeasureConfirm => Get();
 
     public static string Format(string format, params object?[] args) =>
         string.Format(EasyBILocalization.FormatCulture, format, args);

@@ -27,6 +27,12 @@ public sealed class EasyBIContext
 
     public IReadOnlyList<ISemanticModel> Models => _models;
 
+    /// <summary>
+    /// The calculated measures the end user defined in the open report: field lists offer them with the model's
+    /// measures, and visuals compute them. A <see cref="Dashboard.DashboardView"/> loads and saves them with its document.
+    /// </summary>
+    public MeasureContext Measures { get; } = new();
+
     public IReadOnlyList<IVisualRenderer> Renderers => _renderers;
 
     public IVisualRenderer? ActiveRenderer
@@ -68,6 +74,14 @@ public sealed class EasyBIContext
     /// their query is the same. Without a model name, every visual queries again. Can be called from any thread.
     /// </summary>
     public void RefreshData(string? model = null) => DataChanged?.Invoke(this, new DataChangedEventArgs(model));
+
+    /// <summary>The measures a user can pick in a model: the model's own, then the calculated measures of the report.</summary>
+    public IEnumerable<FieldDescriptor> MeasuresOf(ISemanticModel model) =>
+        model.Metadata.Measures.Concat(Measures.For(model.Metadata.Name).Select(MeasureContext.ToField));
+
+    /// <summary>A field of a model, or one of the report's calculated measures on it.</summary>
+    public FieldDescriptor GetField(ISemanticModel model, string name) =>
+        Measures.Find(model.Metadata.Name, name) is { } measure ? MeasureContext.ToField(measure) : model.Metadata.GetField(name);
 
     public ISemanticModel GetModel(string name) =>
         _models.FirstOrDefault(m => m.Metadata.Name == name)
