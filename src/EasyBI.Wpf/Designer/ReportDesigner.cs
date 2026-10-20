@@ -37,7 +37,7 @@ public class ReportDesigner : Control
     public static readonly DependencyProperty IsFieldPanelOpenProperty = DependencyProperty.Register(
         nameof(IsFieldPanelOpen), typeof(bool), typeof(ReportDesigner), new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
 
-    /// <summary>Whether the properties panel, on the right, is shown (two-way; true by default).</summary>
+    /// <summary>Whether the properties panel, on the right, is shown (two-way; true by default). Selecting a chip opens it.</summary>
     public static readonly DependencyProperty IsPropertiesPanelOpenProperty = DependencyProperty.Register(
         nameof(IsPropertiesPanelOpen), typeof(bool), typeof(ReportDesigner), new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
 
@@ -163,6 +163,9 @@ public class ReportDesigner : Control
     {
         if (e.PropertyName == nameof(DesignerViewModel.Visual))
             SetValue(VisualPropertyKey, ViewModel?.Visual);
+        // Selecting a chip shows its settings: the properties panel opens if it was folded
+        else if (e.PropertyName == nameof(DesignerViewModel.SelectedItem) && ViewModel?.SelectedItem is not null)
+            SetCurrentValue(IsPropertiesPanelOpenProperty, true);
     }
 }
 

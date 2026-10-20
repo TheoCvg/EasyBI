@@ -407,4 +407,20 @@ public class DesignerPropertiesTests
             foreach (var descendant in Descendants<T>(child)) yield return descendant;
         }
     }
+
+    [Fact]
+    public void Selecting_a_chip_opens_the_folded_properties_panel() => Sta.Run(() =>
+    {
+        var control = new ReportDesigner { Context = EasyBIContext.Create().AddModel(
+            SemanticModel.For(new[] { new Sale("Nord", new(2024, 1, 1), 1m) }, "sales").Dimension(s => s.Region, "Region").Measure(s => s.Amount, "Amount")) };
+        var designer = control.ViewModel!;
+        designer.Drop(designer.Measures.Single(), Shelf.Values);
+        control.IsPropertiesPanelOpen = false;
+
+        designer.SelectedItem = null; // the visual itself: the panel stays as the user left it
+        Assert.False(control.IsPropertiesPanelOpen);
+
+        designer.SelectedItem = designer.Values.Single();
+        Assert.True(control.IsPropertiesPanelOpen);
+    });
 }
