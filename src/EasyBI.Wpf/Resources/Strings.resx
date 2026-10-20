@@ -426,4 +426,28 @@
   <data name="VisualTypeHint" xml:space="preserve">
     <value>Change the type of visual</value>
   </data>
+  <data name="WellCategory" xml:space="preserve">
+    <value>Category</value>
+  </data>
+  <data name="WellValue" xml:space="preserve">
+    <value>Value</value>
+  </data>
+  <data name="WellRows" xml:space="preserve">
+    <value>Rows</value>
+  </data>
+  <data name="WellUnused" xml:space="preserve">
+    <value>Not used by this type of visual</value>
+  </data>
+  <data name="WellHintDimension" xml:space="preserve">
+    <value>Drop a dimension here</value>
+  </data>
+  <data name="WellHintMeasure" xml:space="preserve">
+    <value>Drop a measure here</value>
+  </data>
+  <data name="WellHintFilter" xml:space="preserve">
+    <value>Drop a dimension to filter on it</value>
+  </data>
+  <data name="DropNotUsed" xml:space="preserve">
+    <value>{0} is not used by this type of visual</value>
+  </data>
 </root>

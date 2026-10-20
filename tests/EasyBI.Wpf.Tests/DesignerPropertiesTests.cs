@@ -197,4 +197,53 @@ public class DesignerPropertiesTests
         foreach (var mark in Enum.GetValues<MarkType>().Where(m => !m.IsContent()))
             Assert.IsAssignableFrom<System.Windows.Media.Geometry>(icon.TryFindResource(VisualTypeIcons.KeyOf(mark)));
     });
+
+    // --- Wells that follow the visual type ---
+
+    [Theory]
+    [InlineData(MarkType.Bar, "Axis", "Legend", "Values")]
+    [InlineData(MarkType.Pie, "Category", null, "Value")]
+    [InlineData(MarkType.Table, "Rows", null, "Values")]
+    [InlineData(MarkType.Kpi, null, null, "Values")]
+    public void Wells_take_the_names_and_the_use_of_the_visual_type(MarkType mark, string? axis, string? legend, string values)
+    {
+        var designer = Designer();
+        designer.Clear();
+        designer.SelectedMark = mark;
+
+        Assert.Equal((axis, legend, values), (Used(designer.AxisWell), Used(designer.LegendWell), Used(designer.ValuesWell)));
+        Assert.True(designer.FiltersWell.IsUsed);
+    }
+
+    private static string? Used(ShelfViewModel well) => well.IsUsed ? well.Label : null;
+
+    [Fact]
+    public void A_well_the_type_does_not_use_refuses_fields_and_stays_shown_while_it_holds_some()
+    {
+        var designer = Designer(); // Region on the axis
+        designer.SelectedMark = MarkType.Kpi;
+
+        Assert.False(designer.AxisWell.IsUsed);
+        Assert.True(designer.AxisWell.IsVisible); // to remove Region
+        Assert.False(designer.LegendWell.IsVisible);
+        var date = designer.Dimensions.Single(d => d.Name == "Date");
+        Assert.False(designer.CanDrop(date, Shelf.Axis));
+        Assert.Equal("Axis is not used by this type of visual", designer.RefusalReason(date, Shelf.Axis));
+
+        designer.RemoveCommand.Execute(designer.Axis.Single());
+        Assert.False(designer.AxisWell.IsVisible);
+    }
+
+    [Fact]
+    public void While_a_field_is_dragged_each_well_tells_whether_it_accepts_it()
+    {
+        var designer = Designer();
+        Assert.Null(designer.ValuesWell.IsDropAllowed);
+
+        designer.DraggedItem = designer.Measures.Single();
+        Assert.Equal((false, false, true, false), (designer.AxisWell.IsDropAllowed, designer.LegendWell.IsDropAllowed, designer.ValuesWell.IsDropAllowed, designer.FiltersWell.IsDropAllowed));
+
+        designer.DraggedItem = null;
+        Assert.Null(designer.ValuesWell.IsDropAllowed);
+    }
 }

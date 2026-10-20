@@ -86,14 +86,17 @@
             <Style x:Key="Shelf" TargetType="ItemsControl">
                 <Setter Property="ItemsPanel" Value="{StaticResource WrapItems}" />
                 <Setter Property="Margin" Value="0,3" />
-                <Setter Property="dnd:DropTarget.Handler" Value="{Binding}" />
+                <Setter Property="dnd:DropTarget.Handler" Value="{Binding Designer}" />
+                <Setter Property="dnd:DropTarget.Key" Value="{Binding Kind}" />
+                <Setter Property="ItemsSource" Value="{Binding Items}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" />
                 <Setter Property="dnd:DragSource.IsEnabled" Value="True" />
                 <Setter Property="dnd:DragSource.AllowedEffects" Value="Move" />
                 <Setter Property="dnd:DragSource.PreviewTemplate" Value="{StaticResource ChipPreviewTemplate}" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="ItemsControl">
-                            <Border x:Name="Bd" Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceAltBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}"
+                            <Border x:Name="Bd" Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceAltBrushKey}}" BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="1" CornerRadius="6" MinHeight="38" Padding="3">
                                 <ItemsPresenter />
                             </Border>
@@ -147,7 +150,7 @@
             </DataTemplate>
 
             <!-- A chip: its caption and the marks of its settings; a click selects it (its settings are in the properties panel) -->
-            <DataTemplate x:Key="ChipTemplate" DataType="{x:Type local:ShelfItemViewModel}">
+            <DataTemplate DataType="{x:Type local:ShelfItemViewModel}">
                 <Border x:Name="Chip" Background="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBorderBrushKey}}"
                         BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3" Cursor="Hand">
                     <Border.InputBindings>
@@ -188,6 +191,42 @@
                 <DataTemplate.Triggers>
                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
                         <Setter TargetName="Chip" Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
+                    </DataTrigger>
+                </DataTemplate.Triggers>
+            </DataTemplate>
+
+            <!-- A well: its name for the visual type, its chips, a hint while it is empty; during a drag, whether it accepts the dragged item -->
+            <local:WellItemTemplateSelector x:Key="WellItems" FilterTemplate="{StaticResource FilterChipTemplate}" />
+            <DataTemplate x:Key="WellTemplate" DataType="{x:Type local:ShelfViewModel}">
+                <Grid x:Name="Well" Margin="0,3">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Label}" Style="{StaticResource ShelfLabel}" TextWrapping="Wrap" />
+                        <TextBlock x:Name="Unused" Text="{bi:Localize WellUnused}" FontSize="10" TextWrapping="Wrap" Visibility="Collapsed"
+                                   Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                    </StackPanel>
+                    <Grid Grid.Column="1">
+                        <ItemsControl x:Name="Items" Style="{StaticResource Shelf}" ItemTemplateSelector="{StaticResource WellItems}" />
+                        <TextBlock x:Name="Hint" Text="{Binding Hint}" Margin="14,0" VerticalAlignment="Center" IsHitTestVisible="False" FontStyle="Italic"
+                                   Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                    </Grid>
+                </Grid>
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding HasItems}" Value="True">
+                        <Setter TargetName="Hint" Property="Visibility" Value="Collapsed" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsUsed}" Value="False">
+                        <Setter TargetName="Well" Property="Opacity" Value="0.6" />
+                        <Setter TargetName="Unused" Property="Visibility" Value="Visible" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsDropAllowed}" Value="True">
+                        <Setter TargetName="Items" Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsDropAllowed}" Value="False">
+                        <Setter TargetName="Items" Property="Opacity" Value="0.45" />
                     </DataTrigger>
                 </DataTemplate.Triggers>
             </DataTemplate>
@@ -329,52 +368,21 @@
 
                             <bi:SlotHost Grid.Row="1" Slot="{x:Static local:ReportDesignerSlots.Shelves}" Orientation="Vertical">
                                 <StackPanel>
-                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.AxisShelf}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="80" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{bi:Localize Axis}" Style="{StaticResource ShelfLabel}" />
-                                            <ItemsControl Grid.Column="1" Style="{StaticResource Shelf}" dnd:DropTarget.Key="{x:Static local:Shelf.Axis}"
-                                                          ItemsSource="{Binding Axis}" ItemTemplate="{StaticResource ChipTemplate}" />
-                                        </Grid>
+                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.AxisShelf}"
+                                                 Visibility="{Binding AxisWell.IsVisible, Converter={StaticResource BoolToVisibility}}">
+                                        <ContentControl Content="{Binding AxisWell}" ContentTemplate="{StaticResource WellTemplate}" Focusable="False" />
                                     </bi:SlotHost>
-
-                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.LegendShelf}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="80" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{bi:Localize Legend}" Style="{StaticResource ShelfLabel}" />
-                                            <ItemsControl Grid.Column="1" Style="{StaticResource Shelf}" dnd:DropTarget.Key="{x:Static local:Shelf.Legend}"
-                                                          ItemsSource="{Binding Legend}" ItemTemplate="{StaticResource ChipTemplate}" />
-                                        </Grid>
+                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.LegendShelf}"
+                                                 Visibility="{Binding LegendWell.IsVisible, Converter={StaticResource BoolToVisibility}}">
+                                        <ContentControl Content="{Binding LegendWell}" ContentTemplate="{StaticResource WellTemplate}" Focusable="False" />
                                     </bi:SlotHost>
-
-                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.ValuesShelf}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="80" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{bi:Localize Values}" Style="{StaticResource ShelfLabel}" />
-                                            <ItemsControl Grid.Column="1" Style="{StaticResource Shelf}" dnd:DropTarget.Key="{x:Static local:Shelf.Values}"
-                                                          ItemsSource="{Binding Values}" ItemTemplate="{StaticResource ChipTemplate}" />
-                                        </Grid>
+                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.ValuesShelf}"
+                                                 Visibility="{Binding ValuesWell.IsVisible, Converter={StaticResource BoolToVisibility}}">
+                                        <ContentControl Content="{Binding ValuesWell}" ContentTemplate="{StaticResource WellTemplate}" Focusable="False" />
                                     </bi:SlotHost>
-
-                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.FiltersShelf}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="80" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{bi:Localize Filters}" Style="{StaticResource ShelfLabel}" />
-                                            <ItemsControl Grid.Column="1" Style="{StaticResource Shelf}" dnd:DropTarget.Key="{x:Static local:Shelf.Filters}"
-                                                          ItemsSource="{Binding Filters}" ItemTemplate="{StaticResource FilterChipTemplate}" />
-                                        </Grid>
+                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.FiltersShelf}"
+                                                 Visibility="{Binding FiltersWell.IsVisible, Converter={StaticResource BoolToVisibility}}">
+                                        <ContentControl Content="{Binding FiltersWell}" ContentTemplate="{StaticResource WellTemplate}" Focusable="False" />
                                     </bi:SlotHost>
                                 </StackPanel>
                             </bi:SlotHost>

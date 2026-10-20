@@ -92,6 +92,14 @@ internal static class Strings
     public static string EditMeasure => Get();
     public static string DeleteMeasure => Get();
     public static string DeleteMeasureConfirm => Get();
+    public static string WellCategory => Get();
+    public static string WellValue => Get();
+    public static string WellRows => Get();
+    public static string WellUnused => Get();
+    public static string WellHintDimension => Get();
+    public static string WellHintMeasure => Get();
+    public static string WellHintFilter => Get();
+    public static string DropNotUsed => Get();
     public static string MarkGroupComparison => Get();
     public static string MarkGroupTrend => Get();
     public static string MarkGroupComposition => Get();

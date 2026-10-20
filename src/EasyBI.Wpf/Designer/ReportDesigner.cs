@@ -43,6 +43,31 @@ public class ReportDesigner : Control
     static ReportDesigner() =>
         DefaultStyleKeyProperty.OverrideMetadata(typeof(ReportDesigner), new FrameworkPropertyMetadata(typeof(ReportDesigner)));
 
+    public ReportDesigner()
+    {
+        // The wells show whether they accept what is dragged, from the start of the drag (the events are static)
+        Loaded += (_, _) =>
+        {
+            DragAndDrop.DragSource.DragStarted += OnDragStarted;
+            DragAndDrop.DragSource.DragEnded += OnDragEnded;
+        };
+        Unloaded += (_, _) =>
+        {
+            DragAndDrop.DragSource.DragStarted -= OnDragStarted;
+            DragAndDrop.DragSource.DragEnded -= OnDragEnded;
+        };
+    }
+
+    private void OnDragStarted(object? sender, DragAndDrop.DragStartedEventArgs e)
+    {
+        if (ViewModel is { } designer) designer.DraggedItem = e.Item;
+    }
+
+    private void OnDragEnded(object? sender, EventArgs e)
+    {
+        if (ViewModel is { } designer) designer.DraggedItem = null;
+    }
+
     public EasyBIContext? Context
     {
         get => (EasyBIContext?)GetValue(ContextProperty);

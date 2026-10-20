@@ -82,6 +82,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     private string? _sortSummary;
     private object? _selectedItem;
     private bool _isTypeGalleryOpen;
+    private object? _draggedItem;
     private object? _propertiesShape;
     private readonly Dictionary<string, bool> _expandedSections = [];
 
@@ -127,6 +128,10 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         WeakEventManager<MeasureContext, EventArgs>.AddHandler(context.Measures, nameof(MeasureContext.Changed), OnMeasuresChanged);
         PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, OnLanguageChanged, string.Empty);
         foreach (var chips in new[] { Axis, Legend, Values }) chips.CollectionChanged += OnChipsChanged;
+        AxisWell = new ShelfViewModel(this, Shelf.Axis, Axis);
+        LegendWell = new ShelfViewModel(this, Shelf.Legend, Legend);
+        ValuesWell = new ShelfViewModel(this, Shelf.Values, Values);
+        FiltersWell = new ShelfViewModel(this, Shelf.Filters, Filters);
         Filters.CollectionChanged += (_, e) =>
         {
             foreach (var filter in e.NewItems?.OfType<FilterItemViewModel>() ?? []) filter.Selecting = item => SelectedItem = item;
@@ -161,6 +166,31 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     public ObservableCollection<ShelfItemViewModel> Values { get; } = [];
 
     public ObservableCollection<FilterItemViewModel> Filters { get; } = [];
+
+    /// <summary>The wells as the visual type sees them (names, use, hints, see <see cref="ShelfViewModel"/>).</summary>
+    public ShelfViewModel AxisWell { get; }
+
+    public ShelfViewModel LegendWell { get; }
+
+    public ShelfViewModel ValuesWell { get; }
+
+    public ShelfViewModel FiltersWell { get; }
+
+    private IEnumerable<ShelfViewModel> Wells => [AxisWell, LegendWell, ValuesWell, FiltersWell];
+
+    /// <summary>
+    /// The item being dragged (a field or a chip), set by the designer's view while a drag is in progress: each well
+    /// tells whether it accepts it (<see cref="ShelfViewModel.IsDropAllowed"/>).
+    /// </summary>
+    public object? DraggedItem
+    {
+        get => _draggedItem;
+        set
+        {
+            if (!SetProperty(ref _draggedItem, value)) return;
+            foreach (var well in Wells) well.IsDropAllowed = value is null ? null : CanDrop(value, well.Kind);
+        }
+    }
 
     /// <summary>Options of the renderer that draws the visual (<see cref="RendererCapabilities.Options"/>) that apply to it.</summary>
     public ObservableCollection<RendererOptionViewModel> RendererOptions { get; } = [];
@@ -236,6 +266,14 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         }
     }
 
+    private ShelfViewModel WellOf(Shelf shelf) => shelf switch
+    {
+        Shelf.Axis => AxisWell,
+        Shelf.Legend => LegendWell,
+        Shelf.Values => ValuesWell,
+        _ => FiltersWell,
+    };
+
     /// <summary>Shows only the first rows of the result (after sorting); null or less than 1 shows them all.</summary>
     public int? Top
     {
@@ -257,7 +295,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         private set => SetProperty(ref _visual, value);
     }
 
-    public bool CanDrop(FieldDescriptor field, Shelf shelf) => shelf switch
+    public bool CanDrop(FieldDescriptor field, Shelf shelf) => ShelfViewModel.IsUsedBy(shelf, SelectedMark) && shelf switch
     {
         Shelf.Values => field.Kind == FieldKind.Measure,
         Shelf.Axis => field.Kind == FieldKind.Dimension && Axis.Count < MaxAxisFields && Axis.All(a => a.Field != field),
@@ -273,7 +311,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     /// or a <see cref="ModelField"/> of the selected model, see <see cref="CanDrop(FieldDescriptor, Shelf)"/>), a chip
     /// moved within its shelf, or a dimension moved between Axis and Legend.
     /// </summary>
-    public bool CanDrop(object item, Shelf shelf) => Unwrap(item) switch
+    public bool CanDrop(object item, Shelf shelf) => ShelfViewModel.IsUsedBy(shelf, SelectedMark) && Unwrap(item) switch
     {
         FieldDescriptor field => CanDrop(field, shelf),
         // A chip of another designer (or already removed) is not ours to move
@@ -339,6 +377,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     public string? RefusalReason(object item, Shelf shelf)
     {
         if (CanDrop(item, shelf)) return null;
+        if (!ShelfViewModel.IsUsedBy(shelf, SelectedMark)) return Strings.Format(Strings.DropNotUsed, WellOf(shelf).Label);
         if (item is ModelField field && field.Model != _selectedModel)
             return Strings.Format(Strings.DropOtherModel, field.Caption, field.Model.Metadata.Caption);
         return Unwrap(item) switch
@@ -365,13 +404,8 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         };
     }
 
-    private static string ShelfName(Shelf shelf) => shelf switch
-    {
-        Shelf.Axis => Strings.Axis,
-        Shelf.Legend => Strings.Legend,
-        Shelf.Values => Strings.Values,
-        _ => Strings.Filters,
-    };
+    // The name the well shows for the visual type
+    private string ShelfName(Shelf shelf) => WellOf(shelf).Label;
 
     /// <summary>The field of a <see cref="ModelField"/> of the selected model; other models' fields are refused (null).</summary>
     private object? Unwrap(object? item) => item is ModelField field ? field.Model == _selectedModel ? field.Field : null : item;
@@ -684,6 +718,9 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     {
         foreach (var option in MarkOptions) option.IsSelected = option.Mark == _selectedMark;
         OnPropertyChanged(nameof(SelectedMarkOption));
+        // The wells take the names and the use of the new type (not built yet while the designer is constructed)
+        if (AxisWell is null) return;
+        foreach (var well in Wells) well.Refresh();
     }
 
     private void RefreshAvailability()
