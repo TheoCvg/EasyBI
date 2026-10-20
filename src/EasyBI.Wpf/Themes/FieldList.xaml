@@ -1,0 +1,112 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:bi="clr-namespace:EasyBI.Wpf"
+                    xmlns:dnd="clr-namespace:EasyBI.Wpf.DragAndDrop">
+
+    <Style TargetType="bi:FieldList">
+        <Style.Resources>
+            <Style x:Key="SectionHeader" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                <Setter Property="Margin" Value="0,14,0,6" />
+            </Style>
+        </Style.Resources>
+        <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="bi:FieldList">
+                    <Grid Background="{TemplateBinding Background}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <bi:SlotHost Slot="{x:Static bi:FieldListSlots.Model}" Orientation="Vertical">
+                            <StackPanel>
+                                <TextBlock Text="{bi:Localize ModelHeader}" Style="{StaticResource SectionHeader}" />
+                                <ComboBox ItemsSource="{TemplateBinding ModelOptions}" SelectedValuePath="Value" DisplayMemberPath="Label"
+                                          SelectedValue="{Binding SelectedModel, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" />
+                            </StackPanel>
+                        </bi:SlotHost>
+
+                        <!-- Fields are dragged as ModelField items. Local values rather than a style, so that the application's ListBox
+                             and ListBoxItem styles (a control library's) still apply, even when it changes them at runtime; the
+                             foreground is set because the system's ListBox style does not inherit it -->
+                        <bi:SlotHost Grid.Row="1" Slot="{x:Static bi:FieldListSlots.Dimensions}" Orientation="Vertical">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="{bi:Localize DimensionsHeader}" Style="{StaticResource SectionHeader}" />
+                                <ListBox x:Name="DimensionList" ItemsSource="{TemplateBinding Dimensions}" BorderThickness="0" Background="Transparent"
+                                         Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         dnd:DragSource.IsEnabled="True" dnd:DragSource.AllowedEffects="Copy">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="◆" Foreground="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                                <TextBlock Text="{Binding Caption}" Padding="0,3" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </DockPanel>
+                        </bi:SlotHost>
+
+                        <bi:SlotHost Grid.Row="2" Slot="{x:Static bi:FieldListSlots.Measures}" Orientation="Vertical">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="{bi:Localize MeasuresHeader}" Style="{StaticResource SectionHeader}" />
+                                <ListBox x:Name="MeasureList" ItemsSource="{TemplateBinding Measures}" BorderThickness="0" Background="Transparent"
+                                         Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         dnd:DragSource.IsEnabled="True" dnd:DragSource.AllowedEffects="Copy">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <!-- Calculated measures of the report (ƒx) can be edited and deleted from their buttons, shown on hover -->
+                                            <DockPanel>
+                                                <StackPanel x:Name="Actions" DockPanel.Dock="Right" Orientation="Horizontal" Visibility="Collapsed">
+                                                    <Button Content="✎" ToolTip="{bi:Localize EditMeasure}" Command="{x:Static bi:FieldList.EditMeasureCommand}"
+                                                            Padding="4,0" Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                                            Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                                                    <Button Content="✕" ToolTip="{bi:Localize DeleteMeasure}" Command="{x:Static bi:FieldList.DeleteMeasureCommand}"
+                                                            Padding="4,0" Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                                            Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                                                </StackPanel>
+                                                <TextBlock x:Name="Glyph" Text="Σ" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MeasureBrushKey}}" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,7,0" />
+                                                <TextBlock Text="{Binding Caption}" Padding="0,3" TextTrimming="CharacterEllipsis" />
+                                            </DockPanel>
+                                            <DataTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding IsEditable}" Value="True">
+                                                    <Setter TargetName="Glyph" Property="Text" Value="ƒx" />
+                                                    <Setter TargetName="Glyph" Property="FontStyle" Value="Italic" />
+                                                </DataTrigger>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding IsEditable}" Value="True" />
+                                                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True" />
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter TargetName="Actions" Property="Visibility" Value="Visible" />
+                                                </MultiDataTrigger>
+                                            </DataTemplate.Triggers>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </DockPanel>
+                        </bi:SlotHost>
+
+                        <bi:SlotHost x:Name="AddMeasure" Grid.Row="3" Slot="{x:Static bi:FieldListSlots.AddMeasureButton}" HorizontalAlignment="Left">
+                            <Button Content="{bi:Localize NewCalculatedMeasure}" Command="{x:Static bi:FieldList.AddMeasureCommand}"
+                                    Margin="0,8,0,0" Padding="8,3" FontSize="12" />
+                        </bi:SlotHost>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="CanAddMeasure" Value="False">
+                            <Setter TargetName="AddMeasure" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

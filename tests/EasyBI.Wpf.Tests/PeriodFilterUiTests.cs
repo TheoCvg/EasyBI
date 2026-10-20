@@ -102,9 +102,7 @@ public class PeriodFilterUiTests
         filters.SetFilter("sales", PeriodFilters.Relative("Date", FilterOperator.Last, DateGrain.Month, 12));
         var bar = new FilterBar { Context = EasyBIContext.Create().AddModel(Model()), FilterContext = filters };
 
-        var slicers = ((ItemsControl)LogicalTreeHelper.FindLogicalNode(bar, "SlicerList")).ItemsSource.Cast<SlicerViewModel>();
-
-        var slicer = Assert.Single(slicers);
+        var slicer = Assert.Single(bar.Slicers);
         Assert.True(slicer.Filter.IsPeriod);
         Assert.Equal("Last 12 months", slicer.Filter.Summary);
     });

@@ -12,7 +12,11 @@ namespace EasyBI.Wpf.Designer;
 /// picks a visual type and sees a live preview. Drag and drop goes through <see cref="DragAndDrop.DragSource"/> and
 /// <see cref="DragAndDrop.DropTarget"/>, the view-model deciding what each shelf accepts.
 /// </summary>
-public partial class ReportDesigner : UserControl
+/// <remarks>
+/// Lookless: the default template (in <c>Themes/ReportDesigner.xaml</c>) takes the <see cref="ViewModel"/> as data
+/// context and declares the <see cref="ReportDesignerSlots"/>.
+/// </remarks>
+public class ReportDesigner : Control
 {
     public static readonly DependencyProperty ContextProperty = DependencyProperty.Register(
         nameof(Context), typeof(EasyBIContext), typeof(ReportDesigner),
@@ -23,7 +27,13 @@ public partial class ReportDesigner : UserControl
 
     public static readonly DependencyProperty VisualProperty = VisualPropertyKey.DependencyProperty;
 
-    public ReportDesigner() => InitializeComponent();
+    private static readonly DependencyPropertyKey ViewModelPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(ViewModel), typeof(DesignerViewModel), typeof(ReportDesigner), new PropertyMetadata(null));
+
+    public static readonly DependencyProperty ViewModelProperty = ViewModelPropertyKey.DependencyProperty;
+
+    static ReportDesigner() =>
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(ReportDesigner), new FrameworkPropertyMetadata(typeof(ReportDesigner)));
 
     public EasyBIContext? Context
     {
@@ -34,7 +44,8 @@ public partial class ReportDesigner : UserControl
     /// <summary>The visual being designed (read-only).</summary>
     public VisualDefinition? Visual => (VisualDefinition?)GetValue(VisualProperty);
 
-    public DesignerViewModel? ViewModel => LayoutRoot.DataContext as DesignerViewModel;
+    /// <summary>The state of the designer, created for the <see cref="Context"/>: the data context of the template.</summary>
+    public DesignerViewModel? ViewModel => (DesignerViewModel?)GetValue(ViewModelProperty);
 
     public void Edit(VisualDefinition visual) => ViewModel?.Load(visual);
 
@@ -45,7 +56,7 @@ public partial class ReportDesigner : UserControl
         if (ViewModel is { } old) old.PropertyChanged -= OnViewModelPropertyChanged;
         var vm = context is null ? null : new DesignerViewModel(context);
         if (vm is not null) vm.PropertyChanged += OnViewModelPropertyChanged;
-        LayoutRoot.DataContext = vm;
+        SetValue(ViewModelPropertyKey, vm);
         SetValue(VisualPropertyKey, vm?.Visual);
     }
 

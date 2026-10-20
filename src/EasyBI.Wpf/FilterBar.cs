@@ -1,11 +1,12 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using EasyBI.Abstractions;
 using EasyBI.Core;
 using EasyBI.Wpf.Designer;
 using EasyBI.Wpf.Resources;
-using System.ComponentModel;
 
 namespace EasyBI.Wpf;
 
@@ -14,7 +15,12 @@ namespace EasyBI.Wpf;
 /// model, plus a reminder of the current selection (cross-filter) with a way to clear it.
 /// It uses the inherited <see cref="FilterContext"/>, as <see cref="VisualView"/> does.
 /// </summary>
-public partial class FilterBar : UserControl
+/// <remarks>
+/// Lookless: the default template (in <c>Themes/FilterBar.xaml</c>) shows <see cref="Slicers"/> and
+/// <see cref="SelectionDescription"/>, declares the <see cref="FilterBarSlots"/> and acts through
+/// <see cref="AddFilterCommand"/>, <see cref="RemoveFilterCommand"/> and <see cref="ClearSelectionCommand"/>.
+/// </remarks>
+public class FilterBar : Control
 {
     public static readonly DependencyProperty ContextProperty = DependencyProperty.Register(
         nameof(Context), typeof(EasyBIContext), typeof(FilterBar),
@@ -25,12 +31,37 @@ public partial class FilterBar : UserControl
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.Inherits,
             (d, e) => ((FilterBar)d).OnFilterContextChanged((FilterContext?)e.OldValue, (FilterContext?)e.NewValue)));
 
+    private static readonly DependencyPropertyKey SelectionDescriptionPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(SelectionDescription), typeof(string), typeof(FilterBar), new PropertyMetadata(null));
+
+    public static readonly DependencyProperty SelectionDescriptionProperty = SelectionDescriptionPropertyKey.DependencyProperty;
+
+    /// <summary>Opens the menu of the dimensions to filter on, under the command source.</summary>
+    public static RoutedCommand AddFilterCommand { get; } = new(nameof(AddFilterCommand), typeof(FilterBar));
+
+    /// <summary>Removes a global filter: the parameter (or the data context of the source) is its <see cref="SlicerViewModel"/>.</summary>
+    public static RoutedCommand RemoveFilterCommand { get; } = new(nameof(RemoveFilterCommand), typeof(FilterBar));
+
+    /// <summary>Clears the current selection (cross-filter).</summary>
+    public static RoutedCommand ClearSelectionCommand { get; } = new(nameof(ClearSelectionCommand), typeof(FilterBar));
+
     private readonly ObservableCollection<SlicerViewModel> _slicers = [];
+
+    static FilterBar() =>
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(FilterBar), new FrameworkPropertyMetadata(typeof(FilterBar)));
 
     public FilterBar()
     {
-        InitializeComponent();
-        SlicerList.ItemsSource = _slicers;
+        Slicers = new ReadOnlyObservableCollection<SlicerViewModel>(_slicers);
+        CommandBindings.Add(new CommandBinding(AddFilterCommand,
+            (_, e) => OpenAddMenu(e.OriginalSource as UIElement ?? this),
+            (_, e) => e.CanExecute = FilterContext is not null && Context is not null));
+        CommandBindings.Add(new CommandBinding(RemoveFilterCommand,
+            (_, e) => { if (SlicerOf(e) is { } slicer) Remove(slicer); },
+            (_, e) => e.CanExecute = SlicerOf(e) is not null));
+        CommandBindings.Add(new CommandBinding(ClearSelectionCommand,
+            (_, _) => FilterContext?.ClearSelection(),
+            (_, e) => e.CanExecute = FilterContext?.Selection is not null));
         Loaded += (_, _) =>
         {
             if (FilterContext is { } filters) filters.Changed += OnFiltersUpdated;
@@ -54,6 +85,12 @@ public partial class FilterBar : UserControl
         get => (FilterContext?)GetValue(FilterContextProperty);
         set => SetValue(FilterContextProperty, value);
     }
+
+    /// <summary>The global filters shown, an empty one included until it is removed.</summary>
+    public ReadOnlyObservableCollection<SlicerViewModel> Slicers { get; }
+
+    /// <summary>The current selection (cross-filter) in words, or null when nothing is selected.</summary>
+    public string? SelectionDescription => (string?)GetValue(SelectionDescriptionProperty);
 
     private void OnFilterContextChanged(FilterContext? old, FilterContext? current)
     {
@@ -82,11 +119,12 @@ public partial class FilterBar : UserControl
     {
         var filters = FilterContext;
         var selection = filters?.Selection;
-        SelectionChip.Visibility = selection is null ? Visibility.Collapsed : Visibility.Visible;
-        SelectionText.Text = selection is null || Context?.Models.FirstOrDefault(m => m.Metadata.Name == selection.Model) is not { } selectionModel
-            ? ""
-            : Strings.Format(Strings.Selection, selection.Describe(selectionModel.Metadata));
-        AddButton.IsEnabled = filters is not null && Context is not null;
+        SetValue(SelectionDescriptionPropertyKey,
+            selection is null ? null
+            : Context?.Models.FirstOrDefault(m => m.Metadata.Name == selection.Model) is { } selectionModel
+                ? Strings.Format(Strings.Selection, selection.Describe(selectionModel.Metadata))
+                : "");
+        CommandManager.InvalidateRequerySuggested();
 
         if (filters is null || Context is not { } context)
         {
@@ -125,10 +163,10 @@ public partial class FilterBar : UserControl
         else filters.RemoveFilter(slicer.Model, slicer.Filter.Field.Name);
     }
 
-    private void OnAddFilter(object sender, RoutedEventArgs e)
+    private void OpenAddMenu(UIElement target)
     {
         if (Context is not { } context) return;
-        var menu = new ContextMenu { PlacementTarget = AddButton };
+        var menu = new ContextMenu { PlacementTarget = target };
         foreach (var model in context.Models)
         {
             var fields = model.Metadata.Dimensions
@@ -148,14 +186,16 @@ public partial class FilterBar : UserControl
         menu.IsOpen = true;
     }
 
-    private void OnRemoveSlicer(object sender, RoutedEventArgs e)
+    private void Remove(SlicerViewModel slicer)
     {
-        var slicer = (SlicerViewModel)((FrameworkElement)sender).DataContext;
         _slicers.Remove(slicer);
         FilterContext?.RemoveFilter(slicer.Model, slicer.Filter.Field.Name);
     }
 
-    private void OnClearSelection(object sender, RoutedEventArgs e) => FilterContext?.ClearSelection();
+    private static SlicerViewModel? SlicerOf(RoutedEventArgs e) =>
+        (e as ExecutedRoutedEventArgs)?.Parameter as SlicerViewModel
+        ?? (e as CanExecuteRoutedEventArgs)?.Parameter as SlicerViewModel
+        ?? (e.OriginalSource as FrameworkElement)?.DataContext as SlicerViewModel;
 
     private static bool Same(ReportFilter a, ReportFilter b) =>
         a.Model == b.Model && a.Filter.Field == b.Filter.Field && a.Filter.Operator == b.Filter.Operator

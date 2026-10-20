@@ -13,6 +13,7 @@ public class SlotTests
 
     private static void Layout(UIElement element, double width = 400, double height = 300)
     {
+        element.Hosted();
         element.Measure(new Size(width, height));
         element.Arrange(new Rect(0, 0, width, height));
     }
