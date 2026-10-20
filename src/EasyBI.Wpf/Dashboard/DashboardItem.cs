@@ -25,6 +25,13 @@ public class DashboardItem : Control
 
     public static readonly DependencyProperty KindProperty = KindPropertyKey.DependencyProperty;
 
+    /// <summary>
+    /// Whether the item is in (or near) the visible part of its dashboard: the default template only lets its visual
+    /// query while it is (see <see cref="DashboardView.LoadsVisibleItemsOnly"/>). True for an item outside a dashboard.
+    /// </summary>
+    public static readonly DependencyProperty IsInViewportProperty = DependencyProperty.Register(
+        nameof(IsInViewport), typeof(bool), typeof(DashboardItem), new PropertyMetadata(true));
+
     private static readonly DependencyPropertyKey IsSelectedPropertyKey = DependencyProperty.RegisterReadOnly(
         nameof(IsSelected), typeof(bool), typeof(DashboardItem), new PropertyMetadata(false));
 
@@ -53,6 +60,12 @@ public class DashboardItem : Control
     {
         get => (DashboardItemKind)GetValue(KindProperty);
         private set => SetValue(KindPropertyKey, value);
+    }
+
+    public bool IsInViewport
+    {
+        get => (bool)GetValue(IsInViewportProperty);
+        set => SetValue(IsInViewportProperty, value);
     }
 
     public bool IsSelected

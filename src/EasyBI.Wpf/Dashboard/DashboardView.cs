@@ -66,6 +66,20 @@ public class DashboardView : Control
             CommandManager.InvalidateRequerySuggested();
         }));
 
+    /// <summary>
+    /// True (default): only the visuals of the items in or near the visible part of the dashboard query their data (see
+    /// <see cref="DashboardItem.IsInViewport"/>); the others do when they scroll into view. False loads every visual
+    /// (to print or export the whole dashboard, for instance).
+    /// </summary>
+    public static readonly DependencyProperty LoadsVisibleItemsOnlyProperty = DependencyProperty.Register(
+        nameof(LoadsVisibleItemsOnly), typeof(bool), typeof(DashboardView),
+        new PropertyMetadata(true, (d, _) => ((DashboardView)d).UpdateViewport()));
+
+    /// <summary>How far beyond the visible part items load ahead, in viewport sizes (one by default: a screen above and below).</summary>
+    public static readonly DependencyProperty ViewportMarginProperty = DependencyProperty.Register(
+        nameof(ViewportMargin), typeof(double), typeof(DashboardView),
+        new PropertyMetadata(1d, (d, _) => ((DashboardView)d).UpdateViewport()), v => (double)v >= 0);
+
     public static readonly DependencyProperty UseDefaultBehaviorsProperty = DependencyProperty.Register(
         nameof(UseDefaultBehaviors), typeof(bool), typeof(DashboardView), new PropertyMetadata(true));
 
@@ -76,6 +90,8 @@ public class DashboardView : Control
     private bool _pushing;
     private bool _behaviorsAttached;
     private readonly ObservableCollection<DashboardItem> _selected = [];
+    private ScrollViewer? _viewer;
+    private bool _viewportQueued;
 
     static DashboardView() =>
         DefaultStyleKeyProperty.OverrideMetadata(typeof(DashboardView), new FrameworkPropertyMetadata(typeof(DashboardView)));
@@ -90,6 +106,7 @@ public class DashboardView : Control
         Focusable = true;
         FocusVisualStyle = null;
         Panel.ArrangementChanged += (_, _) => Commit();
+        Panel.Arranged += (_, _) => QueueViewportUpdate();
         BindCommands();
         Show(new DashboardDocument());
         Loaded += (_, _) => AttachDefaultBehaviors();
@@ -126,6 +143,18 @@ public class DashboardView : Control
     {
         get => (DashboardDocument?)GetValue(DocumentProperty);
         set => SetValue(DocumentProperty, value);
+    }
+
+    public bool LoadsVisibleItemsOnly
+    {
+        get => (bool)GetValue(LoadsVisibleItemsOnlyProperty);
+        set => SetValue(LoadsVisibleItemsOnlyProperty, value);
+    }
+
+    public double ViewportMargin
+    {
+        get => (double)GetValue(ViewportMarginProperty);
+        set => SetValue(ViewportMarginProperty, value);
     }
 
     public bool IsReadOnly
@@ -319,7 +348,64 @@ public class DashboardView : Control
         foreach (var item in Items) item.Context = context;
     }
 
-    private DashboardItem NewItem(VisualDefinition? visual) => new() { Visual = visual, Context = Context };
+    // Out of view until the panel placed it, so that a new item does not query before knowing where it is
+    private DashboardItem NewItem(VisualDefinition? visual) => new() { Visual = visual, Context = Context, IsInViewport = !LoadsVisibleItemsOnly };
+
+    // --- Loading the visible items ---
+
+    private void OnScrollChanged(object sender, ScrollChangedEventArgs e) => QueueViewportUpdate();
+
+    // Once per layout pass: arranging the items may move them again
+    private void QueueViewportUpdate()
+    {
+        if (_viewportQueued) return;
+        _viewportQueued = true;
+        Dispatcher.InvokeAsync(() =>
+        {
+            _viewportQueued = false;
+            UpdateViewport();
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    /// <summary>Marks the items in or near the visible part of the dashboard (<see cref="DashboardItem.IsInViewport"/>).</summary>
+    public void UpdateViewport()
+    {
+        var viewport = Viewport();
+        foreach (var item in Items)
+        {
+            var bounds = Panel.GetItemBounds(item);
+            item.IsInViewport = !LoadsVisibleItemsOnly || (!bounds.IsEmpty && viewport is { } area && area.IntersectsWith(bounds));
+        }
+    }
+
+    // The scroll viewer showing the panel, if the template has one: looked up once the panel is in it, and followed
+    private ScrollViewer? ScrollViewerOfPanel()
+    {
+        if (_viewer is not null && Panel.IsDescendantOf(_viewer)) return _viewer;
+        if (_viewer is not null) _viewer.ScrollChanged -= OnScrollChanged;
+        _viewer = null;
+        for (var element = VisualTreeHelper.GetParent(Panel); element is not null && element != this; element = VisualTreeHelper.GetParent(element))
+        {
+            if (element is not ScrollViewer viewer) continue;
+            _viewer = viewer;
+            viewer.ScrollChanged += OnScrollChanged;
+            break;
+        }
+        return _viewer;
+    }
+
+    // The visible part of the panel, grown by the margin; null before the panel is shown
+    private Rect? Viewport()
+    {
+        if (!Panel.IsVisible) return null;
+        var viewer = ScrollViewerOfPanel();
+        var visible = viewer is null
+            ? new Rect(Panel.RenderSize)
+            : new Rect(viewer.TranslatePoint(new Point(), Panel), new Size(viewer.ViewportWidth, viewer.ViewportHeight));
+        var margin = ViewportMargin;
+        visible.Inflate(visible.Width * margin, visible.Height * margin);
+        return visible;
+    }
 
     private void AttachDefaultBehaviors()
     {
