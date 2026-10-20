@@ -246,4 +246,60 @@ public class DesignerPropertiesTests
         designer.DraggedItem = null;
         Assert.Null(designer.ValuesWell.IsDropAllowed);
     }
+
+    // --- Undo and redo ---
+
+    [Fact]
+    public void Changes_are_undone_and_redone_one_by_one()
+    {
+        var designer = Designer();
+        Assert.False(designer.CanUndo); // loading a visual starts a new history
+
+        designer.Title = "Renamed";
+        designer.Values.Single().Aggregation = Aggregation.Average;
+        designer.Drop(designer.Dimensions.Single(d => d.Name == "Date"), Shelf.Legend);
+        Assert.True(designer.CanUndo);
+
+        designer.Undo();
+        Assert.Empty(designer.Legend);
+        designer.Undo();
+        Assert.Equal(Aggregation.Sum, designer.Values.Single().Aggregation);
+        designer.Undo();
+        Assert.Equal("Sales", designer.Title);
+        Assert.False(designer.CanUndo);
+
+        designer.Redo();
+        designer.Redo();
+        Assert.Equal(("Renamed", Aggregation.Average), (designer.Title, designer.Values.Single().Aggregation));
+        Assert.True(designer.CanRedo);
+
+        designer.SelectedMark = MarkType.Table; // a new change drops what could be redone
+        Assert.False(designer.CanRedo);
+    }
+
+    [Fact]
+    public void Undoing_keeps_the_chip_at_the_place_of_the_selected_one_selected()
+    {
+        var designer = Designer();
+        designer.SelectedItem = designer.Values.Single();
+        designer.Values.Single().Time = TimeCalculation.PreviousYear;
+
+        designer.UndoCommand.Execute(null);
+
+        Assert.Equal(TimeCalculation.None, designer.Values.Single().Time);
+        Assert.Same(designer.Values.Single(), designer.SelectedItem);
+        Assert.Equal(DesignerPropertySections.Field, designer.Properties[0].Key);
+    }
+
+    [Fact]
+    public void A_new_visual_starts_a_new_history()
+    {
+        var designer = Designer();
+        designer.Title = "Renamed";
+
+        designer.Clear();
+
+        Assert.False(designer.CanUndo);
+        Assert.False(designer.UndoCommand.CanExecute(null));
+    }
 }

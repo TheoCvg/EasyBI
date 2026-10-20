@@ -450,4 +450,10 @@
   <data name="DropNotUsed" xml:space="preserve">
     <value>« {0} » n'est pas utilisé par ce type de visuel</value>
   </data>
+  <data name="DesignerUndo" xml:space="preserve">
+    <value>Annuler (Ctrl+Z)</value>
+  </data>
+  <data name="DesignerRedo" xml:space="preserve">
+    <value>Rétablir (Ctrl+Y)</value>
+  </data>
 </root>

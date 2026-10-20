@@ -21,6 +21,23 @@ public abstract class ObservableObject : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
+/// <summary>A command that can be disabled: its state is asked again with the other commands' (<see cref="CommandManager.InvalidateRequerySuggested"/>).</summary>
+public sealed class RelayCommand(Action execute, Func<bool> canExecute) : ICommand
+{
+    public event EventHandler? CanExecuteChanged
+    {
+        add => CommandManager.RequerySuggested += value;
+        remove => CommandManager.RequerySuggested -= value;
+    }
+
+    public bool CanExecute(object? parameter) => canExecute();
+
+    public void Execute(object? parameter)
+    {
+        if (canExecute()) execute();
+    }
+}
+
 public sealed class RelayCommand<T>(Action<T> execute) : ICommand
 {
     public event EventHandler? CanExecuteChanged { add { } remove { } }

@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using EasyBI.Abstractions;
 
 namespace EasyBI.Wpf.Designer;
@@ -45,6 +46,10 @@ public class ReportDesigner : Control
 
     public ReportDesigner()
     {
+        // Undo and redo the changes of the visual (a text box being edited keeps its own)
+        CommandBindings.Add(new CommandBinding(ApplicationCommands.Undo, (_, _) => ViewModel?.Undo(), (_, e) => e.CanExecute = ViewModel?.CanUndo == true));
+        CommandBindings.Add(new CommandBinding(ApplicationCommands.Redo, (_, _) => ViewModel?.Redo(), (_, e) => e.CanExecute = ViewModel?.CanRedo == true));
+        InputBindings.Add(new KeyBinding(ApplicationCommands.Redo, Key.Z, ModifierKeys.Control | ModifierKeys.Shift));
         // The wells show whether they accept what is dragged, from the start of the drag (the events are static)
         Loaded += (_, _) =>
         {

@@ -305,6 +305,10 @@
                                 <DockPanel Margin="0,0,0,10">
                                     <ToggleButton DockPanel.Dock="Left" Style="{StaticResource PanelToggle}" Content="☰" Margin="0,0,10,0" ToolTip="{bi:Localize ToggleFieldPanel}"
                                                   IsChecked="{Binding IsFieldPanelOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" />
+                                    <Button DockPanel.Dock="Left" Content="↶" Padding="8,4" Margin="0,0,4,0" VerticalAlignment="Center" Cursor="Hand"
+                                            Command="{x:Static ApplicationCommands.Undo}" ToolTip="{bi:Localize DesignerUndo}" />
+                                    <Button DockPanel.Dock="Left" Content="↷" Padding="8,4" Margin="0,0,10,0" VerticalAlignment="Center" Cursor="Hand"
+                                            Command="{x:Static ApplicationCommands.Redo}" ToolTip="{bi:Localize DesignerRedo}" />
                                     <ToggleButton DockPanel.Dock="Right" Style="{StaticResource PanelToggle}" Content="⚙" Margin="10,0,0,0" ToolTip="{bi:Localize TogglePropertiesPanel}"
                                                   IsChecked="{Binding IsPropertiesPanelOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" />
                                     <!-- The visual type: a button showing the current one, opening the gallery of the types by group -->

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
+using System.Text.Json;
 using System.Windows.Input;
 using EasyBI.Abstractions;
 using EasyBI.Core;
@@ -83,6 +84,13 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     private object? _selectedItem;
     private bool _isTypeGalleryOpen;
     private object? _draggedItem;
+
+    // History of the visual (undo/redo): the states before and after the current one, recorded at each change
+    private readonly List<VisualDefinition> _undo = [];
+    private readonly List<VisualDefinition> _redo = [];
+    private VisualDefinition? _current;
+    private string? _currentJson;
+    private int _historyHold;
     private object? _propertiesShape;
     private readonly Dictionary<string, bool> _expandedSections = [];
 
@@ -114,6 +122,8 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         Models = context.Models.Select(m => new Option<ISemanticModel>(m, () => m.Metadata.Caption)).ToArray();
         RemoveCommand = new RelayCommand<object>(Remove);
         SelectCommand = new RelayCommand<object?>(item => SelectedItem = item);
+        UndoCommand = new RelayCommand(Undo, () => CanUndo);
+        RedoCommand = new RelayCommand(Redo, () => CanRedo);
         AddFieldCommand = new RelayCommand<object?>(item =>
         {
             if (Unwrap(item) is FieldDescriptor field) AddToDefaultShelf(field);
@@ -198,6 +208,19 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     public bool HasRendererOptions => RendererOptions.Count > 0;
 
     public ICommand RemoveCommand { get; }
+
+    /// <summary>Puts the visual back as it was before the last change (Ctrl+Z).</summary>
+    public ICommand UndoCommand { get; }
+
+    /// <summary>Makes again the change <see cref="UndoCommand"/> undid (Ctrl+Y).</summary>
+    public ICommand RedoCommand { get; }
+
+    public bool CanUndo => _undo.Count > 0;
+
+    public bool CanRedo => _redo.Count > 0;
+
+    /// <summary>How many changes can be undone (100 by default).</summary>
+    public int MaxHistory { get; set; } = 100;
 
     /// <summary>Selects a chip (the parameter; null selects the visual itself), whose settings the properties panel shows.</summary>
     public ICommand SelectCommand { get; }
@@ -440,8 +463,16 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     public void AddToDefaultShelf(FieldDescriptor field) =>
         Drop(field, field.Kind == FieldKind.Measure ? Shelf.Values : Shelf.Axis);
 
+    /// <summary>Starts a new visual (a new history of changes).</summary>
     public void Clear()
     {
+        ClearCore();
+        ResetHistory();
+    }
+
+    private void ClearCore()
+    {
+        _historyHold++;
         _suspended = true;
         Axis.Clear();
         Legend.Clear();
@@ -456,14 +487,22 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         _hiddenFilters = [];
         _suspended = false;
         Rebuild();
+        _historyHold--;
     }
 
-    /// <summary>Loads an existing visual into the designer to edit it.</summary>
+    /// <summary>Loads an existing visual into the designer to edit it (a new history of changes).</summary>
     public void Load(VisualDefinition visual)
     {
+        LoadCore(visual);
+        ResetHistory();
+    }
+
+    private void LoadCore(VisualDefinition visual)
+    {
+        _historyHold++;
         var model = Context.GetModel(visual.Model);
         SelectedModel = model;
-        Clear();
+        ClearCore();
         _suspended = true;
         var metadata = model.Metadata;
         _visualId = visual.Id;
@@ -503,6 +542,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         }
         _suspended = false;
         Rebuild();
+        _historyHold--;
     }
 
     private void Remove(object item)
@@ -545,6 +585,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         };
         RefreshRendererOptions();
         SyncProperties();
+        Record();
     }
 
     // --- Properties panel ---
@@ -698,7 +739,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     {
         OnPropertyChanged(nameof(Dimensions));
         OnPropertyChanged(nameof(Measures));
-        if (Visual is { } visual) Load(visual);
+        if (Visual is { } visual) Reload(visual);
     }
 
     /// <summary>
@@ -711,7 +752,92 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         if (Visual is not { } visual || _selectedModel is not { } model) return;
         var calculated = visual.Values.Where(v => !model.Metadata.Fields.Any(f => f.Name == v.Measure)).ToArray();
         if (calculated.Length == 0) return;
-        Load(visual with { Values = visual.Values.Where(v => !calculated.Contains(v) || Context.Measures.Find(model.Metadata.Name, v.Measure) is not null).ToArray() });
+        Reload(visual with { Values = visual.Values.Where(v => !calculated.Contains(v) || Context.Measures.Find(model.Metadata.Name, v.Measure) is not null).ToArray() });
+    }
+
+    // --- History ---
+
+    // A reload of the same visual (other language, renamed measure): its history goes on
+    private void Reload(VisualDefinition visual)
+    {
+        LoadCore(visual);
+        _current = Visual;
+        _currentJson = Json(Visual);
+    }
+
+    private static string? Json(VisualDefinition? visual) => visual is null ? null : JsonSerializer.Serialize(visual, ReportSerializer.Options);
+
+    // Called after each rebuild: a visual that changed becomes a step of the history
+    private void Record()
+    {
+        if (_historyHold > 0 || Visual is not { } visual) return;
+        var json = Json(visual);
+        if (json == _currentJson) return;
+        if (_current is not null)
+        {
+            _undo.Add(_current);
+            if (_undo.Count > Math.Max(1, MaxHistory)) _undo.RemoveAt(0);
+        }
+        _redo.Clear();
+        _current = visual;
+        _currentJson = json;
+        OnHistoryChanged();
+    }
+
+    private void ResetHistory()
+    {
+        _undo.Clear();
+        _redo.Clear();
+        _current = Visual;
+        _currentJson = Json(Visual);
+        OnHistoryChanged();
+    }
+
+    public void Undo()
+    {
+        if (!CanUndo || _current is null) return;
+        _redo.Add(_current);
+        var previous = _undo[^1];
+        _undo.RemoveAt(_undo.Count - 1);
+        Restore(previous);
+    }
+
+    public void Redo()
+    {
+        if (!CanRedo || _current is null) return;
+        _undo.Add(_current);
+        var next = _redo[^1];
+        _redo.RemoveAt(_redo.Count - 1);
+        Restore(next);
+    }
+
+    // Shows a state of the history; the chip at the place of the selected one stays selected
+    private void Restore(VisualDefinition visual)
+    {
+        (Shelf Shelf, int Index)? selection = _selectedItem switch
+        {
+            ShelfItemViewModel chip => (chip.Shelf, Collection(chip.Shelf).IndexOf(chip)),
+            FilterItemViewModel filter => (Shelf.Filters, Filters.IndexOf(filter)),
+            _ => null,
+        };
+        _historyHold++;
+        LoadCore(visual);
+        _historyHold--;
+        _current = visual;
+        _currentJson = Json(visual);
+        if (selection is var (shelf, index))
+        {
+            IList<object> items = shelf == Shelf.Filters ? Filters.Cast<object>().ToList() : Collection(shelf).Cast<object>().ToList();
+            SelectedItem = index >= 0 && index < items.Count ? items[index] : null;
+        }
+        OnHistoryChanged();
+    }
+
+    private void OnHistoryChanged()
+    {
+        OnPropertyChanged(nameof(CanUndo));
+        OnPropertyChanged(nameof(CanRedo));
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private void SyncSelectedMark()
