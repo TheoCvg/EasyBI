@@ -79,6 +79,40 @@ Context.RefreshData("sales");   // the visuals of this model; RefreshData() for 
 <bi:VisualView Context="{Binding Context}" Definition="{Binding Visual}" />   <!-- display -->
 ```
 
+### The designer
+
+The `ReportDesigner` has three zones: the fields on the left, the wells and the preview in the middle, the
+**properties** on the right (both side panels fold: `IsFieldPanelOpen`, `IsPropertiesPanelOpen`).
+
+- **Chips** show their field and badges summing their settings up (Σ, avg, Quarter, PY, Y2, ↓...). A click selects one
+  (`DesignerViewModel.SelectedItem`) and the properties panel shows its settings in sections: aggregation, granularity,
+  time calculation, chart type, secondary axis, sort for a field; the editor of a filter. Without a selection it shows
+  the visual's: title, sort, Top N, and the options of the renderer.
+- **The visual type** is chosen in a gallery grouped by use (comparison, trend, composition, indicators and tables);
+  types no renderer draws are greyed.
+- **Wells follow the type**: a pie shows "Category" and "Value", a table "Rows", a KPI only "Values"; a well the type
+  does not use refuses fields and stays shown while it still holds some. Empty wells say what to drop, and while a
+  field or a chip is dragged the wells that accept it light up (`DragSource.DragStarted`).
+- **Undo and redo** every change of the visual (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z, the header's buttons,
+  `UndoCommand`/`RedoCommand`; 100 steps, `MaxHistory`). Loading another visual starts a new history.
+- **Keyboard**: arrows go from chip to chip (Up/Down from well to well), Ctrl+Left/Right move the selected chip within
+  its well, Delete removes it, Escape selects the visual again.
+
+Everything stays replaceable: the template is lookless and made of slots (see below); the properties are descriptors
+(`DesignerProperty`: toggle, choice, number, text, info or any object shown with its `DataTemplate`, grouped in
+`DesignerPropertySection`s), which `DesignerViewModel.PropertiesBuilding` lets an application add, remove or reorder;
+each kind of editor is a `DataTemplate` under a `DesignerPropertyTemplates` key; the icons of the types are geometries
+under `VisualTypeIcons` keys.
+
+```csharp
+designer.ViewModel!.PropertiesBuilding += (_, e) =>
+{
+    if (e.Selection is ShelfItemViewModel { IsValue: true } chip)
+        e.Sections.Add(new DesignerPropertySection("Notes", () => "Notes",
+            [DesignerProperty.Text("Comment", () => "Comment", () => Comments.Get(chip), text => Comments.Set(chip, text))]));
+};
+```
+
 ### Calculated measures
 
 A measure is a row value that the end user aggregates (sum, average...). Ratios need more: the margin rate of a region
@@ -308,9 +342,9 @@ A search box at the top of the field list (`FieldList.Search`) and above the val
 `FilterItemViewModel.Search`; checked values that are not shown stay checked) narrow the lists down: case and accents
 are ignored and every word must appear (`TextMatch.Matches` in `EasyBI.Core`).
 
-In the designer, the visual is sorted from the menu of a chip of the Axis or Values shelf (⇅, ascending ↑ or descending ↓;
-one sorted field at a time, the sort following the field when its aggregation or grain changes). The "Sort" row under
-the shelves (slot `ReportDesignerSlots.Sort`) recalls the active sort and limits the visual to its first rows (`Top`).
+In the designer, the visual is sorted from the properties of a chip of the Axis or Values well (ascending ↑ or
+descending ↓; one sorted field at a time, the sort following the field when its aggregation or grain changes). The
+visual's properties recall the active sort and limit the visual to its first rows (`Top`).
 `DashboardDropTarget.Find`, the place an item dropped at a point goes, is shared by moves and field drops.
 
 ### Drag and drop
@@ -410,7 +444,7 @@ Slots.Hide(designer, ReportDesignerSlots.FieldPanel);
 ```
 
 - **Names**: `ReportDesignerSlots` (`FieldPanel`, `Fields`, `Header`, `Title`, `VisualTypes`, `Shelves`, `AxisShelf`,
-  `LegendShelf`, `ValuesShelf`, `FiltersShelf`, `Sort`, `RendererOptions`, `Preview`), `FieldListSlots` (`Model`, `Search`, `Dimensions`,
+  `LegendShelf`, `ValuesShelf`, `FiltersShelf`, `Preview`, `Properties`), `FieldListSlots` (`Model`, `Search`, `Dimensions`,
   `Measures`, `AddMeasureButton`), `FilterBarSlots` (`Filters`, `Label`, `Slicer`, `AddButton`, `Selection`),
   `FilterEditorSlots` (`Values`, `Period`) and `DashboardSlots` (`Body`, `ItemContent`, `EmptyItemChoices`, `ItemToolbar`). Slots can be
   nested: `Header` contains `Title` and `VisualTypes`. The band menu of a dashboard is customized through
@@ -612,8 +646,8 @@ the types that no renderer can draw.
 ### Renderer options
 
 A connector offers settings of its own to the end user by declaring them in its capabilities: the designer shows them
-under the shelves (slot `ReportDesignerSlots.RendererOptions`) for the visuals they apply to, as a check box, a list or
-a number box, and saves their values with the visual.
+in the "Options" section of its properties panel (`DesignerPropertySections.Options`) for the visuals they apply to, as
+a check box, a list or a number box, and saves their values with the visual.
 
 ```csharp
 public RendererCapabilities Capabilities { get; } = new(marks)
