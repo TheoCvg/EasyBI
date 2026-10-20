@@ -80,6 +80,10 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         WeakEventManager<MeasureContext, EventArgs>.AddHandler(context.Measures, nameof(MeasureContext.Changed), OnMeasuresChanged);
         PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, OnLanguageChanged, string.Empty);
         foreach (var chips in new[] { Axis, Legend, Values }) chips.CollectionChanged += OnChipsChanged;
+        Filters.CollectionChanged += (_, e) =>
+        {
+            foreach (var filter in e.NewItems?.OfType<FilterItemViewModel>() ?? []) filter.Selecting = item => SelectedItem = item;
+        };
         RefreshAvailability();
         SelectedModel = context.Models.FirstOrDefault();
     }
@@ -540,7 +544,11 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
 
     private void OnChipsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        foreach (var chip in e.NewItems?.OfType<ShelfItemViewModel>() ?? []) chip.PropertyChanged += OnChipPropertyChanged;
+        foreach (var chip in e.NewItems?.OfType<ShelfItemViewModel>() ?? [])
+        {
+            chip.PropertyChanged += OnChipPropertyChanged;
+            chip.Selecting = item => SelectedItem = item;
+        }
         foreach (var chip in e.OldItems?.OfType<ShelfItemViewModel>() ?? []) chip.PropertyChanged -= OnChipPropertyChanged;
     }
 

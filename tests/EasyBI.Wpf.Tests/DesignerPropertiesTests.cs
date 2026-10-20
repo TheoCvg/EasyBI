@@ -126,4 +126,38 @@ public class DesignerPropertiesTests
         designer.SelectedItem = null;
         Assert.False(designer.Properties.Single(s => s.Key == DesignerPropertySections.Visual).IsExpanded);
     }
+
+    [Fact]
+    public void A_click_on_a_chip_or_a_filter_selects_it()
+    {
+        var designer = Designer();
+        designer.Drop(designer.Dimensions.Single(d => d.Name == "Region"), Shelf.Filters);
+        var filter = designer.Filters.Single();
+
+        designer.Values.Single().SelectCommand.Execute(null);
+        Assert.Same(designer.Values.Single(), designer.SelectedItem);
+
+        filter.SelectCommand.Execute(null);
+        Assert.Same(filter, designer.SelectedItem);
+        Assert.True(filter.IsSelected);
+        var editor = Assert.Single(designer.Properties[0].Properties);
+        Assert.Equal((PropertyKind.Custom, (object?)filter), (editor.Kind, editor.Value)); // the filter's editor
+    }
+
+    [Fact]
+    public void Badges_sum_the_settings_of_a_chip_up()
+    {
+        var designer = Designer();
+        var amount = designer.Values.Single();
+        Assert.Equal(["Σ"], amount.Badges);
+        Assert.Empty(designer.Axis.Single().Badges);
+
+        amount.Aggregation = Aggregation.Average;
+        amount.Time = TimeCalculation.PreviousYear;
+        amount.SortDirection = ListSortDirection.Descending;
+
+        Assert.Equal(["avg", "PY", "↓"], amount.Badges);
+        designer.Drop(designer.Dimensions.Single(d => d.Name == "Date"), Shelf.Legend);
+        Assert.Equal(["Month"], designer.Legend.Single().Badges);
+    }
 }

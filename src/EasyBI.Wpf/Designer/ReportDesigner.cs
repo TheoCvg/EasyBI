@@ -32,6 +32,14 @@ public class ReportDesigner : Control
 
     public static readonly DependencyProperty ViewModelProperty = ViewModelPropertyKey.DependencyProperty;
 
+    /// <summary>Whether the field panel, on the left, is shown (two-way; true by default).</summary>
+    public static readonly DependencyProperty IsFieldPanelOpenProperty = DependencyProperty.Register(
+        nameof(IsFieldPanelOpen), typeof(bool), typeof(ReportDesigner), new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
+
+    /// <summary>Whether the properties panel, on the right, is shown (two-way; true by default).</summary>
+    public static readonly DependencyProperty IsPropertiesPanelOpenProperty = DependencyProperty.Register(
+        nameof(IsPropertiesPanelOpen), typeof(bool), typeof(ReportDesigner), new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
+
     static ReportDesigner() =>
         DefaultStyleKeyProperty.OverrideMetadata(typeof(ReportDesigner), new FrameworkPropertyMetadata(typeof(ReportDesigner)));
 
@@ -39,6 +47,18 @@ public class ReportDesigner : Control
     {
         get => (EasyBIContext?)GetValue(ContextProperty);
         set => SetValue(ContextProperty, value);
+    }
+
+    public bool IsFieldPanelOpen
+    {
+        get => (bool)GetValue(IsFieldPanelOpenProperty);
+        set => SetValue(IsFieldPanelOpenProperty, value);
+    }
+
+    public bool IsPropertiesPanelOpen
+    {
+        get => (bool)GetValue(IsPropertiesPanelOpenProperty);
+        set => SetValue(IsPropertiesPanelOpenProperty, value);
     }
 
     /// <summary>The visual being designed (read-only).</summary>

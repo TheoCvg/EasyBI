@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using EasyBI.Abstractions;
 using EasyBI.Core;
@@ -150,7 +151,7 @@ public class RendererOptionsDesignerTests
     }
 
     [Fact]
-    public void Designer_shows_the_options_under_the_shelves_in_their_slot() => Sta.Run(() =>
+    public void Designer_shows_the_options_in_its_properties_panel() => Sta.Run(() =>
     {
         var designer = new ReportDesigner
         {
@@ -158,12 +159,29 @@ public class RendererOptionsDesignerTests
                 .AddModel(SemanticModel.For(new[] { new Sale("Nord", 1m) }, "sales").Dimension(s => s.Region, "Region").Measure(s => s.Amount, "Amount"))
                 .UseRenderer(new OptionsRenderer()),
         };
-        designer.Hosted().Measure(new Size(1000, 700));
-        designer.Arrange(new Rect(0, 0, 1000, 700));
+        designer.Hosted().Measure(new Size(1200, 800));
+        designer.Arrange(new Rect(0, 0, 1200, 800));
         Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle); // bindings
 
-        var options = (ItemsControl)designer.Template.FindName("RendererOptionList", designer);
-        Assert.Same(designer.ViewModel!.RendererOptions, options.ItemsSource);
-        Assert.Equal(Visibility.Visible, ((FrameworkElement)options.Parent).Visibility);
+        var options = Assert.Single(designer.ViewModel!.Properties, s => s.Key == DesignerPropertySections.Options);
+        Assert.Equal(["scrollable", "style", "size"], options.Properties.Select(p => p.Key));
+        // One editor per kind of option: a check box, a list, a number box
+        var panel = (FrameworkElement)designer.Template.FindName("PropertiesPanel", designer);
+        Assert.Equal(Visibility.Visible, panel.Visibility);
+        Assert.Contains(Descendants<CheckBox>(panel), c => Equals(c.Content, "Scrolling"));
+        Assert.NotEmpty(Descendants<ComboBox>(panel));
+
+        designer.IsPropertiesPanelOpen = false;
+        Assert.Equal(Visibility.Collapsed, panel.Visibility);
     });
+
+    private static IEnumerable<T> Descendants<T>(DependencyObject root)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T match) yield return match;
+            foreach (var descendant in Descendants<T>(child)) yield return descendant;
+        }
+    }
 }

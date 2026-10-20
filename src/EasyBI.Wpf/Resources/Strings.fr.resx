@@ -375,4 +375,40 @@
   <data name="PropertiesVisual" xml:space="preserve">
     <value>Visuel</value>
   </data>
+  <data name="BadgeAverage" xml:space="preserve">
+    <value>moy</value>
+  </data>
+  <data name="BadgeMin" xml:space="preserve">
+    <value>min</value>
+  </data>
+  <data name="BadgeMax" xml:space="preserve">
+    <value>max</value>
+  </data>
+  <data name="BadgeCount" xml:space="preserve">
+    <value>nb</value>
+  </data>
+  <data name="BadgePreviousYear" xml:space="preserve">
+    <value>N-1</value>
+  </data>
+  <data name="BadgeChange" xml:space="preserve">
+    <value>Δ N-1</value>
+  </data>
+  <data name="BadgePercentChange" xml:space="preserve">
+    <value>Δ% N-1</value>
+  </data>
+  <data name="BadgeYearToDate" xml:space="preserve">
+    <value>Cumul</value>
+  </data>
+  <data name="Properties" xml:space="preserve">
+    <value>Propriétés</value>
+  </data>
+  <data name="ToggleFieldPanel" xml:space="preserve">
+    <value>Afficher ou masquer les champs</value>
+  </data>
+  <data name="TogglePropertiesPanel" xml:space="preserve">
+    <value>Afficher ou masquer les propriétés</value>
+  </data>
+  <data name="SelectChipHint" xml:space="preserve">
+    <value>Cliquez sur un champ pour voir ses réglages</value>
+  </data>
 </root>

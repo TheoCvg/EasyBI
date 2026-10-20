@@ -67,6 +67,50 @@ public sealed class ShelfItemViewModel : ObservableObject
         _grain = HasGrain ? DateGrain.Month : DateGrain.None;
         _aggregation = field.DefaultAggregation ?? Aggregation.Sum;
         SortCommand = new RelayCommand<ListSortDirection?>(direction => SortDirection = direction);
+        SelectCommand = new RelayCommand<object?>(_ => Selecting?.Invoke(this));
+        // The badges sum the settings up: they follow them, and the language
+        PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is not (nameof(Badges) or nameof(IsSelected))) OnPropertyChanged(nameof(Badges));
+        };
+        PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, (_, _) => OnPropertyChanged(nameof(Badges)), string.Empty);
+    }
+
+    /// <summary>Selects the chip in its designer (a click on it), whose properties panel then shows its settings.</summary>
+    public ICommand SelectCommand { get; }
+
+    internal Action<object>? Selecting { get; set; }
+
+    /// <summary>
+    /// Short marks of the chip's settings, shown on it (the settings themselves are in the properties panel):
+    /// aggregation, granularity, time calculation, chart type, secondary axis, sort.
+    /// </summary>
+    public IReadOnlyList<string> Badges
+    {
+        get
+        {
+            var badges = new List<string>();
+            if (HasAggregation) badges.Add(Aggregation switch
+            {
+                Aggregation.Average => Strings.BadgeAverage,
+                Aggregation.Min => Strings.BadgeMin,
+                Aggregation.Max => Strings.BadgeMax,
+                Aggregation.Count => Strings.BadgeCount,
+                _ => "Σ",
+            });
+            if (HasGrain) badges.Add(DateGrains.Caption(Grain));
+            if (IsValue && Time != TimeCalculation.None) badges.Add(Time switch
+            {
+                TimeCalculation.PreviousYear => Strings.BadgePreviousYear,
+                TimeCalculation.ChangeFromPreviousYear => Strings.BadgeChange,
+                TimeCalculation.PercentChangeFromPreviousYear => Strings.BadgePercentChange,
+                _ => Strings.BadgeYearToDate,
+            });
+            if (ShowSeriesOptions && SeriesMark is not null) badges.Add(SeriesMarkOption.Label);
+            if (ShowSeriesOptions && SecondaryAxis) badges.Add(Strings.SecondaryAxis);
+            if (CanSort && SortDirection is not null) badges.Add(SortOption.Symbol);
+            return badges;
+        }
     }
 
     public FieldDescriptor Field { get; }
@@ -194,6 +238,7 @@ public sealed class FilterItemViewModel : ObservableObject
 {
     private readonly Action _changed;
     private bool _isSelected;
+    private ICommand? _selectCommand;
     private HashSet<string?>? _pendingSelection;
     private bool _isLoading = true;
     private Option<FilterOperator?> _periodKind;
@@ -249,6 +294,11 @@ public sealed class FilterItemViewModel : ObservableObject
         get => _isSelected;
         internal set => SetProperty(ref _isSelected, value);
     }
+
+    /// <summary>Selects the filter in its designer (a click on it), whose properties panel then shows its editor.</summary>
+    public ICommand SelectCommand => _selectCommand ??= new RelayCommand<object?>(_ => Selecting?.Invoke(this));
+
+    internal Action<object>? Selecting { get; set; }
 
     public FilterOperator Operator { get; }
 
