@@ -32,47 +32,57 @@
         </Style>
 
         <DataTemplate x:Key="SlicerTemplate" DataType="{x:Type bi:SlicerViewModel}">
-            <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SecondarySoftBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.SecondarySoftBorderBrushKey}}" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock VerticalAlignment="Center"><Run Text="{Binding Caption, Mode=OneWay}" /><Run Text="{bi:Localize LabelSuffix}" /></TextBlock>
-                    <ToggleButton x:Name="Toggle" Margin="6,0,0,0" Padding="6,1" FontSize="11"
-                                  Content="{Binding Filter.Summary}"
-                                  IsEnabled="{Binding Filter.IsLoading, Converter={x:Static designer:InverseBooleanConverter.Instance}}" />
-                    <Popup IsOpen="{Binding IsChecked, ElementName=Toggle}" StaysOpen="False"
-                           PlacementTarget="{Binding ElementName=Toggle}" Placement="Bottom" AllowsTransparency="True">
-                        <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="1"
-                                CornerRadius="6" Padding="8" MaxHeight="300" MinWidth="160">
-                            <designer:FilterEditor DataContext="{Binding Filter}" />
-                        </Border>
-                    </Popup>
-                    <Button Style="{StaticResource ChipButton}" Click="OnRemoveSlicer" ToolTip="{bi:Localize RemoveFilter}" />
-                </StackPanel>
-            </Border>
+            <bi:SlotHost Slot="{x:Static bi:FilterBarSlots.Slicer}">
+                <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SecondarySoftBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.SecondarySoftBorderBrushKey}}" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center"><Run Text="{Binding Caption, Mode=OneWay}" /><Run Text="{bi:Localize LabelSuffix}" /></TextBlock>
+                        <ToggleButton x:Name="Toggle" Margin="6,0,0,0" Padding="6,1" FontSize="11"
+                                      Content="{Binding Filter.Summary}"
+                                      IsEnabled="{Binding Filter.IsLoading, Converter={x:Static designer:InverseBooleanConverter.Instance}}" />
+                        <Popup IsOpen="{Binding IsChecked, ElementName=Toggle}" StaysOpen="False"
+                               PlacementTarget="{Binding ElementName=Toggle}" Placement="Bottom" AllowsTransparency="True">
+                            <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="1"
+                                    CornerRadius="6" Padding="8" MaxHeight="300" MinWidth="160">
+                                <designer:FilterEditor DataContext="{Binding Filter}" />
+                            </Border>
+                        </Popup>
+                        <Button Style="{StaticResource ChipButton}" Click="OnRemoveSlicer" ToolTip="{bi:Localize RemoveFilter}" />
+                    </StackPanel>
+                </Border>
+            </bi:SlotHost>
         </DataTemplate>
     </UserControl.Resources>
 
     <DockPanel>
         <!-- Current cross-filter -->
-        <Border x:Name="SelectionChip" DockPanel.Dock="Right" Visibility="Collapsed" VerticalAlignment="Center"
-                Background="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBorderBrushKey}}" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock x:Name="SelectionText" VerticalAlignment="Center" MaxWidth="360" TextTrimming="CharacterEllipsis" />
-                <Button Style="{StaticResource ChipButton}" Click="OnClearSelection" ToolTip="{bi:Localize ClearSelection}" />
-            </StackPanel>
-        </Border>
+        <bi:SlotHost Slot="{x:Static bi:FilterBarSlots.Selection}" DockPanel.Dock="Right">
+            <Border x:Name="SelectionChip" Visibility="Collapsed" VerticalAlignment="Center"
+                    Background="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBorderBrushKey}}" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="SelectionText" VerticalAlignment="Center" MaxWidth="360" TextTrimming="CharacterEllipsis" />
+                    <Button Style="{StaticResource ChipButton}" Click="OnClearSelection" ToolTip="{bi:Localize ClearSelection}" />
+                </StackPanel>
+            </Border>
+        </bi:SlotHost>
 
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock Text="{bi:Localize Filters}" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" FontWeight="SemiBold"
-                       VerticalAlignment="Center" Margin="0,0,6,0" />
-            <ItemsControl x:Name="SlicerList" ItemTemplate="{StaticResource SlicerTemplate}" VerticalAlignment="Center">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-            </ItemsControl>
-            <Button x:Name="AddButton" Content="{bi:Localize AddFilter}" Click="OnAddFilter" Margin="6,0,0,0" Padding="8,2"
-                    VerticalAlignment="Center" Cursor="Hand" />
-        </StackPanel>
+        <bi:SlotHost Slot="{x:Static bi:FilterBarSlots.Filters}" HorizontalAlignment="Left">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <bi:SlotHost Slot="{x:Static bi:FilterBarSlots.Label}">
+                    <TextBlock Text="{bi:Localize Filters}" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Margin="0,0,6,0" />
+                </bi:SlotHost>
+                <ItemsControl x:Name="SlicerList" ItemTemplate="{StaticResource SlicerTemplate}" VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+                <bi:SlotHost Slot="{x:Static bi:FilterBarSlots.AddButton}">
+                    <Button x:Name="AddButton" Content="{bi:Localize AddFilter}" Click="OnAddFilter" Margin="6,0,0,0" Padding="8,2"
+                            VerticalAlignment="Center" Cursor="Hand" />
+                </bi:SlotHost>
+            </StackPanel>
+        </bi:SlotHost>
     </DockPanel>
 </UserControl>

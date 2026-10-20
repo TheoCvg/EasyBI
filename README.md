@@ -338,6 +338,48 @@ A connector only has to call `request.Select?.Invoke(new CategorySelection(categ
 click (or `RowSelection` for a table): `Select` is null when interactivity is disabled, for example
 in the designer preview.
 
+## Customizing the components: slots
+
+The parts of the `ReportDesigner` and of the `FilterBar` are **slots**: named places where an application adds its own
+content (before or after the default content), replaces it, or hides it.
+
+```xml
+<bi:ReportDesigner Context="{Binding Context}">
+    <bi:Slots.Items>
+        <!-- Under the preview -->
+        <bi:Slot Name="{x:Static bi:ReportDesignerSlots.Preview}">
+            <Button Content="Publish" Command="{Binding DataContext.PublishCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+        </bi:Slot>
+        <bi:Slot Name="{x:Static bi:ReportDesignerSlots.Title}" Mode="Before"><TextBlock Text="Title:" /></bi:Slot>
+        <bi:Slot Name="{x:Static bi:ReportDesignerSlots.FiltersShelf}" Mode="Hide" />
+    </bi:Slots.Items>
+</bi:ReportDesigner>
+```
+
+```csharp
+Slots.Add(designer, ReportDesignerSlots.Header, exportButton);              // after the default content
+Slots.Add(designer, ReportDesignerSlots.Fields, help, SlotMode.Before);      // above the field list
+Slots.Add(filterBar, FilterBarSlots.AddButton, myAddButton, SlotMode.Replace);
+Slots.Hide(designer, ReportDesignerSlots.FieldPanel);
+```
+
+- **Names**: `ReportDesignerSlots` (`FieldPanel`, `Fields`, `Header`, `Title`, `VisualTypes`, `Shelves`, `AxisShelf`,
+  `LegendShelf`, `ValuesShelf`, `FiltersShelf`, `Preview`) and `FilterBarSlots` (`Filters`, `Label`, `Slicer`,
+  `AddButton`, `Selection`). Slots can be nested: `Header` contains `Title` and `VisualTypes`.
+- **Modes**: `After` (default), `Before`, `Replace`, `Hide`. Before and after are left and right of the default content,
+  or above and below it in a vertical slot (`Fields`, `Shelves`, `Preview`); several slots with the same name are shown
+  in declaration order, and the last `Replace` or `Hide` wins.
+- **Data context**: the content takes the data context of the place it is shown in: the `DesignerViewModel` in the
+  designer, the application's in the filter bar, the `SlicerViewModel` in `FilterBarSlots.Slicer`.
+- **Repeated slots**: an element can only be shown once. A slot shown several times (`FilterBarSlots.Slicer`, once per
+  global filter, or slots declared for several components) takes a `ContentTemplate` (`Slots.AddTemplate(...)` in
+  code), applied to the data context of each place.
+- **Inheritance**: `Slots.Items` is inherited, so slots declared on a window or a panel apply to every component in it;
+  the nearest declaration replaces the others. Elements declared inside a `UserControl` such as the `ReportDesigner`
+  cannot have an `x:Name` (WPF error MC3093): declare the slots on an ancestor to name them.
+- **Custom templates**: `SlotHost` is the control that shows a slot (`<bi:SlotHost Slot="..." Orientation="Vertical">`
+  with the default content inside); an application can use it in its own templates.
+
 ## Theming
 
 Every EasyBI control (designer, dashboard, filter bar, field list, KPI and table renderers, chart connectors) draws
