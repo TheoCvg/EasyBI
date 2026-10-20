@@ -119,6 +119,8 @@ public class FieldDropTests
 
         Assert.Equal(DragDropEffects.Copy, handler.DragOver(new DropInfo { Item = region, Key = Shelf.Axis }));
         Assert.Equal(DragDropEffects.None, handler.DragOver(new DropInfo { Item = foreign, Key = Shelf.Axis }));
+        Assert.Equal($"{foreign.Caption} belongs to the model “{foreign.Model.Metadata.Caption}”: choose this model first",
+            handler.RefusalReason(new DropInfo { Item = foreign, Key = Shelf.Axis }));
 
         handler.Drop(new DropInfo { Item = region, Key = Shelf.Axis });
         designer.AddFieldCommand.Execute(new ModelField(Model, Field("Amount")));

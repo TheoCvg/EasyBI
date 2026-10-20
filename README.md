@@ -305,13 +305,16 @@ public sealed class MyViewModel : IDropHandler
   `Index` among the target's items and the raw `Data` for drags coming from elsewhere.
 - `DropTarget.IsDragOver` is true while an accepted drag is over the target (style triggers);
   `DropTarget.Orientation` switches the insertion rules to a vertical stack.
+- A handler may explain a refusal (`IDropHandler.RefusalReason`, optional): the reason is shown under the target and
+  set on it as `DropTarget.Refusal` while the drag is over it.
 - A scrollable target, or its scroll viewer, scrolls when the pointer nears its edges (`AutoScroller`, also usable
   on its own); `InsertionIndex` holds the pure insertion rules.
-- Style keys `DragSource.PreviewStyleKey` (a `ContentControl`; `DragSource.PreviewTemplate` sets the content) and
-  `DropTarget.InsertionLineStyleKey` (a `Border`).
+- Style keys `DragSource.PreviewStyleKey` (a `ContentControl`; `DragSource.PreviewTemplate` sets the content),
+  `DropTarget.InsertionLineStyleKey` (a `Border`) and `DropTarget.RefusalStyleKey` (a `ContentControl` holding the reason).
 
 In the designer, fields are dropped between chips, chips are reordered within a shelf, and dimensions move between
-Axis and Legend keeping their granularity.
+Axis and Legend keeping their granularity. A refused field says why (`DesignerViewModel.RefusalReason`): only measures
+in Values, only dimensions elsewhere, a field already on the shelf, a full axis, a field of another model.
 
 ## Filtering: global filters and cross-filtering
 

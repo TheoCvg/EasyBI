@@ -336,4 +336,25 @@
   <data name="SearchValues" xml:space="preserve">
     <value>Rechercher une valeur</value>
   </data>
+  <data name="DropOtherModel" xml:space="preserve">
+    <value>{0} appartient au modèle « {1} » : choisissez d'abord ce modèle</value>
+  </data>
+  <data name="DropMeasuresOnly" xml:space="preserve">
+    <value>Seules les mesures vont dans Valeurs</value>
+  </data>
+  <data name="DropDimensionsOnly" xml:space="preserve">
+    <value>Seules les dimensions vont dans {0}</value>
+  </data>
+  <data name="DropAlreadyThere" xml:space="preserve">
+    <value>{0} est déjà dans {1}</value>
+  </data>
+  <data name="DropAxisFull" xml:space="preserve">
+    <value>L'axe contient au plus {0} champs</value>
+  </data>
+  <data name="DropFilterFromList" xml:space="preserve">
+    <value>Pour filtrer sur {0}, faites-le glisser depuis la liste des champs</value>
+  </data>
+  <data name="DropFilterStays" xml:space="preserve">
+    <value>Un filtre reste dans Filtres</value>
+  </data>
 </root>

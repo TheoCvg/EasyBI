@@ -8,7 +8,8 @@ namespace EasyBI.Wpf.DragAndDrop;
 /// Turns an element into a drop target whose decisions belong to an <see cref="IDropHandler"/> (usually the
 /// view-model). On an <see cref="ItemsControl"/>, the drop position among the items is computed and shown by an
 /// insertion line. While an accepted drag is over the target, <see cref="IsDragOverProperty"/> is true (for style
-/// triggers), and a scrollable target or ancestor scrolls when the pointer nears its edges.
+/// triggers); while a refused one is, <see cref="RefusalProperty"/> holds the reason given by the handler, also shown
+/// under the target. A scrollable target or ancestor scrolls when the pointer nears its edges.
 /// <code>&lt;ItemsControl bi:DropTarget.Handler="{Binding}" bi:DropTarget.Key="Axis" /&gt;</code>
 /// Being attached properties, they can be set by a style.
 /// </summary>
@@ -16,6 +17,9 @@ public static class DropTarget
 {
     /// <summary>Style of the insertion line (a <c>Border</c>).</summary>
     public static ComponentResourceKey InsertionLineStyleKey { get; } = new(typeof(DropTarget), "InsertionLine");
+
+    /// <summary>Style of the message explaining a refused drop (a <c>ContentControl</c> whose content is the reason).</summary>
+    public static ComponentResourceKey RefusalStyleKey { get; } = new(typeof(DropTarget), "Refusal");
 
     public static readonly DependencyProperty HandlerProperty = DependencyProperty.RegisterAttached(
         "Handler", typeof(IDropHandler), typeof(DropTarget), new PropertyMetadata(null, OnHandlerChanged));
@@ -34,6 +38,14 @@ public static class DropTarget
     /// <summary>True while a drag the handler accepts is over the element.</summary>
     public static readonly DependencyProperty IsDragOverProperty = IsDragOverPropertyKey.DependencyProperty;
 
+    private static readonly DependencyPropertyKey RefusalPropertyKey = DependencyProperty.RegisterAttachedReadOnly(
+        "Refusal", typeof(string), typeof(DropTarget), new PropertyMetadata(null));
+
+    /// <summary>
+    /// While a drag the handler refuses is over the element, why (<see cref="IDropHandler.RefusalReason"/>); null otherwise.
+    /// </summary>
+    public static readonly DependencyProperty RefusalProperty = RefusalPropertyKey.DependencyProperty;
+
     public static IDropHandler? GetHandler(DependencyObject element) => (IDropHandler?)element.GetValue(HandlerProperty);
     public static void SetHandler(DependencyObject element, IDropHandler? value) => element.SetValue(HandlerProperty, value);
     public static object? GetKey(DependencyObject element) => element.GetValue(KeyProperty);
@@ -41,10 +53,13 @@ public static class DropTarget
     public static Orientation GetOrientation(DependencyObject element) => (Orientation)element.GetValue(OrientationProperty);
     public static void SetOrientation(DependencyObject element, Orientation value) => element.SetValue(OrientationProperty, value);
     public static bool GetIsDragOver(DependencyObject element) => (bool)element.GetValue(IsDragOverProperty);
+    public static string? GetRefusal(DependencyObject element) => (string?)element.GetValue(RefusalProperty);
 
     // One drag at a time: the target under the pointer owns the insertion line and the scrolling
     private static UIElement? _current;
     private static FloatingAdorner? _line;
+    private static FloatingAdorner? _refusal;
+    private static string? _refusalText;
     private static AutoScroller? _scroller;
     private static ScrollViewer? _scrolled;
 
@@ -108,6 +123,7 @@ public static class DropTarget
         var accepted = e.Effects != DragDropEffects.None;
         target.SetValue(IsDragOverPropertyKey, accepted);
         ShowLine(target, accepted ? InsertionIndex.IndicatorBounds(items, drop.Index, GetOrientation(target)) : Rect.Empty);
+        ShowRefusal(target, accepted ? null : handler.RefusalReason(drop));
         Scroll(target, e);
     }
 
@@ -132,6 +148,7 @@ public static class DropTarget
     private static void Leave()
     {
         _current?.ClearValue(IsDragOverPropertyKey);
+        if (_current is not null) ShowRefusal(_current, null);
         _current = null;
         _line?.Remove();
         _line = null;
@@ -153,6 +170,22 @@ public static class DropTarget
             _line = FloatingAdorner.Show(target, line);
         }
         _line?.Place(bounds.TopLeft, bounds.Size);
+    }
+
+    // The reason, under the target
+    private static void ShowRefusal(UIElement target, string? reason)
+    {
+        if (reason is null) target.ClearValue(RefusalPropertyKey);
+        else target.SetValue(RefusalPropertyKey, reason);
+        if (reason == _refusalText && (_refusal is not null || reason is null)) return;
+        _refusal?.Remove();
+        _refusal = null;
+        _refusalText = reason;
+        if (reason is null) return;
+        var message = new ContentControl { Content = reason, IsHitTestVisible = false, Focusable = false };
+        message.SetResourceReference(FrameworkElement.StyleProperty, RefusalStyleKey);
+        _refusal = FloatingAdorner.Show(target, message);
+        _refusal?.Place(new Point(0, target.RenderSize.Height + 4));
     }
 
     private static void Scroll(UIElement target, DragEventArgs e)
