@@ -222,6 +222,7 @@ wraps the item and the newcomer in a new container. The rules are pure functions
 | `MoveBehavior` | grip to drag an item: a picture follows the pointer and a placeholder shows where it lands, the others making room live; near an item's edge it goes next to it (like "+"), between two lines it becomes a line, over a free space it fills it; across bands, auto-scroll near the edges; Escape cancels |
 | `ResizeBehavior` | corner handle: constrains the item (columns and rows in a grid band, pixels and rows elsewhere) |
 | `ItemToolbarBehavior` | automatic size (for a resized item), edit, remove; text size, bold, alignment; image fit |
+| `SelectionBehavior` | click selects an item (Ctrl+click adds or removes it), click on the background unselects, drag from the background draws a selection box; arrows go to the nearest item (Shift adds it), Escape unselects |
 | `BandMenuBehavior` | ⋮ menu of a band: Fit / Scroll / Wrap, insert, remove (`MenuOpening` to customize it) |
 | `BandScrollBehavior` | scroll bar and Shift+wheel for scrolling bands |
 | `TextEditBehavior` | double-click a text to edit it in place |
@@ -241,8 +242,13 @@ Hooks for applications:
 - events `EditVisualRequested` (replace the built-in designer dialog), `ImageRequested` (replace the file
   dialog), `TextEditRequested`, `ItemRemoving` (veto), `Changed` (every change, with the documents before
   and after), `DocumentLoaded`;
+- the item selection: `SelectedItems`, `SelectionChanged`, `Select(items, DashboardSelectionMode.Replace/Add/Toggle)`,
+  `SelectAll`, `UnselectAll`, `RemoveSelected` and `DuplicateSelected` (one change each), also reached through
+  `ApplicationCommands.Delete` (Del), `ApplicationCommands.SelectAll` (Ctrl+A) and `DashboardCommands.Duplicate`
+  (Ctrl+D); `DashboardItem.IsSelected` for templates (the default one draws a ring) and the
+  `DashboardOverlay.SelectionBoxStyleKey` style. A read-only dashboard has no selection;
 - `DashboardCommands` (`AddVisual`, `AddText`, `AddImage`, `EditItem`, `RemoveItem`, `ResetSize`,
-  `AddRight`, `AddBelow`, `InsertBand`, `RemoveBand`...) for custom templates, and public methods
+  `AddRight`, `AddBelow`, `InsertBand`, `RemoveBand`, `Duplicate`...) for custom templates, and public methods
   (`AddNextTo`, `AddIn` a free space, `InsertLine`, `SetAutoSize`, `SetVisual`, `InsertBand`, `BeginEdit` to group
   changes into one undo step...);
 - a default template for `DashboardView` (its `Panel` in a scroll viewer, under an `AdornerDecorator` where behaviors

@@ -29,4 +29,11 @@ public static class DashboardCommands
 
     /// <summary>Removes a band and its items; the parameter is the band index.</summary>
     public static RoutedCommand RemoveBand { get; } = new(nameof(RemoveBand), typeof(DashboardCommands));
+
+    /// <summary>
+    /// Duplicates the selected items (<see cref="DashboardView.SelectedItems"/>), each next to its original (Ctrl+D).
+    /// Removing them and selecting them all use <see cref="ApplicationCommands.Delete"/> and <see cref="ApplicationCommands.SelectAll"/>.
+    /// </summary>
+    public static RoutedCommand Duplicate { get; } = new(nameof(Duplicate), typeof(DashboardCommands),
+        [new KeyGesture(Key.D, ModifierKeys.Control)]);
 }

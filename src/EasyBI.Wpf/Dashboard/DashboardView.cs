@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -11,6 +12,19 @@ using Microsoft.Win32;
 using Microsoft.Xaml.Behaviors;
 
 namespace EasyBI.Wpf.Dashboard;
+
+/// <summary>How <see cref="DashboardView.Select(IEnumerable{DashboardItem}, DashboardSelectionMode)"/> combines with the current selection.</summary>
+public enum DashboardSelectionMode
+{
+    /// <summary>The items become the selection.</summary>
+    Replace,
+
+    /// <summary>The items are added to the selection.</summary>
+    Add,
+
+    /// <summary>Selected items are unselected, the others selected (Ctrl+click).</summary>
+    Toggle,
+}
 
 /// <summary>
 /// Dashboard that end users arrange: a <see cref="DashboardPanel"/> of <see cref="DashboardItem"/>s showing visuals,
@@ -44,7 +58,12 @@ public class DashboardView : Control
     /// <summary>Read-only dashboard: no editing chrome, no editing command. Inherited, so item templates can use it.</summary>
     public static readonly DependencyProperty IsReadOnlyProperty = DependencyProperty.RegisterAttached(
         "IsReadOnly", typeof(bool), typeof(DashboardView),
-        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.Inherits, (d, _) => CommandManager.InvalidateRequerySuggested()));
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.Inherits, (d, e) =>
+        {
+            // A read-only dashboard has no selection to act on
+            if (d is DashboardView view && (bool)e.NewValue) view.UnselectAll();
+            CommandManager.InvalidateRequerySuggested();
+        }));
 
     public static readonly DependencyProperty UseDefaultBehaviorsProperty = DependencyProperty.Register(
         nameof(UseDefaultBehaviors), typeof(bool), typeof(DashboardView), new PropertyMetadata(true));
@@ -55,6 +74,7 @@ public class DashboardView : Control
     private int _editDepth;
     private bool _pushing;
     private bool _behaviorsAttached;
+    private readonly ObservableCollection<DashboardItem> _selected = [];
 
     static DashboardView() =>
         DefaultStyleKeyProperty.OverrideMetadata(typeof(DashboardView), new FrameworkPropertyMetadata(typeof(DashboardView)));
@@ -62,6 +82,7 @@ public class DashboardView : Control
     public DashboardView()
     {
         Panel = new DashboardPanel();
+        SelectedItems = new ReadOnlyObservableCollection<DashboardItem>(_selected);
         // A logical child: it inherits the view's properties and resources wherever the template shows it
         AddLogicalChild(Panel);
         // Keyboard shortcuts (Ctrl+Z...) need the focus inside the view
@@ -90,6 +111,9 @@ public class DashboardView : Control
 
     /// <summary>Raised before an item is removed.</summary>
     public event EventHandler<ItemRemovingEventArgs>? ItemRemoving;
+
+    /// <summary>Raised after <see cref="SelectedItems"/> changed.</summary>
+    public event EventHandler? SelectionChanged;
 
     public EasyBIContext? Context
     {
@@ -131,6 +155,13 @@ public class DashboardView : Control
     /// <summary>Items in the panel.</summary>
     public IEnumerable<DashboardItem> Items => Panel.Children.OfType<DashboardItem>();
 
+    /// <summary>
+    /// The selected items, in the order they were selected (see <see cref="Select(IEnumerable{DashboardItem}, DashboardSelectionMode)"/>).
+    /// <see cref="Behaviors.SelectionBehavior"/> selects them with the mouse and the keyboard; the selection commands act on them.
+    /// Not to be confused with the cross-filter selection of a visual (<see cref="EasyBI.Core.FilterContext.Selection"/>).
+    /// </summary>
+    public ReadOnlyObservableCollection<DashboardItem> SelectedItems { get; }
+
     /// <summary>Largest image the built-in picker embeds, in bytes (2 MB by default).</summary>
     public int MaxImageBytes { get; set; } = 2 * 1024 * 1024;
 
@@ -143,6 +174,7 @@ public class DashboardView : Control
         new MoveBehavior(),
         new ResizeBehavior(),
         new ItemToolbarBehavior(),
+        new SelectionBehavior(),
         new BandMenuBehavior(),
         new BandScrollBehavior(),
         new TextEditBehavior(),
@@ -205,6 +237,7 @@ public class DashboardView : Control
         }
         _committed = Capture();
         PushDocument();
+        PruneSelection();
     }
 
     /// <summary>The current report and layout.</summary>
@@ -242,6 +275,7 @@ public class DashboardView : Control
         if (_editDepth > 0) return;
         var after = Capture();
         var before = _committed;
+        PruneSelection();
         if (DashboardSerializer.Serialize(after) == DashboardSerializer.Serialize(before)) return;
         _committed = after;
         PushDocument();
@@ -425,6 +459,71 @@ public class DashboardView : Control
         _ => "image/png",
     };
 
+    // --- Selection ---
+
+    public void Select(DashboardItem item, DashboardSelectionMode mode = DashboardSelectionMode.Replace) => Select([item], mode);
+
+    /// <summary>Selects items of the dashboard; items that are not in it are ignored.</summary>
+    public void Select(IEnumerable<DashboardItem> items, DashboardSelectionMode mode = DashboardSelectionMode.Replace)
+    {
+        var shown = items.Where(i => i.Parent == Panel).Distinct().ToList();
+        SetSelection(mode switch
+        {
+            DashboardSelectionMode.Add => [.. _selected, .. shown.Except(_selected)],
+            DashboardSelectionMode.Toggle => [.. _selected.Except(shown), .. shown.Except(_selected)],
+            _ => shown,
+        });
+    }
+
+    /// <summary>Selects every item, in reading order.</summary>
+    public void SelectAll() => SetSelection(Enumerable.Range(0, Panel.BandCount).SelectMany(Panel.ChildrenOf).OfType<DashboardItem>().ToList());
+
+    public void UnselectAll() => SetSelection([]);
+
+    /// <summary>Removes the selected items as one change (each one unless <see cref="ItemRemoving"/> cancels it); returns how many were removed.</summary>
+    public int RemoveSelected()
+    {
+        using var edit = BeginEdit();
+        var removed = _selected.ToArray().Count(Remove);
+        edit.Commit();
+        return removed;
+    }
+
+    /// <summary>Duplicates the selected items as one change, each to the right of its original, and selects the copies.</summary>
+    public IReadOnlyList<DashboardItem> DuplicateSelected()
+    {
+        using var edit = BeginEdit();
+        var copies = _selected.ToArray().Select(item =>
+        {
+            var copy = AddNextTo(item, ItemSide.Right);
+            copy.Visual = item.Visual is { } visual ? visual with { Id = Guid.NewGuid().ToString("N") } : null;
+            return copy;
+        }).ToArray();
+        edit.Commit();
+        Select(copies);
+        return copies;
+    }
+
+    private void SetSelection(IReadOnlyList<DashboardItem> items)
+    {
+        if (items.SequenceEqual(_selected)) return;
+        foreach (var item in _selected.Except(items)) item.IsSelected = false;
+        _selected.Clear();
+        foreach (var item in items)
+        {
+            item.IsSelected = true;
+            _selected.Add(item);
+        }
+        CommandManager.InvalidateRequerySuggested();
+        SelectionChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    // Removed items leave the selection
+    private void PruneSelection()
+    {
+        if (_selected.Any(i => i.Parent != Panel)) SetSelection(_selected.Where(i => i.Parent == Panel).ToList());
+    }
+
     // --- Bands ---
 
     /// <summary>Inserts a band holding one empty item.</summary>
@@ -476,12 +575,20 @@ public class DashboardView : Control
         BindItem(DashboardCommands.AddBelow, item => AddNextTo(item, ItemSide.Below));
         BindBand(DashboardCommands.InsertBand, index => InsertBand(index));
         BindBand(DashboardCommands.RemoveBand, RemoveBand);
+        BindSelection(ApplicationCommands.Delete, () => RemoveSelected());
+        BindSelection(DashboardCommands.Duplicate, () => DuplicateSelected());
+        CommandBindings.Add(new CommandBinding(ApplicationCommands.SelectAll, (_, _) => SelectAll(), (_, e) => e.CanExecute = !IsReadOnly));
     }
 
     private void BindItem(ICommand command, Action<DashboardItem> execute) =>
         CommandBindings.Add(new CommandBinding(command,
             (_, e) => { if (Target(e) is { } item && !IsReadOnly) execute(item); },
             (_, e) => e.CanExecute = !IsReadOnly && Target(e) is not null));
+
+    private void BindSelection(ICommand command, Action execute) =>
+        CommandBindings.Add(new CommandBinding(command,
+            (_, _) => { if (!IsReadOnly) execute(); },
+            (_, e) => e.CanExecute = !IsReadOnly && _selected.Count > 0));
 
     private void BindBand(ICommand command, Action<int> execute) =>
         CommandBindings.Add(new CommandBinding(command,

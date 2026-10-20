@@ -25,6 +25,12 @@ public class DashboardItem : Control
 
     public static readonly DependencyProperty KindProperty = KindPropertyKey.DependencyProperty;
 
+    private static readonly DependencyPropertyKey IsSelectedPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(IsSelected), typeof(bool), typeof(DashboardItem), new PropertyMetadata(false));
+
+    /// <summary>True while the item is in <see cref="DashboardView.SelectedItems"/> (for template triggers).</summary>
+    public static readonly DependencyProperty IsSelectedProperty = IsSelectedPropertyKey.DependencyProperty;
+
     static DashboardItem()
     {
         DefaultStyleKeyProperty.OverrideMetadata(typeof(DashboardItem), new FrameworkPropertyMetadata(typeof(DashboardItem)));
@@ -47,6 +53,12 @@ public class DashboardItem : Control
     {
         get => (DashboardItemKind)GetValue(KindProperty);
         private set => SetValue(KindPropertyKey, value);
+    }
+
+    public bool IsSelected
+    {
+        get => (bool)GetValue(IsSelectedProperty);
+        internal set => SetValue(IsSelectedPropertyKey, value);
     }
 
     public static DashboardItemKind KindOf(VisualDefinition? visual) => visual?.Mark switch
