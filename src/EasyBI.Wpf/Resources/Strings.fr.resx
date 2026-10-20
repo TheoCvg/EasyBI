@@ -330,4 +330,10 @@
   <data name="TopHint" xml:space="preserve">
     <value>N'afficher que les premières lignes, après le tri (vide : toutes)</value>
   </data>
+  <data name="SearchFields" xml:space="preserve">
+    <value>Rechercher un champ</value>
+  </data>
+  <data name="SearchValues" xml:space="preserve">
+    <value>Rechercher une valeur</value>
+  </data>
 </root>

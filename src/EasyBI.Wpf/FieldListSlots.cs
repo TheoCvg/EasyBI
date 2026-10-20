@@ -10,6 +10,9 @@ public static class FieldListSlots
     /// <summary>The "Model" header and the model picker.</summary>
     public const string Model = "FieldList.Model";
 
+    /// <summary>The box searching the fields by caption.</summary>
+    public const string Search = "FieldList.Search";
+
     /// <summary>The "Dimensions" header and the list of dimensions.</summary>
     public const string Dimensions = "FieldList.Dimensions";
 

@@ -270,6 +270,9 @@ dimensions, measures) and drags them as `ModelField`s. Placed next to a dashboar
   `AddField` replace them. Each drop is one undo step.
 
 The designer's field panel is the same `FieldList` (its shelves accept the `ModelField`s of the selected model).
+A search box at the top of the field list (`FieldList.Search`) and above the values of a filter (from 8 values on,
+`FilterItemViewModel.Search`; checked values that are not shown stay checked) narrow the lists down: case and accents
+are ignored and every word must appear (`TextMatch.Matches` in `EasyBI.Core`).
 
 In the designer, the visual is sorted from the menu of a chip of the Axis or Values shelf (⇅, ascending ↑ or descending ↓;
 one sorted field at a time, the sort following the field when its aggregation or grain changes). The "Sort" row under
@@ -370,7 +373,7 @@ Slots.Hide(designer, ReportDesignerSlots.FieldPanel);
 ```
 
 - **Names**: `ReportDesignerSlots` (`FieldPanel`, `Fields`, `Header`, `Title`, `VisualTypes`, `Shelves`, `AxisShelf`,
-  `LegendShelf`, `ValuesShelf`, `FiltersShelf`, `Sort`, `RendererOptions`, `Preview`), `FieldListSlots` (`Model`, `Dimensions`,
+  `LegendShelf`, `ValuesShelf`, `FiltersShelf`, `Sort`, `RendererOptions`, `Preview`), `FieldListSlots` (`Model`, `Search`, `Dimensions`,
   `Measures`, `AddMeasureButton`), `FilterBarSlots` (`Filters`, `Label`, `Slicer`, `AddButton`, `Selection`),
   `FilterEditorSlots` (`Values`, `Period`) and `DashboardSlots` (`Body`, `ItemContent`, `EmptyItemChoices`, `ItemToolbar`). Slots can be
   nested: `Header` contains `Title` and `VisualTypes`. The band menu of a dashboard is customized through
