@@ -409,7 +409,7 @@
     <value>Show or hide the properties</value>
   </data>
   <data name="SelectChipHint" xml:space="preserve">
-    <value>Click a field to see its settings</value>
+    <value>Click a field to see its settings. Arrows go from one field to another, Ctrl+arrows move it, Delete removes it.</value>
   </data>
   <data name="MarkGroupComparison" xml:space="preserve">
     <value>Comparison</value>

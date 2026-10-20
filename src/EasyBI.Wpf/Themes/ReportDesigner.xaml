@@ -270,7 +270,9 @@
         </Style.Resources>
         <Setter Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.BackgroundBrushKey}}" />
         <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}" />
-        <Setter Property="Focusable" Value="False" />
+        <!-- Focusable for the keyboard shortcuts of the chips; nothing drawn around it when it has the focus -->
+        <Setter Property="Focusable" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="local:ReportDesigner">

@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -754,6 +755,60 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         if (calculated.Length == 0) return;
         Reload(visual with { Values = visual.Values.Where(v => !calculated.Contains(v) || Context.Measures.Find(model.Metadata.Name, v.Measure) is not null).ToArray() });
     }
+
+    // --- Keyboard ---
+
+    // The chips in reading order: the wells from top to bottom
+    private IReadOnlyList<object> Chips => [.. Axis, .. Legend, .. Values, .. Filters];
+
+    private IList Items(Shelf shelf) => shelf == Shelf.Filters ? Filters : Collection(shelf);
+
+    /// <summary>Selects the next chip in reading order (the previous one when <paramref name="forward"/> is false); the first one without a selection.</summary>
+    public void SelectNext(bool forward = true)
+    {
+        var chips = Chips;
+        if (chips.Count == 0) return;
+        var index = _selectedItem is null ? -1 : chips.ToList().IndexOf(_selectedItem);
+        SelectedItem = index < 0 ? chips[forward ? 0 : ^1] : chips[Math.Clamp(index + (forward ? 1 : -1), 0, chips.Count - 1)];
+    }
+
+    /// <summary>Selects a chip of the next well holding some (the previous one when <paramref name="down"/> is false), at the same place if it can.</summary>
+    public void SelectAcross(bool down = true)
+    {
+        if (_selectedItem is null)
+        {
+            SelectNext(down);
+            return;
+        }
+        var shelf = ShelfOf(_selectedItem);
+        var index = Items(shelf).IndexOf(_selectedItem);
+        var wells = down ? Enum.GetValues<Shelf>().Where(s => s > shelf) : Enum.GetValues<Shelf>().Where(s => s < shelf).Reverse();
+        if (wells.Select(Items).FirstOrDefault(items => items.Count > 0) is { } next)
+            SelectedItem = next[Math.Min(index, next.Count - 1)];
+    }
+
+    /// <summary>Moves the selected chip one place within its well (towards the end when <paramref name="forward"/> is true).</summary>
+    public void MoveSelected(bool forward = true)
+    {
+        if (_selectedItem is not { } item) return;
+        var items = Items(ShelfOf(item));
+        var index = items.IndexOf(item);
+        // Drop indexes count the item at its place before the move
+        if (forward ? index < items.Count - 1 : index > 0) Drop(item, ShelfOf(item), forward ? index + 2 : index - 1);
+        SelectedItem = item;
+    }
+
+    /// <summary>Removes the selected chip and selects the one taking its place (or the previous one).</summary>
+    public void RemoveSelected()
+    {
+        if (_selectedItem is not { } item) return;
+        var items = Items(ShelfOf(item));
+        var index = items.IndexOf(item);
+        Remove(item);
+        SelectedItem = items.Count == 0 ? null : items[Math.Min(index, items.Count - 1)];
+    }
+
+    private static Shelf ShelfOf(object item) => item is ShelfItemViewModel chip ? chip.Shelf : Shelf.Filters;
 
     // --- History ---
 

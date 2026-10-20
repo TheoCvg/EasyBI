@@ -409,7 +409,7 @@
     <value>Afficher ou masquer les propriétés</value>
   </data>
   <data name="SelectChipHint" xml:space="preserve">
-    <value>Cliquez sur un champ pour voir ses réglages</value>
+    <value>Cliquez sur un champ pour voir ses réglages. Les flèches passent d'un champ à l'autre, Ctrl+flèches le déplacent, Suppr le retire.</value>
   </data>
   <data name="MarkGroupComparison" xml:space="preserve">
     <value>Comparaison</value>

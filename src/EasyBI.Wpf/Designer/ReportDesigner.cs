@@ -50,6 +50,12 @@ public class ReportDesigner : Control
         CommandBindings.Add(new CommandBinding(ApplicationCommands.Undo, (_, _) => ViewModel?.Undo(), (_, e) => e.CanExecute = ViewModel?.CanUndo == true));
         CommandBindings.Add(new CommandBinding(ApplicationCommands.Redo, (_, _) => ViewModel?.Redo(), (_, e) => e.CanExecute = ViewModel?.CanRedo == true));
         InputBindings.Add(new KeyBinding(ApplicationCommands.Redo, Key.Z, ModifierKeys.Control | ModifierKeys.Shift));
+        PreviewKeyDown += OnPreviewKeyDown;
+        // A click in the wells (on a chip...) gives the designer the keyboard, for the shortcuts
+        PreviewMouseLeftButtonDown += (_, e) =>
+        {
+            if (!TakesTyping(e.OriginalSource as DependencyObject) && !IsKeyboardFocused) Focus();
+        };
         // The wells show whether they accept what is dragged, from the start of the drag (the events are static)
         Loaded += (_, _) =>
         {
@@ -61,6 +67,49 @@ public class ReportDesigner : Control
             DragAndDrop.DragSource.DragStarted -= OnDragStarted;
             DragAndDrop.DragSource.DragEnded -= OnDragEnded;
         };
+    }
+
+    /// <summary>
+    /// The shortcuts of the chips: arrows go from one to another (Up and Down from one well to another), Ctrl+Left/Right
+    /// move the selected one within its well, Delete removes it, Escape selects the visual again. Controls taking typing
+    /// (text boxes, lists) keep their keys.
+    /// </summary>
+    protected virtual void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (ViewModel is not { } designer || TakesTyping(e.OriginalSource as DependencyObject)) return;
+        var control = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+        switch (e.Key)
+        {
+            case Key.Left or Key.Right when control:
+                designer.MoveSelected(forward: e.Key == Key.Right);
+                break;
+            case Key.Left or Key.Right:
+                designer.SelectNext(forward: e.Key == Key.Right);
+                break;
+            case Key.Up or Key.Down:
+                designer.SelectAcross(down: e.Key == Key.Down);
+                break;
+            case Key.Delete or Key.Back when designer.SelectedItem is not null:
+                designer.RemoveSelected();
+                break;
+            case Key.Escape when designer.SelectedItem is not null:
+                designer.SelectedItem = null;
+                break;
+            default:
+                return;
+        }
+        e.Handled = true;
+    }
+
+    // Text boxes, lists, date pickers... and their popups
+    private static bool TakesTyping(DependencyObject? element)
+    {
+        for (; element is not null; element = element is System.Windows.Media.Visual ? System.Windows.Media.VisualTreeHelper.GetParent(element) : LogicalTreeHelper.GetParent(element))
+        {
+            if (element is System.Windows.Controls.Primitives.TextBoxBase or System.Windows.Controls.Primitives.Selector or DatePicker) return true;
+            if (element is ReportDesigner) return false;
+        }
+        return false;
     }
 
     private void OnDragStarted(object? sender, DragAndDrop.DragStartedEventArgs e)

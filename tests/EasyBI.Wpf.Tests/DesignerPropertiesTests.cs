@@ -302,4 +302,109 @@ public class DesignerPropertiesTests
         Assert.False(designer.CanUndo);
         Assert.False(designer.UndoCommand.CanExecute(null));
     }
+
+    // --- Keyboard ---
+
+    private static DesignerViewModel Filled()
+    {
+        var designer = Designer(); // Region on the axis, Amount in the values
+        designer.Drop(designer.Dimensions.Single(d => d.Name == "Date"), Shelf.Axis);
+        designer.Drop(designer.Dimensions.Single(d => d.Name == "Region"), Shelf.Filters);
+        return designer;
+    }
+
+    private static string Caption(object? chip) => chip switch
+    {
+        ShelfItemViewModel c => c.Caption,
+        FilterItemViewModel f => "filter " + f.Caption,
+        _ => "visual",
+    };
+
+    [Fact]
+    public void Arrows_go_from_chip_to_chip_and_from_well_to_well()
+    {
+        var designer = Filled();
+
+        designer.SelectNext();
+        Assert.Equal("Region", Caption(designer.SelectedItem));
+        designer.SelectNext();
+        designer.SelectNext();
+        Assert.Equal("Amount", Caption(designer.SelectedItem));
+        designer.SelectNext(forward: false);
+        Assert.Equal("Date", Caption(designer.SelectedItem));
+
+        designer.SelectAcross(down: true); // second chip of the axis: the values' only one
+        Assert.Equal("Amount", Caption(designer.SelectedItem));
+        designer.SelectAcross(down: true);
+        Assert.Equal("filter Region", Caption(designer.SelectedItem));
+        designer.SelectAcross(down: true); // no well below
+        Assert.Equal("filter Region", Caption(designer.SelectedItem));
+    }
+
+    [Fact]
+    public void The_selected_chip_moves_within_its_well_and_is_removed_for_the_next_one()
+    {
+        var designer = Filled();
+        designer.SelectedItem = designer.Axis[0];
+
+        designer.MoveSelected(forward: true);
+        Assert.Equal(["Date", "Region"], designer.Axis.Select(c => c.Caption));
+        Assert.Equal("Region", Caption(designer.SelectedItem));
+
+        designer.RemoveSelected();
+        Assert.Equal(["Date"], designer.Axis.Select(c => c.Caption));
+        Assert.Equal("Date", Caption(designer.SelectedItem)); // the one before takes the selection
+    }
+
+    [Fact]
+    public void The_designer_takes_the_keys_of_the_chips_but_not_those_of_a_text_box() => Sta.Run(() =>
+    {
+        // The preview queries: its continuations come back to the dispatcher, as in an application
+        SynchronizationContext.SetSynchronizationContext(new System.Windows.Threading.DispatcherSynchronizationContext());
+        var control = new ReportDesigner { Context = EasyBIContext.Create().AddModel(
+            SemanticModel.For(new[] { new Sale("Nord", new(2024, 1, 1), 1m) }, "sales").Dimension(s => s.Region, "Region").Measure(s => s.Amount, "Amount")) };
+        var window = new System.Windows.Window { Content = control, Width = 1200, Height = 800, Left = -10000, Top = -10000, ShowActivated = false, ShowInTaskbar = false };
+        window.Show();
+        try
+        {
+            var designer = control.ViewModel!;
+            designer.Load(new VisualDefinition { Model = "sales", Axis = [new("Region")], Values = [new("Amount")] });
+            bool Press(System.Windows.Input.Key key, System.Windows.IInputElement? source = null)
+            {
+                var args = new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice, System.Windows.PresentationSource.FromVisual(control)!, 0, key)
+                    { RoutedEvent = System.Windows.Input.Keyboard.PreviewKeyDownEvent };
+                ((System.Windows.UIElement)(source ?? control)).RaiseEvent(args);
+                return args.Handled;
+            }
+
+            Assert.True(Press(System.Windows.Input.Key.Right));
+            Assert.Same(designer.Axis[0], designer.SelectedItem);
+            Assert.True(Press(System.Windows.Input.Key.Delete));
+            Assert.Empty(designer.Axis);
+            Assert.Null(designer.SelectedItem); // its well is empty: nothing takes its place
+            designer.SelectedItem = designer.Values[0];
+            Assert.True(Press(System.Windows.Input.Key.Escape));
+            Assert.Null(designer.SelectedItem);
+
+            // In the title box, Delete is the text's
+            var title = Descendants<System.Windows.Controls.TextBox>(control).First();
+            designer.SelectedItem = designer.Values[0];
+            Assert.False(Press(System.Windows.Input.Key.Delete, title));
+            Assert.Single(designer.Values);
+        }
+        finally
+        {
+            window.Close();
+        }
+    });
+
+    private static IEnumerable<T> Descendants<T>(System.Windows.DependencyObject root)
+    {
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+            if (child is T match) yield return match;
+            foreach (var descendant in Descendants<T>(child)) yield return descendant;
+        }
+    }
 }
