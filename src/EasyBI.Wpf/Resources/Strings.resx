@@ -357,4 +357,103 @@
   <data name="DropFilterStays" xml:space="preserve">
     <value>A filter stays in Filters</value>
   </data>
+  <data name="PropertyAggregation" xml:space="preserve">
+    <value>Aggregation</value>
+  </data>
+  <data name="PropertyGrain" xml:space="preserve">
+    <value>Granularity</value>
+  </data>
+  <data name="PropertyTime" xml:space="preserve">
+    <value>Over time</value>
+  </data>
+  <data name="PropertySeriesMark" xml:space="preserve">
+    <value>Chart type</value>
+  </data>
+  <data name="PropertySecondaryAxis" xml:space="preserve">
+    <value>Secondary axis</value>
+  </data>
+  <data name="PropertiesVisual" xml:space="preserve">
+    <value>Visual</value>
+  </data>
+  <data name="BadgeAverage" xml:space="preserve">
+    <value>avg</value>
+  </data>
+  <data name="BadgeMin" xml:space="preserve">
+    <value>min</value>
+  </data>
+  <data name="BadgeMax" xml:space="preserve">
+    <value>max</value>
+  </data>
+  <data name="BadgeCount" xml:space="preserve">
+    <value>count</value>
+  </data>
+  <data name="BadgePreviousYear" xml:space="preserve">
+    <value>PY</value>
+  </data>
+  <data name="BadgeChange" xml:space="preserve">
+    <value>Δ PY</value>
+  </data>
+  <data name="BadgePercentChange" xml:space="preserve">
+    <value>Δ% PY</value>
+  </data>
+  <data name="BadgeYearToDate" xml:space="preserve">
+    <value>YTD</value>
+  </data>
+  <data name="Properties" xml:space="preserve">
+    <value>Properties</value>
+  </data>
+  <data name="ToggleFieldPanel" xml:space="preserve">
+    <value>Show or hide the fields</value>
+  </data>
+  <data name="TogglePropertiesPanel" xml:space="preserve">
+    <value>Show or hide the properties</value>
+  </data>
+  <data name="SelectChipHint" xml:space="preserve">
+    <value>Click a field to see its settings. Arrows go from one field to another, Ctrl+arrows move it, Delete removes it.</value>
+  </data>
+  <data name="MarkGroupComparison" xml:space="preserve">
+    <value>Comparison</value>
+  </data>
+  <data name="MarkGroupTrend" xml:space="preserve">
+    <value>Trend</value>
+  </data>
+  <data name="MarkGroupComposition" xml:space="preserve">
+    <value>Composition</value>
+  </data>
+  <data name="MarkGroupIndicators" xml:space="preserve">
+    <value>Indicators and tables</value>
+  </data>
+  <data name="VisualTypeHint" xml:space="preserve">
+    <value>Change the type of visual</value>
+  </data>
+  <data name="WellCategory" xml:space="preserve">
+    <value>Category</value>
+  </data>
+  <data name="WellValue" xml:space="preserve">
+    <value>Value</value>
+  </data>
+  <data name="WellRows" xml:space="preserve">
+    <value>Rows</value>
+  </data>
+  <data name="WellUnused" xml:space="preserve">
+    <value>Not used by this type of visual</value>
+  </data>
+  <data name="WellHintDimension" xml:space="preserve">
+    <value>Drop a dimension here</value>
+  </data>
+  <data name="WellHintMeasure" xml:space="preserve">
+    <value>Drop a measure here</value>
+  </data>
+  <data name="WellHintFilter" xml:space="preserve">
+    <value>Drop a dimension to filter on it</value>
+  </data>
+  <data name="DropNotUsed" xml:space="preserve">
+    <value>{0} is not used by this type of visual</value>
+  </data>
+  <data name="DesignerUndo" xml:space="preserve">
+    <value>Undo (Ctrl+Z)</value>
+  </data>
+  <data name="DesignerRedo" xml:space="preserve">
+    <value>Redo (Ctrl+Y)</value>
+  </data>
 </root>

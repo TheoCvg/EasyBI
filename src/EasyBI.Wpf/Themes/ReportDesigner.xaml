@@ -2,15 +2,71 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:bi="clr-namespace:EasyBI.Wpf"
                     xmlns:local="clr-namespace:EasyBI.Wpf.Designer"
-                    xmlns:dnd="clr-namespace:EasyBI.Wpf.DragAndDrop"
-                    xmlns:cm="clr-namespace:System.ComponentModel;assembly=System">
+                    xmlns:dnd="clr-namespace:EasyBI.Wpf.DragAndDrop">
+
+    <!-- Editors of the properties panel, one per kind of property (data context: the DesignerProperty); an application
+         replaces one by defining a template with the same key. Controls take local values, not styles, so that the
+         application's control library still applies -->
+    <DataTemplate x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:DesignerPropertyTemplates}, ResourceId=Toggle}">
+        <CheckBox Content="{Binding Label}" IsChecked="{Binding IsOn}" />
+    </DataTemplate>
+    <DataTemplate x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:DesignerPropertyTemplates}, ResourceId=Choice}">
+        <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding SelectedChoice}" DisplayMemberPath="Label" />
+    </DataTemplate>
+    <DataTemplate x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:DesignerPropertyTemplates}, ResourceId=Number}">
+        <TextBox Text="{Binding NumberText, UpdateSourceTrigger=PropertyChanged, Delay=300}" Padding="4,2" />
+    </DataTemplate>
+    <DataTemplate x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:DesignerPropertyTemplates}, ResourceId=Text}">
+        <TextBox Text="{Binding TextValue, UpdateSourceTrigger=PropertyChanged, Delay=400}" Padding="4,2" />
+    </DataTemplate>
+    <DataTemplate x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:DesignerPropertyTemplates}, ResourceId=Info}">
+        <TextBlock Text="{Binding TextValue}" TextWrapping="Wrap" />
+    </DataTemplate>
+    <!-- Any object (a filter...): shown with the DataTemplate of its type -->
+    <DataTemplate x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:DesignerPropertyTemplates}, ResourceId=Custom}">
+        <ContentPresenter Content="{Binding Value}" />
+    </DataTemplate>
+
+    <!-- Icons of the visual types: lines drawn with the foreground in a 16×16 box; an application replaces one with the same key -->
+    <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=Bar}">M2,14 L2,8 L5,8 L5,14 Z M7,14 L7,3 L10,3 L10,14 Z M12,14 L12,6 L15,6 L15,14 Z</Geometry>
+    <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=StackedBar}">M2,14 L2,6 L5,6 L5,14 Z M2,10 L5,10 M7,14 L7,2 L10,2 L10,14 Z M7,8 L10,8 M12,14 L12,5 L15,5 L15,14 Z M12,10 L15,10</Geometry>
+    <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=Scatter}">M3,12 A1,1 0 1 1 3.01,12 Z M6,9 A1,1 0 1 1 6.01,9 Z M9,11 A1,1 0 1 1 9.01,11 Z M11,6 A1,1 0 1 1 11.01,6 Z M14,4 A1,1 0 1 1 14.01,4 Z M1,15 L15,15</Geometry>
+    <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=Line}">M1,13 L5,8 L9,10 L15,3 M1,15 L15,15</Geometry>
+    <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=Area}">M1,15 L1,11 L5,6 L9,9 L15,3 L15,15 Z</Geometry>
+    <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=Pie}">M8,2 A6,6 0 1 0 14,8 L8,8 Z M10,0.5 A6,6 0 0 1 15.5,6 L10,6 Z</Geometry>
+    <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=Kpi}">M1.5,3.5 L14.5,3.5 L14.5,12.5 L1.5,12.5 Z M4,10 L7,7 L9,9 L12,5.5 M10,5.5 L12,5.5 L12,7.5</Geometry>
+    <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=Table}">M1.5,2.5 L14.5,2.5 L14.5,13.5 L1.5,13.5 Z M1.5,6 L14.5,6 M1.5,9.75 L14.5,9.75 M6,2.5 L6,13.5 M10.5,2.5 L10.5,13.5</Geometry>
+
+    <Style TargetType="local:VisualTypeIcon">
+        <Setter Property="Width" Value="18" />
+        <Setter Property="Height" Value="18" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="local:VisualTypeIcon">
+                    <Viewbox Stretch="Uniform">
+                        <Canvas Width="16" Height="16">
+                            <Path Data="{TemplateBinding Geometry}" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.3"
+                                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                        </Canvas>
+                    </Viewbox>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 
     <!-- The template takes the designer's view-model (DesignerViewModel) as data context, and so do its slots -->
     <Style TargetType="local:ReportDesigner">
         <Style.Resources>
             <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+            <local:DesignerPropertyTemplateSelector x:Key="PropertyEditors" />
 
-            <!-- Dragged chip: its caption only (the chip's own combo boxes stay on the shelf) -->
+            <!-- The selected filter is edited in the properties panel -->
+            <DataTemplate DataType="{x:Type local:FilterItemViewModel}">
+                <local:FilterEditor />
+            </DataTemplate>
+
+            <!-- Dragged chip: its caption only -->
             <DataTemplate x:Key="ChipPreviewTemplate">
                 <TextBlock Text="{Binding Caption}" Margin="6,2" />
             </DataTemplate>
@@ -30,14 +86,17 @@
             <Style x:Key="Shelf" TargetType="ItemsControl">
                 <Setter Property="ItemsPanel" Value="{StaticResource WrapItems}" />
                 <Setter Property="Margin" Value="0,3" />
-                <Setter Property="dnd:DropTarget.Handler" Value="{Binding}" />
+                <Setter Property="dnd:DropTarget.Handler" Value="{Binding Designer}" />
+                <Setter Property="dnd:DropTarget.Key" Value="{Binding Kind}" />
+                <Setter Property="ItemsSource" Value="{Binding Items}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" />
                 <Setter Property="dnd:DragSource.IsEnabled" Value="True" />
                 <Setter Property="dnd:DragSource.AllowedEffects" Value="Move" />
                 <Setter Property="dnd:DragSource.PreviewTemplate" Value="{StaticResource ChipPreviewTemplate}" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="ItemsControl">
-                            <Border x:Name="Bd" Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceAltBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}"
+                            <Border x:Name="Bd" Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceAltBrushKey}}" BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="1" CornerRadius="6" MinHeight="38" Padding="3">
                                 <ItemsPresenter />
                             </Border>
@@ -83,91 +142,150 @@
                 </Setter>
             </Style>
 
-            <DataTemplate x:Key="ChipTemplate" DataType="{x:Type local:ShelfItemViewModel}">
-                <!-- Combo boxes take local values, not a style: the application's ComboBox style still applies -->
-                <Border Background="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBorderBrushKey}}" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{Binding Caption}" VerticalAlignment="Center" />
-                        <ComboBox Margin="6,0,0,0" FontSize="11" Padding="4,1" MinWidth="70" DisplayMemberPath="Label" SelectedValuePath="Value"
-                                  Visibility="{Binding HasGrain, Converter={StaticResource BoolToVisibility}}"
-                                  ItemsSource="{x:Static local:ShelfItemViewModel.GrainOptions}"
-                                  SelectedValue="{Binding Grain, Mode=TwoWay}" />
-                        <ComboBox Margin="6,0,0,0" FontSize="11" Padding="4,1" MinWidth="70" DisplayMemberPath="Label" SelectedValuePath="Value"
-                                  Visibility="{Binding HasAggregation, Converter={StaticResource BoolToVisibility}}"
-                                  ItemsSource="{x:Static local:ShelfItemViewModel.AggregationOptions}"
-                                  SelectedValue="{Binding Aggregation, Mode=TwoWay}" />
-                        <!-- A measure seen through time: previous year, change, year to date -->
-                        <ComboBox Margin="6,0,0,0" FontSize="11" Padding="4,1" MinWidth="70" DisplayMemberPath="Label" SelectedValuePath="Value" ToolTip="{bi:Localize TimeHint}"
-                                  Visibility="{Binding IsValue, Converter={StaticResource BoolToVisibility}}"
-                                  ItemsSource="{x:Static local:ShelfItemViewModel.TimeOptions}"
-                                  SelectedValue="{Binding Time, Mode=TwoWay}" />
-                        <!-- Measures of a cartesian chart: chart type and value axis of their series -->
-                        <ComboBox Margin="6,0,0,0" FontSize="11" Padding="4,1" MinWidth="70" DisplayMemberPath="Label" SelectedValuePath="Value" ToolTip="{bi:Localize SeriesMarkHint}"
-                                  Visibility="{Binding ShowSeriesOptions, Converter={StaticResource BoolToVisibility}}"
-                                  ItemsSource="{x:Static local:ShelfItemViewModel.SeriesMarkOptions}"
-                                  SelectedItem="{Binding SeriesMarkOption, Mode=TwoWay}" />
-                        <ToggleButton Content="{bi:Localize SecondaryAxis}" ToolTip="{bi:Localize SecondaryAxisHint}"
-                                      Margin="4,0,0,0" Padding="5,0" FontSize="11" Cursor="Hand"
-                                      Visibility="{Binding ShowSeriesOptions, Converter={StaticResource BoolToVisibility}}"
-                                      IsChecked="{Binding SecondaryAxis, Mode=TwoWay}" />
-                        <!-- Sort on this field: a menu showing the current direction -->
-                        <Menu Margin="4,0,0,0" Background="Transparent" VerticalAlignment="Center" ToolTip="{bi:Localize SortHint}"
-                              Visibility="{Binding CanSort, Converter={StaticResource BoolToVisibility}}">
-                            <MenuItem Header="{Binding SortOption.Symbol}" Padding="5,0" FontSize="11" Cursor="Hand">
-                                <MenuItem Command="{Binding SortCommand}">
-                                    <MenuItem.Header>
-                                        <TextBlock><Run Text="⇅ " /><Run Text="{bi:Localize SortNone}" /></TextBlock>
-                                    </MenuItem.Header>
-                                </MenuItem>
-                                <MenuItem Command="{Binding SortCommand}" CommandParameter="{x:Static cm:ListSortDirection.Ascending}">
-                                    <MenuItem.Header>
-                                        <TextBlock><Run Text="↑ " /><Run Text="{bi:Localize SortAscending}" /></TextBlock>
-                                    </MenuItem.Header>
-                                </MenuItem>
-                                <MenuItem Command="{Binding SortCommand}" CommandParameter="{x:Static cm:ListSortDirection.Descending}">
-                                    <MenuItem.Header>
-                                        <TextBlock><Run Text="↓ " /><Run Text="{bi:Localize SortDescending}" /></TextBlock>
-                                    </MenuItem.Header>
-                                </MenuItem>
-                            </MenuItem>
-                        </Menu>
-                        <Button Style="{StaticResource ChipButton}" />
-                    </StackPanel>
+            <!-- A short mark of a chip's setting (aggregation, granularity...) -->
+            <DataTemplate x:Key="BadgeTemplate">
+                <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" CornerRadius="6" Padding="5,0" Margin="4,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding}" FontSize="10" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
                 </Border>
             </DataTemplate>
 
-            <DataTemplate x:Key="FilterChipTemplate" DataType="{x:Type local:FilterItemViewModel}">
-                <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SecondarySoftBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.SecondarySoftBorderBrushKey}}" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
+            <!-- A chip: its caption and the marks of its settings; a click selects it (its settings are in the properties panel) -->
+            <DataTemplate DataType="{x:Type local:ShelfItemViewModel}">
+                <Border x:Name="Chip" Background="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBorderBrushKey}}"
+                        BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3" Cursor="Hand">
+                    <Border.InputBindings>
+                        <MouseBinding MouseAction="LeftClick" Command="{Binding SelectCommand}" />
+                    </Border.InputBindings>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock VerticalAlignment="Center"><Run Text="{Binding Caption, Mode=OneWay}" /><Run Text="{bi:Localize LabelSuffix}" /></TextBlock>
-                        <ToggleButton x:Name="Toggle" Margin="6,0,0,0" Padding="6,1" FontSize="11"
-                                      Content="{Binding Summary}" IsEnabled="{Binding IsLoading, Converter={x:Static local:InverseBooleanConverter.Instance}}" />
-                        <Popup IsOpen="{Binding IsChecked, ElementName=Toggle}" StaysOpen="False"
-                               PlacementTarget="{Binding ElementName=Toggle}" Placement="Bottom" AllowsTransparency="True">
-                            <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="1"
-                                    CornerRadius="6" Padding="8" MaxHeight="300" MinWidth="160">
-                                <local:FilterEditor />
-                            </Border>
-                        </Popup>
+                        <TextBlock Text="{Binding Caption}" VerticalAlignment="Center" />
+                        <ItemsControl ItemsSource="{Binding Badges}" ItemTemplate="{StaticResource BadgeTemplate}" Focusable="False" VerticalAlignment="Center">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
                         <Button Style="{StaticResource ChipButton}" />
                     </StackPanel>
                 </Border>
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                        <Setter TargetName="Chip" Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
+                    </DataTrigger>
+                </DataTemplate.Triggers>
             </DataTemplate>
+
+            <!-- A filter: its caption and what it keeps; a click selects it, its editor is in the properties panel -->
+            <DataTemplate x:Key="FilterChipTemplate" DataType="{x:Type local:FilterItemViewModel}">
+                <Border x:Name="Chip" Background="{DynamicResource {x:Static bi:EasyBITheme.SecondarySoftBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.SecondarySoftBorderBrushKey}}"
+                        BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3" Cursor="Hand">
+                    <Border.InputBindings>
+                        <MouseBinding MouseAction="LeftClick" Command="{Binding SelectCommand}" />
+                    </Border.InputBindings>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Caption}" VerticalAlignment="Center" />
+                        <ContentPresenter Content="{Binding Summary}" ContentTemplate="{StaticResource BadgeTemplate}" />
+                        <Button Style="{StaticResource ChipButton}" />
+                    </StackPanel>
+                </Border>
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                        <Setter TargetName="Chip" Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
+                    </DataTrigger>
+                </DataTemplate.Triggers>
+            </DataTemplate>
+
+            <!-- A well: its name for the visual type, its chips, a hint while it is empty; during a drag, whether it accepts the dragged item -->
+            <local:WellItemTemplateSelector x:Key="WellItems" FilterTemplate="{StaticResource FilterChipTemplate}" />
+            <DataTemplate x:Key="WellTemplate" DataType="{x:Type local:ShelfViewModel}">
+                <Grid x:Name="Well" Margin="0,3">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Label}" Style="{StaticResource ShelfLabel}" TextWrapping="Wrap" />
+                        <TextBlock x:Name="Unused" Text="{bi:Localize WellUnused}" FontSize="10" TextWrapping="Wrap" Visibility="Collapsed"
+                                   Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                    </StackPanel>
+                    <Grid Grid.Column="1">
+                        <ItemsControl x:Name="Items" Style="{StaticResource Shelf}" ItemTemplateSelector="{StaticResource WellItems}" />
+                        <TextBlock x:Name="Hint" Text="{Binding Hint}" Margin="14,0" VerticalAlignment="Center" IsHitTestVisible="False" FontStyle="Italic"
+                                   Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                    </Grid>
+                </Grid>
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding HasItems}" Value="True">
+                        <Setter TargetName="Hint" Property="Visibility" Value="Collapsed" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsUsed}" Value="False">
+                        <Setter TargetName="Well" Property="Opacity" Value="0.6" />
+                        <Setter TargetName="Unused" Property="Visibility" Value="Visible" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsDropAllowed}" Value="True">
+                        <Setter TargetName="Items" Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsDropAllowed}" Value="False">
+                        <Setter TargetName="Items" Property="Opacity" Value="0.45" />
+                    </DataTrigger>
+                </DataTemplate.Triggers>
+            </DataTemplate>
+
+            <!-- A property: its label above its editor (a check box carries its own label, a custom editor its section's) -->
+            <DataTemplate x:Key="PropertyTemplate" DataType="{x:Type local:DesignerProperty}">
+                <StackPanel x:Name="Row" Margin="0,4,0,6" ToolTip="{Binding Description}" ToolTipService.ShowOnDisabled="True">
+                    <TextBlock x:Name="Label" Text="{Binding Label}" FontSize="11" Margin="0,0,0,3"
+                               Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                    <ContentControl Content="{Binding}" ContentTemplateSelector="{StaticResource PropertyEditors}" Focusable="False" />
+                </StackPanel>
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding IsAvailable}" Value="False">
+                        <Setter TargetName="Row" Property="Visibility" Value="Collapsed" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:PropertyKind.Toggle}">
+                        <Setter TargetName="Label" Property="Visibility" Value="Collapsed" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:PropertyKind.Custom}">
+                        <Setter TargetName="Label" Property="Visibility" Value="Collapsed" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Description}" Value="{x:Null}">
+                        <Setter TargetName="Row" Property="ToolTip" Value="{x:Null}" />
+                    </DataTrigger>
+                </DataTemplate.Triggers>
+            </DataTemplate>
+
+            <!-- A section of the properties panel: a header that folds it -->
+            <DataTemplate x:Key="SectionTemplate" DataType="{x:Type local:DesignerPropertySection}">
+                <Expander Header="{Binding Header}" IsExpanded="{Binding IsExpanded}" Margin="0,0,0,8">
+                    <ItemsControl ItemsSource="{Binding Properties}" ItemTemplate="{StaticResource PropertyTemplate}" Focusable="False" Margin="4,4,0,0" />
+                </Expander>
+            </DataTemplate>
+
+            <!-- Buttons showing or hiding a side panel -->
+            <Style x:Key="PanelToggle" TargetType="ToggleButton" BasedOn="{StaticResource {x:Type ToggleButton}}">
+                <Setter Property="Padding" Value="8,4" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Cursor" Value="Hand" />
+            </Style>
         </Style.Resources>
         <Setter Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.BackgroundBrushKey}}" />
         <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}" />
-        <Setter Property="Focusable" Value="False" />
+        <!-- Focusable for the keyboard shortcuts of the chips; nothing drawn around it when it has the focus -->
+        <Setter Property="Focusable" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="local:ReportDesigner">
+                    <!-- Three zones: the fields, the visual being built (wells and preview), its properties -->
                     <Grid DataContext="{Binding ViewModel, RelativeSource={RelativeSource TemplatedParent}}" Background="{TemplateBinding Background}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
                         <!-- Field panel -->
-                        <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.FieldPanel}">
+                        <bi:SlotHost x:Name="FieldPanel" Slot="{x:Static local:ReportDesignerSlots.FieldPanel}">
                             <Border Width="230" Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceAltBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="0,0,1,0" Padding="14,4,14,14">
                                 <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.Fields}" Orientation="Vertical">
                                     <!-- Fields are dragged onto the shelves; a double-click puts one on its default shelf -->
@@ -182,48 +300,70 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
 
                             <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.Header}">
                                 <DockPanel Margin="0,0,0,10">
+                                    <ToggleButton DockPanel.Dock="Left" Style="{StaticResource PanelToggle}" Content="☰" Margin="0,0,10,0" ToolTip="{bi:Localize ToggleFieldPanel}"
+                                                  IsChecked="{Binding IsFieldPanelOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" />
+                                    <Button DockPanel.Dock="Left" Content="↶" Padding="8,4" Margin="0,0,4,0" VerticalAlignment="Center" Cursor="Hand"
+                                            Command="{x:Static ApplicationCommands.Undo}" ToolTip="{bi:Localize DesignerUndo}" />
+                                    <Button DockPanel.Dock="Left" Content="↷" Padding="8,4" Margin="0,0,10,0" VerticalAlignment="Center" Cursor="Hand"
+                                            Command="{x:Static ApplicationCommands.Redo}" ToolTip="{bi:Localize DesignerRedo}" />
+                                    <ToggleButton DockPanel.Dock="Right" Style="{StaticResource PanelToggle}" Content="⚙" Margin="10,0,0,0" ToolTip="{bi:Localize TogglePropertiesPanel}"
+                                                  IsChecked="{Binding IsPropertiesPanelOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" />
+                                    <!-- The visual type: a button showing the current one, opening the gallery of the types by group -->
                                     <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.VisualTypes}" DockPanel.Dock="Right">
-                                        <ListBox ItemsSource="{Binding MarkOptions}" SelectedValuePath="Mark"
-                                                 SelectedValue="{Binding SelectedMark}" BorderThickness="0" Background="Transparent">
-                                            <ListBox.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <StackPanel Orientation="Horizontal" />
-                                                </ItemsPanelTemplate>
-                                            </ListBox.ItemsPanel>
-                                            <ListBox.ItemContainerStyle>
-                                                <Style TargetType="ListBoxItem">
-                                                    <Setter Property="IsEnabled" Value="{Binding IsAvailable}" />
-                                                    <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
-                                                    <Setter Property="Template">
-                                                        <Setter.Value>
-                                                            <ControlTemplate TargetType="ListBoxItem">
-                                                                <Border x:Name="Bg" Padding="12,5" Margin="2,0" CornerRadius="5"
-                                                                        BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="1" Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}">
-                                                                    <TextBlock x:Name="Text" Text="{Binding Label}" Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}" />
-                                                                </Border>
-                                                                <ControlTemplate.Triggers>
-                                                                    <Trigger Property="IsSelected" Value="True">
-                                                                        <Setter TargetName="Bg" Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
-                                                                        <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
-                                                                        <Setter TargetName="Text" Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentForegroundBrushKey}}" />
-                                                                    </Trigger>
-                                                                    <Trigger Property="IsEnabled" Value="False">
-                                                                        <Setter TargetName="Text" Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.DisabledForegroundBrushKey}}" />
-                                                                        <Setter Property="ToolTip" Value="{bi:Localize NotSupportedByRenderer}" />
-                                                                    </Trigger>
-                                                                </ControlTemplate.Triggers>
-                                                            </ControlTemplate>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                </Style>
-                                            </ListBox.ItemContainerStyle>
-                                        </ListBox>
+                                        <Grid>
+                                            <!-- Not clickable while the gallery is open: the click that closes it must not open it again -->
+                                            <ToggleButton x:Name="TypeButton" Padding="10,4" ToolTip="{bi:Localize VisualTypeHint}" Cursor="Hand"
+                                                          IsChecked="{Binding IsTypeGalleryOpen, Mode=TwoWay}"
+                                                          IsHitTestVisible="{Binding IsOpen, ElementName=TypeGallery, Converter={x:Static local:InverseBooleanConverter.Instance}}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <local:VisualTypeIcon Mark="{Binding SelectedMarkOption.Mark}" Margin="0,0,6,0" />
+                                                    <TextBlock Text="{Binding SelectedMarkOption.Label}" VerticalAlignment="Center" />
+                                                    <TextBlock Text="▾" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <Popup x:Name="TypeGallery" PlacementTarget="{Binding ElementName=TypeButton}" Placement="Bottom" StaysOpen="False"
+                                                   AllowsTransparency="True" IsOpen="{Binding IsTypeGalleryOpen, Mode=TwoWay}">
+                                                <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}"
+                                                        BorderThickness="1" CornerRadius="6" Padding="10,4,10,10" Margin="0,4,0,0">
+                                                    <ItemsControl ItemsSource="{Binding MarkGroups}" Focusable="False">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="{x:Type local:MarkGroupViewModel}">
+                                                                <StackPanel>
+                                                                    <TextBlock Text="{Binding Label}" Style="{StaticResource SectionHeader}" Margin="2,8,0,4" />
+                                                                    <ItemsControl ItemsSource="{Binding Options}" ItemsPanel="{StaticResource WrapItems}" Focusable="False">
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate DataType="{x:Type local:MarkOptionViewModel}">
+                                                                                <Button x:Name="Type" Command="{Binding ChooseCommand}" IsEnabled="{Binding IsAvailable}"
+                                                                                        Width="84" Margin="2" Padding="4,6" Cursor="Hand" ToolTipService.ShowOnDisabled="True">
+                                                                                    <StackPanel>
+                                                                                        <local:VisualTypeIcon Mark="{Binding Mark}" Width="26" Height="26" />
+                                                                                        <TextBlock x:Name="Caption" Text="{Binding Label}" FontSize="11" Margin="0,4,0,0" HorizontalAlignment="Center" />
+                                                                                    </StackPanel>
+                                                                                </Button>
+                                                                                <DataTemplate.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                                        <Setter TargetName="Caption" Property="FontWeight" Value="SemiBold" />
+                                                                                        <Setter TargetName="Type" Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding IsAvailable}" Value="False">
+                                                                                        <Setter TargetName="Type" Property="ToolTip" Value="{bi:Localize NotSupportedByRenderer}" />
+                                                                                    </DataTrigger>
+                                                                                </DataTemplate.Triggers>
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </Border>
+                                            </Popup>
+                                        </Grid>
                                     </bi:SlotHost>
                                     <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.Title}">
                                         <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged, Delay=400}" Margin="0,0,16,0"
@@ -234,114 +374,56 @@
 
                             <bi:SlotHost Grid.Row="1" Slot="{x:Static local:ReportDesignerSlots.Shelves}" Orientation="Vertical">
                                 <StackPanel>
-                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.AxisShelf}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="80" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{bi:Localize Axis}" Style="{StaticResource ShelfLabel}" />
-                                            <ItemsControl Grid.Column="1" Style="{StaticResource Shelf}" dnd:DropTarget.Key="{x:Static local:Shelf.Axis}"
-                                                          ItemsSource="{Binding Axis}" ItemTemplate="{StaticResource ChipTemplate}" />
-                                        </Grid>
+                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.AxisShelf}"
+                                                 Visibility="{Binding AxisWell.IsVisible, Converter={StaticResource BoolToVisibility}}">
+                                        <ContentControl Content="{Binding AxisWell}" ContentTemplate="{StaticResource WellTemplate}" Focusable="False" />
                                     </bi:SlotHost>
-
-                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.LegendShelf}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="80" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{bi:Localize Legend}" Style="{StaticResource ShelfLabel}" />
-                                            <ItemsControl Grid.Column="1" Style="{StaticResource Shelf}" dnd:DropTarget.Key="{x:Static local:Shelf.Legend}"
-                                                          ItemsSource="{Binding Legend}" ItemTemplate="{StaticResource ChipTemplate}" />
-                                        </Grid>
+                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.LegendShelf}"
+                                                 Visibility="{Binding LegendWell.IsVisible, Converter={StaticResource BoolToVisibility}}">
+                                        <ContentControl Content="{Binding LegendWell}" ContentTemplate="{StaticResource WellTemplate}" Focusable="False" />
                                     </bi:SlotHost>
-
-                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.ValuesShelf}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="80" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{bi:Localize Values}" Style="{StaticResource ShelfLabel}" />
-                                            <ItemsControl Grid.Column="1" Style="{StaticResource Shelf}" dnd:DropTarget.Key="{x:Static local:Shelf.Values}"
-                                                          ItemsSource="{Binding Values}" ItemTemplate="{StaticResource ChipTemplate}" />
-                                        </Grid>
+                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.ValuesShelf}"
+                                                 Visibility="{Binding ValuesWell.IsVisible, Converter={StaticResource BoolToVisibility}}">
+                                        <ContentControl Content="{Binding ValuesWell}" ContentTemplate="{StaticResource WellTemplate}" Focusable="False" />
                                     </bi:SlotHost>
-
-                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.FiltersShelf}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="80" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{bi:Localize Filters}" Style="{StaticResource ShelfLabel}" />
-                                            <ItemsControl Grid.Column="1" Style="{StaticResource Shelf}" dnd:DropTarget.Key="{x:Static local:Shelf.Filters}"
-                                                          ItemsSource="{Binding Filters}" ItemTemplate="{StaticResource FilterChipTemplate}" />
-                                        </Grid>
-                                    </bi:SlotHost>
-
-                                    <!-- The active sort (chosen on a chip) and the number of rows shown -->
-                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.Sort}">
-                                        <Grid Margin="0,3">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="80" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{bi:Localize Sort}" Style="{StaticResource ShelfLabel}" />
-                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="4,0,0,0">
-                                                <TextBlock x:Name="SortSummary" Text="{Binding SortSummary}" VerticalAlignment="Center" />
-                                                <TextBlock x:Name="NoSort" Text="{bi:Localize NoSort}" VerticalAlignment="Center" Visibility="Collapsed"
-                                                           Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
-                                                <TextBlock Text="{bi:Localize Top}" Style="{StaticResource ShelfLabel}" Margin="18,0,6,0" />
-                                                <TextBox Width="50" Padding="4,1" VerticalContentAlignment="Center" ToolTip="{bi:Localize TopHint}"
-                                                         Text="{Binding Top, TargetNullValue='', UpdateSourceTrigger=PropertyChanged, Delay=400}" />
-                                            </StackPanel>
-                                        </Grid>
+                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.FiltersShelf}"
+                                                 Visibility="{Binding FiltersWell.IsVisible, Converter={StaticResource BoolToVisibility}}">
+                                        <ContentControl Content="{Binding FiltersWell}" ContentTemplate="{StaticResource WellTemplate}" Focusable="False" />
                                     </bi:SlotHost>
                                 </StackPanel>
                             </bi:SlotHost>
 
-                            <!-- Options of the renderer: a check box, a list or a number box each -->
-                            <bi:SlotHost Grid.Row="2" Slot="{x:Static local:ReportDesignerSlots.RendererOptions}">
-                                <Grid Margin="0,6,0,0" Visibility="{Binding HasRendererOptions, Converter={StaticResource BoolToVisibility}}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="80" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{bi:Localize RendererOptions}" Style="{StaticResource ShelfLabel}" />
-                                    <ItemsControl x:Name="RendererOptionList" Grid.Column="1" ItemsSource="{Binding RendererOptions}" ItemsPanel="{StaticResource WrapItems}" Focusable="False">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="{x:Type local:RendererOptionViewModel}">
-                                                <StackPanel Orientation="Horizontal" Margin="4,3,18,3" ToolTip="{Binding Description}">
-                                                    <CheckBox VerticalAlignment="Center" IsChecked="{Binding IsOn}" Margin="0,0,6,0"
-                                                              Visibility="{Binding IsToggle, Converter={StaticResource BoolToVisibility}}" />
-                                                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
-                                                    <ComboBox Margin="6,0,0,0" MinWidth="90" DisplayMemberPath="Label"
-                                                              ItemsSource="{Binding Choices}" SelectedItem="{Binding SelectedChoice}"
-                                                              Visibility="{Binding IsChoice, Converter={StaticResource BoolToVisibility}}" />
-                                                    <TextBox Margin="6,0,0,0" Width="60" Padding="4,1" Text="{Binding NumberText}"
-                                                             Visibility="{Binding IsNumber, Converter={StaticResource BoolToVisibility}}" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </Grid>
-                            </bi:SlotHost>
-
-                            <bi:SlotHost Grid.Row="3" Slot="{x:Static local:ReportDesignerSlots.Preview}" Orientation="Vertical">
+                            <bi:SlotHost Grid.Row="2" Slot="{x:Static local:ReportDesignerSlots.Preview}" Orientation="Vertical">
                                 <Border Margin="0,14,0,0" Padding="14" Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" CornerRadius="{DynamicResource {x:Static bi:EasyBITheme.CornerRadiusKey}}"
                                         BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="1">
                                     <bi:VisualView x:Name="Preview" Context="{Binding Context}" Definition="{Binding Visual}" />
                                 </Border>
                             </bi:SlotHost>
                         </Grid>
+
+                        <!-- Properties panel: the settings of the selected chip, then the visual's -->
+                        <bi:SlotHost x:Name="PropertiesPanel" Grid.Column="2" Slot="{x:Static local:ReportDesignerSlots.Properties}" Orientation="Vertical">
+                            <Border Width="280" Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceAltBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="1,0,0,0" Padding="14,4,14,14">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Top" Text="{bi:Localize Properties}" Style="{StaticResource SectionHeader}" />
+                                    <TextBlock x:Name="SelectHint" DockPanel.Dock="Top" Text="{bi:Localize SelectChipHint}" TextWrapping="Wrap" FontStyle="Italic" Margin="0,0,0,10"
+                                               Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" Visibility="Collapsed" />
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                        <ItemsControl x:Name="Sections" ItemsSource="{Binding Properties}" ItemTemplate="{StaticResource SectionTemplate}" Focusable="False" />
+                                    </ScrollViewer>
+                                </DockPanel>
+                            </Border>
+                        </bi:SlotHost>
                     </Grid>
                     <ControlTemplate.Triggers>
-                        <DataTrigger Binding="{Binding ViewModel.SortSummary, RelativeSource={RelativeSource Self}}" Value="{x:Null}">
-                            <Setter TargetName="SortSummary" Property="Visibility" Value="Collapsed" />
-                            <Setter TargetName="NoSort" Property="Visibility" Value="Visible" />
+                        <Trigger Property="IsFieldPanelOpen" Value="False">
+                            <Setter TargetName="FieldPanel" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="IsPropertiesPanelOpen" Value="False">
+                            <Setter TargetName="PropertiesPanel" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <DataTrigger Binding="{Binding ViewModel.SelectedItem, RelativeSource={RelativeSource Self}}" Value="{x:Null}">
+                            <Setter TargetName="SelectHint" Property="Visibility" Value="Visible" />
                         </DataTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

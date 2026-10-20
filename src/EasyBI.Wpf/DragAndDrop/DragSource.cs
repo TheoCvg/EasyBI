@@ -53,6 +53,12 @@ public static class DragSource
     /// </summary>
     public static event EventHandler? DragEnded;
 
+    /// <summary>
+    /// Raised when a drag started by a <see cref="DragSource"/> begins, with the dragged item: drop targets can show
+    /// whether they accept it before the pointer reaches them. Unsubscribe when done, the event is static.
+    /// </summary>
+    public static event EventHandler<DragStartedEventArgs>? DragStarted;
+
     /// <summary>The data a drag of <paramref name="item"/> carries.</summary>
     public static DataObject CreateData(object item)
     {
@@ -125,6 +131,7 @@ public static class DragSource
         // A moved item is dimmed where it comes from; a copied one stays as it is
         if (effects.HasFlag(DragDropEffects.Move)) press.Container.Opacity = 0.4;
         IsDragging = true;
+        DragStarted?.Invoke(null, new DragStartedEventArgs(press.Item));
         try
         {
             System.Windows.DragDrop.DoDragDrop(items, CreateData(press.Item), effects);
@@ -195,4 +202,10 @@ public static class DragSource
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetCursorPos(out NativePoint point);
+}
+
+/// <summary>The item a <see cref="DragSource"/> starts dragging.</summary>
+public sealed class DragStartedEventArgs(object item) : EventArgs
+{
+    public object Item { get; } = item;
 }

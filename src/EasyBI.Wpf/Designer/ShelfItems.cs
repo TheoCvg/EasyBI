@@ -50,6 +50,7 @@ public sealed class ShelfItemViewModel : ObservableObject
     ];
 
     private readonly Action _changed;
+    private bool _isSelected;
     private ListSortDirection? _sortDirection;
     private DateGrain _grain;
     private TimeCalculation _time;
@@ -66,6 +67,50 @@ public sealed class ShelfItemViewModel : ObservableObject
         _grain = HasGrain ? DateGrain.Month : DateGrain.None;
         _aggregation = field.DefaultAggregation ?? Aggregation.Sum;
         SortCommand = new RelayCommand<ListSortDirection?>(direction => SortDirection = direction);
+        SelectCommand = new RelayCommand<object?>(_ => Selecting?.Invoke(this));
+        // The badges sum the settings up: they follow them, and the language
+        PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is not (nameof(Badges) or nameof(IsSelected))) OnPropertyChanged(nameof(Badges));
+        };
+        PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, (_, _) => OnPropertyChanged(nameof(Badges)), string.Empty);
+    }
+
+    /// <summary>Selects the chip in its designer (a click on it), whose properties panel then shows its settings.</summary>
+    public ICommand SelectCommand { get; }
+
+    internal Action<object>? Selecting { get; set; }
+
+    /// <summary>
+    /// Short marks of the chip's settings, shown on it (the settings themselves are in the properties panel):
+    /// aggregation, granularity, time calculation, chart type, secondary axis, sort.
+    /// </summary>
+    public IReadOnlyList<string> Badges
+    {
+        get
+        {
+            var badges = new List<string>();
+            if (HasAggregation) badges.Add(Aggregation switch
+            {
+                Aggregation.Average => Strings.BadgeAverage,
+                Aggregation.Min => Strings.BadgeMin,
+                Aggregation.Max => Strings.BadgeMax,
+                Aggregation.Count => Strings.BadgeCount,
+                _ => "Σ",
+            });
+            if (HasGrain) badges.Add(DateGrains.Caption(Grain));
+            if (IsValue && Time != TimeCalculation.None) badges.Add(Time switch
+            {
+                TimeCalculation.PreviousYear => Strings.BadgePreviousYear,
+                TimeCalculation.ChangeFromPreviousYear => Strings.BadgeChange,
+                TimeCalculation.PercentChangeFromPreviousYear => Strings.BadgePercentChange,
+                _ => Strings.BadgeYearToDate,
+            });
+            if (ShowSeriesOptions && SeriesMark is not null) badges.Add(SeriesMarkOption.Label);
+            if (ShowSeriesOptions && SecondaryAxis) badges.Add(Strings.SecondaryAxis);
+            if (CanSort && SortDirection is not null) badges.Add(SortOption.Symbol);
+            return badges;
+        }
     }
 
     public FieldDescriptor Field { get; }
@@ -75,6 +120,13 @@ public sealed class ShelfItemViewModel : ObservableObject
     public string Caption => Field.Caption;
 
     public bool HasGrain => Field.Kind == FieldKind.Dimension && Field.DataType == DataType.Date;
+
+    /// <summary>True while the chip is the designer's <see cref="DesignerViewModel.SelectedItem"/>.</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        internal set => SetProperty(ref _isSelected, value);
+    }
 
     /// <summary>The visual can be sorted on the fields of the Axis and Values shelves.</summary>
     public bool CanSort => Shelf is Shelf.Axis or Shelf.Values;
@@ -185,6 +237,8 @@ public sealed class SortOption(ListSortDirection? direction, string symbol, Func
 public sealed class FilterItemViewModel : ObservableObject
 {
     private readonly Action _changed;
+    private bool _isSelected;
+    private ICommand? _selectCommand;
     private HashSet<string?>? _pendingSelection;
     private bool _isLoading = true;
     private Option<FilterOperator?> _periodKind;
@@ -233,6 +287,18 @@ public sealed class FilterItemViewModel : ObservableObject
     }
 
     public FieldDescriptor Field { get; }
+
+    /// <summary>True while the filter is the designer's <see cref="DesignerViewModel.SelectedItem"/>.</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        internal set => SetProperty(ref _isSelected, value);
+    }
+
+    /// <summary>Selects the filter in its designer (a click on it), whose properties panel then shows its editor.</summary>
+    public ICommand SelectCommand => _selectCommand ??= new RelayCommand<object?>(_ => Selecting?.Invoke(this));
+
+    internal Action<object>? Selecting { get; set; }
 
     public FilterOperator Operator { get; }
 
