@@ -20,6 +20,7 @@
                     <Grid Background="{TemplateBinding Background}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                             <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
@@ -35,7 +36,17 @@
                         <!-- Fields are dragged as ModelField items. Local values rather than a style, so that the application's ListBox
                              and ListBoxItem styles (a control library's) still apply, even when it changes them at runtime; the
                              foreground is set because the system's ListBox style does not inherit it -->
-                        <bi:SlotHost Grid.Row="1" Slot="{x:Static bi:FieldListSlots.Dimensions}" Orientation="Vertical">
+                        <bi:SlotHost Grid.Row="1" Slot="{x:Static bi:FieldListSlots.Search}" Orientation="Vertical">
+                            <Grid Margin="0,10,0,0">
+                                <TextBox Padding="6,3" VerticalContentAlignment="Center" ToolTip="{bi:Localize SearchFields}"
+                                         Text="{Binding Search, RelativeSource={RelativeSource TemplatedParent}, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock x:Name="SearchPlaceholder" Text="{bi:Localize SearchFields}" Margin="9,0,0,0" VerticalAlignment="Center"
+                                           IsHitTestVisible="False" Visibility="Collapsed" FontStyle="Italic"
+                                           Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                            </Grid>
+                        </bi:SlotHost>
+
+                        <bi:SlotHost Grid.Row="2" Slot="{x:Static bi:FieldListSlots.Dimensions}" Orientation="Vertical">
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Top" Text="{bi:Localize DimensionsHeader}" Style="{StaticResource SectionHeader}" />
                                 <ListBox x:Name="DimensionList" ItemsSource="{TemplateBinding Dimensions}" BorderThickness="0" Background="Transparent"
@@ -54,7 +65,7 @@
                             </DockPanel>
                         </bi:SlotHost>
 
-                        <bi:SlotHost Grid.Row="2" Slot="{x:Static bi:FieldListSlots.Measures}" Orientation="Vertical">
+                        <bi:SlotHost Grid.Row="3" Slot="{x:Static bi:FieldListSlots.Measures}" Orientation="Vertical">
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Top" Text="{bi:Localize MeasuresHeader}" Style="{StaticResource SectionHeader}" />
                                 <ListBox x:Name="MeasureList" ItemsSource="{TemplateBinding Measures}" BorderThickness="0" Background="Transparent"
@@ -95,12 +106,15 @@
                             </DockPanel>
                         </bi:SlotHost>
 
-                        <bi:SlotHost x:Name="AddMeasure" Grid.Row="3" Slot="{x:Static bi:FieldListSlots.AddMeasureButton}" HorizontalAlignment="Left">
+                        <bi:SlotHost x:Name="AddMeasure" Grid.Row="4" Slot="{x:Static bi:FieldListSlots.AddMeasureButton}" HorizontalAlignment="Left">
                             <Button Content="{bi:Localize NewCalculatedMeasure}" Command="{x:Static bi:FieldList.AddMeasureCommand}"
                                     Margin="0,8,0,0" Padding="8,3" FontSize="12" />
                         </bi:SlotHost>
                     </Grid>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="Search" Value="">
+                            <Setter TargetName="SearchPlaceholder" Property="Visibility" Value="Visible" />
+                        </Trigger>
                         <Trigger Property="CanAddMeasure" Value="False">
                             <Setter TargetName="AddMeasure" Property="Visibility" Value="Collapsed" />
                         </Trigger>

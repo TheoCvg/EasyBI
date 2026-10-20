@@ -17,15 +17,25 @@
                         <!-- Values to check -->
                         <bi:SlotHost Slot="{x:Static designer:FilterEditorSlots.Values}" Orientation="Vertical"
                                      Visibility="{Binding IsValueList, Converter={StaticResource Visible}}">
-                            <ScrollViewer MaxHeight="284" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding Values}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}" Margin="0,2" />
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
+                            <DockPanel>
+                                <!-- Many values: a search box (only the values shown change, the checked ones stay checked) -->
+                                <Grid DockPanel.Dock="Top" Margin="0,0,0,6" Visibility="{Binding ShowSearch, Converter={StaticResource Visible}}">
+                                    <TextBox Padding="6,3" VerticalContentAlignment="Center" ToolTip="{bi:Localize SearchValues}"
+                                             Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock x:Name="SearchPlaceholder" Text="{bi:Localize SearchValues}" Margin="9,0,0,0" VerticalAlignment="Center"
+                                               IsHitTestVisible="False" Visibility="Collapsed" FontStyle="Italic"
+                                               Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                                </Grid>
+                                <ScrollViewer MaxHeight="284" VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding VisibleValues}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}" Margin="0,2" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </DockPanel>
                         </bi:SlotHost>
 
                         <!-- A period of a date: between two dates, or relative to today -->
@@ -57,6 +67,11 @@
                             </StackPanel>
                         </bi:SlotHost>
                     </Grid>
+                    <ControlTemplate.Triggers>
+                        <DataTrigger Binding="{Binding Search}" Value="">
+                            <Setter TargetName="SearchPlaceholder" Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

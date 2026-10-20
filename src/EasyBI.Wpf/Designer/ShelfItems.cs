@@ -192,6 +192,10 @@ public sealed class FilterItemViewModel : ObservableObject
     private DateTime? _to;
     private int _count = 12;
     private Option<DateGrain> _unit;
+    private string _search = "";
+
+    /// <summary>A list of values shows a search box from this number of values on.</summary>
+    public const int SearchThreshold = 8;
 
     public FilterItemViewModel(
         FieldDescriptor field,
@@ -204,6 +208,8 @@ public sealed class FilterItemViewModel : ObservableObject
         Field = field;
         Operator = @operator;
         _changed = changed;
+        // While loading, the values are announced once at the end
+        Values.CollectionChanged += (_, _) => { if (!IsLoading) OnValuesChanged(); };
         PeriodKinds =
         [
             new(null, () => Strings.PeriodKindAny),
@@ -238,6 +244,22 @@ public sealed class FilterItemViewModel : ObservableObject
     public bool IsValueList => !IsPeriod;
 
     public ObservableCollection<FilterValueViewModel> Values { get; } = [];
+
+    /// <summary>The <see cref="Values"/> matching <see cref="Search"/>: the checked values that do not match stay checked.</summary>
+    public IReadOnlyList<FilterValueViewModel> VisibleValues => Values.Where(v => TextMatch.Matches(v.Label, _search)).ToArray();
+
+    /// <summary>Text searched in the values (see <see cref="TextMatch"/>).</summary>
+    public string Search
+    {
+        get => _search;
+        set
+        {
+            if (SetProperty(ref _search, value ?? "")) OnPropertyChanged(nameof(VisibleValues));
+        }
+    }
+
+    /// <summary>Whether the values are many enough to need a search box (<see cref="SearchThreshold"/>).</summary>
+    public bool ShowSearch => Values.Count >= SearchThreshold;
 
     public bool IsLoading
     {
@@ -366,7 +388,14 @@ public sealed class FilterItemViewModel : ObservableObject
             _pendingSelection = null;
             IsLoading = false;
             OnPropertyChanged(nameof(Summary));
+            OnValuesChanged();
         }
+    }
+
+    private void OnValuesChanged()
+    {
+        OnPropertyChanged(nameof(VisibleValues));
+        OnPropertyChanged(nameof(ShowSearch));
     }
 
     private void OnValueToggled()

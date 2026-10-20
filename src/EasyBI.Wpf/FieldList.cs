@@ -33,6 +33,11 @@ public class FieldList : Control
         nameof(SelectedModel), typeof(ISemanticModel), typeof(FieldList),
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, (d, _) => ((FieldList)d).Refresh()));
 
+    /// <summary>Text searched in the field captions (two-way; see <see cref="TextMatch"/>): only the matching fields are listed.</summary>
+    public static readonly DependencyProperty SearchProperty = DependencyProperty.Register(
+        nameof(Search), typeof(string), typeof(FieldList),
+        new FrameworkPropertyMetadata("", FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, (d, _) => ((FieldList)d).Refresh()));
+
     /// <summary>Run with the <see cref="ModelField"/> double-clicked.</summary>
     public static readonly DependencyProperty ActivateCommandProperty = DependencyProperty.Register(
         nameof(ActivateCommand), typeof(ICommand), typeof(FieldList), new PropertyMetadata(null));
@@ -97,6 +102,12 @@ public class FieldList : Control
         set => SetValue(SelectedModelProperty, value);
     }
 
+    public string Search
+    {
+        get => (string)GetValue(SearchProperty);
+        set => SetValue(SearchProperty, value);
+    }
+
     public ICommand? ActivateCommand
     {
         get => (ICommand?)GetValue(ActivateCommandProperty);
@@ -106,10 +117,10 @@ public class FieldList : Control
     /// <summary>The models of the <see cref="Context"/>, to pick the <see cref="SelectedModel"/> from.</summary>
     public IReadOnlyList<Option<ISemanticModel>> ModelOptions => (IReadOnlyList<Option<ISemanticModel>>)GetValue(ModelOptionsProperty);
 
-    /// <summary>The dimensions of the <see cref="SelectedModel"/>.</summary>
+    /// <summary>The dimensions of the <see cref="SelectedModel"/> matching the <see cref="Search"/>.</summary>
     public IReadOnlyList<ModelField> Dimensions => (IReadOnlyList<ModelField>)GetValue(DimensionsProperty);
 
-    /// <summary>The measures of the <see cref="SelectedModel"/>, followed by the report's calculated measures.</summary>
+    /// <summary>The measures of the <see cref="SelectedModel"/>, followed by the report's calculated measures, matching the <see cref="Search"/>.</summary>
     public IReadOnlyList<ModelField> Measures => (IReadOnlyList<ModelField>)GetValue(MeasuresProperty);
 
     /// <summary>Whether a calculated measure can be added: there is a context and a model.</summary>
@@ -145,9 +156,12 @@ public class FieldList : Control
     private void Refresh()
     {
         var model = SelectedModel;
-        SetValue(DimensionsPropertyKey, model is null ? Array.Empty<ModelField>() : model.Metadata.Dimensions.Select(f => new ModelField(model, f)).ToArray());
+        var search = Search;
+        SetValue(DimensionsPropertyKey, model is null ? Array.Empty<ModelField>() : model.Metadata.Dimensions
+            .Where(f => TextMatch.Matches(f.Caption, search)).Select(f => new ModelField(model, f)).ToArray());
         SetValue(MeasuresPropertyKey, model is null ? Array.Empty<ModelField>() : model.Metadata.Measures.Select(f => new ModelField(model, f))
             .Concat(Context?.Measures.For(model.Metadata.Name).Select(m => new ModelField(model, MeasureContext.ToField(m), m)) ?? [])
+            .Where(f => TextMatch.Matches(f.Caption, search))
             .ToArray());
         SetValue(CanAddMeasurePropertyKey, model is not null && Context is not null);
         // The buttons of the template ask their commands again

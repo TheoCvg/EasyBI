@@ -330,4 +330,10 @@
   <data name="TopHint" xml:space="preserve">
     <value>Show only the first rows, after sorting (empty: all of them)</value>
   </data>
+  <data name="SearchFields" xml:space="preserve">
+    <value>Search a field</value>
+  </data>
+  <data name="SearchValues" xml:space="preserve">
+    <value>Search a value</value>
+  </data>
 </root>
