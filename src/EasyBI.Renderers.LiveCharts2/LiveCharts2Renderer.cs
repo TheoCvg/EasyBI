@@ -1,9 +1,12 @@
 using System.Windows;
+using System.Windows.Controls;
 using EasyBI.Abstractions;
 using EasyBI.Core;
+using EasyBI.Renderers.LiveCharts2.Resources;
 using EasyBI.Wpf;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
+using LiveChartsCore.Drawing;
 using LiveChartsCore.Measure;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
@@ -15,19 +18,122 @@ namespace EasyBI.Renderers.LiveCharts2;
 /// <summary>LiveCharts2 connector: translates a <see cref="RenderRequest"/> into a CartesianChart / PieChart.</summary>
 public sealed class LiveCharts2Renderer : IVisualRenderer
 {
+    /// <summary>Option showing a scroll bar under a cartesian chart (<see cref="RendererCapabilities.Options"/>).</summary>
+    public const string ScrollableOption = "scrollable";
+
+    /// <summary>Categories shown at first by a scrollable chart; the scroll bar and the mouse wheel show the others.</summary>
+    public const int ScrollWindow = 20;
+
     public string Name => "LiveCharts2";
 
     public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType>
     {
         MarkType.Bar, MarkType.StackedBar, MarkType.Line, MarkType.Area, MarkType.Scatter, MarkType.Pie,
-    });
+    })
+    {
+        Options =
+        [
+            RendererOption.Toggle(ScrollableOption, () => Strings.Scrollable, appliesTo: v => v.Mark.IsCartesian())
+                with { Description = () => Strings.ScrollableHint },
+        ],
+    };
 
     public FrameworkElement Render(RenderRequest request) => request.Visual.Mark switch
     {
         MarkType.Pie => RenderPie(request),
-        var mark when mark.IsCartesian() => RenderCartesian(request),
+        var mark when mark.IsCartesian() => request.Visual.GetRendererOption<bool>(Name, ScrollableOption)
+            ? RenderScrollable(request)
+            : RenderCartesian(request),
         _ => throw new NotSupportedException($"LiveCharts2Renderer does not support '{request.Visual.Mark}'."),
     };
+
+    /// <summary>
+    /// A cartesian chart showing <see cref="ScrollWindow"/> categories, above a small chart of all of them where a band
+    /// marks the visible ones: dragging on it scrolls, the mouse wheel on the chart zooms.
+    /// </summary>
+    private static Grid RenderScrollable(RenderRequest request)
+    {
+        var chart = request.Chart;
+        var view = RenderCartesian(request);
+        var axis = (Axis)view.XAxes.First();
+        double first = -0.5, last = chart.Categories.Count - 0.5;
+        view.ZoomMode = ZoomAndPanMode.X;
+        if (chart.Categories.Count > ScrollWindow)
+        {
+            axis.MinLimit = first;
+            axis.MaxLimit = first + ScrollWindow;
+        }
+
+        var thumb = new RectangularSection
+        {
+            Xi = axis.MinLimit ?? first,
+            Xj = axis.MaxLimit ?? last,
+            Fill = new SolidColorPaint(Color(request.Theme, 0).WithAlpha(0x40)),
+        };
+        var scrollbar = new CartesianChart
+        {
+            Height = 56,
+            Margin = new Thickness(0, 6, 0, 0),
+            Series = chart.Series.Select((s, i) => (ISeries)new LineSeries<ObservableValue>
+            {
+                Values = s.Values.Select(v => new ObservableValue(v)).ToArray(),
+                Stroke = new SolidColorPaint(Color(request.Theme, i), 1.5f),
+                Fill = null,
+                GeometrySize = 0,
+                GeometryFill = null,
+                GeometryStroke = null,
+                LineSmoothness = 0,
+                ScalesYAt = s.SecondaryAxis ? 1 : 0,
+                IsHoverable = false,
+            }).ToArray(),
+            XAxes = [new Axis { IsVisible = false, MinLimit = first, MaxLimit = last }],
+            YAxes = [new Axis { IsVisible = false }, new Axis { IsVisible = false }],
+            Sections = [thumb],
+            TooltipPosition = TooltipPosition.Hidden,
+            LegendPosition = LegendPosition.Hidden,
+            Cursor = System.Windows.Input.Cursors.SizeWE,
+        };
+        ApplyTheme(scrollbar, request.Theme);
+
+        // Zooming or panning the chart moves the band; its labels adapt to the categories now visible
+        view.UpdateStarted += _ =>
+        {
+            thumb.Xi = axis.MinLimit ?? first;
+            thumb.Xj = axis.MaxLimit ?? last;
+            view.Dispatcher.InvokeAsync(() => FitCartesian(view, axis, chart));
+        };
+
+        // Dragging on the scroll bar centers the visible categories on the pointer
+        var dragging = false;
+        void ScrollTo(Point position)
+        {
+            var center = scrollbar.ScalePixelsToData(new LvcPointD(position.X, position.Y)).X;
+            var range = (axis.MaxLimit ?? last) - (axis.MinLimit ?? first);
+            var start = Math.Clamp(center - range / 2, first, Math.Max(first, last - range));
+            axis.MinLimit = start;
+            axis.MaxLimit = start + range;
+        }
+        scrollbar.PreviewMouseLeftButtonDown += (_, e) =>
+        {
+            dragging = scrollbar.CaptureMouse();
+            ScrollTo(e.GetPosition(scrollbar));
+        };
+        scrollbar.PreviewMouseMove += (_, e) =>
+        {
+            if (dragging) ScrollTo(e.GetPosition(scrollbar));
+        };
+        scrollbar.PreviewMouseLeftButtonUp += (_, _) =>
+        {
+            dragging = false;
+            scrollbar.ReleaseMouseCapture();
+        };
+
+        var grid = new Grid { RowDefinitions = { new() { Height = new GridLength(1, GridUnitType.Star) }, new() { Height = GridLength.Auto } } };
+        Grid.SetRow(scrollbar, 1);
+        grid.Children.Add(view);
+        grid.Children.Add(scrollbar);
+        return grid;
+    }
 
     /// <summary>
     /// Bars, stacked bars, lines, areas and points in one chart: each series is drawn with its own
@@ -81,7 +187,11 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
     private static void FitCartesian(CartesianChart view, Axis categoryAxis, ChartData chart)
     {
         if (view.ActualWidth <= 0) return;
-        var fit = ChartFitting.Cartesian(chart, view.ActualWidth, view.ActualHeight);
+        // A zoomed or scrollable chart shows part of the categories: labels are fitted to those
+        var shown = categoryAxis.MaxLimit - categoryAxis.MinLimit is double range && range < chart.Categories.Count
+            ? chart with { Categories = chart.Categories.Take(Math.Max(1, (int)Math.Ceiling(range))).ToArray() }
+            : chart;
+        var fit = ChartFitting.Cartesian(shown, view.ActualWidth, view.ActualHeight);
 
         // Only assign what changed: every assignment redraws the chart
         var legend = Position(fit.Legend);
@@ -130,7 +240,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
     }
 
     /// <summary>Legend and tooltips in the theme's colors.</summary>
-    private static void ApplyTheme(System.Windows.Controls.Control view, BiTheme theme)
+    private static void ApplyTheme(Control view, BiTheme theme)
     {
         // The chart is drawn on the visual's own background
         view.Background = System.Windows.Media.Brushes.Transparent;

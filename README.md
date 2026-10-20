@@ -364,7 +364,7 @@ Slots.Hide(designer, ReportDesignerSlots.FieldPanel);
 ```
 
 - **Names**: `ReportDesignerSlots` (`FieldPanel`, `Fields`, `Header`, `Title`, `VisualTypes`, `Shelves`, `AxisShelf`,
-  `LegendShelf`, `ValuesShelf`, `FiltersShelf`, `Preview`) and `FilterBarSlots` (`Filters`, `Label`, `Slicer`,
+  `LegendShelf`, `ValuesShelf`, `FiltersShelf`, `RendererOptions`, `Preview`) and `FilterBarSlots` (`Filters`, `Label`, `Slicer`,
   `AddButton`, `Selection`). Slots can be nested: `Header` contains `Title` and `VisualTypes`.
 - **Modes**: `After` (default), `Before`, `Replace`, `Hide`. Before and after are left and right of the default content,
   or above and below it in a vertical slot (`Fields`, `Shelves`, `Preview`); several slots with the same name are shown
@@ -552,6 +552,38 @@ Draw on a transparent background, so that the chart sits on the theme's surface.
 `EasyBIContext.ResolveRenderer` negotiates capabilities: the active renderer if it supports every type the
 visual uses (the visual's and its measures'), otherwise another plugged-in renderer, otherwise a built-in one. The designer disables
 the types that no renderer can draw.
+
+### Renderer options
+
+A connector offers settings of its own to the end user by declaring them in its capabilities: the designer shows them
+under the shelves (slot `ReportDesignerSlots.RendererOptions`) for the visuals they apply to, as a check box, a list or
+a number box, and saves their values with the visual.
+
+```csharp
+public RendererCapabilities Capabilities { get; } = new(marks)
+{
+    Options =
+    [
+        RendererOption.Toggle("scrollable", () => Strings.Scrollable, appliesTo: v => v.Mark.IsCartesian()),
+        RendererOption.Choice("curve", () => Strings.Curve, [new("straight", () => Strings.Straight), new("smooth", () => Strings.Smooth)]),
+        RendererOption.Number("barWidth", () => Strings.BarWidth, 48, minimum: 4, maximum: 120),
+    ],
+};
+
+public FrameworkElement Render(RenderRequest request)
+{
+    var scrollable = request.Visual.GetRendererOption<bool>(Name, "scrollable");   // EasyBI.Core
+    ...
+}
+```
+
+- Labels are functions, read when shown, so that they follow the EasyBI language (`EasyBILocalization.UICulture`).
+- Values are stored in `VisualDefinition.Extensions`, one JSON object per renderer under its name
+  (`"LiveCharts2": "{\"scrollable\":true}"`); a value equal to the option's default is not stored. The settings of a
+  renderer are kept while another one draws the visual. `WithRendererOption` sets one in code.
+- The LiveCharts2 connector offers **Scroll bar** (`LiveCharts2Renderer.ScrollableOption`) on cartesian charts: the chart
+  shows the first 20 categories (`ScrollWindow`) above a small chart of all of them, where a band marks the visible
+  ones; dragging on it scrolls, the mouse wheel on the chart zooms.
 
 ## Report format (`easybi/v1`)
 

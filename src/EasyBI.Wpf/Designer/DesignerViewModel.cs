@@ -64,7 +64,11 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         {
             if (Unwrap(item) is FieldDescriptor field) AddToDefaultShelf(field);
         });
-        context.Changed += (_, _) => RefreshAvailability();
+        context.Changed += (_, _) =>
+        {
+            RefreshAvailability();
+            RefreshRendererOptions(); // another renderer may draw the visual
+        };
         // Weak: a designer (a dialog's) may be shorter-lived than the shared context
         WeakEventManager<MeasureContext, EventArgs>.AddHandler(context.Measures, nameof(MeasureContext.Changed), OnMeasuresChanged);
         PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, OnLanguageChanged, string.Empty);
@@ -85,6 +89,11 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     public ObservableCollection<ShelfItemViewModel> Values { get; } = [];
 
     public ObservableCollection<FilterItemViewModel> Filters { get; } = [];
+
+    /// <summary>Options of the renderer that draws the visual (<see cref="RendererCapabilities.Options"/>) that apply to it.</summary>
+    public ObservableCollection<RendererOptionViewModel> RendererOptions { get; } = [];
+
+    public bool HasRendererOptions => RendererOptions.Count > 0;
 
     public ICommand RemoveCommand { get; }
 
@@ -328,6 +337,35 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             Top = _top,
             Extensions = _extensions,
         };
+        RefreshRendererOptions();
+    }
+
+    /// <summary>
+    /// Shows the options of the renderer resolved for the visual. The option view-models are kept while the same
+    /// options apply, so that editing one (typing a number) is not interrupted by the visual it updates.
+    /// </summary>
+    private void RefreshRendererOptions()
+    {
+        var visual = Visual;
+        var renderer = visual is null ? null : Context.ResolveRenderer(visual);
+        var options = renderer is null ? [] : renderer.Capabilities.Options.Where(o => o.AppliesTo?.Invoke(visual!) ?? true).ToList();
+        if (RendererOptions.Select(o => (o.Renderer, o.Option)).SequenceEqual(options.Select(o => (renderer!.Name, o))))
+        {
+            foreach (var option in RendererOptions) option.Sync(visual!.GetRendererOption(option.Renderer, option.Option));
+            return;
+        }
+        RendererOptions.Clear();
+        foreach (var option in options)
+            RendererOptions.Add(new(renderer!.Name, option, visual!.GetRendererOption(renderer.Name, option), OnRendererOptionChanged));
+        OnPropertyChanged(nameof(HasRendererOptions));
+    }
+
+    private void OnRendererOptionChanged(RendererOptionViewModel option)
+    {
+        // The default value is not stored: the renderer's default applies, even if it changes in a later version
+        var value = Equals(option.Value, option.Option.Default) ? null : option.Value;
+        _extensions = RendererSettings.WithRendererOption(_extensions, option.Renderer, option.Option.Key, value);
+        Rebuild();
     }
 
     /// <summary>

@@ -155,6 +155,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
@@ -256,7 +257,34 @@
                 </StackPanel>
             </bi:SlotHost>
 
-            <bi:SlotHost Grid.Row="2" Slot="{x:Static local:ReportDesignerSlots.Preview}" Orientation="Vertical">
+            <!-- Options of the renderer: a check box, a list or a number box each -->
+            <bi:SlotHost Grid.Row="2" Slot="{x:Static local:ReportDesignerSlots.RendererOptions}">
+                <Grid Margin="0,6,0,0" Visibility="{Binding HasRendererOptions, Converter={StaticResource BoolToVisibility}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{bi:Localize RendererOptions}" Style="{StaticResource ShelfLabel}" />
+                    <ItemsControl x:Name="RendererOptionList" Grid.Column="1" ItemsSource="{Binding RendererOptions}" ItemsPanel="{StaticResource WrapItems}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type local:RendererOptionViewModel}">
+                                <StackPanel Orientation="Horizontal" Margin="4,3,18,3" ToolTip="{Binding Description}">
+                                    <CheckBox VerticalAlignment="Center" IsChecked="{Binding IsOn}" Margin="0,0,6,0"
+                                              Visibility="{Binding IsToggle, Converter={StaticResource BoolToVisibility}}" />
+                                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                                    <ComboBox Margin="6,0,0,0" MinWidth="90" DisplayMemberPath="Label"
+                                              ItemsSource="{Binding Choices}" SelectedItem="{Binding SelectedChoice}"
+                                              Visibility="{Binding IsChoice, Converter={StaticResource BoolToVisibility}}" />
+                                    <TextBox Margin="6,0,0,0" Width="60" Padding="4,1" Text="{Binding NumberText}"
+                                             Visibility="{Binding IsNumber, Converter={StaticResource BoolToVisibility}}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </bi:SlotHost>
+
+            <bi:SlotHost Grid.Row="3" Slot="{x:Static local:ReportDesignerSlots.Preview}" Orientation="Vertical">
                 <Border Margin="0,14,0,0" Padding="14" Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" CornerRadius="{DynamicResource {x:Static bi:EasyBITheme.CornerRadiusKey}}"
                         BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="1">
                     <bi:VisualView x:Name="Preview" Context="{Binding Context}" Definition="{Binding Visual}" />

@@ -36,6 +36,12 @@ public static class ReportDesignerSlots
     /// <summary>The Filters shelf, with its label.</summary>
     public const string FiltersShelf = "ReportDesigner.FiltersShelf";
 
+    /// <summary>
+    /// The options of the renderer drawing the visual (<see cref="Abstractions.RendererCapabilities.Options"/>), under the
+    /// shelves; hidden when it has none for the visual.
+    /// </summary>
+    public const string RendererOptions = "ReportDesigner.RendererOptions";
+
     /// <summary>The preview of the visual (vertical).</summary>
     public const string Preview = "ReportDesigner.Preview";
 }

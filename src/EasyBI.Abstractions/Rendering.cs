@@ -49,7 +49,14 @@ public sealed record BiTheme(IReadOnlyList<string> Palette)
 }
 
 /// <summary>What a renderer can draw. The designer uses it to disable unavailable options.</summary>
-public sealed record RendererCapabilities(IReadOnlySet<MarkType> Marks);
+public sealed record RendererCapabilities(IReadOnlySet<MarkType> Marks)
+{
+    /// <summary>
+    /// Settings specific to the renderer, offered to the end user by the designer and saved in
+    /// <see cref="VisualDefinition.Extensions"/> under the renderer's name.
+    /// </summary>
+    public IReadOnlyList<RendererOption> Options { get; init; } = [];
+}
 
 /// <summary>Element picked by the user in a visual (click), source of a cross-filter.</summary>
 public abstract record DataSelection;
