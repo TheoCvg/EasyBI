@@ -300,4 +300,7 @@
   <data name="TimeHint" xml:space="preserve">
     <value>The measure seen through time: a year earlier needs a date on the axis or a date filter.</value>
   </data>
+  <data name="RendererOptions" xml:space="preserve">
+    <value>Options</value>
+  </data>
 </root>
