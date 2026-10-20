@@ -247,6 +247,16 @@ Hooks for applications:
   `ApplicationCommands.Delete` (Del), `ApplicationCommands.SelectAll` (Ctrl+A) and `DashboardCommands.Duplicate`
   (Ctrl+D); `DashboardItem.IsSelected` for templates (the default one draws a ring) and the
   `DashboardOverlay.SelectionBoxStyleKey` style. A read-only dashboard has no selection;
+- copy and paste of the selected items, possibly between dashboards: `CopySelected` / `CutSelected` / `Paste`
+  (Ctrl+C, Ctrl+X, Ctrl+V through `ApplicationCommands`; `CreateCopy` and `Paste(data)` work without the clipboard).
+  The clipboard holds an `easybi/v1` report (format `VisualTransfer.ClipboardFormat`) with the visuals and the
+  calculated measures they use, plus their titles as text, and their layout (format
+  `DashboardView.LayoutClipboardFormat`: their arrangement and sizes, `DashboardLayoutEngine.Extract`). Pasted items get
+  new ids, keep their arrangement and sizes, and go after the line of the last selected item, or at the end
+  (`DashboardLayoutEngine.Insert`; lines of a grid band join the anchor's grid band, other bands come as new bands);
+  without the layout format, each one goes to the right of the previous one. Visuals of a model the context does not
+  know are left out, and a calculated measure whose name is taken by another definition is renamed (`VisualTransfer`
+  in `EasyBI.Core`);
 - `DashboardCommands` (`AddVisual`, `AddText`, `AddImage`, `EditItem`, `RemoveItem`, `ResetSize`,
   `AddRight`, `AddBelow`, `InsertBand`, `RemoveBand`, `Duplicate`...) for custom templates, and public methods
   (`AddNextTo`, `AddIn` a free space, `InsertLine`, `SetAutoSize`, `SetVisual`, `InsertBand`, `BeginEdit` to group

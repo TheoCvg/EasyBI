@@ -326,4 +326,39 @@ public class DashboardLayoutEngineTests
         Assert.Equal(320, Arrange(layout).Items["v3"].Height);
         Assert.Empty(Arrange(layout).FreeSpaces);
     }
+
+    // --- Copying and pasting items ---
+
+    [Fact]
+    public void Extracting_items_keeps_their_arrangement_and_sizes()
+    {
+        var layout = Grid(Row(I("a", 4), Col(I("b", rows: 2), I("c")), I("d")), I("e"));
+
+        Assert.Equal("Row(a:4,Col(b^2,c))", Shape(DashboardLayoutEngine.Extract(layout, new HashSet<string> { "a", "b", "c" })));
+        Assert.Equal("Row(a:4,b^2)", Shape(DashboardLayoutEngine.Extract(layout, new HashSet<string> { "a", "b" })));
+        Assert.Equal("e", Shape(DashboardLayoutEngine.Extract(layout, new HashSet<string> { "e" })));
+    }
+
+    [Fact]
+    public void Copied_lines_go_after_the_line_of_the_anchor_or_at_the_end()
+    {
+        var layout = Grid(Row(I("a"), I("b")), I("c"));
+        var copied = Grid(Row(I("x", 4), I("y")));
+
+        Assert.Equal("Row(a,b) | Row(x:4,y) | c", Shape(DashboardLayoutEngine.Insert(layout, copied, "b")));
+        Assert.Equal("Row(a,b) | c | Row(x:4,y)", Shape(DashboardLayoutEngine.Insert(layout, copied, null)));
+    }
+
+    [Fact]
+    public void Copied_bands_of_another_mode_come_as_new_bands_and_widths_follow_the_columns()
+    {
+        var layout = Grid(I("a"), I("b"));
+        var copied = new DashboardLayoutDefinition { Columns = 24, Bands = [new BandLayout { Mode = BandMode.Scroll, Items = [I("x"), I("y")] }, new BandLayout { Items = [I("z", 12)] }] };
+
+        var pasted = DashboardLayoutEngine.Insert(layout, copied, "a");
+
+        Assert.Equal("a | z:6 | b", Shape(pasted));
+        Assert.Equal(BandMode.Scroll, pasted.Bands[1].Mode);
+        Assert.Equal("x | y", Shape(pasted, 1));
+    }
 }

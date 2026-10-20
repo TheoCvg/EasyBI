@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using EasyBI.Abstractions;
+using EasyBI.Core;
 using EasyBI.Wpf.Dashboard.Behaviors;
 using EasyBI.Wpf.Renderers;
 using EasyBI.Wpf.Resources;
@@ -212,6 +213,15 @@ public class DashboardView : Control
 
     private void Show(DashboardDocument document)
     {
+        Apply(document);
+        _committed = Capture();
+        PushDocument();
+        PruneSelection();
+    }
+
+    // Shows a document without making it the committed state: a change made this way is reported by Commit
+    private void Apply(DashboardDocument document)
+    {
         _report = document.Report;
         var visuals = document.Report.Visuals.GroupBy(v => v.Id).ToDictionary(g => g.Key, g => g.First());
         var layout = DashboardLayoutEngine.Place(document.Layout, document.Report.Visuals.Select(v => v.Id));
@@ -235,9 +245,6 @@ public class DashboardView : Control
         {
             _editDepth--;
         }
-        _committed = Capture();
-        PushDocument();
-        PruneSelection();
     }
 
     /// <summary>The current report and layout.</summary>
@@ -504,6 +511,138 @@ public class DashboardView : Control
         return copies;
     }
 
+    // --- Copy and paste ---
+
+    /// <summary>Name of the clipboard format holding the layout of copied items (see <see cref="DashboardLayoutEngine.Extract"/>).</summary>
+    public const string LayoutClipboardFormat = "EasyBI.DashboardLayout";
+
+    /// <summary>
+    /// The visuals of the selected items with the calculated measures they use, in the
+    /// <see cref="VisualTransfer.ClipboardFormat"/> format and as their titles in text; null when no selected item shows
+    /// a visual. <see cref="CopySelected"/> puts it on the clipboard.
+    /// </summary>
+    public DataObject? CreateCopy()
+    {
+        var visuals = _selected.Select(i => i.Visual).OfType<VisualDefinition>().ToArray();
+        if (visuals.Length == 0) return null;
+        var data = new DataObject();
+        data.SetData(VisualTransfer.ClipboardFormat, VisualTransfer.Copy(visuals, Context?.Measures ?? new MeasureContext()));
+        data.SetText(string.Join(Environment.NewLine, visuals.Select(v => v.Title).Where(t => !string.IsNullOrEmpty(t))));
+        // Their arrangement and sizes, so that they are pasted as they were laid out
+        var layout = DashboardLayoutEngine.Extract(Capture().Layout ?? new DashboardLayoutDefinition(), visuals.Select(v => v.Id).ToHashSet());
+        data.SetData(LayoutClipboardFormat, System.Text.Json.JsonSerializer.Serialize(layout, ReportSerializer.Options));
+        return data;
+    }
+
+    /// <summary>Copies the selected items to the clipboard (<see cref="CreateCopy"/>); returns the copied data, or null when there is nothing to copy.</summary>
+    public DataObject? CopySelected()
+    {
+        if (CreateCopy() is not { } data) return null;
+        try
+        {
+            Clipboard.SetDataObject(data, copy: true);
+        }
+        catch (System.Runtime.InteropServices.ExternalException)
+        {
+            // The clipboard is busy (another application holds it): the copy is still returned
+        }
+        return data;
+    }
+
+    /// <summary>Copies the selected items (<see cref="CopySelected"/>), then removes them (<see cref="RemoveSelected"/>).</summary>
+    public DataObject? CutSelected()
+    {
+        var data = CopySelected();
+        if (data is not null) RemoveSelected();
+        return data;
+    }
+
+    /// <summary>
+    /// Adds the visuals copied in <paramref name="data"/> (the clipboard when null), possibly from another dashboard, as
+    /// one change, and selects them. Copied with their layout, they keep their arrangement and sizes and go after the
+    /// line of the last selected item, or at the end (see <see cref="DashboardLayoutEngine.Insert"/>); otherwise each one
+    /// goes to the right of the previous one. Visuals of a model the <see cref="Context"/> does not know are left out;
+    /// the calculated measures they use are added (see <see cref="VisualTransfer.Paste"/>). Returns the new items.
+    /// </summary>
+    public IReadOnlyList<DashboardItem> Paste(IDataObject? data = null)
+    {
+        if (IsReadOnly || Copied(data) is not { } json) return [];
+        var measures = Context?.Measures ?? new MeasureContext();
+        var visuals = VisualTransfer.Paste(json, measures, model => Context?.Models.Any(m => m.Metadata.Name == model) ?? false);
+        if (visuals.Count == 0) return [];
+        if (CopiedLayout(data) is { } copiedLayout) return PasteWithLayout(visuals, copiedLayout);
+
+        using var edit = BeginEdit();
+        var anchor = _selected.LastOrDefault();
+        var pasted = new List<DashboardItem>();
+        foreach (var visual in visuals.Select(p => p.Visual))
+        {
+            var item = anchor is null ? AddItem(Math.Max(0, Panel.BandCount - 1)) : AddNextTo(anchor, ItemSide.Right);
+            item.Visual = visual;
+            pasted.Add(item);
+            anchor = item;
+        }
+        edit.Commit();
+        Select(pasted);
+        return pasted;
+    }
+
+    private IReadOnlyList<DashboardItem> PasteWithLayout(IReadOnlyList<PastedVisual> visuals, DashboardLayoutDefinition copied)
+    {
+        var ids = visuals.ToDictionary(p => p.CopiedId, p => p.Visual.Id);
+        LayoutNode Remap(LayoutNode node) => node with
+        {
+            VisualId = node.VisualId is { } id ? ids.GetValueOrDefault(id) : null,
+            Children = node.Children.Select(Remap).ToArray(),
+        };
+        // Visuals left out leave the copied layout
+        var layout = DashboardLayoutEngine.Extract(copied with { Bands = copied.Bands.Select(b => b with { Items = b.Items.Select(Remap).ToArray() }).ToArray() },
+            ids.Values.ToHashSet());
+
+        var document = Capture();
+        using var edit = BeginEdit();
+        Apply(document with
+        {
+            Report = document.Report with { Visuals = [.. document.Report.Visuals, .. visuals.Select(p => p.Visual)] },
+            Layout = DashboardLayoutEngine.Insert(document.Layout ?? new DashboardLayoutDefinition(), layout, _selected.LastOrDefault()?.Visual?.Id),
+        });
+        edit.Commit();
+        var pasted = Items.Where(i => i.Visual?.Id is { } id && ids.ContainsValue(id)).ToArray();
+        Select(pasted);
+        return pasted;
+    }
+
+    private static DashboardLayoutDefinition? CopiedLayout(IDataObject? data)
+    {
+        try
+        {
+            data ??= Clipboard.GetDataObject();
+            return data?.GetData(LayoutClipboardFormat) is string json
+                ? System.Text.Json.JsonSerializer.Deserialize<DashboardLayoutDefinition>(json, ReportSerializer.Options)
+                : null;
+        }
+        catch (Exception e) when (e is System.Runtime.InteropServices.ExternalException or System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Whether <paramref name="data"/> (the clipboard when null) holds copied visuals.</summary>
+    public static bool CanPaste(IDataObject? data = null) => Copied(data) is not null;
+
+    private static string? Copied(IDataObject? data)
+    {
+        try
+        {
+            data ??= Clipboard.GetDataObject();
+            return data?.GetDataPresent(VisualTransfer.ClipboardFormat) == true ? data.GetData(VisualTransfer.ClipboardFormat) as string : null;
+        }
+        catch (System.Runtime.InteropServices.ExternalException)
+        {
+            return null;
+        }
+    }
+
     private void SetSelection(IReadOnlyList<DashboardItem> items)
     {
         if (items.SequenceEqual(_selected)) return;
@@ -577,6 +716,11 @@ public class DashboardView : Control
         BindBand(DashboardCommands.RemoveBand, RemoveBand);
         BindSelection(ApplicationCommands.Delete, () => RemoveSelected());
         BindSelection(DashboardCommands.Duplicate, () => DuplicateSelected());
+        BindSelection(ApplicationCommands.Copy, () => CopySelected());
+        BindSelection(ApplicationCommands.Cut, () => CutSelected());
+        CommandBindings.Add(new CommandBinding(ApplicationCommands.Paste,
+            (_, e) => Paste(e.Parameter as IDataObject),
+            (_, e) => e.CanExecute = !IsReadOnly && CanPaste(e.Parameter as IDataObject)));
         CommandBindings.Add(new CommandBinding(ApplicationCommands.SelectAll, (_, _) => SelectAll(), (_, e) => e.CanExecute = !IsReadOnly));
     }
 
