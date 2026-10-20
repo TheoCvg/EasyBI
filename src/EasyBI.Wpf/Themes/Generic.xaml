@@ -8,6 +8,12 @@
     <!-- Default values of the EasyBITheme keys: the light theme -->
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/Light.xaml" />
+        <!-- Default templates of the lookless controls -->
+        <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/DashboardView.xaml" />
+        <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/ReportDesigner.xaml" />
+        <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/FieldList.xaml" />
+        <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/FilterBar.xaml" />
+        <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/FilterEditor.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
     <!-- Dashboard item: a card showing its visual, or the choices of an empty item -->

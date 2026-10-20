@@ -23,8 +23,13 @@ namespace EasyBI.Wpf.Dashboard;
 /// can veto a removal, <see cref="Changed"/> reports every change, <see cref="DashboardCommands"/> trigger the actions
 /// from custom templates, and the public methods (<see cref="AddNextTo"/>, <see cref="SetVisual"/>...) drive the view
 /// from code. Set <see cref="UseDefaultBehaviors"/> to false to pick the behaviors yourself.
+/// <para>
+/// The view is lookless: its default template (in <c>Themes/DashboardView.xaml</c>) shows the <see cref="Panel"/> in a
+/// scroll viewer, under an adorner layer where the behaviors draw, and declares the <see cref="DashboardSlots"/>. The view
+/// owns the panel, so the items exist before the template is applied.
+/// </para>
 /// </remarks>
-public partial class DashboardView : UserControl
+public class DashboardView : Control
 {
     public static readonly DependencyProperty ContextProperty = DependencyProperty.Register(
         nameof(Context), typeof(EasyBIContext), typeof(DashboardView),
@@ -51,9 +56,14 @@ public partial class DashboardView : UserControl
     private bool _pushing;
     private bool _behaviorsAttached;
 
+    static DashboardView() =>
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(DashboardView), new FrameworkPropertyMetadata(typeof(DashboardView)));
+
     public DashboardView()
     {
-        InitializeComponent();
+        Panel = new DashboardPanel();
+        // A logical child: it inherits the view's properties and resources wherever the template shows it
+        AddLogicalChild(Panel);
         // Keyboard shortcuts (Ctrl+Z...) need the focus inside the view
         Focusable = true;
         FocusVisualStyle = null;
@@ -113,8 +123,10 @@ public partial class DashboardView : UserControl
         set => SetValue(UseDefaultBehaviorsProperty, value);
     }
 
-    /// <summary>The panel arranging the items.</summary>
-    public DashboardPanel Panel => PART_Panel;
+    /// <summary>The panel arranging the items; the template shows it (<c>Content="{Binding Panel, RelativeSource={RelativeSource TemplatedParent}}"</c>).</summary>
+    public DashboardPanel Panel { get; }
+
+    protected override System.Collections.IEnumerator LogicalChildren => new[] { Panel }.GetEnumerator();
 
     /// <summary>Items in the panel.</summary>
     public IEnumerable<DashboardItem> Items => Panel.Children.OfType<DashboardItem>();

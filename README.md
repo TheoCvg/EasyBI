@@ -206,7 +206,7 @@ side along its container joins it (the line's columns are shared when it has no 
 wraps the item and the newcomer in a new container. The rules are pure functions on records in
 `DashboardLayoutEngine`, usable without any UI.
 
-**`DashboardView`** is the ready-made `UserControl`: `DashboardItem`s showing visuals in a
+**`DashboardView`** is the ready-made (lookless) control: `DashboardItem`s showing visuals in a
 `DashboardPanel`, with every interaction provided by a **behavior** (Microsoft.Xaml.Behaviors):
 
 | Behavior | Feature |
@@ -240,7 +240,9 @@ Hooks for applications:
   `AddRight`, `AddBelow`, `InsertBand`, `RemoveBand`...) for custom templates, and public methods
   (`AddNextTo`, `AddIn` a free space, `InsertLine`, `SetAutoSize`, `SetVisual`, `InsertBand`, `BeginEdit` to group
   changes into one undo step...);
-- an implicit style for `DashboardItem` (lookless control) and the `DashboardOverlay` style keys
+- a default template for `DashboardView` (its `Panel` in a scroll viewer, under an `AdornerDecorator` where behaviors
+  draw: a custom template shows it with `<ContentPresenter Content="{Binding Panel, RelativeSource={RelativeSource TemplatedParent}}" />`),
+  an implicit style for `DashboardItem` (lookless control) and the `DashboardOverlay` style keys
   (`PlusButtonStyleKey`, `IconButtonStyleKey`, `GripStyleKey`, `ResizeGripStyleKey`, `FreeSpaceStyleKey`,
   `DropPlaceholderStyleKey`, `DragGhostStyleKey`) to restyle;
 - `DashboardBehavior` as a base class for new interactions: it gives access to the view, the panel and the
@@ -340,8 +342,8 @@ in the designer preview.
 
 ## Customizing the components: slots
 
-The parts of the `ReportDesigner`, of the `FilterBar` and of the `DashboardView` are **slots**: named places where an application adds its own
-content (before or after the default content), replaces it, or hides it.
+The parts of the `ReportDesigner`, `FieldList`, `FilterBar`, `FilterEditor` and `DashboardView` are **slots**: named places
+where an application adds its own content (before or after the default content), replaces it, or hides it.
 
 ```xml
 <bi:ReportDesigner Context="{Binding Context}">
@@ -364,25 +366,31 @@ Slots.Hide(designer, ReportDesignerSlots.FieldPanel);
 ```
 
 - **Names**: `ReportDesignerSlots` (`FieldPanel`, `Fields`, `Header`, `Title`, `VisualTypes`, `Shelves`, `AxisShelf`,
-  `LegendShelf`, `ValuesShelf`, `FiltersShelf`, `RendererOptions`, `Preview`) and `FilterBarSlots` (`Filters`, `Label`, `Slicer`,
-  `AddButton`, `Selection`) and `DashboardSlots` (`Body`, `ItemContent`, `EmptyItemChoices`, `ItemToolbar`). Slots can be
+  `LegendShelf`, `ValuesShelf`, `FiltersShelf`, `RendererOptions`, `Preview`), `FieldListSlots` (`Model`, `Dimensions`,
+  `Measures`, `AddMeasureButton`), `FilterBarSlots` (`Filters`, `Label`, `Slicer`, `AddButton`, `Selection`),
+  `FilterEditorSlots` (`Values`, `Period`) and `DashboardSlots` (`Body`, `ItemContent`, `EmptyItemChoices`, `ItemToolbar`). Slots can be
   nested: `Header` contains `Title` and `VisualTypes`. The band menu of a dashboard is customized through
   `BandMenuBehavior.MenuOpening`.
 - **Modes**: `After` (default), `Before`, `Replace`, `Hide`. Before and after are left and right of the default content,
   or above and below it in a vertical slot (`Fields`, `Shelves`, `Preview`); several slots with the same name are shown
   in declaration order, and the last `Replace` or `Hide` wins.
 - **Data context**: the content takes the data context of the place it is shown in: the `DesignerViewModel` in the
-  designer, the application's in the filter bar, the `SlicerViewModel` in `FilterBarSlots.Slicer`, the `DashboardItem`
+  designer, the application's in the filter bar and the field list, the `SlicerViewModel` in `FilterBarSlots.Slicer`, the
+  `FilterItemViewModel` in the filter editor (shown once per filter, so its slots take a template), the `DashboardItem`
   in the dashboard item slots (commands such as `DashboardCommands.RemoveItem` act on the item containing them).
 - **Repeated slots**: an element can only be shown once. A slot shown several times (`FilterBarSlots.Slicer`, once per
   global filter, the dashboard item slots, once per item, or slots declared for several components) takes a `ContentTemplate` (`Slots.AddTemplate(...)` in
   code), applied to the data context of each place.
 - **Inheritance**: `Slots.Items` is inherited, so slots declared on a window or a panel apply to every component in it;
   the nearest declaration replaces the others. The designer opened to edit a dashboard visual takes the slots of the
-  dashboard. Elements declared inside a `UserControl` such as the `ReportDesigner`
-  cannot have an `x:Name` (WPF error MC3093): declare the slots on an ancestor to name them.
-- **Custom templates**: `SlotHost` is the control that shows a slot (`<bi:SlotHost Slot="..." Orientation="Vertical">`
-  with the default content inside); an application can use it in its own templates.
+  dashboard.
+- **Custom templates**: the components are lookless controls. Their default templates (`Themes/*.xaml` of `EasyBI.Wpf`)
+  are built from `SlotHost`s (`<bi:SlotHost Slot="..." Orientation="Vertical">` with the default content inside), so a
+  template of the application keeps the slots it hosts. A template works with the components' read-only properties
+  and commands: `ReportDesigner.ViewModel` (the template's data context); `FieldList.ModelOptions`, `Dimensions`,
+  `Measures`, `CanAddMeasure` and `AddMeasureCommand`, `EditMeasureCommand`, `DeleteMeasureCommand`;
+  `FilterBar.Slicers`, `SelectionDescription` and `AddFilterCommand`, `RemoveFilterCommand` (on the slicer of its
+  data context), `ClearSelectionCommand`; `DashboardView.Panel` and `DashboardCommands`.
 
 ## Theming
 

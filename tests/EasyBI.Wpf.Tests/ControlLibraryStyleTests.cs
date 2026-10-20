@@ -12,12 +12,13 @@ public class ControlLibraryStyleTests
     public void Field_lists_take_the_applications_list_box_and_item_styles() => Sta.Run(() =>
     {
         var listStyle = new Style(typeof(ListBox));
-        var host = new Border { Resources = { [typeof(ListBox)] = listStyle }, Child = new FieldList() };
+        var fields = new FieldList();
+        var host = new Border { Resources = { [typeof(ListBox)] = listStyle }, Child = fields };
         host.Measure(new Size(300, 600));
 
         foreach (var name in new[] { "DimensionList", "MeasureList" })
         {
-            var list = (ListBox)LogicalTreeHelper.FindLogicalNode(host, name);
+            var list = (ListBox)fields.Template.FindName(name, fields);
             Assert.Same(listStyle, list.Style);
             Assert.Null(list.ItemContainerStyle); // items take the implicit ListBoxItem style, selection included
         }

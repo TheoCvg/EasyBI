@@ -158,11 +158,11 @@ public class RendererOptionsDesignerTests
                 .AddModel(SemanticModel.For(new[] { new Sale("Nord", 1m) }, "sales").Dimension(s => s.Region, "Region").Measure(s => s.Amount, "Amount"))
                 .UseRenderer(new OptionsRenderer()),
         };
-        designer.Measure(new Size(1000, 700));
+        designer.Hosted().Measure(new Size(1000, 700));
         designer.Arrange(new Rect(0, 0, 1000, 700));
         Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle); // bindings
 
-        var options = (ItemsControl)LogicalTreeHelper.FindLogicalNode(designer, "RendererOptionList");
+        var options = (ItemsControl)designer.Template.FindName("RendererOptionList", designer);
         Assert.Same(designer.ViewModel!.RendererOptions, options.ItemsSource);
         Assert.Equal(Visibility.Visible, ((FrameworkElement)options.Parent).Visibility);
     });
