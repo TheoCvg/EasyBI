@@ -71,6 +71,66 @@ public static class DashboardLayoutEngine
     // --- Finding ---
 
     /// <summary>Index of the band holding a node, or -1.</summary>
+    /// <summary>
+    /// The part of a layout showing some visuals (copied items): each band keeps only their items, with their sizes and
+    /// their arrangement (containers left with one child are simplified), and bands left empty are dropped.
+    /// </summary>
+    public static DashboardLayoutDefinition Extract(DashboardLayoutDefinition layout, IReadOnlySet<string> visualIds)
+    {
+        LayoutNode? Prune(LayoutNode node) => node.IsItem
+            ? node.VisualId is { } id && visualIds.Contains(id) ? node : null
+            : node.Children.Select(Prune).OfType<LayoutNode>().ToArray() switch
+            {
+                [] => null,
+                // A container left with one child is that child, at the container's width
+                [var only] => only with { ColumnSpan = only.ColumnSpan ?? node.ColumnSpan },
+                var children => node with { Children = children },
+            };
+        var bands = layout.Bands.Select(b => b with { Items = b.Items.Select(Prune).OfType<LayoutNode>().ToArray() }).Where(b => b.Items.Count > 0).ToArray();
+        return Normalize(layout with { Bands = bands });
+    }
+
+    /// <summary>
+    /// Inserts copied bands (see <see cref="Extract"/>) after the line of the item showing <paramref name="anchorVisualId"/>,
+    /// or at the end without one: the lines of a grid band go into the anchor's band when it is a grid too, other bands come
+    /// as new bands after it. Widths are converted to the layout's columns.
+    /// </summary>
+    public static DashboardLayoutDefinition Insert(DashboardLayoutDefinition layout, DashboardLayoutDefinition copied, string? anchorVisualId)
+    {
+        layout = Normalize(layout);
+        var columns = layout.Columns;
+        var scale = (double)columns / Math.Max(1, copied.Columns);
+        LayoutNode Scale(LayoutNode node) => node with
+        {
+            ColumnSpan = node.ColumnSpan is { } span ? Math.Clamp((int)Math.Round(span * scale), 1, columns) : null,
+            Children = node.Children.Select(Scale).ToArray(),
+        };
+
+        var bands = layout.Bands.ToList();
+        var band = bands.FindIndex(b => b.Items.Any(line => anchorVisualId is not null && line.Items().Any(i => i.VisualId == anchorVisualId)));
+        if (band < 0) band = bands.Count - 1;
+        var line = band < 0 ? -1 : anchorVisualId is null
+            ? bands[band].Items.Count - 1
+            : bands[band].Items.ToList().FindIndex(l => l.Items().Any(i => i.VisualId == anchorVisualId));
+        var nextBand = band + 1;
+        foreach (var copy in copied.Bands)
+        {
+            var items = copy.Items.Select(Scale).ToArray();
+            if (band >= 0 && copy.Mode == BandMode.Fit && bands[band].Mode == BandMode.Fit)
+            {
+                var lines = bands[band].Items.ToList();
+                lines.InsertRange(line + 1, items);
+                bands[band] = bands[band] with { Items = lines };
+                line += items.Length;
+            }
+            else
+            {
+                bands.Insert(nextBand++, new BandLayout { Mode = copy.Mode, Items = items });
+            }
+        }
+        return Normalize(layout with { Bands = bands });
+    }
+
     public static int BandOf(DashboardLayoutDefinition layout, string nodeId) =>
         layout.Bands.Select((b, i) => (b, i)).FirstOrDefault(x => x.b.Items.Any(n => n.Descendants().Any(d => d.Id == nodeId)), (null!, -1)).Item2;
 
