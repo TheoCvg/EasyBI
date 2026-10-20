@@ -36,6 +36,9 @@ public static class ReportDesignerSlots
     /// <summary>The Filters shelf, with its label.</summary>
     public const string FiltersShelf = "ReportDesigner.FiltersShelf";
 
+    /// <summary>The active sort (chosen on the chips of the Axis and Values shelves) and the Top N box, under the shelves.</summary>
+    public const string Sort = "ReportDesigner.Sort";
+
     /// <summary>
     /// The options of the renderer drawing the visual (<see cref="Abstractions.RendererCapabilities.Options"/>), under the
     /// shelves; hidden when it has none for the visual.

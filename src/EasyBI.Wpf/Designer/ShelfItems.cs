@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Windows.Input;
 using EasyBI.Abstractions;
 using EasyBI.Core;
 using EasyBI.Wpf.Resources;
@@ -39,7 +41,16 @@ public sealed class ShelfItemViewModel : ObservableObject
         new(TimeCalculation.YearToDate, () => Strings.TimeYearToDate),
     ];
 
+    /// <summary>How the visual can be sorted on a field: not at all, ascending or descending.</summary>
+    public static IReadOnlyList<SortOption> SortOptions { get; } =
+    [
+        new(null, "⇅", () => Strings.SortNone),
+        new(ListSortDirection.Ascending, "↑", () => Strings.SortAscending),
+        new(ListSortDirection.Descending, "↓", () => Strings.SortDescending),
+    ];
+
     private readonly Action _changed;
+    private ListSortDirection? _sortDirection;
     private DateGrain _grain;
     private TimeCalculation _time;
     private Aggregation _aggregation;
@@ -54,6 +65,7 @@ public sealed class ShelfItemViewModel : ObservableObject
         _changed = changed;
         _grain = HasGrain ? DateGrain.Month : DateGrain.None;
         _aggregation = field.DefaultAggregation ?? Aggregation.Sum;
+        SortCommand = new RelayCommand<ListSortDirection?>(direction => SortDirection = direction);
     }
 
     public FieldDescriptor Field { get; }
@@ -63,6 +75,34 @@ public sealed class ShelfItemViewModel : ObservableObject
     public string Caption => Field.Caption;
 
     public bool HasGrain => Field.Kind == FieldKind.Dimension && Field.DataType == DataType.Date;
+
+    /// <summary>The visual can be sorted on the fields of the Axis and Values shelves.</summary>
+    public bool CanSort => Shelf is Shelf.Axis or Shelf.Values;
+
+    /// <summary>The sort of the visual on this field, or null; the designer keeps at most one sorted field.</summary>
+    public ListSortDirection? SortDirection
+    {
+        get => _sortDirection;
+        set
+        {
+            if (!SetProperty(ref _sortDirection, value)) return;
+            OnPropertyChanged(nameof(SortOption));
+            _changed();
+        }
+    }
+
+    /// <summary>Sorts on this field in the direction given as parameter (none to remove the sort).</summary>
+    public ICommand SortCommand { get; }
+
+    /// <summary>The option of <see cref="SortDirection"/>, with its symbol (a combo box cannot select a null value).</summary>
+    public SortOption SortOption
+    {
+        get => SortOptions.First(o => o.Value == _sortDirection);
+        set => SortDirection = value?.Value;
+    }
+
+    /// <summary>The column of this field in the query result: what a sort on it refers to.</summary>
+    public string Key => Field.Kind == FieldKind.Measure ? ToMeasureRef().Key : ToFieldRef().Key;
 
     /// <summary>A measure of the Values shelf: it can be seen through time.</summary>
     public bool IsValue => Field.Kind == FieldKind.Measure && Shelf == Shelf.Values;
@@ -129,6 +169,12 @@ public sealed class ShelfItemViewModel : ObservableObject
         SecondaryAxis = SecondaryAxis,
         Time = Time,
     };
+}
+
+/// <summary>A sort direction: its <see cref="Symbol"/> stands for it on a chip.</summary>
+public sealed class SortOption(ListSortDirection? direction, string symbol, Func<string> label) : Option<ListSortDirection?>(direction, label)
+{
+    public string Symbol { get; } = symbol;
 }
 
 /// <summary>

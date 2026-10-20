@@ -2,7 +2,8 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:bi="clr-namespace:EasyBI.Wpf"
                     xmlns:local="clr-namespace:EasyBI.Wpf.Designer"
-                    xmlns:dnd="clr-namespace:EasyBI.Wpf.DragAndDrop">
+                    xmlns:dnd="clr-namespace:EasyBI.Wpf.DragAndDrop"
+                    xmlns:cm="clr-namespace:System.ComponentModel;assembly=System">
 
     <!-- The template takes the designer's view-model (DesignerViewModel) as data context, and so do its slots -->
     <Style TargetType="local:ReportDesigner">
@@ -109,6 +110,27 @@
                                       Margin="4,0,0,0" Padding="5,0" FontSize="11" Cursor="Hand"
                                       Visibility="{Binding ShowSeriesOptions, Converter={StaticResource BoolToVisibility}}"
                                       IsChecked="{Binding SecondaryAxis, Mode=TwoWay}" />
+                        <!-- Sort on this field: a menu showing the current direction -->
+                        <Menu Margin="4,0,0,0" Background="Transparent" VerticalAlignment="Center" ToolTip="{bi:Localize SortHint}"
+                              Visibility="{Binding CanSort, Converter={StaticResource BoolToVisibility}}">
+                            <MenuItem Header="{Binding SortOption.Symbol}" Padding="5,0" FontSize="11" Cursor="Hand">
+                                <MenuItem Command="{Binding SortCommand}">
+                                    <MenuItem.Header>
+                                        <TextBlock><Run Text="⇅ " /><Run Text="{bi:Localize SortNone}" /></TextBlock>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding SortCommand}" CommandParameter="{x:Static cm:ListSortDirection.Ascending}">
+                                    <MenuItem.Header>
+                                        <TextBlock><Run Text="↑ " /><Run Text="{bi:Localize SortAscending}" /></TextBlock>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding SortCommand}" CommandParameter="{x:Static cm:ListSortDirection.Descending}">
+                                    <MenuItem.Header>
+                                        <TextBlock><Run Text="↓ " /><Run Text="{bi:Localize SortDescending}" /></TextBlock>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </MenuItem>
+                        </Menu>
                         <Button Style="{StaticResource ChipButton}" />
                     </StackPanel>
                 </Border>
@@ -259,6 +281,25 @@
                                                           ItemsSource="{Binding Filters}" ItemTemplate="{StaticResource FilterChipTemplate}" />
                                         </Grid>
                                     </bi:SlotHost>
+
+                                    <!-- The active sort (chosen on a chip) and the number of rows shown -->
+                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.Sort}">
+                                        <Grid Margin="0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="80" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{bi:Localize Sort}" Style="{StaticResource ShelfLabel}" />
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="4,0,0,0">
+                                                <TextBlock x:Name="SortSummary" Text="{Binding SortSummary}" VerticalAlignment="Center" />
+                                                <TextBlock x:Name="NoSort" Text="{bi:Localize NoSort}" VerticalAlignment="Center" Visibility="Collapsed"
+                                                           Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                                                <TextBlock Text="{bi:Localize Top}" Style="{StaticResource ShelfLabel}" Margin="18,0,6,0" />
+                                                <TextBox Width="50" Padding="4,1" VerticalContentAlignment="Center" ToolTip="{bi:Localize TopHint}"
+                                                         Text="{Binding Top, TargetNullValue='', UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </bi:SlotHost>
                                 </StackPanel>
                             </bi:SlotHost>
 
@@ -297,6 +338,12 @@
                             </bi:SlotHost>
                         </Grid>
                     </Grid>
+                    <ControlTemplate.Triggers>
+                        <DataTrigger Binding="{Binding ViewModel.SortSummary, RelativeSource={RelativeSource Self}}" Value="{x:Null}">
+                            <Setter TargetName="SortSummary" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="NoSort" Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

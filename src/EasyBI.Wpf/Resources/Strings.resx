@@ -303,4 +303,31 @@
   <data name="RendererOptions" xml:space="preserve">
     <value>Options</value>
   </data>
+  <data name="Sort" xml:space="preserve">
+    <value>Sort</value>
+  </data>
+  <data name="SortNone" xml:space="preserve">
+    <value>No sort</value>
+  </data>
+  <data name="SortAscending" xml:space="preserve">
+    <value>ascending</value>
+  </data>
+  <data name="SortDescending" xml:space="preserve">
+    <value>descending</value>
+  </data>
+  <data name="SortSummary" xml:space="preserve">
+    <value>{0}, {1}</value>
+  </data>
+  <data name="NoSort" xml:space="preserve">
+    <value>None: in the order of the axis</value>
+  </data>
+  <data name="SortHint" xml:space="preserve">
+    <value>Sort the visual on this field</value>
+  </data>
+  <data name="Top" xml:space="preserve">
+    <value>Top</value>
+  </data>
+  <data name="TopHint" xml:space="preserve">
+    <value>Show only the first rows, after sorting (empty: all of them)</value>
+  </data>
 </root>

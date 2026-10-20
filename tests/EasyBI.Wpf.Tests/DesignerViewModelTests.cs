@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using EasyBI.Abstractions;
 using EasyBI.Core;
 using EasyBI.Wpf.Designer;
@@ -48,6 +49,68 @@ public class DesignerViewModelTests
         Assert.Collection(visual.Filters,
             f => Assert.Equal((FilterOperator.NotIn, "Web"), (f.Operator, f.Values.Single())),
             f => Assert.Equal((DateGrain.Year, "2024"), (f.Grain, f.Values.Single())));
+    }
+
+    [Fact]
+    public void Sorting_on_a_chip_sorts_the_visual_and_unsorts_the_other_chips()
+    {
+        var designer = Designer();
+        designer.Load(Saved with { Sort = null, Top = null });
+        var region = designer.Axis.Single();
+        var amount = designer.Values.Single();
+
+        region.SortDirection = ListSortDirection.Ascending;
+        Assert.Equal(new SortSpec("Region"), designer.Visual!.Sort);
+
+        amount.SortCommand.Execute(ListSortDirection.Descending);
+
+        Assert.Null(region.SortDirection);
+        Assert.Equal(new SortSpec("Amount", Descending: true), designer.Visual!.Sort);
+        Assert.Equal("CA, descending", designer.SortSummary);
+
+        amount.SortCommand.Execute(null); // "No sort" in the menu of the chip
+        Assert.Null(designer.Visual!.Sort);
+        Assert.Null(designer.SortSummary);
+    }
+
+    [Fact]
+    public void A_loaded_sort_shows_on_its_chip_and_follows_its_aggregation()
+    {
+        var designer = Designer();
+        designer.Load(Saved);
+        var amount = designer.Values.Single();
+        Assert.Equal(ListSortDirection.Descending, amount.SortDirection);
+        Assert.Null(designer.Axis.Single().SortDirection);
+
+        amount.Aggregation = Aggregation.Average;
+
+        Assert.Equal(new SortSpec("Amount.Average", Descending: true), designer.Visual!.Sort);
+    }
+
+    [Fact]
+    public void A_sorted_dimension_moved_to_the_legend_stays_sorted()
+    {
+        var designer = Designer();
+        designer.Load(Saved with { Sort = new("Region") });
+
+        designer.Drop(designer.Axis.Single(), Shelf.Legend);
+
+        Assert.Equal(ListSortDirection.Ascending, designer.Legend.Single().SortDirection);
+        Assert.Equal(new SortSpec("Region"), designer.Visual!.Sort);
+    }
+
+    [Fact]
+    public void Top_shows_the_first_rows_and_ignores_values_below_one()
+    {
+        var designer = Designer();
+        designer.Load(Saved with { Top = null });
+
+        designer.Top = 3;
+        Assert.Equal(3, designer.Visual!.Top);
+
+        designer.Top = 0;
+        Assert.Null(designer.Top);
+        Assert.Null(designer.Visual!.Top);
     }
 
     [Fact]

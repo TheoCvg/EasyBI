@@ -92,6 +92,15 @@ internal static class Strings
     public static string EditMeasure => Get();
     public static string DeleteMeasure => Get();
     public static string DeleteMeasureConfirm => Get();
+    public static string Sort => Get();
+    public static string SortNone => Get();
+    public static string SortAscending => Get();
+    public static string SortDescending => Get();
+    public static string SortSummary => Get();
+    public static string NoSort => Get();
+    public static string SortHint => Get();
+    public static string Top => Get();
+    public static string TopHint => Get();
 
     public static string Format(string format, params object?[] args) =>
         string.Format(EasyBILocalization.FormatCulture, format, args);
