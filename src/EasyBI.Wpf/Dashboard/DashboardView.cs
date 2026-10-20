@@ -176,6 +176,7 @@ public class DashboardView : Control
         new ResizeBehavior(),
         new ItemToolbarBehavior(),
         new SelectionBehavior(),
+        new KeyboardLayoutBehavior(),
         new BandMenuBehavior(),
         new BandScrollBehavior(),
         new TextEditBehavior(),
@@ -511,6 +512,36 @@ public class DashboardView : Control
         return copies;
     }
 
+    /// <summary>
+    /// Moves the selected item one step (Ctrl+arrows, Ctrl+Shift+Up/Down for a new band; see
+    /// <see cref="DashboardLayoutEngine.Step"/>) as one change; false when several or no items are selected, or nothing moved.
+    /// </summary>
+    public bool MoveSelected(ItemSide direction, bool toNewBand = false)
+    {
+        if (IsReadOnly || _selected is not [var item]) return false;
+        var before = LayoutJson();
+        DashboardLayout.Step(item, direction, toNewBand);
+        item.BringIntoView();
+        return LayoutJson() != before;
+    }
+
+    /// <summary>
+    /// Extends the selected items over the free room next to them, in width (Alt+Left/Right) or height (Alt+Up/Down),
+    /// as one change (see <see cref="DashboardLayoutEngine.Fill"/>); false when nothing changed.
+    /// </summary>
+    public bool ExtendSelected(bool width)
+    {
+        if (IsReadOnly || _selected.Count == 0) return false;
+        var before = LayoutJson();
+        using var edit = BeginEdit();
+        foreach (var item in _selected) DashboardLayout.Fill(item, width);
+        edit.Commit();
+        return LayoutJson() != before;
+    }
+
+    // The layout as saved: operations always give a new instance, even when nothing changed
+    private string LayoutJson() => System.Text.Json.JsonSerializer.Serialize(Panel.Layout, ReportSerializer.Options);
+
     // --- Copy and paste ---
 
     /// <summary>Name of the clipboard format holding the layout of copied items (see <see cref="DashboardLayoutEngine.Extract"/>).</summary>
@@ -722,6 +753,9 @@ public class DashboardView : Control
             (_, e) => Paste(e.Parameter as IDataObject),
             (_, e) => e.CanExecute = !IsReadOnly && CanPaste(e.Parameter as IDataObject)));
         CommandBindings.Add(new CommandBinding(ApplicationCommands.SelectAll, (_, _) => SelectAll(), (_, e) => e.CanExecute = !IsReadOnly));
+        BindSide(DashboardCommands.MoveItem, single: true, _ => true, side => MoveSelected(side));
+        BindSide(DashboardCommands.MoveItemToNewBand, single: true, side => side is ItemSide.Above or ItemSide.Below, side => MoveSelected(side, toNewBand: true));
+        BindSide(DashboardCommands.ExtendItem, single: false, _ => true, side => ExtendSelected(width: side is ItemSide.Left or ItemSide.Right));
     }
 
     private void BindItem(ICommand command, Action<DashboardItem> execute) =>
@@ -733,6 +767,17 @@ public class DashboardView : Control
         CommandBindings.Add(new CommandBinding(command,
             (_, _) => { if (!IsReadOnly) execute(); },
             (_, e) => e.CanExecute = !IsReadOnly && _selected.Count > 0));
+
+    // Commands on the selection taking a direction (an ItemSide or its name)
+    private void BindSide(ICommand command, bool single, Func<ItemSide, bool> accepts, Action<ItemSide> execute)
+    {
+        ItemSide? Side(object? parameter) =>
+            !IsReadOnly && (single ? _selected.Count == 1 : _selected.Count > 0)
+            && DashboardCommands.SideOf(parameter) is { } side && accepts(side) ? side : null;
+        CommandBindings.Add(new CommandBinding(command,
+            (_, e) => { if (Side(e.Parameter) is { } side) execute(side); },
+            (_, e) => e.CanExecute = Side(e.Parameter) is not null));
+    }
 
     private void BindBand(ICommand command, Action<int> execute) =>
         CommandBindings.Add(new CommandBinding(command,

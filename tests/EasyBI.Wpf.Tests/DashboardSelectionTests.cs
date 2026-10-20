@@ -222,4 +222,67 @@ public class DashboardSelectionTests
             Assert.Equal(["e"], Selected(view));
         });
     });
+
+    [Fact]
+    public void The_selected_item_moves_one_step_as_one_change_and_stays_selected() => Sta.Run(() =>
+    {
+        var view = View("a", "b", "c"); // a | b, then c
+        var changes = 0;
+        view.Changed += (_, _) => changes++;
+        view.Select(Item(view, "b"));
+
+        Assert.True(view.MoveSelected(ItemSide.Below));
+
+        var lines = view.Capture().Layout!.Bands[0].Items.Select(l => string.Join(",", l.Items().Select(i => i.VisualId))).ToArray();
+        Assert.Equal(["a", "b", "c"], lines);
+        Assert.Equal(["b"], Selected(view));
+        Assert.Equal(1, changes);
+        Assert.False(view.MoveSelected(ItemSide.Right)); // alone on its line: nothing to swap with
+
+        view.SelectAll();
+        Assert.False(view.MoveSelected(ItemSide.Below)); // one item at a time
+    });
+
+    [Fact]
+    public void Selected_items_extend_over_the_free_room_as_one_change() => Sta.Run(() =>
+    {
+        var view = View("a", "b"); // a | b
+        DashboardLayout.Resize(Item(view, "a"), 3, null);
+        DashboardLayout.Resize(Item(view, "b"), 4, null);
+        var changes = 0;
+        view.Changed += (_, _) => changes++;
+        view.Select(Item(view, "b"));
+
+        Assert.True(view.ExtendSelected(width: true));
+        Assert.False(DashboardLayout.IsConstrained(Item(view, "b")));
+        Assert.Equal(1, changes);
+        Assert.False(view.ExtendSelected(width: true)); // no free room left
+    });
+
+    [Fact]
+    public void Layout_commands_take_a_direction_and_act_on_the_selection() => Sta.Run(() =>
+    {
+        var view = View("a", "b"); // a | b
+        Assert.False(DashboardCommands.MoveItem.CanExecute(ItemSide.Below, view)); // nothing selected
+
+        view.Select(Item(view, "b"));
+        Assert.False(DashboardCommands.MoveItem.CanExecute("sideways", view));
+        Assert.False(DashboardCommands.MoveItemToNewBand.CanExecute(ItemSide.Left, view)); // a new band is above or below
+
+        DashboardCommands.MoveItem.Execute("Below", view); // by name, as in XAML
+        Assert.Equal(2, view.Capture().Layout!.Bands[0].Items.Count);
+        DashboardCommands.MoveItemToNewBand.Execute(ItemSide.Above, view);
+        Assert.Equal(2, view.Capture().Layout!.Bands.Count);
+
+        view.SelectAll();
+        Assert.False(DashboardCommands.MoveItem.CanExecute(ItemSide.Below, view)); // one item at a time
+        Assert.True(DashboardCommands.ExtendItem.CanExecute(ItemSide.Right, view)); // all of them
+
+        view.IsReadOnly = true;
+        Assert.False(DashboardCommands.ExtendItem.CanExecute(ItemSide.Right, view));
+    });
+
+    [Fact]
+    public void Keyboard_layout_is_a_default_behavior_of_its_own() => Sta.Run(() =>
+        Assert.Contains(DashboardView.CreateDefaultBehaviors(), b => b is Dashboard.Behaviors.KeyboardLayoutBehavior));
 }

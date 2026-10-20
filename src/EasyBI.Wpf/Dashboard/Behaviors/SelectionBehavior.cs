@@ -11,7 +11,8 @@ namespace EasyBI.Wpf.Dashboard.Behaviors;
 /// (Ctrl+click adds or removes it) without stopping the click, so that charts still cross-filter; a click on the
 /// background unselects everything and a drag from it draws a selection box (Ctrl adds to the selection). Arrows go to
 /// the nearest item in their direction (Shift adds it), Escape unselects. Delete, Ctrl+D and Ctrl+A are commands of the
-/// view (<see cref="ApplicationCommands.Delete"/>, <see cref="DashboardCommands.Duplicate"/>, <see cref="ApplicationCommands.SelectAll"/>).
+/// view (<see cref="ApplicationCommands.Delete"/>, <see cref="DashboardCommands.Duplicate"/>, <see cref="ApplicationCommands.SelectAll"/>);
+/// moving and extending items with the keyboard is <see cref="KeyboardLayoutBehavior"/>'s.
 /// </summary>
 public class SelectionBehavior : DashboardBehavior
 {
@@ -89,6 +90,8 @@ public class SelectionBehavior : DashboardBehavior
     {
         // Typing in a text box (in-place text editing, a slot's content) is not for the selection
         if (!CanEdit || e.OriginalSource is TextBoxBase || View.SelectedItems.Count == 0) return;
+        // Arrows with Ctrl (or Alt, reported as a system key) are KeyboardLayoutBehavior's
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) return;
         switch (e.Key)
         {
             case Key.Escape:

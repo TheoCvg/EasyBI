@@ -89,6 +89,14 @@ public static class DashboardLayout
     public static void ResizeWidth(UIElement item, double? width, int? rowSpan) =>
         UpdateItem(item, (layout, id) => DashboardLayoutEngine.ResizeWidth(layout, id, width, rowSpan));
 
+    /// <summary>Moves a child one step with the keyboard (see <see cref="DashboardLayoutEngine.Step"/>).</summary>
+    public static void Step(UIElement item, ItemSide direction, bool toNewBand = false) =>
+        UpdateItem(item, (layout, id) => DashboardLayoutEngine.Step(layout, id, direction, toNewBand));
+
+    /// <summary>Extends a child over the free room next to it (see <see cref="DashboardLayoutEngine.Fill"/>).</summary>
+    public static void Fill(UIElement item, bool width) =>
+        UpdateItem(item, (layout, id) => DashboardLayoutEngine.Fill(layout, id, width));
+
     /// <summary>Removes the size constraints of a child: it is greedy again.</summary>
     public static void SetAuto(UIElement item) => UpdateItem(item, DashboardLayoutEngine.SetAuto);
 
