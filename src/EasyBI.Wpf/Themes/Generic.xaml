@@ -58,6 +58,10 @@
                                 </bi:SlotHost>
                             </Grid>
                         </Border>
+                        <!-- Selected item (DashboardView.SelectedItems): a ring over the card's border, inside the item (the panel
+                             clips what goes beyond its edges) -->
+                        <Border x:Name="SelectionRing" BorderThickness="2" IsHitTestVisible="False" Visibility="Collapsed"
+                                BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" CornerRadius="{DynamicResource {x:Static bi:EasyBITheme.CornerRadiusKey}}" />
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="Kind" Value="Empty">
@@ -73,6 +77,9 @@
                             </MultiDataTrigger.Conditions>
                             <Setter TargetName="TextPlaceholder" Property="Visibility" Value="Visible" />
                         </MultiDataTrigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="SelectionRing" Property="Visibility" Value="Visible" />
+                        </Trigger>
                         <Trigger Property="local:DashboardView.IsReadOnly" Value="True">
                             <Setter TargetName="Choices" Property="Visibility" Value="Collapsed" />
                             <Setter TargetName="TextPlaceholder" Property="Visibility" Value="Collapsed" />
@@ -194,6 +201,17 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ContentControl">
                     <Rectangle Fill="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBrushKey}}" Stroke="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" StrokeThickness="2" Opacity="0.9" StrokeDashArray="4 3" RadiusX="8" RadiusY="8" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type behaviors:DashboardOverlay}, ResourceId=SelectionBox}" TargetType="ContentControl">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContentControl">
+                    <Border Background="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}"
+                            BorderThickness="1" Opacity="0.6" />
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
