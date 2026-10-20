@@ -26,26 +26,36 @@
                                 BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{DynamicResource {x:Static bi:EasyBITheme.CornerRadiusKey}}"
                                 Padding="{TemplateBinding Padding}" ClipToBounds="True">
                             <Grid>
-                                <bi:VisualView x:Name="View" Definition="{TemplateBinding Visual}" Context="{TemplateBinding Context}" />
-                                <TextBlock x:Name="TextPlaceholder" Visibility="Collapsed" Text="{bi:Localize TextPlaceholder}"
-                                           Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" FontStyle="Italic" IsHitTestVisible="False" />
-                                <WrapPanel x:Name="Choices" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <Button Content="{bi:Localize AddVisual}" Margin="4" Padding="12,6" Cursor="Hand"
-                                            Command="{x:Static local:DashboardCommands.AddVisual}"
-                                            CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
-                                    <Button Content="{bi:Localize AddText}" Margin="4" Padding="12,6" Cursor="Hand"
-                                            Command="{x:Static local:DashboardCommands.AddText}"
-                                            CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
-                                    <Button Content="{bi:Localize AddImage}" Margin="4" Padding="12,6" Cursor="Hand"
-                                            Command="{x:Static local:DashboardCommands.AddImage}"
-                                            CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
-                                </WrapPanel>
+                                <!-- Slots: their content takes the item as data context -->
+                                <bi:SlotHost x:Name="Content" Slot="{x:Static local:DashboardSlots.ItemContent}" Orientation="Vertical"
+                                             DataContext="{Binding RelativeSource={RelativeSource TemplatedParent}}">
+                                    <Grid>
+                                        <bi:VisualView x:Name="View" Definition="{TemplateBinding Visual}" Context="{TemplateBinding Context}" />
+                                        <TextBlock x:Name="TextPlaceholder" Visibility="Collapsed" Text="{bi:Localize TextPlaceholder}"
+                                                   Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" FontStyle="Italic" IsHitTestVisible="False" />
+                                    </Grid>
+                                </bi:SlotHost>
+                                <bi:SlotHost x:Name="Choices" Slot="{x:Static local:DashboardSlots.EmptyItemChoices}" Visibility="Collapsed"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"
+                                             DataContext="{Binding RelativeSource={RelativeSource TemplatedParent}}">
+                                    <WrapPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Button Content="{bi:Localize AddVisual}" Margin="4" Padding="12,6" Cursor="Hand"
+                                                Command="{x:Static local:DashboardCommands.AddVisual}"
+                                                CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
+                                        <Button Content="{bi:Localize AddText}" Margin="4" Padding="12,6" Cursor="Hand"
+                                                Command="{x:Static local:DashboardCommands.AddText}"
+                                                CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
+                                        <Button Content="{bi:Localize AddImage}" Margin="4" Padding="12,6" Cursor="Hand"
+                                                Command="{x:Static local:DashboardCommands.AddImage}"
+                                                CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
+                                    </WrapPanel>
+                                </bi:SlotHost>
                             </Grid>
                         </Border>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="Kind" Value="Empty">
-                            <Setter TargetName="View" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="Content" Property="Visibility" Value="Collapsed" />
                             <Setter TargetName="Choices" Property="Visibility" Value="Visible" />
                             <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.BorderStrongBrushKey}}" />
                             <Setter TargetName="Card" Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.SurfaceAltBrushKey}}" />

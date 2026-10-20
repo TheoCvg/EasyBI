@@ -6,7 +6,8 @@ namespace EasyBI.Wpf.Dashboard.Behaviors;
 
 /// <summary>
 /// Toolbar at the top-right corner of the hovered item: text formatting (size, bold, alignment) for a text, fit for an
-/// image, automatic size (for a resized item), edit and remove. Override <see cref="CreateButtons"/> to change the buttons.
+/// image, automatic size (for a resized item), edit and remove. Override <see cref="CreateButtons"/> to change the buttons,
+/// or fill the slot <see cref="DashboardSlots.ItemToolbar"/> (its content takes the hovered item as data context).
 /// </summary>
 public class ItemToolbarBehavior : DashboardBehavior
 {
@@ -14,11 +15,14 @@ public class ItemToolbarBehavior : DashboardBehavior
     public const double MaxFontSize = 96;
 
     private readonly StackPanel _toolbar = new() { Orientation = Orientation.Horizontal };
+    private readonly SlotHost _host;
     private DashboardItem? _item;
+
+    public ItemToolbarBehavior() => _host = new SlotHost { Slot = DashboardSlots.ItemToolbar, Content = _toolbar };
 
     protected override void OnAttach()
     {
-        AddToOverlay(_toolbar, Place);
+        AddToOverlay(_host, Place);
         Overlay.HoverChanged += OnHoverChanged;
         Panel.ArrangementChanged += OnArrangementChanged;
         View.Changed += OnChanged;
@@ -100,6 +104,7 @@ public class ItemToolbarBehavior : DashboardBehavior
     protected void Rebuild()
     {
         _item = Overlay.HoveredItem;
+        _host.DataContext = _item;
         _toolbar.Children.Clear();
         if (_item is null) return;
         foreach (var button in CreateButtons(_item)) _toolbar.Children.Add(button);

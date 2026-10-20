@@ -358,6 +358,8 @@ public partial class DashboardView : UserControl
         if (args.Handled || Context is not { } context) return;
 
         var editor = new VisualEditorWindow(context, item.Kind == DashboardItemKind.Visual ? item.Visual : null) { Owner = Window.GetWindow(this) };
+        // The dialog is not below the dashboard: it takes the slots the dashboard sees, for its designer
+        if (GetValue(Slots.ItemsProperty) is SlotCollection slots) Slots.SetItems(editor, slots);
         if (editor.ShowDialog() == true && editor.Visual is { } visual)
             args.Complete(visual);
     }
@@ -477,7 +479,9 @@ public partial class DashboardView : UserControl
     private static DashboardItem? Target(RoutedEventArgs e) =>
         (e as ExecutedRoutedEventArgs)?.Parameter as DashboardItem
         ?? (e as CanExecuteRoutedEventArgs)?.Parameter as DashboardItem
-        ?? ItemOf(e.OriginalSource as DependencyObject);
+        ?? ItemOf(e.OriginalSource as DependencyObject)
+        // Content drawn outside the items (the toolbar slot, in the adorner layer) has its item as data context
+        ?? (e.OriginalSource as FrameworkElement)?.DataContext as DashboardItem;
 
     private static int? BandIndex(object? parameter) => parameter switch
     {
