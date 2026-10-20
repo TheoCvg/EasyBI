@@ -4,11 +4,13 @@
              xmlns:bi="clr-namespace:EasyBI.Wpf"
              xmlns:local="clr-namespace:EasyBI.Wpf.Dashboard"
              Background="{DynamicResource {x:Static bi:EasyBITheme.BackgroundBrushKey}}" Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}">
-    <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-        <!-- Behaviors draw their controls (grips, "+" buttons, toolbars...) in this adorner layer, above the panel -->
-        <AdornerDecorator>
-            <!-- Left margin: room for the band menus; bottom margin: room for the "+" adding a band at the end -->
-            <local:DashboardPanel x:Name="PART_Panel" Margin="28,12,16,40" />
-        </AdornerDecorator>
-    </ScrollViewer>
+    <bi:SlotHost Slot="{x:Static local:DashboardSlots.Body}" Orientation="Vertical">
+        <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+            <!-- Behaviors draw their controls (grips, "+" buttons, toolbars...) in this adorner layer, above the panel -->
+            <AdornerDecorator>
+                <!-- Left margin: room for the band menus; bottom margin: room for the "+" adding a band at the end -->
+                <local:DashboardPanel x:Name="PART_Panel" Margin="28,12,16,40" />
+            </AdornerDecorator>
+        </ScrollViewer>
+    </bi:SlotHost>
 </UserControl>
