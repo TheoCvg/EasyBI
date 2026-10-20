@@ -168,6 +168,11 @@ without a constraint, they share the room their neighbours leave, so a dashboard
   container, constrained children keep their size (`ColumnSpan` in columns, `RowSpan` in rows) and the others share
   the rest; across it, every child takes the whole room. An item with a `RowSpan` sets the height of its line and the
   items next to it stretch, so items stacked beside a tall item share its height.
+- **Column tiers**: on a narrow panel, Fit bands show fewer columns (`DashboardPanel.ColumnTiers`; by default
+  1 column under 600 px and 6 under 960 px, `ColumnTier.Defaults`). Spans are scaled to the tier, a line whose items
+  would get less than 3 columns each is broken into several lines (one item per line in a single column), and
+  constrained items keep their proportions while filling their line. Only the display adapts: the saved layout does
+  not change, and a resize in a tier is saved in the layout's columns (`DashboardPanel.ActiveColumns`, `ToLayoutSpan`).
 - **Wrap** bands start their items at `DashboardPanel.MinItemWidth` (or their fixed `Width` in pixels), break lines
   when the next one does not fit, then share what is left on each line. **Scroll** bands do the same on one line,
   and scroll horizontally when the items do not fit.

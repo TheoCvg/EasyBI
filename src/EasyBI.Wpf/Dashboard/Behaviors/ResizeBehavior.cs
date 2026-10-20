@@ -68,8 +68,9 @@ public sealed class ResizeBehavior : DashboardBehavior
         Action resize;
         if (Panel.ModeOf(Panel.BandIndexOf(item)) == BandMode.Fit)
         {
+            // Columns are counted as shown (fewer in a column tier) and saved in the layout's
             var columns = (int)Math.Round(delta.X / Math.Max(1, Panel.ColumnPitch));
-            int? columnSpan = columns == 0 ? null : Math.Clamp(_initial.ColumnSpan + columns, 1, Panel.Columns);
+            int? columnSpan = columns == 0 ? null : Panel.ToLayoutSpan(Math.Clamp(_initial.ColumnSpan + columns, 1, Panel.ActiveColumns));
             target = $"{columnSpan}x{rowSpan}";
             resize = () => DashboardLayout.Resize(item, columnSpan, rowSpan);
         }

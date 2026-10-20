@@ -34,6 +34,14 @@ public class DashboardPanel : Panel
         nameof(MinItemWidth), typeof(double), typeof(DashboardPanel),
         new FrameworkPropertyMetadata(280d, FrameworkPropertyMetadataOptions.AffectsMeasure), v => (double)v >= 1);
 
+    /// <summary>
+    /// Column tiers of a narrow panel (see <see cref="ColumnTier"/>); null uses <see cref="ColumnTier.Defaults"/>, an
+    /// empty list always shows the layout's columns.
+    /// </summary>
+    public static readonly DependencyProperty ColumnTiersProperty = DependencyProperty.Register(
+        nameof(ColumnTiers), typeof(IEnumerable<ColumnTier>), typeof(DashboardPanel),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsMeasure));
+
     /// <summary>The layout item (<see cref="LayoutNode.Id"/>) a child shows.</summary>
     public static readonly DependencyProperty ItemIdProperty = DependencyProperty.RegisterAttached(
         "ItemId", typeof(string), typeof(DashboardPanel),
@@ -78,7 +86,23 @@ public class DashboardPanel : Panel
     /// <summary>Live state of the bands (scroll positions), one per band of the layout.</summary>
     public ObservableCollection<DashboardBand> Bands { get; } = [];
 
+    /// <summary>Columns of the layout: the widths of grid items are counted in them.</summary>
     public int Columns => Math.Max(1, Layout.Columns);
+
+    public IEnumerable<ColumnTier>? ColumnTiers
+    {
+        get => (IEnumerable<ColumnTier>?)GetValue(ColumnTiersProperty);
+        set => SetValue(ColumnTiersProperty, value);
+    }
+
+    /// <summary>Columns grid bands show at the last arranged width: fewer than <see cref="Columns"/> in a column tier.</summary>
+    public int ActiveColumns => ColumnsAt(_lastWidth);
+
+    /// <summary>A width in columns shown (<see cref="ActiveColumns"/>) as a width in columns of the layout.</summary>
+    public int ToLayoutSpan(int activeSpan) =>
+        ActiveColumns == Columns ? activeSpan : Math.Clamp((int)Math.Round(activeSpan * (double)Columns / ActiveColumns), 1, Columns);
+
+    private int ColumnsAt(double width) => ColumnTier.ColumnsFor(ColumnTiers ?? ColumnTier.Defaults, width, Columns);
 
     public double RowHeight => Layout.RowHeight;
 
@@ -126,7 +150,7 @@ public class DashboardPanel : Panel
         return Layout.Bands[band].Items.SelectMany(i => i.Items()).Select(i => elements.GetValueOrDefault(i.Id)).OfType<UIElement>().ToArray();
     }
 
-    /// <summary>Width of one grid column for the last arranged width.</summary>
+    /// <summary>Width of one grid column shown, for the last arranged width.</summary>
     public double ColumnWidth => Settings(_lastWidth, 0).ColumnWidth;
 
     /// <summary>Distance between the starts of two neighbouring columns.</summary>
@@ -224,8 +248,11 @@ public class DashboardPanel : Panel
         return finalSize;
     }
 
-    private ArrangeSettings Settings(double width, double offset) =>
-        new(Math.Max(0, width), Columns, RowHeight, Gap, MinItemWidth, offset);
+    private ArrangeSettings Settings(double width, double offset)
+    {
+        var columns = ColumnsAt(width);
+        return new(Math.Max(0, width), columns, RowHeight, Gap, MinItemWidth, offset, columns < Columns ? Columns : null);
+    }
 
     /// <summary>Places every child for a given width; returns the total height. The arrange pass also records the bounds.</summary>
     private double LayoutBands(double width, Action<UIElement, Rect> place)

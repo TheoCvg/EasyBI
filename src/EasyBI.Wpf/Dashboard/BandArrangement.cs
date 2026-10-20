@@ -12,8 +12,18 @@ public sealed record FreeSpace(Rect Bounds, string AnchorId, ItemSide Side);
 /// <param name="Gap">Space between items.</param>
 /// <param name="MinItemWidth">Width of unconstrained items of scrolling and wrapping bands, before they grow.</param>
 /// <param name="HorizontalOffset">Scroll position of a scrolling band.</param>
-public sealed record ArrangeSettings(double Width, int Columns, double RowHeight, double Gap, double MinItemWidth, double HorizontalOffset = 0)
+/// <param name="LayoutColumns">
+/// Columns the layout's spans are counted in, when the grid shows fewer <paramref name="Columns"/> (a column tier of a
+/// narrow panel, see <see cref="DashboardPanel.ColumnTiers"/>); null when they are the same.
+/// </param>
+public sealed record ArrangeSettings(double Width, int Columns, double RowHeight, double Gap, double MinItemWidth, double HorizontalOffset = 0, int? LayoutColumns = null)
 {
+    /// <summary>Smallest width of an item side by side with others in a column tier, in columns of the tier.</summary>
+    public const int MinTierSpan = 3;
+
+    /// <summary>True when the grid shows fewer columns than the layout counts: lines are adapted (see <see cref="BandArrangement"/>).</summary>
+    public bool IsTier => LayoutColumns is { } layout && layout > Columns;
+
     public double ColumnWidth => Math.Max(0, (Width - Gap * (Columns - 1)) / Columns);
 
     /// <summary>Left of a grid column.</summary>
@@ -37,6 +47,13 @@ public sealed record ArrangeSettings(double Width, int Columns, double RowHeight
 /// does not fit, items keep their width and the band scrolls.</item>
 /// </list>
 /// A container (or a line) whose children are all constrained and leave room reports it as a <see cref="FreeSpace"/>.
+/// <para>
+/// In a column tier (<see cref="ArrangeSettings.IsTier"/>), a grid band is adapted for display only: spans are scaled to
+/// the tier's columns, a line whose items would get less than <see cref="ArrangeSettings.MinTierSpan"/> columns each is
+/// broken into several lines (one item per line in a single column), and items that are all constrained keep their
+/// proportions while filling their line. Items keep their ids, and each line of the layout reports one bound in
+/// <see cref="Lines"/> (its broken lines together), so that line indexes still refer to the layout.
+/// </para>
 /// </summary>
 public sealed class BandArrangement
 {
@@ -116,17 +133,21 @@ public sealed class BandArrangement
     {
         var s = _settings;
         var y = 0d;
-        foreach (var line in lines)
+        foreach (var layoutLine in lines)
         {
-            if (y > 0) y += s.Gap;
-            var height = line.RowSpan is { } rows ? Math.Max(s.HeightOf(rows), Min(line)) : Preferred(line);
-            // An item alone on its line may be narrowed: the rest of the line is free
-            var span = line.IsItem && line.ColumnSpan is { } fixedSpan ? Math.Clamp(fixedSpan, 1, s.Columns) : s.Columns;
-            Place(line, 0, span, y, height);
-            if (span < s.Columns)
-                _free.Add(new FreeSpace(new Rect(s.X(span), y, s.WidthOf(s.Columns - span), height), line.Id, ItemSide.Right));
-            _lines.Add(new Rect(0, y, s.Width, height));
-            y += height;
+            var top = y > 0 ? y + s.Gap : y;
+            foreach (var line in s.IsTier ? ColumnTier.AdaptLine(layoutLine, s) : [layoutLine])
+            {
+                if (y > 0) y += s.Gap;
+                var height = line.RowSpan is { } rows ? Math.Max(s.HeightOf(rows), Min(line)) : Preferred(line);
+                // An item alone on its line may be narrowed: the rest of the line is free
+                var span = line.IsItem && line.ColumnSpan is { } fixedSpan ? Math.Clamp(fixedSpan, 1, s.Columns) : s.Columns;
+                Place(line, 0, span, y, height);
+                if (span < s.Columns)
+                    _free.Add(new FreeSpace(new Rect(s.X(span), y, s.WidthOf(s.Columns - span), height), line.Id, ItemSide.Right));
+                y += height;
+            }
+            _lines.Add(new Rect(0, top, s.Width, y - top));
         }
         Height = y;
         ExtentWidth = s.Width;
