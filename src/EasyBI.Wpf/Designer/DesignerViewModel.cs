@@ -224,6 +224,50 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         if (drop.Key is Shelf shelf && drop.Item is { } item) Drop(item, shelf, drop.Index);
     }
 
+    string? IDropHandler.RefusalReason(DropInfo drop) =>
+        drop.Key is Shelf shelf && drop.Item is { } item ? RefusalReason(item, shelf) : null;
+
+    /// <summary>
+    /// Why <paramref name="item"/> cannot be dropped on <paramref name="shelf"/>, in words for the end user; null when it
+    /// can, or when there is nothing useful to say (see <see cref="CanDrop(object, Shelf)"/>).
+    /// </summary>
+    public string? RefusalReason(object item, Shelf shelf)
+    {
+        if (CanDrop(item, shelf)) return null;
+        if (item is ModelField field && field.Model != _selectedModel)
+            return Strings.Format(Strings.DropOtherModel, field.Caption, field.Model.Metadata.Caption);
+        return Unwrap(item) switch
+        {
+            FieldDescriptor descriptor => FieldRefusal(descriptor, shelf),
+            ShelfItemViewModel chip when Collection(chip.Shelf).Contains(chip) => FieldRefusal(chip.Field, shelf)
+                ?? (shelf == Shelf.Filters ? Strings.Format(Strings.DropFilterFromList, chip.Caption) : null),
+            FilterItemViewModel => Strings.DropFilterStays,
+            _ => null,
+        };
+    }
+
+    private string? FieldRefusal(FieldDescriptor field, Shelf shelf)
+    {
+        if (shelf == Shelf.Values)
+            return field.Kind == FieldKind.Measure ? null : Strings.DropMeasuresOnly;
+        if (field.Kind != FieldKind.Dimension) return Strings.Format(Strings.DropDimensionsOnly, ShelfName(shelf));
+        return shelf switch
+        {
+            Shelf.Axis when Axis.Any(a => a.Field == field) => Strings.Format(Strings.DropAlreadyThere, field.Caption, ShelfName(shelf)),
+            Shelf.Axis when Axis.Count >= MaxAxisFields => Strings.Format(Strings.DropAxisFull, MaxAxisFields),
+            Shelf.Filters when Filters.Any(f => f.Field == field) => Strings.Format(Strings.DropAlreadyThere, field.Caption, ShelfName(shelf)),
+            _ => null,
+        };
+    }
+
+    private static string ShelfName(Shelf shelf) => shelf switch
+    {
+        Shelf.Axis => Strings.Axis,
+        Shelf.Legend => Strings.Legend,
+        Shelf.Values => Strings.Values,
+        _ => Strings.Filters,
+    };
+
     /// <summary>The field of a <see cref="ModelField"/> of the selected model; other models' fields are refused (null).</summary>
     private object? Unwrap(object? item) => item is ModelField field ? field.Model == _selectedModel ? field.Field : null : item;
 

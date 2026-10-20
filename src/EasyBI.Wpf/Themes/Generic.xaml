@@ -236,4 +236,19 @@
         <Setter Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
         <Setter Property="CornerRadius" Value="1" />
     </Style>
+
+    <!-- Why a drop is refused: a bubble under the target -->
+    <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type dnd:DropTarget}, ResourceId=Refusal}" TargetType="ContentControl">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContentControl">
+                    <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderStrongBrushKey}}"
+                            BorderThickness="1" CornerRadius="4" Padding="8,4">
+                        <TextBlock Text="{TemplateBinding Content}" FontSize="12" TextWrapping="Wrap" MaxWidth="360"
+                                   Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

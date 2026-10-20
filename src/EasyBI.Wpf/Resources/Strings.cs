@@ -92,6 +92,17 @@ internal static class Strings
     public static string EditMeasure => Get();
     public static string DeleteMeasure => Get();
     public static string DeleteMeasureConfirm => Get();
+    public static string Axis => Get();
+    public static string Legend => Get();
+    public static string Values => Get();
+    public static string Filters => Get();
+    public static string DropOtherModel => Get();
+    public static string DropMeasuresOnly => Get();
+    public static string DropDimensionsOnly => Get();
+    public static string DropAlreadyThere => Get();
+    public static string DropAxisFull => Get();
+    public static string DropFilterFromList => Get();
+    public static string DropFilterStays => Get();
     public static string Sort => Get();
     public static string SortNone => Get();
     public static string SortAscending => Get();

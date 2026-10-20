@@ -140,4 +140,53 @@ public class ShelfDragDropTests
 
         Assert.Equal(DragDropEffects.None, DragOver(designer, other.Axis[0], Shelf.Axis));
     }
+
+    private static string? Refusal(DesignerViewModel designer, object item, Shelf shelf) =>
+        ((IDropHandler)designer).RefusalReason(new DropInfo { Item = item, Key = shelf });
+
+    [Fact]
+    public void A_refused_field_says_why()
+    {
+        var designer = Designer();
+        designer.Drop(Field(designer, "Region"), Shelf.Axis);
+        designer.Drop(Field(designer, "Channel"), Shelf.Filters);
+
+        Assert.Equal("Only dimensions go in Axis", Refusal(designer, Field(designer, "Amount"), Shelf.Axis));
+        Assert.Equal("Only measures go in Values", Refusal(designer, Field(designer, "Store"), Shelf.Values));
+        Assert.Equal("Region is already in Axis", Refusal(designer, Field(designer, "Region"), Shelf.Axis));
+        Assert.Equal("Channel is already in Filters", Refusal(designer, Field(designer, "Channel"), Shelf.Filters));
+        Assert.Null(Refusal(designer, Field(designer, "Store"), Shelf.Axis)); // accepted
+    }
+
+    [Fact]
+    public void A_full_axis_says_how_many_fields_it_holds()
+    {
+        var designer = Designer();
+        foreach (var name in new[] { "Region", "Channel", "Product" }) designer.Drop(Field(designer, name), Shelf.Axis);
+
+        Assert.Equal("The axis holds at most 3 fields", Refusal(designer, Field(designer, "Store"), Shelf.Axis));
+    }
+
+    [Fact]
+    public void A_refused_chip_says_why()
+    {
+        var designer = Designer();
+        designer.Drop(Field(designer, "Region"), Shelf.Axis);
+        designer.Drop(Field(designer, "Amount"), Shelf.Values);
+        designer.Drop(Field(designer, "Channel"), Shelf.Filters);
+
+        Assert.Equal("Only dimensions go in Axis", Refusal(designer, designer.Values[0], Shelf.Axis));
+        Assert.Equal("To filter on Region, drag it from the field list", Refusal(designer, designer.Axis[0], Shelf.Filters));
+        Assert.Equal("A filter stays in Filters", Refusal(designer, designer.Filters[0], Shelf.Legend));
+    }
+
+    [Fact]
+    public void Nothing_is_said_about_a_chip_of_another_designer()
+    {
+        var designer = Designer();
+        var other = Designer();
+        other.Drop(Field(other, "Region"), Shelf.Axis);
+
+        Assert.Null(Refusal(designer, other.Axis[0], Shelf.Axis));
+    }
 }
