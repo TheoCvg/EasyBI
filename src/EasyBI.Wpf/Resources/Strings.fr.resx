@@ -303,4 +303,31 @@
   <data name="RendererOptions" xml:space="preserve">
     <value>Options</value>
   </data>
+  <data name="Sort" xml:space="preserve">
+    <value>Tri</value>
+  </data>
+  <data name="SortNone" xml:space="preserve">
+    <value>Pas de tri</value>
+  </data>
+  <data name="SortAscending" xml:space="preserve">
+    <value>croissant</value>
+  </data>
+  <data name="SortDescending" xml:space="preserve">
+    <value>décroissant</value>
+  </data>
+  <data name="SortSummary" xml:space="preserve">
+    <value>{0}, {1}</value>
+  </data>
+  <data name="NoSort" xml:space="preserve">
+    <value>Aucun : dans l'ordre de l'axe</value>
+  </data>
+  <data name="SortHint" xml:space="preserve">
+    <value>Trier le visuel sur ce champ</value>
+  </data>
+  <data name="Top" xml:space="preserve">
+    <value>Top</value>
+  </data>
+  <data name="TopHint" xml:space="preserve">
+    <value>N'afficher que les premières lignes, après le tri (vide : toutes)</value>
+  </data>
 </root>

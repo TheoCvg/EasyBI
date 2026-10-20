@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
@@ -38,9 +39,10 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     private string _visualId = NewId();
     private bool _suspended;
 
-    // Visual settings the designer does not edit (yet): kept as-is when editing
-    private SortSpec? _sort;
     private int? _top;
+    private string? _sortSummary;
+
+    // Visual settings the designer does not edit (yet): kept as-is when editing
     private IReadOnlyDictionary<string, string>? _extensions;
     private IReadOnlyList<FilterSpec> _hiddenFilters = [];
 
@@ -72,6 +74,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         // Weak: a designer (a dialog's) may be shorter-lived than the shared context
         WeakEventManager<MeasureContext, EventArgs>.AddHandler(context.Measures, nameof(MeasureContext.Changed), OnMeasuresChanged);
         PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, OnLanguageChanged, string.Empty);
+        foreach (var chips in new[] { Axis, Legend, Values }) chips.CollectionChanged += OnChipsChanged;
         RefreshAvailability();
         SelectedModel = context.Models.FirstOrDefault();
     }
@@ -126,6 +129,20 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     {
         get => _selectedMark;
         set { if (SetProperty(ref _selectedMark, value)) Rebuild(); }
+    }
+
+    /// <summary>Shows only the first rows of the result (after sorting); null or less than 1 shows them all.</summary>
+    public int? Top
+    {
+        get => _top;
+        set { if (SetProperty(ref _top, value is > 0 ? value : null)) Rebuild(); }
+    }
+
+    /// <summary>The active sort in words ("Amount, descending"), or null when the visual is not sorted.</summary>
+    public string? SortSummary
+    {
+        get => _sortSummary;
+        private set => SetProperty(ref _sortSummary, value);
     }
 
     /// <summary>The current visual, or null while no model is selected.</summary>
@@ -188,7 +205,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
                 break;
             case ShelfItemViewModel chip:
                 Collection(chip.Shelf).Remove(chip);
-                Insert(Collection(shelf), index, new ShelfItemViewModel(chip.Field, shelf, Rebuild) { Grain = chip.Grain });
+                Insert(Collection(shelf), index, new ShelfItemViewModel(chip.Field, shelf, Rebuild) { Grain = chip.Grain, SortDirection = chip.SortDirection });
                 break;
             case FilterItemViewModel filter:
                 Move(Filters, filter, index);
@@ -250,8 +267,8 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         _title = "";
         OnPropertyChanged(nameof(Title));
         _visualId = NewId();
-        _sort = null;
         _top = null;
+        OnPropertyChanged(nameof(Top));
         _extensions = null;
         _hiddenFilters = [];
         _suspended = false;
@@ -269,11 +286,11 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         _visualId = visual.Id;
         _title = visual.Title;
         _selectedMark = visual.Mark;
-        _sort = visual.Sort;
         _top = visual.Top;
         _extensions = visual.Extensions;
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(SelectedMark));
+        OnPropertyChanged(nameof(Top));
         foreach (var a in visual.Axis)
             Axis.Add(new(metadata.GetField(a.Field), Shelf.Axis, Rebuild) { Grain = a.Grain });
         if (visual.Legend is { } legend)
@@ -289,6 +306,9 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
                 Time = v.Time,
             });
         }
+        // A sort on a column that is not displayed is dropped, as the query could not sort on it
+        if (visual.Sort is { } sort && Axis.Concat(Legend).Concat(Values).FirstOrDefault(c => c.Key == sort.Key) is { } sorted)
+            sorted.SortDirection = sort.Descending ? ListSortDirection.Descending : ListSortDirection.Ascending;
         foreach (var f in visual.Filters)
         {
             // Filters on period keys (a clicked quarter...) have no shelf: they are kept without being shown
@@ -321,8 +341,10 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         var axis = Axis.Select(a => a.ToFieldRef()).ToArray();
         var legend = Legend.FirstOrDefault()?.ToFieldRef();
         var values = Values.Select(v => v.ToMeasureRef()).ToArray();
-        // The sort only makes sense while the sorted column is still displayed
-        var keys = axis.Append(legend).OfType<FieldRef>().Select(f => f.Key).Concat(values.Select(v => v.Key));
+        // The sort follows its chip: it goes with it, and its key follows the chip's aggregation or grain
+        var sorted = Axis.Concat(Legend).Concat(Values).FirstOrDefault(c => c.SortDirection is not null);
+        SortSummary = sorted is null ? null : Strings.Format(Strings.SortSummary, sorted.Caption,
+            sorted.SortDirection == ListSortDirection.Descending ? Strings.SortDescending : Strings.SortAscending);
         Visual = _selectedModel is null ? null : new VisualDefinition
         {
             Id = _visualId,
@@ -333,11 +355,27 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             Legend = legend,
             Values = values,
             Filters = [.. Filters.Select(f => f.ToFilterSpec()).OfType<FilterSpec>(), .. _hiddenFilters],
-            Sort = _sort is not null && keys.Contains(_sort.Key) ? _sort : null,
+            Sort = sorted is null ? null : new SortSpec(sorted.Key, sorted.SortDirection == ListSortDirection.Descending),
             Top = _top,
             Extensions = _extensions,
         };
         RefreshRendererOptions();
+    }
+
+    private void OnChipsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        foreach (var chip in e.NewItems?.OfType<ShelfItemViewModel>() ?? []) chip.PropertyChanged += OnChipPropertyChanged;
+        foreach (var chip in e.OldItems?.OfType<ShelfItemViewModel>() ?? []) chip.PropertyChanged -= OnChipPropertyChanged;
+    }
+
+    // The visual has one sort: sorting on a field removes the sort on the others
+    private void OnChipPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ShelfItemViewModel.SortDirection) || sender is not ShelfItemViewModel { SortDirection: not null } sorted) return;
+        var suspended = _suspended;
+        _suspended = true;
+        foreach (var chip in Axis.Concat(Legend).Concat(Values).Where(c => c != sorted)) chip.SortDirection = null;
+        _suspended = suspended;
     }
 
     /// <summary>
