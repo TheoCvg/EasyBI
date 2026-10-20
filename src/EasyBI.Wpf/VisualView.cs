@@ -31,6 +31,14 @@ public class VisualView : ContentControl
         nameof(Definition), typeof(VisualDefinition), typeof(VisualView),
         new PropertyMetadata(null, (d, _) => ((VisualView)d).Refresh()));
 
+    /// <summary>
+    /// False holds the view's queries back (an off-screen visual of a dashboard): changes are only taken into account,
+    /// with one query, once it is true again. True by default.
+    /// </summary>
+    public static readonly DependencyProperty IsActiveProperty = DependencyProperty.Register(
+        nameof(IsActive), typeof(bool), typeof(VisualView),
+        new PropertyMetadata(true, (d, e) => { if ((bool)e.NewValue) ((VisualView)d).Refresh(); }));
+
     public static readonly DependencyProperty ShowTitleProperty = DependencyProperty.Register(
         nameof(ShowTitle), typeof(bool), typeof(VisualView), new PropertyMetadata(true, (d, _) => ((VisualView)d).Draw()));
 
@@ -184,10 +192,16 @@ public class VisualView : ContentControl
     // Captions and formatted values come with the result: the culture is part of the query key
     private void OnCultureChanged(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Refresh);
 
-    /// <summary>Re-runs the query if it changed, otherwise redraws the last result.</summary>
+    public bool IsActive
+    {
+        get => (bool)GetValue(IsActiveProperty);
+        set => SetValue(IsActiveProperty, value);
+    }
+
+    /// <summary>Re-runs the query if it changed, otherwise redraws the last result; nothing while <see cref="IsActive"/> is false.</summary>
     public async void Refresh()
     {
-        if (!IsLoaded || Context is not { } context || Definition is not { } visual)
+        if (!IsLoaded || !IsActive || Context is not { } context || Definition is not { } visual)
             return;
 
         if (VisualValidator.Validate(visual) is { } problem)

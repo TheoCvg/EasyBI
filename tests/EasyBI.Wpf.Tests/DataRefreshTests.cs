@@ -6,29 +6,6 @@ namespace EasyBI.Wpf.Tests;
 
 public class DataRefreshTests
 {
-    /// <summary>A model whose data can change behind the same query: it counts the queries it receives.</summary>
-    private sealed class CountingModel(string name) : ISemanticModel
-    {
-        public int Queries { get; private set; }
-
-        public ModelMetadata Metadata { get; } = new(name, name,
-        [
-            new FieldDescriptor("Region", "Region", FieldKind.Dimension, DataType.Text),
-            new FieldDescriptor("Amount", "Amount", FieldKind.Measure, DataType.Number, Aggregation.Sum),
-        ]);
-
-        public Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default)
-        {
-            Queries++;
-            return Task.FromResult(new ResultSet(
-                [new ResultColumn("Region", "Region", FieldKind.Dimension, DataType.Text), new ResultColumn("Amount", "Amount", FieldKind.Measure, DataType.Number)],
-                [["North", (object?)(double)Queries]]));
-        }
-
-        public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<object?>>([]);
-    }
-
     private static VisualDefinition Table(string model) =>
         new() { Model = model, Mark = MarkType.Table, Axis = [new("Region")], Values = [new("Amount")] };
 

@@ -248,6 +248,11 @@ Hooks for applications:
   `ApplicationCommands.Delete` (Del), `ApplicationCommands.SelectAll` (Ctrl+A) and `DashboardCommands.Duplicate`
   (Ctrl+D); `DashboardItem.IsSelected` for templates (the default one draws a ring) and the
   `DashboardOverlay.SelectionBoxStyleKey` style. A read-only dashboard has no selection;
+- lazy loading: only the visuals of the items in or near the visible part of the dashboard query their data
+  (`DashboardItem.IsInViewport`, bound to `VisualView.IsActive` by the default template); the others query once they
+  scroll into view, a change of filters or data giving them one query then. `ViewportMargin` sets how far ahead items
+  load (one viewport by default), `LoadsVisibleItemsOnly = false` loads them all (to print or export, for instance).
+  `VisualView.IsActive = false` holds back the queries of any visual;
 - keyboard layout: `MoveSelected(side, toNewBand)` (`DashboardCommands.MoveItem` and `MoveItemToNewBand`, Ctrl+arrows
   and Ctrl+Shift+Down/Up; `DashboardLayoutEngine.Step`): Down takes an item
   sharing its line to a new line below; alone on its line, it joins the next line, and from the last line it goes into

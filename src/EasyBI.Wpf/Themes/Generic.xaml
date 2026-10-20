@@ -36,7 +36,7 @@
                                 <bi:SlotHost x:Name="Content" Slot="{x:Static local:DashboardSlots.ItemContent}" Orientation="Vertical"
                                              DataContext="{Binding RelativeSource={RelativeSource TemplatedParent}}">
                                     <Grid>
-                                        <bi:VisualView x:Name="View" Definition="{TemplateBinding Visual}" Context="{TemplateBinding Context}" />
+                                        <bi:VisualView x:Name="View" Definition="{TemplateBinding Visual}" Context="{TemplateBinding Context}" IsActive="{TemplateBinding IsInViewport}" />
                                         <TextBlock x:Name="TextPlaceholder" Visibility="Collapsed" Text="{bi:Localize TextPlaceholder}"
                                                    Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" FontStyle="Italic" IsHitTestVisible="False" />
                                     </Grid>
