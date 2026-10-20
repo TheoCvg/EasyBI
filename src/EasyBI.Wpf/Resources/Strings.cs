@@ -92,6 +92,11 @@ internal static class Strings
     public static string EditMeasure => Get();
     public static string DeleteMeasure => Get();
     public static string DeleteMeasureConfirm => Get();
+    public static string MarkGroupComparison => Get();
+    public static string MarkGroupTrend => Get();
+    public static string MarkGroupComposition => Get();
+    public static string MarkGroupIndicators => Get();
+    public static string VisualTypeHint => Get();
     public static string BadgeAverage => Get();
     public static string BadgeMin => Get();
     public static string BadgeMax => Get();

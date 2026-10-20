@@ -10,17 +10,56 @@ using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf.Designer;
 
-public sealed class MarkOptionViewModel(MarkType mark, Func<string> label) : Option<MarkType>(mark, label)
+/// <summary>The groups of the visual type gallery, by what a visual shows.</summary>
+public enum MarkGroup { Comparison, Trend, Composition, IndicatorsAndTables }
+
+public sealed class MarkOptionViewModel : Option<MarkType>
 {
     private bool _isAvailable = true;
+    private bool _isSelected;
+
+    public MarkOptionViewModel(MarkType mark, MarkGroup group, Func<string> label) : base(mark, label)
+    {
+        Group = group;
+        ChooseCommand = new RelayCommand<object?>(_ => { if (IsAvailable) Choosing?.Invoke(Mark); });
+    }
 
     public MarkType Mark => Value;
 
+    public MarkGroup Group { get; }
+
+    /// <summary>False when no renderer draws this type: it is shown greyed.</summary>
     public bool IsAvailable
     {
         get => _isAvailable;
         set => SetProperty(ref _isAvailable, value);
     }
+
+    /// <summary>True for the type of the visual being designed.</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        internal set => SetProperty(ref _isSelected, value);
+    }
+
+    /// <summary>Makes the visual of this type (when it is available) and closes the gallery.</summary>
+    public ICommand ChooseCommand { get; }
+
+    internal Action<MarkType>? Choosing { get; set; }
+}
+
+/// <summary>A group of the visual type gallery.</summary>
+public sealed class MarkGroupViewModel(MarkGroup group, IReadOnlyList<MarkOptionViewModel> options) : Option<MarkGroup>(group, () => Caption(group))
+{
+    public IReadOnlyList<MarkOptionViewModel> Options { get; } = options;
+
+    private static string Caption(MarkGroup group) => group switch
+    {
+        MarkGroup.Comparison => Strings.MarkGroupComparison,
+        MarkGroup.Trend => Strings.MarkGroupTrend,
+        MarkGroup.Composition => Strings.MarkGroupComposition,
+        _ => Strings.MarkGroupIndicators,
+    };
 }
 
 /// <summary>
@@ -42,6 +81,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     private int? _top;
     private string? _sortSummary;
     private object? _selectedItem;
+    private bool _isTypeGalleryOpen;
     private object? _propertiesShape;
     private readonly Dictionary<string, bool> _expandedSections = [];
 
@@ -54,15 +94,22 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         Context = context;
         MarkOptions =
         [
-            new(MarkType.Bar, () => Strings.MarkBar),
-            new(MarkType.StackedBar, () => Strings.MarkStackedBar),
-            new(MarkType.Line, () => Strings.MarkLine),
-            new(MarkType.Area, () => Strings.MarkArea),
-            new(MarkType.Scatter, () => Strings.MarkScatter),
-            new(MarkType.Pie, () => Strings.MarkPie),
-            new(MarkType.Kpi, () => Strings.MarkKpi),
-            new(MarkType.Table, () => Strings.MarkTable),
+            new(MarkType.Bar, MarkGroup.Comparison, () => Strings.MarkBar),
+            new(MarkType.StackedBar, MarkGroup.Comparison, () => Strings.MarkStackedBar),
+            new(MarkType.Scatter, MarkGroup.Comparison, () => Strings.MarkScatter),
+            new(MarkType.Line, MarkGroup.Trend, () => Strings.MarkLine),
+            new(MarkType.Area, MarkGroup.Trend, () => Strings.MarkArea),
+            new(MarkType.Pie, MarkGroup.Composition, () => Strings.MarkPie),
+            new(MarkType.Kpi, MarkGroup.IndicatorsAndTables, () => Strings.MarkKpi),
+            new(MarkType.Table, MarkGroup.IndicatorsAndTables, () => Strings.MarkTable),
         ];
+        MarkGroups = MarkOptions.GroupBy(o => o.Group).Select(g => new MarkGroupViewModel(g.Key, g.ToArray())).ToArray();
+        foreach (var option in MarkOptions) option.Choosing = mark =>
+        {
+            SelectedMark = mark;
+            IsTypeGalleryOpen = false;
+        };
+        SyncSelectedMark();
         Models = context.Models.Select(m => new Option<ISemanticModel>(m, () => m.Metadata.Caption)).ToArray();
         RemoveCommand = new RelayCommand<object>(Remove);
         SelectCommand = new RelayCommand<object?>(item => SelectedItem = item);
@@ -93,6 +140,19 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     public IReadOnlyList<Option<ISemanticModel>> Models { get; }
 
     public IReadOnlyList<MarkOptionViewModel> MarkOptions { get; }
+
+    /// <summary>The <see cref="MarkOptions"/> by group, as the visual type gallery shows them.</summary>
+    public IReadOnlyList<MarkGroupViewModel> MarkGroups { get; }
+
+    /// <summary>The option of the <see cref="SelectedMark"/> (shown on the button opening the gallery).</summary>
+    public MarkOptionViewModel SelectedMarkOption => MarkOptions.FirstOrDefault(o => o.Mark == _selectedMark) ?? MarkOptions[0];
+
+    /// <summary>Whether the visual type gallery is open.</summary>
+    public bool IsTypeGalleryOpen
+    {
+        get => _isTypeGalleryOpen;
+        set => SetProperty(ref _isTypeGalleryOpen, value);
+    }
 
     public ObservableCollection<ShelfItemViewModel> Axis { get; } = [];
 
@@ -168,7 +228,12 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     public MarkType SelectedMark
     {
         get => _selectedMark;
-        set { if (SetProperty(ref _selectedMark, value)) Rebuild(); }
+        set
+        {
+            if (!SetProperty(ref _selectedMark, value)) return;
+            SyncSelectedMark();
+            Rebuild();
+        }
     }
 
     /// <summary>Shows only the first rows of the result (after sorting); null or less than 1 shows them all.</summary>
@@ -374,6 +439,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         _extensions = visual.Extensions;
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(SelectedMark));
+        SyncSelectedMark();
         OnPropertyChanged(nameof(Top));
         foreach (var a in visual.Axis)
             Axis.Add(new(metadata.GetField(a.Field), Shelf.Axis, Rebuild) { Grain = a.Grain });
@@ -612,6 +678,12 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         var calculated = visual.Values.Where(v => !model.Metadata.Fields.Any(f => f.Name == v.Measure)).ToArray();
         if (calculated.Length == 0) return;
         Load(visual with { Values = visual.Values.Where(v => !calculated.Contains(v) || Context.Measures.Find(model.Metadata.Name, v.Measure) is not null).ToArray() });
+    }
+
+    private void SyncSelectedMark()
+    {
+        foreach (var option in MarkOptions) option.IsSelected = option.Mark == _selectedMark;
+        OnPropertyChanged(nameof(SelectedMarkOption));
     }
 
     private void RefreshAvailability()

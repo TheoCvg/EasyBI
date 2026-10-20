@@ -411,4 +411,19 @@
   <data name="SelectChipHint" xml:space="preserve">
     <value>Click a field to see its settings</value>
   </data>
+  <data name="MarkGroupComparison" xml:space="preserve">
+    <value>Comparison</value>
+  </data>
+  <data name="MarkGroupTrend" xml:space="preserve">
+    <value>Trend</value>
+  </data>
+  <data name="MarkGroupComposition" xml:space="preserve">
+    <value>Composition</value>
+  </data>
+  <data name="MarkGroupIndicators" xml:space="preserve">
+    <value>Indicators and tables</value>
+  </data>
+  <data name="VisualTypeHint" xml:space="preserve">
+    <value>Change the type of visual</value>
+  </data>
 </root>

@@ -160,4 +160,41 @@ public class DesignerPropertiesTests
         designer.Drop(designer.Dimensions.Single(d => d.Name == "Date"), Shelf.Legend);
         Assert.Equal(["Month"], designer.Legend.Single().Badges);
     }
+
+    [Fact]
+    public void The_type_gallery_groups_the_types_and_chooses_one()
+    {
+        var designer = Designer();
+        Assert.Equal([MarkGroup.Comparison, MarkGroup.Trend, MarkGroup.Composition, MarkGroup.IndicatorsAndTables], designer.MarkGroups.Select(g => g.Value));
+        Assert.Equal([MarkType.Line, MarkType.Area], designer.MarkGroups[1].Options.Select(o => o.Mark));
+
+        // Tables are drawn by EasyBI itself: available without a chart library
+        designer.IsTypeGalleryOpen = true;
+        designer.MarkOptions.Single(o => o.Mark == MarkType.Table).ChooseCommand.Execute(null);
+
+        Assert.Equal(MarkType.Table, designer.SelectedMark);
+        Assert.Equal(MarkType.Table, designer.SelectedMarkOption.Mark);
+        Assert.Equal([MarkType.Table], designer.MarkOptions.Where(o => o.IsSelected).Select(o => o.Mark));
+        Assert.False(designer.IsTypeGalleryOpen);
+    }
+
+    [Fact]
+    public void A_type_no_renderer_draws_cannot_be_chosen()
+    {
+        var designer = Designer(); // no renderer in this context
+        var pie = designer.MarkOptions.Single(o => o.Mark == MarkType.Pie);
+        Assert.False(pie.IsAvailable);
+
+        pie.ChooseCommand.Execute(null);
+
+        Assert.NotEqual(MarkType.Pie, designer.SelectedMark);
+    }
+
+    [Fact]
+    public void Every_visual_type_has_an_icon_in_the_theme() => Sta.Run(() =>
+    {
+        var icon = new VisualTypeIcon().Hosted();
+        foreach (var mark in Enum.GetValues<MarkType>().Where(m => !m.IsContent()))
+            Assert.IsAssignableFrom<System.Windows.Media.Geometry>(icon.TryFindResource(VisualTypeIcons.KeyOf(mark)));
+    });
 }
