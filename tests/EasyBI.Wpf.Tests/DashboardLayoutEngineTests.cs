@@ -361,4 +361,118 @@ public class DashboardLayoutEngineTests
         Assert.Equal(BandMode.Scroll, pasted.Bands[1].Mode);
         Assert.Equal("x | y", Shape(pasted, 1));
     }
+
+    // --- Moving with the keyboard ---
+
+    private static DashboardLayoutDefinition Step(DashboardLayoutDefinition layout, string id, ItemSide direction, bool toNewBand = false) =>
+        DashboardLayoutEngine.Step(layout, id, direction, toNewBand);
+
+    private static string Shapes(DashboardLayoutDefinition layout) =>
+        string.Join(" / ", layout.Bands.Select((_, i) => Shape(layout, i)));
+
+    [Fact]
+    public void Two_items_on_two_lines_join_then_swap()
+    {
+        var layout = Grid(I("a"), I("b"));
+
+        Assert.Equal("Row(a,b)", Shapes(Step(layout, "b", ItemSide.Above)));
+        Assert.Equal("b | a", Shapes(Step(Step(layout, "b", ItemSide.Above), "b", ItemSide.Above)));
+        Assert.Equal("Row(a,b)", Shapes(Step(layout, "a", ItemSide.Below)));
+        Assert.Equal("b | a", Shapes(Step(Step(layout, "a", ItemSide.Below), "a", ItemSide.Below)));
+    }
+
+    [Fact]
+    public void Down_leaves_a_line_joins_the_next_one_and_goes_on_into_the_band_below()
+    {
+        var layout = Bands(new BandLayout { Items = [Row(I("a"), I("b"), I("c")), I("d")] }, new BandLayout { Items = [I("e")] });
+        string[] expected =
+        [
+            "Row(a,b) | c | d / e",
+            "Row(a,b) | Row(c,d) / e",
+            "Row(a,b) | d | c / e",
+            "Row(a,b) | d / c | e",
+            "Row(a,b) | d / Row(c,e)",
+            "Row(a,b) | d / e | c",
+            "Row(a,b) | d / e / c", // past the last band: a new one
+        ];
+
+        foreach (var step in expected)
+        {
+            layout = Step(layout, "c", ItemSide.Below);
+            Assert.Equal(step, Shapes(layout));
+        }
+    }
+
+    [Fact]
+    public void Up_does_the_same_upwards()
+    {
+        var layout = Bands(new BandLayout { Items = [I("a")] }, new BandLayout { Items = [I("b"), Row(I("c"), I("d"))] });
+        string[] expected =
+        [
+            "a / b | d | c",
+            "a / Row(b,d) | c",
+            "a / d | b | c",
+            "a | d / b | c", // into the band above: a new line at its end
+            "Row(a,d) / b | c",
+            "d | a / b | c",
+            "d / a / b | c", // out of the first band: a new band
+        ];
+
+        foreach (var step in expected)
+        {
+            layout = Step(layout, "d", ItemSide.Above);
+            Assert.Equal(step, Shapes(layout));
+        }
+    }
+
+    [Fact]
+    public void Shift_puts_the_item_in_a_new_band()
+    {
+        var layout = Grid(Row(I("a"), I("b")), I("c"));
+
+        Assert.Equal("a | c / b", Shapes(Step(layout, "b", ItemSide.Below, toNewBand: true)));
+        Assert.Equal("b / a | c", Shapes(Step(layout, "b", ItemSide.Above, toNewBand: true)));
+    }
+
+    [Fact]
+    public void Left_and_right_swap_an_item_with_its_neighbour()
+    {
+        var grid = Grid(Row(I("a"), I("b"), I("c")));
+        var flow = Bands(new BandLayout { Mode = BandMode.Wrap, Items = [I("a"), I("b"), I("c")] });
+
+        Assert.Equal("Row(a,c,b)", Shape(Step(grid, "b", ItemSide.Right)));
+        Assert.Equal("Row(b,a,c)", Shape(Step(grid, "b", ItemSide.Left)));
+        Assert.Equal("Row(a,b,c)", Shape(Step(grid, "c", ItemSide.Right))); // end of the line
+        Assert.Equal("a | c | b", Shape(Step(flow, "b", ItemSide.Right)));
+        Assert.Equal("b | a | c", Shape(Step(flow, "b", ItemSide.Left)));
+    }
+
+    // --- Extending over the free room ---
+
+    [Fact]
+    public void An_item_beside_fixed_widths_extends_over_the_free_room()
+    {
+        Assert.Equal("Row(a:3,b)", Shape(DashboardLayoutEngine.Fill(Grid(Row(I("a", 3), I("b", 4))), "b", width: true)));
+        Assert.Equal("a", Shape(DashboardLayoutEngine.Fill(Grid(I("a", 6)), "a", width: true))); // alone on a narrowed line
+        // A greedy neighbour already takes the room: nothing to fill
+        Assert.Equal("Row(a:3,b)", Shape(DashboardLayoutEngine.Fill(Grid(Row(I("a", 3), I("b"))), "a", width: true)));
+    }
+
+    [Fact]
+    public void An_item_of_a_stack_of_fixed_heights_extends_down_its_free_room()
+    {
+        var layout = Grid(Row(I("a", rows: 4), Col(I("b", rows: 1), I("c", rows: 1))));
+
+        Assert.Equal("Row(a^4,Col(b^1,c))", Shape(DashboardLayoutEngine.Fill(layout, "c", width: false)));
+        // Not in a stack: the height of a line has no free room
+        Assert.Equal("Row(a^4,Col(b^1,c^1))", Shape(DashboardLayoutEngine.Fill(layout, "a", width: false)));
+    }
+
+    [Fact]
+    public void An_item_of_a_flow_band_of_fixed_widths_extends_over_the_rest_of_the_line()
+    {
+        var layout = Bands(new BandLayout { Mode = BandMode.Wrap, Items = [I("a", width: 300), I("b", width: 300)] });
+
+        Assert.Equal("a~300 | b", Shape(DashboardLayoutEngine.Fill(layout, "b", width: true)));
+    }
 }

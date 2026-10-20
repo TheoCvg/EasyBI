@@ -223,6 +223,7 @@ wraps the item and the newcomer in a new container. The rules are pure functions
 | `ResizeBehavior` | corner handle: constrains the item (columns and rows in a grid band, pixels and rows elsewhere) |
 | `ItemToolbarBehavior` | automatic size (for a resized item), edit, remove; text size, bold, alignment; image fit |
 | `SelectionBehavior` | click selects an item (Ctrl+click adds or removes it), click on the background unselects, drag from the background draws a selection box; arrows go to the nearest item (Shift adds it), Escape unselects |
+| `KeyboardLayoutBehavior` | Ctrl+arrows move the selected item, Ctrl+Shift+Down/Up put it in a new band, Alt+arrows extend the selected items over the free room next to them (through the commands below) |
 | `BandMenuBehavior` | ⋮ menu of a band: Fit / Scroll / Wrap, insert, remove (`MenuOpening` to customize it) |
 | `BandScrollBehavior` | scroll bar and Shift+wheel for scrolling bands |
 | `TextEditBehavior` | double-click a text to edit it in place |
@@ -247,6 +248,12 @@ Hooks for applications:
   `ApplicationCommands.Delete` (Del), `ApplicationCommands.SelectAll` (Ctrl+A) and `DashboardCommands.Duplicate`
   (Ctrl+D); `DashboardItem.IsSelected` for templates (the default one draws a ring) and the
   `DashboardOverlay.SelectionBoxStyleKey` style. A read-only dashboard has no selection;
+- keyboard layout: `MoveSelected(side, toNewBand)` (`DashboardCommands.MoveItem` and `MoveItemToNewBand`, Ctrl+arrows
+  and Ctrl+Shift+Down/Up; `DashboardLayoutEngine.Step`): Down takes an item
+  sharing its line to a new line below; alone on its line, it joins the next line, and from the last line it goes into
+  the band below (created past the last one); Up the same upwards, so that Down and Up undo each other; Ctrl+Shift+Down/Up puts it in a new band below/above; Left/Right swap it with its
+  neighbour. `ExtendSelected(width)` (`DashboardCommands.ExtendItem`, Alt+arrows; `DashboardLayoutEngine.Fill`) extends the selected items over the
+  free room next to them without shrinking their neighbours;
 - copy and paste of the selected items, possibly between dashboards: `CopySelected` / `CutSelected` / `Paste`
   (Ctrl+C, Ctrl+X, Ctrl+V through `ApplicationCommands`; `CreateCopy` and `Paste(data)` work without the clipboard).
   The clipboard holds an `easybi/v1` report (format `VisualTransfer.ClipboardFormat`) with the visuals and the
@@ -258,7 +265,8 @@ Hooks for applications:
   know are left out, and a calculated measure whose name is taken by another definition is renamed (`VisualTransfer`
   in `EasyBI.Core`);
 - `DashboardCommands` (`AddVisual`, `AddText`, `AddImage`, `EditItem`, `RemoveItem`, `ResetSize`,
-  `AddRight`, `AddBelow`, `InsertBand`, `RemoveBand`, `Duplicate`...) for custom templates, and public methods
+  `AddRight`, `AddBelow`, `InsertBand`, `RemoveBand`, `Duplicate`, `MoveItem`, `MoveItemToNewBand`, `ExtendItem`
+  — the last three take an `ItemSide` or its name, as `CommandParameter="Below"`...) for custom templates, and public methods
   (`AddNextTo`, `AddIn` a free space, `InsertLine`, `SetAutoSize`, `SetVisual`, `InsertBand`, `BeginEdit` to group
   changes into one undo step...);
 - a default template for `DashboardView` (its `Panel` in a scroll viewer, under an `AdornerDecorator` where behaviors
