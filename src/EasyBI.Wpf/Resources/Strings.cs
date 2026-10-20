@@ -92,6 +92,14 @@ internal static class Strings
     public static string EditMeasure => Get();
     public static string DeleteMeasure => Get();
     public static string DeleteMeasureConfirm => Get();
+    public static string PropertyAggregation => Get();
+    public static string PropertyGrain => Get();
+    public static string PropertyTime => Get();
+    public static string PropertySeriesMark => Get();
+    public static string PropertySecondaryAxis => Get();
+    public static string PropertiesVisual => Get();
+    public static string VisualTitle => Get();
+    public static string RendererOptions => Get();
     public static string Axis => Get();
     public static string Legend => Get();
     public static string Values => Get();

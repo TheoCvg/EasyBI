@@ -41,6 +41,9 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
 
     private int? _top;
     private string? _sortSummary;
+    private object? _selectedItem;
+    private object? _propertiesShape;
+    private readonly Dictionary<string, bool> _expandedSections = [];
 
     // Visual settings the designer does not edit (yet): kept as-is when editing
     private IReadOnlyDictionary<string, string>? _extensions;
@@ -62,6 +65,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         ];
         Models = context.Models.Select(m => new Option<ISemanticModel>(m, () => m.Metadata.Caption)).ToArray();
         RemoveCommand = new RelayCommand<object>(Remove);
+        SelectCommand = new RelayCommand<object?>(item => SelectedItem = item);
         AddFieldCommand = new RelayCommand<object?>(item =>
         {
             if (Unwrap(item) is FieldDescriptor field) AddToDefaultShelf(field);
@@ -70,6 +74,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         {
             RefreshAvailability();
             RefreshRendererOptions(); // another renderer may draw the visual
+            SyncProperties();
         };
         // Weak: a designer (a dialog's) may be shorter-lived than the shared context
         WeakEventManager<MeasureContext, EventArgs>.AddHandler(context.Measures, nameof(MeasureContext.Changed), OnMeasuresChanged);
@@ -99,6 +104,37 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     public bool HasRendererOptions => RendererOptions.Count > 0;
 
     public ICommand RemoveCommand { get; }
+
+    /// <summary>Selects a chip (the parameter; null selects the visual itself), whose settings the properties panel shows.</summary>
+    public ICommand SelectCommand { get; }
+
+    /// <summary>
+    /// The selected chip (a <see cref="ShelfItemViewModel"/> or a <see cref="FilterItemViewModel"/>), or null when the
+    /// visual itself is: the properties panel shows its settings (<see cref="Properties"/>).
+    /// </summary>
+    public object? SelectedItem
+    {
+        get => _selectedItem;
+        set
+        {
+            if (value is not null && !Contains(value)) value = null;
+            if (Equals(_selectedItem, value)) return;
+            SetSelected(_selectedItem, false);
+            _selectedItem = value;
+            SetSelected(value, true);
+            OnPropertyChanged();
+            SyncProperties();
+        }
+    }
+
+    /// <summary>The sections of the properties panel for the <see cref="SelectedItem"/> (see <see cref="PropertiesBuilding"/>).</summary>
+    public ObservableCollection<DesignerPropertySection> Properties { get; } = [];
+
+    /// <summary>
+    /// Raised when the properties panel gets its sections (another selection, other renderer options), to change them:
+    /// add sections of the application, add or remove properties.
+    /// </summary>
+    public event EventHandler<DesignerPropertiesEventArgs>? PropertiesBuilding;
 
     /// <summary>Adds a field (or a <see cref="ModelField"/> of the selected model) to its default shelf (see <see cref="AddToDefaultShelf"/>); bound to a double-click.</summary>
     public ICommand AddFieldCommand { get; }
@@ -404,7 +440,103 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             Extensions = _extensions,
         };
         RefreshRendererOptions();
+        SyncProperties();
     }
+
+    // --- Properties panel ---
+
+    private bool Contains(object item) => item switch
+    {
+        ShelfItemViewModel chip => Collection(chip.Shelf).Contains(chip),
+        FilterItemViewModel filter => Filters.Contains(filter),
+        _ => false,
+    };
+
+    private static void SetSelected(object? item, bool selected)
+    {
+        if (item is ShelfItemViewModel chip) chip.IsSelected = selected;
+        else if (item is FilterItemViewModel filter) filter.IsSelected = selected;
+    }
+
+    /// <summary>
+    /// Rebuilds the sections when the selection or the renderer options changed, otherwise reads the values again (so
+    /// that editing a property is not interrupted by the visual it updates).
+    /// </summary>
+    private void SyncProperties()
+    {
+        // A removed chip is no longer selected
+        if (_selectedItem is not null && !Contains(_selectedItem))
+        {
+            SelectedItem = null;
+            return;
+        }
+        var shape = (_selectedItem, Options: RendererOptions.ToArray());
+        if (_propertiesShape is ValueTuple<object?, RendererOptionViewModel[]> previous
+            && Equals(previous.Item1, shape._selectedItem) && previous.Item2.SequenceEqual(shape.Options))
+        {
+            foreach (var property in Properties.SelectMany(s => s.Properties)) property.Refresh();
+            return;
+        }
+        _propertiesShape = shape;
+        foreach (var section in Properties) _expandedSections[section.Key] = section.IsExpanded;
+        var sections = BuildProperties(_selectedItem);
+        PropertiesBuilding?.Invoke(this, new DesignerPropertiesEventArgs(this, _selectedItem, sections));
+        Properties.Clear();
+        foreach (var section in sections)
+        {
+            if (_expandedSections.TryGetValue(section.Key, out var expanded)) section.IsExpanded = expanded;
+            Properties.Add(section);
+        }
+    }
+
+    /// <summary>The built-in sections for a selection: the chip's settings first, then the visual's and the renderer's.</summary>
+    private List<DesignerPropertySection> BuildProperties(object? selection)
+    {
+        var sections = new List<DesignerPropertySection>();
+        switch (selection)
+        {
+            case ShelfItemViewModel chip:
+                sections.Add(new DesignerPropertySection(DesignerPropertySections.Field, () => chip.Caption,
+                [
+                    DesignerProperty.Choice("Aggregation", () => Strings.PropertyAggregation, ShelfItemViewModel.AggregationOptions,
+                        () => chip.Aggregation, v => chip.Aggregation = v, () => chip.HasAggregation),
+                    DesignerProperty.Choice("Grain", () => Strings.PropertyGrain, ShelfItemViewModel.GrainOptions,
+                        () => chip.Grain, v => chip.Grain = v, () => chip.HasGrain),
+                    DesignerProperty.Choice("Time", () => Strings.PropertyTime, ShelfItemViewModel.TimeOptions,
+                        () => chip.Time, v => chip.Time = v, () => chip.IsValue, () => Strings.TimeHint),
+                    DesignerProperty.Choice("SeriesMark", () => Strings.PropertySeriesMark, ShelfItemViewModel.SeriesMarkOptions,
+                        () => chip.SeriesMark, v => chip.SeriesMark = v, () => chip.ShowSeriesOptions, () => Strings.SeriesMarkHint),
+                    DesignerProperty.Toggle("SecondaryAxis", () => Strings.PropertySecondaryAxis,
+                        () => chip.SecondaryAxis, v => chip.SecondaryAxis = v, () => chip.ShowSeriesOptions, () => Strings.SecondaryAxisHint),
+                    DesignerProperty.Choice("Sort", () => Strings.Sort, ShelfItemViewModel.SortOptions,
+                        () => chip.SortDirection, v => chip.SortDirection = v, () => chip.CanSort, () => Strings.SortHint),
+                ]));
+                break;
+            case FilterItemViewModel filter:
+                sections.Add(new DesignerPropertySection(DesignerPropertySections.Filter, () => filter.Caption,
+                    [DesignerProperty.Custom("Editor", () => filter.Caption, filter)]));
+                break;
+        }
+        sections.Add(new DesignerPropertySection(DesignerPropertySections.Visual, () => Strings.PropertiesVisual,
+        [
+            DesignerProperty.Text("Title", () => Strings.VisualTitle, () => Title, v => Title = v),
+            DesignerProperty.Info("Sort", () => Strings.Sort, () => SortSummary ?? Strings.NoSort),
+            DesignerProperty.Number("Top", () => Strings.Top, () => Top, v => Top = v is { } top ? (int)Math.Round(top) : null, description: () => Strings.TopHint),
+        ]));
+        if (RendererOptions.Count > 0)
+            sections.Add(new DesignerPropertySection(DesignerPropertySections.Options, () => Strings.RendererOptions, RendererOptions.Select(OptionProperty)));
+        return sections;
+    }
+
+    private static DesignerProperty OptionProperty(RendererOptionViewModel option) => option.Option.Kind switch
+    {
+        RendererOptionKind.Toggle => DesignerProperty.Toggle(option.Option.Key, () => option.Label, () => option.IsOn, v => option.IsOn = v,
+            description: () => option.Description ?? ""),
+        RendererOptionKind.Choice => DesignerProperty.Choice(option.Option.Key, () => option.Label, option.Choices,
+            () => option.Value as string ?? "", v => option.Value = v, description: () => option.Description ?? ""),
+        _ => DesignerProperty.Number(option.Option.Key, () => option.Label, () => option.Value as double?, v => option.Value = v,
+            description: () => option.Description ?? ""),
+    };
 
     private void OnChipsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {

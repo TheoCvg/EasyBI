@@ -50,6 +50,7 @@ public sealed class ShelfItemViewModel : ObservableObject
     ];
 
     private readonly Action _changed;
+    private bool _isSelected;
     private ListSortDirection? _sortDirection;
     private DateGrain _grain;
     private TimeCalculation _time;
@@ -75,6 +76,13 @@ public sealed class ShelfItemViewModel : ObservableObject
     public string Caption => Field.Caption;
 
     public bool HasGrain => Field.Kind == FieldKind.Dimension && Field.DataType == DataType.Date;
+
+    /// <summary>True while the chip is the designer's <see cref="DesignerViewModel.SelectedItem"/>.</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        internal set => SetProperty(ref _isSelected, value);
+    }
 
     /// <summary>The visual can be sorted on the fields of the Axis and Values shelves.</summary>
     public bool CanSort => Shelf is Shelf.Axis or Shelf.Values;
@@ -185,6 +193,7 @@ public sealed class SortOption(ListSortDirection? direction, string symbol, Func
 public sealed class FilterItemViewModel : ObservableObject
 {
     private readonly Action _changed;
+    private bool _isSelected;
     private HashSet<string?>? _pendingSelection;
     private bool _isLoading = true;
     private Option<FilterOperator?> _periodKind;
@@ -233,6 +242,13 @@ public sealed class FilterItemViewModel : ObservableObject
     }
 
     public FieldDescriptor Field { get; }
+
+    /// <summary>True while the filter is the designer's <see cref="DesignerViewModel.SelectedItem"/>.</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        internal set => SetProperty(ref _isSelected, value);
+    }
 
     public FilterOperator Operator { get; }
 

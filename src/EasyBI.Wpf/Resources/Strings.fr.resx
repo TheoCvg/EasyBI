@@ -357,4 +357,22 @@
   <data name="DropFilterStays" xml:space="preserve">
     <value>Un filtre reste dans Filtres</value>
   </data>
+  <data name="PropertyAggregation" xml:space="preserve">
+    <value>Agrégation</value>
+  </data>
+  <data name="PropertyGrain" xml:space="preserve">
+    <value>Granularité</value>
+  </data>
+  <data name="PropertyTime" xml:space="preserve">
+    <value>Dans le temps</value>
+  </data>
+  <data name="PropertySeriesMark" xml:space="preserve">
+    <value>Type de graphique</value>
+  </data>
+  <data name="PropertySecondaryAxis" xml:space="preserve">
+    <value>Axe secondaire</value>
+  </data>
+  <data name="PropertiesVisual" xml:space="preserve">
+    <value>Visuel</value>
+  </data>
 </root>
