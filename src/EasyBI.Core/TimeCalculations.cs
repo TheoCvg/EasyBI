@@ -33,7 +33,16 @@ public static class TimeCalculations
         var comparesYears = query.Measures.Any(m => m.Time is TimeCalculation.PreviousYear or TimeCalculation.ChangeFromPreviousYear or TimeCalculation.PercentChangeFromPreviousYear);
         if (comparesYears && HasDates(model.Metadata, query))
         {
-            var shifted = baseQuery with { Filters = query.Filters?.Select(f => ShiftFilter(model.Metadata, f)).ToArray(), Sort = null, Top = null };
+            // Groups kept by a filter on a measure keep their value a year earlier, whatever it is
+            var shifted = baseQuery with
+            {
+                Filters = query.Filters?
+                    .Where(f => !NumericFilters.IsOnMeasure(f, model.Metadata, query.Calculations))
+                    .Select(f => ShiftFilter(model.Metadata, f))
+                    .ToArray(),
+                Sort = null,
+                Top = null,
+            };
             previous = await model.ExecuteAsync(shifted, cancellationToken).ConfigureAwait(false);
         }
 

@@ -30,7 +30,11 @@ public static class VisualPipeline
     public static AnalyticQuery ToQuery(this VisualDefinition visual, IEnumerable<CalculatedMeasure>? measures = null)
     {
         var groupBy = visual.Legend is null ? visual.Axis : [.. visual.Axis, visual.Legend];
-        var used = measures?.Where(m => m.Model == visual.Model && visual.Values.Any(v => v.Measure == m.Name)).ToArray();
+        // Shown, or filtered on
+        var used = measures?
+            .Where(m => m.Model == visual.Model
+                && (visual.Values.Any(v => v.Measure == m.Name) || visual.Filters.Any(f => f.Field == m.Name && f.Operator.IsComparison())))
+            .ToArray();
         return new AnalyticQuery(
             groupBy,
             // Chart types and axes only change the drawing: changing them must not query again

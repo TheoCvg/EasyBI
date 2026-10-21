@@ -56,6 +56,13 @@ internal static class Strings
     public static string PeriodSince => Get();
     public static string PeriodUntil => Get();
     public static string ReportPeriodOnNonDate => Get();
+    public static string ReportComparisonOnNonNumber => Get();
+    public static string ReportMeasureFilterOnReport => Get();
+    public static string CompareGreaterThan => Get();
+    public static string CompareGreaterThanOrEqual => Get();
+    public static string CompareLessThan => Get();
+    public static string CompareLessThanOrEqual => Get();
+    public static string CompareRange => Get();
 
     /// <summary>A text whose key is built (PeriodLastMonth...).</summary>
     public static string Named(string key) => Get(key);

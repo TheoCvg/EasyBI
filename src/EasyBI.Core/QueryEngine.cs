@@ -30,7 +30,10 @@ internal static class QueryEngine<T>
             throw new NotSupportedException($"At most {MaxGroupFields} grouping dimensions are supported.");
 
         var parameter = Expression.Parameter(typeof(T), "x");
-        var filtered = ApplyFilters(Cancellable(source, cancellationToken), metadata, selectors, query.Filters ?? [], parameter);
+        // Filters on measures keep groups (HAVING), the others keep rows (WHERE)
+        var measureFilters = (query.Filters ?? []).Where(f => NumericFilters.IsOnMeasure(f, metadata, query.Calculations)).ToList();
+        var rowFilters = (query.Filters ?? []).Except(measureFilters);
+        var filtered = ApplyFilters(Cancellable(source, cancellationToken), metadata, selectors, rowFilters, parameter);
         var columns = new List<ResultColumn>();
 
         // Grouping keys
@@ -83,6 +86,13 @@ internal static class QueryEngine<T>
         }
 
         var grouped = CallQueryable(filtered, nameof(Queryable.GroupBy), [typeof(T), keyType], keySelector);
+        foreach (var filter in measureFilters)
+        {
+            var cell = query.Calculations?.FirstOrDefault(c => c.Name == filter.Field) is { } calculation
+                ? MeasureFormula.Build(calculation.Formula, name => MeasureCell(group, metadata, selectors, name, null))
+                : MeasureCell(group, metadata, selectors, filter.Field, null);
+            grouped = CallQueryable(grouped, nameof(Queryable.Where), [groupType], Expression.Lambda(Comparison(cell, filter), group));
+        }
         var ordered = ApplySort(grouped, groupType, group, columns, cells, query);
         if (query.Top is { } top)
         {
@@ -212,6 +222,12 @@ internal static class QueryEngine<T>
         var field = RequireKind(metadata.GetField(filter.Field), FieldKind.Dimension);
         if (filter.Operator.IsPeriod())
             return InPeriod(field, Rebind(selectors[field.Name], parameter), filter);
+        if (filter.Operator.IsComparison())
+        {
+            if (field.DataType != DataType.Number)
+                throw new InvalidOperationException($"A comparison requires a number dimension ('{field.Name}').");
+            return Comparison(Rebind(selectors[field.Name], parameter), filter);
+        }
 
         var selector = ApplyGrain(field, Rebind(selectors[field.Name], parameter), filter.Grain);
         var valueType = selector.Type;
@@ -227,6 +243,36 @@ internal static class QueryEngine<T>
             typeof(Enumerable), nameof(Enumerable.Contains), [valueType],
             Expression.Constant(values), selector);
         return filter.Operator == FilterOperator.NotIn ? Expression.Not(body) : body;
+    }
+
+    /// <summary>
+    /// The value compared with the filter's numbers, converted to its own type; a missing value never matches, and an
+    /// unreadable number leaves that side open.
+    /// </summary>
+    private static Expression Comparison(Expression value, FilterSpec filter)
+    {
+        // An integer is compared as a decimal number, so that "> 2.5" does not become "> 2"
+        var type = Nullable.GetUnderlyingType(value.Type) ?? value.Type;
+        if (type == typeof(int) || type == typeof(long) || type == typeof(short) || type == typeof(byte))
+            value = Expression.Convert(value, value.Type == type ? typeof(double) : typeof(double?));
+        var (first, second) = NumericFilters.Bounds(filter);
+        Expression? Side(double? bound, Func<Expression, Expression, BinaryExpression> compare) =>
+            bound is { } number ? compare(value, Number(number, value.Type)) : null;
+        var sides = filter.Operator switch
+        {
+            FilterOperator.GreaterThan => [Side(first, Expression.GreaterThan)],
+            FilterOperator.GreaterThanOrEqual => [Side(first, Expression.GreaterThanOrEqual)],
+            FilterOperator.LessThan => [Side(first, Expression.LessThan)],
+            FilterOperator.LessThanOrEqual => [Side(first, Expression.LessThanOrEqual)],
+            _ => new[] { Side(first, Expression.GreaterThanOrEqual), Side(second, Expression.LessThanOrEqual) },
+        };
+        return sides.OfType<Expression>().DefaultIfEmpty(Expression.Constant(true)).Aggregate(Expression.AndAlso);
+    }
+
+    private static ConstantExpression Number(double number, Type type)
+    {
+        var target = Nullable.GetUnderlyingType(type) ?? type;
+        return Expression.Constant(Convert.ChangeType(number, target, System.Globalization.CultureInfo.InvariantCulture), type);
     }
 
     /// <summary>

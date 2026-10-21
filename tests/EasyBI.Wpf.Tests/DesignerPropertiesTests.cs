@@ -241,7 +241,8 @@ public class DesignerPropertiesTests
         Assert.Null(designer.ValuesWell.IsDropAllowed);
 
         designer.DraggedItem = designer.Measures.Single();
-        Assert.Equal((false, false, true, false), (designer.AxisWell.IsDropAllowed, designer.LegendWell.IsDropAllowed, designer.ValuesWell.IsDropAllowed, designer.FiltersWell.IsDropAllowed));
+        // A measure can filter the visual (compared after aggregation)
+        Assert.Equal((false, false, true, true), (designer.AxisWell.IsDropAllowed, designer.LegendWell.IsDropAllowed, designer.ValuesWell.IsDropAllowed, designer.FiltersWell.IsDropAllowed));
 
         designer.DraggedItem = null;
         Assert.Null(designer.ValuesWell.IsDropAllowed);

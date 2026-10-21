@@ -31,8 +31,9 @@ public static class ReportValidator
             // The report's calculated measures are checked once, below
             foreach (var value in visual.Values.Where(v => !report.Measures.Any(m => m.Model == visual.Model && m.Name == v.Measure)))
                 CheckField(model, value.Measure, FieldKind.Measure, where, problems);
+            string[] calculated = [.. report.Measures.Where(m => m.Model == visual.Model).Select(m => m.Name)];
             foreach (var filter in visual.Filters)
-                CheckFilter(model, filter, where, problems);
+                CheckFilter(model, filter, where, problems, calculated);
 
             if (visual.Sort is { } sort)
             {
@@ -62,12 +63,24 @@ public static class ReportValidator
         return problems;
     }
 
-    private static void CheckFilter(ModelMetadata model, FilterSpec filter, string where, List<string> problems)
+    // measures: the calculated measures a filter may compare, or null where measures cannot filter (the report's
+    // filters, and the alternatives of an AnyOf filter, which keep rows)
+    private static void CheckFilter(ModelMetadata model, FilterSpec filter, string where, List<string> problems, IReadOnlyCollection<string>? measures = null)
     {
         if (filter.Operator == FilterOperator.AnyOf)
         {
             foreach (var alternative in (filter.Alternatives ?? []).SelectMany(group => group))
                 CheckFilter(model, alternative, where, problems);
+        }
+        else if (filter.Operator.IsComparison())
+        {
+            var field = model.Fields.FirstOrDefault(f => f.Name == filter.Field);
+            if (field?.Kind == FieldKind.Measure || field is null && measures?.Contains(filter.Field) == true)
+            {
+                if (measures is null) problems.Add(Strings.Format(Strings.ReportMeasureFilterOnReport, where, filter.Field));
+            }
+            else if (CheckField(model, filter.Field, FieldKind.Dimension, where, problems) is { DataType: not DataType.Number })
+                problems.Add(Strings.Format(Strings.ReportComparisonOnNonNumber, where, filter.Field));
         }
         else if (!filter.Operator.IsPeriod())
             CheckDimension(model, filter.Field, filter.Grain, where, problems);
