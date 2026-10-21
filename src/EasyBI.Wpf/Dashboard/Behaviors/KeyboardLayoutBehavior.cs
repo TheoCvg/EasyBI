@@ -22,7 +22,7 @@ public class KeyboardLayoutBehavior : DashboardBehavior
         // With Alt, WPF reports the key as a system key
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         if (Side(key) is not { } side) return;
-        var modifiers = Keyboard.Modifiers;
+        var modifiers = ModifierKeysState.Current;
         RoutedCommand? command = e.Key == Key.System && modifiers == ModifierKeys.Alt ? DashboardCommands.ExtendItem
             : modifiers == (ModifierKeys.Control | ModifierKeys.Shift) ? DashboardCommands.MoveItemToNewBand
             : modifiers == ModifierKeys.Control ? DashboardCommands.MoveItem

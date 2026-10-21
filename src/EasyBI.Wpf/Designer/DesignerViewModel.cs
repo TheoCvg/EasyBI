@@ -524,13 +524,15 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         foreach (var v in visual.Values)
         {
             var field = Context.GetField(model, v.Measure);
-            Values.Add(new(field, Shelf.Values, Rebuild)
+            var chip = new ShelfItemViewModel(field, Shelf.Values, Rebuild)
             {
                 Aggregation = v.Aggregation ?? field.DefaultAggregation ?? Aggregation.Sum,
                 SeriesMark = v.Mark,
                 SecondaryAxis = v.SecondaryAxis,
                 Time = v.Time,
-            });
+            };
+            chip.LoadFormat(v.Format);
+            Values.Add(chip);
         }
         // A sort on a column that is not displayed is dropped, as the query could not sort on it
         if (visual.Sort is { } sort && Axis.Concat(Legend).Concat(Values).FirstOrDefault(c => c.Key == sort.Key) is { } sorted)
@@ -659,6 +661,9 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
                     DesignerProperty.Choice("Sort", () => Strings.Sort, ShelfItemViewModel.SortOptions,
                         () => chip.SortDirection, v => chip.SortDirection = v, () => chip.CanSort, () => Strings.SortHint),
                 ]));
+                if (chip.IsValue)
+                    sections.Add(new DesignerPropertySection(DesignerPropertySections.Formatting, () => Strings.PropertiesFormatting,
+                        [DesignerProperty.Custom("Format", () => Strings.PropertiesFormatting, chip.Format)]));
                 break;
             case FilterItemViewModel filter:
                 sections.Add(new DesignerPropertySection(DesignerPropertySections.Filter, () => filter.Caption,

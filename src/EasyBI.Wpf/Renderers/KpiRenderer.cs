@@ -31,11 +31,24 @@ public sealed class KpiRenderer : IVisualRenderer
                 HorizontalAlignment = HorizontalAlignment.Center,
             };
             // A change since the previous year shows its trend: up in the measures' color, down in the error color
-            var time = request.Visual.Values.ElementAtOrDefault(i)?.Time;
-            if (time is TimeCalculation.ChangeFromPreviousYear or TimeCalculation.PercentChangeFromPreviousYear && value is { } change && change != 0)
+            var measure = request.Visual.Values.ElementAtOrDefault(i);
+            if (measure?.Time is TimeCalculation.ChangeFromPreviousYear or TimeCalculation.PercentChangeFromPreviousYear && value is { } change && change != 0)
             {
                 text.Text = (change > 0 ? "▲ " : "▼ ") + text.Text;
                 text.Themed(TextBlock.ForegroundProperty, change > 0 ? EasyBITheme.MeasureBrushKey : EasyBITheme.ErrorBrushKey);
+            }
+            // The measure's format: its color (a matching rule's first), weight and icon; scales and bars need several values
+            if (ValueStyler.For(measure, [value], request.Theme)?.Style(value) is { } style)
+            {
+                if (FormattedValue.Brush(style.Foreground) is { } foreground) text.Foreground = foreground;
+                if (style.IsBold) text.FontWeight = FontWeights.Bold;
+                if (style.IsItalic) text.FontStyle = FontStyles.Italic;
+                if (style.Icon is { } icon)
+                {
+                    text.Inlines.Clear();
+                    text.Inlines.Add(new System.Windows.Documents.Run(icon + " ") { Foreground = FormattedValue.Brush(style.IconColor) });
+                    text.Inlines.Add(new System.Windows.Documents.Run(value is null ? "—" : ValueFormatter.Format(value.Value, series.Format)));
+                }
             }
             card.Children.Add(text);
             card.Children.Add(new TextBlock

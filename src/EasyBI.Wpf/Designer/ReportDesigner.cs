@@ -77,7 +77,7 @@ public class ReportDesigner : Control
     protected virtual void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (ViewModel is not { } designer || TakesTyping(e.OriginalSource as DependencyObject)) return;
-        var control = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+        var control = ModifierKeysState.Ctrl;
         switch (e.Key)
         {
             case Key.Left or Key.Right when control:

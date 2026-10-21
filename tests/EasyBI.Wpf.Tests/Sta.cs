@@ -13,6 +13,8 @@ internal static class Sta
         {
             try
             {
+                // No modifier key held, whatever the person at the machine is pressing; a test simulates its own
+                using var keys = ModifierKeysState.Simulate(System.Windows.Input.ModifierKeys.None);
                 body();
             }
             catch (Exception ex)

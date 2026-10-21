@@ -492,4 +492,109 @@
   <data name="MatrixTotal" xml:space="preserve">
     <value>Total</value>
   </data>
+  <data name="PropertiesFormatting" xml:space="preserve">
+    <value>Formatting</value>
+  </data>
+  <data name="FormatColor" xml:space="preserve">
+    <value>Text color</value>
+  </data>
+  <data name="FormatBold" xml:space="preserve">
+    <value>Bold</value>
+  </data>
+  <data name="FormatItalic" xml:space="preserve">
+    <value>Italic</value>
+  </data>
+  <data name="FormatAlignment" xml:space="preserve">
+    <value>Alignment</value>
+  </data>
+  <data name="AlignDefault" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="AlignLeft" xml:space="preserve">
+    <value>Left</value>
+  </data>
+  <data name="AlignCenter" xml:space="preserve">
+    <value>Center</value>
+  </data>
+  <data name="AlignRight" xml:space="preserve">
+    <value>Right</value>
+  </data>
+  <data name="FormatRules" xml:space="preserve">
+    <value>Rules (the first that matches applies)</value>
+  </data>
+  <data name="AddRule" xml:space="preserve">
+    <value>+ Add a rule</value>
+  </data>
+  <data name="RemoveRule" xml:space="preserve">
+    <value>Remove the rule</value>
+  </data>
+  <data name="RuleColor" xml:space="preserve">
+    <value>Text</value>
+  </data>
+  <data name="RuleBackground" xml:space="preserve">
+    <value>Background</value>
+  </data>
+  <data name="FormatScale" xml:space="preserve">
+    <value>Color scale</value>
+  </data>
+  <data name="ScaleMinimum" xml:space="preserve">
+    <value>Lowest</value>
+  </data>
+  <data name="ScaleMiddle" xml:space="preserve">
+    <value>Middle</value>
+  </data>
+  <data name="ScaleMaximum" xml:space="preserve">
+    <value>Highest</value>
+  </data>
+  <data name="FormatBars" xml:space="preserve">
+    <value>Data bars</value>
+  </data>
+  <data name="BarPositive" xml:space="preserve">
+    <value>Positive</value>
+  </data>
+  <data name="BarNegative" xml:space="preserve">
+    <value>Negative</value>
+  </data>
+  <data name="FormatIcons" xml:space="preserve">
+    <value>Icons</value>
+  </data>
+  <data name="IconArrows" xml:space="preserve">
+    <value>Arrows ↑ → ↓</value>
+  </data>
+  <data name="IconTriangles" xml:space="preserve">
+    <value>Triangles ▲ ▬ ▼</value>
+  </data>
+  <data name="IconCircles" xml:space="preserve">
+    <value>Circles ●</value>
+  </data>
+  <data name="IconLow" xml:space="preserve">
+    <value>Low under</value>
+  </data>
+  <data name="IconHigh" xml:space="preserve">
+    <value>High from</value>
+  </data>
+  <data name="IconThresholdsHint" xml:space="preserve">
+    <value>Empty: the values are split in thirds.</value>
+  </data>
+  <data name="ColorNone" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="ColorAccent" xml:space="preserve">
+    <value>Accent</value>
+  </data>
+  <data name="ColorSuccess" xml:space="preserve">
+    <value>Good (green)</value>
+  </data>
+  <data name="ColorWarning" xml:space="preserve">
+    <value>Warning (orange)</value>
+  </data>
+  <data name="ColorError" xml:space="preserve">
+    <value>Bad (red)</value>
+  </data>
+  <data name="ColorMuted" xml:space="preserve">
+    <value>Muted (grey)</value>
+  </data>
+  <data name="ColorCustom" xml:space="preserve">
+    <value>Custom (#RRGGBB)</value>
+  </data>
 </root>

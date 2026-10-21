@@ -45,6 +45,8 @@ public sealed class WpfUiTheme : EasyBIThemeMapping
         [EasyBITheme.HoverBrushKey] = "SubtleFillColorSecondaryBrush",
         [EasyBITheme.ErrorBrushKey] = "SystemFillColorCriticalBrush",
         [EasyBITheme.MeasureBrushKey] = "SystemFillColorSuccessBrush",
+        [EasyBITheme.SuccessBrushKey] = "SystemFillColorSuccessBrush",
+        [EasyBITheme.WarningBrushKey] = "SystemFillColorCautionBrush",
         [EasyBITheme.GridLineBrushKey] = "DividerStrokeColorDefaultBrush",
     };
 }

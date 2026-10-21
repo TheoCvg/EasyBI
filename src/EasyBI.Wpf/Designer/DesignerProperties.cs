@@ -188,6 +188,9 @@ public static class DesignerPropertySections
     /// <summary>The selected field: aggregation, granularity, time, series, axis, sort.</summary>
     public const string Field = "Field";
 
+    /// <summary>The selected measure's format: fixed style and conditional formats (tables, matrices, KPIs).</summary>
+    public const string Formatting = "Formatting";
+
     /// <summary>The selected filter: its editor.</summary>
     public const string Filter = "Filter";
 

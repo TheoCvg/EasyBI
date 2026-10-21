@@ -492,4 +492,109 @@
   <data name="MatrixTotal" xml:space="preserve">
     <value>Total</value>
   </data>
+  <data name="PropertiesFormatting" xml:space="preserve">
+    <value>Mise en forme</value>
+  </data>
+  <data name="FormatColor" xml:space="preserve">
+    <value>Couleur du texte</value>
+  </data>
+  <data name="FormatBold" xml:space="preserve">
+    <value>Gras</value>
+  </data>
+  <data name="FormatItalic" xml:space="preserve">
+    <value>Italique</value>
+  </data>
+  <data name="FormatAlignment" xml:space="preserve">
+    <value>Alignement</value>
+  </data>
+  <data name="AlignDefault" xml:space="preserve">
+    <value>Par défaut</value>
+  </data>
+  <data name="AlignLeft" xml:space="preserve">
+    <value>Gauche</value>
+  </data>
+  <data name="AlignCenter" xml:space="preserve">
+    <value>Centre</value>
+  </data>
+  <data name="AlignRight" xml:space="preserve">
+    <value>Droite</value>
+  </data>
+  <data name="FormatRules" xml:space="preserve">
+    <value>Règles (la première qui correspond s&apos;applique)</value>
+  </data>
+  <data name="AddRule" xml:space="preserve">
+    <value>+ Ajouter une règle</value>
+  </data>
+  <data name="RemoveRule" xml:space="preserve">
+    <value>Retirer la règle</value>
+  </data>
+  <data name="RuleColor" xml:space="preserve">
+    <value>Texte</value>
+  </data>
+  <data name="RuleBackground" xml:space="preserve">
+    <value>Fond</value>
+  </data>
+  <data name="FormatScale" xml:space="preserve">
+    <value>Échelle de couleurs</value>
+  </data>
+  <data name="ScaleMinimum" xml:space="preserve">
+    <value>Plus petit</value>
+  </data>
+  <data name="ScaleMiddle" xml:space="preserve">
+    <value>Milieu</value>
+  </data>
+  <data name="ScaleMaximum" xml:space="preserve">
+    <value>Plus grand</value>
+  </data>
+  <data name="FormatBars" xml:space="preserve">
+    <value>Barres de données</value>
+  </data>
+  <data name="BarPositive" xml:space="preserve">
+    <value>Positif</value>
+  </data>
+  <data name="BarNegative" xml:space="preserve">
+    <value>Négatif</value>
+  </data>
+  <data name="FormatIcons" xml:space="preserve">
+    <value>Icônes</value>
+  </data>
+  <data name="IconArrows" xml:space="preserve">
+    <value>Flèches ↑ → ↓</value>
+  </data>
+  <data name="IconTriangles" xml:space="preserve">
+    <value>Triangles ▲ ▬ ▼</value>
+  </data>
+  <data name="IconCircles" xml:space="preserve">
+    <value>Ronds ●</value>
+  </data>
+  <data name="IconLow" xml:space="preserve">
+    <value>Bas sous</value>
+  </data>
+  <data name="IconHigh" xml:space="preserve">
+    <value>Haut dès</value>
+  </data>
+  <data name="IconThresholdsHint" xml:space="preserve">
+    <value>Vide : les valeurs sont réparties en tiers.</value>
+  </data>
+  <data name="ColorNone" xml:space="preserve">
+    <value>Aucune</value>
+  </data>
+  <data name="ColorAccent" xml:space="preserve">
+    <value>Accent</value>
+  </data>
+  <data name="ColorSuccess" xml:space="preserve">
+    <value>Bon (vert)</value>
+  </data>
+  <data name="ColorWarning" xml:space="preserve">
+    <value>Attention (orange)</value>
+  </data>
+  <data name="ColorError" xml:space="preserve">
+    <value>Mauvais (rouge)</value>
+  </data>
+  <data name="ColorMuted" xml:space="preserve">
+    <value>Discret (gris)</value>
+  </data>
+  <data name="ColorCustom" xml:space="preserve">
+    <value>Personnalisée (#RRGGBB)</value>
+  </data>
 </root>
