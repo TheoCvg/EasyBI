@@ -1,9 +1,11 @@
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using EasyBI.Abstractions;
+using EasyBI.Core;
 using EasyBI.Wpf.Dashboard.Behaviors;
 using EasyBI.Wpf.Renderers;
 using EasyBI.Wpf.Resources;
@@ -11,6 +13,19 @@ using Microsoft.Win32;
 using Microsoft.Xaml.Behaviors;
 
 namespace EasyBI.Wpf.Dashboard;
+
+/// <summary>How <see cref="DashboardView.Select(IEnumerable{DashboardItem}, DashboardSelectionMode)"/> combines with the current selection.</summary>
+public enum DashboardSelectionMode
+{
+    /// <summary>The items become the selection.</summary>
+    Replace,
+
+    /// <summary>The items are added to the selection.</summary>
+    Add,
+
+    /// <summary>Selected items are unselected, the others selected (Ctrl+click).</summary>
+    Toggle,
+}
 
 /// <summary>
 /// Dashboard that end users arrange: a <see cref="DashboardPanel"/> of <see cref="DashboardItem"/>s showing visuals,
@@ -23,8 +38,13 @@ namespace EasyBI.Wpf.Dashboard;
 /// can veto a removal, <see cref="Changed"/> reports every change, <see cref="DashboardCommands"/> trigger the actions
 /// from custom templates, and the public methods (<see cref="AddNextTo"/>, <see cref="SetVisual"/>...) drive the view
 /// from code. Set <see cref="UseDefaultBehaviors"/> to false to pick the behaviors yourself.
+/// <para>
+/// The view is lookless: its default template (in <c>Themes/DashboardView.xaml</c>) shows the <see cref="Panel"/> in a
+/// scroll viewer, under an adorner layer where the behaviors draw, and declares the <see cref="DashboardSlots"/>. The view
+/// owns the panel, so the items exist before the template is applied.
+/// </para>
 /// </remarks>
-public partial class DashboardView : UserControl
+public class DashboardView : Control
 {
     public static readonly DependencyProperty ContextProperty = DependencyProperty.Register(
         nameof(Context), typeof(EasyBIContext), typeof(DashboardView),
@@ -39,7 +59,26 @@ public partial class DashboardView : UserControl
     /// <summary>Read-only dashboard: no editing chrome, no editing command. Inherited, so item templates can use it.</summary>
     public static readonly DependencyProperty IsReadOnlyProperty = DependencyProperty.RegisterAttached(
         "IsReadOnly", typeof(bool), typeof(DashboardView),
-        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.Inherits, (d, _) => CommandManager.InvalidateRequerySuggested()));
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.Inherits, (d, e) =>
+        {
+            // A read-only dashboard has no selection to act on
+            if (d is DashboardView view && (bool)e.NewValue) view.UnselectAll();
+            CommandManager.InvalidateRequerySuggested();
+        }));
+
+    /// <summary>
+    /// True (default): only the visuals of the items in or near the visible part of the dashboard query their data (see
+    /// <see cref="DashboardItem.IsInViewport"/>); the others do when they scroll into view. False loads every visual
+    /// (to print or export the whole dashboard, for instance).
+    /// </summary>
+    public static readonly DependencyProperty LoadsVisibleItemsOnlyProperty = DependencyProperty.Register(
+        nameof(LoadsVisibleItemsOnly), typeof(bool), typeof(DashboardView),
+        new PropertyMetadata(true, (d, _) => ((DashboardView)d).UpdateViewport()));
+
+    /// <summary>How far beyond the visible part items load ahead, in viewport sizes (one by default: a screen above and below).</summary>
+    public static readonly DependencyProperty ViewportMarginProperty = DependencyProperty.Register(
+        nameof(ViewportMargin), typeof(double), typeof(DashboardView),
+        new PropertyMetadata(1d, (d, _) => ((DashboardView)d).UpdateViewport()), v => (double)v >= 0);
 
     public static readonly DependencyProperty UseDefaultBehaviorsProperty = DependencyProperty.Register(
         nameof(UseDefaultBehaviors), typeof(bool), typeof(DashboardView), new PropertyMetadata(true));
@@ -50,14 +89,24 @@ public partial class DashboardView : UserControl
     private int _editDepth;
     private bool _pushing;
     private bool _behaviorsAttached;
+    private readonly ObservableCollection<DashboardItem> _selected = [];
+    private ScrollViewer? _viewer;
+    private bool _viewportQueued;
+
+    static DashboardView() =>
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(DashboardView), new FrameworkPropertyMetadata(typeof(DashboardView)));
 
     public DashboardView()
     {
-        InitializeComponent();
+        Panel = new DashboardPanel();
+        SelectedItems = new ReadOnlyObservableCollection<DashboardItem>(_selected);
+        // A logical child: it inherits the view's properties and resources wherever the template shows it
+        AddLogicalChild(Panel);
         // Keyboard shortcuts (Ctrl+Z...) need the focus inside the view
         Focusable = true;
         FocusVisualStyle = null;
         Panel.ArrangementChanged += (_, _) => Commit();
+        Panel.Arranged += (_, _) => QueueViewportUpdate();
         BindCommands();
         Show(new DashboardDocument());
         Loaded += (_, _) => AttachDefaultBehaviors();
@@ -81,6 +130,9 @@ public partial class DashboardView : UserControl
     /// <summary>Raised before an item is removed.</summary>
     public event EventHandler<ItemRemovingEventArgs>? ItemRemoving;
 
+    /// <summary>Raised after <see cref="SelectedItems"/> changed.</summary>
+    public event EventHandler? SelectionChanged;
+
     public EasyBIContext? Context
     {
         get => (EasyBIContext?)GetValue(ContextProperty);
@@ -91,6 +143,18 @@ public partial class DashboardView : UserControl
     {
         get => (DashboardDocument?)GetValue(DocumentProperty);
         set => SetValue(DocumentProperty, value);
+    }
+
+    public bool LoadsVisibleItemsOnly
+    {
+        get => (bool)GetValue(LoadsVisibleItemsOnlyProperty);
+        set => SetValue(LoadsVisibleItemsOnlyProperty, value);
+    }
+
+    public double ViewportMargin
+    {
+        get => (double)GetValue(ViewportMarginProperty);
+        set => SetValue(ViewportMarginProperty, value);
     }
 
     public bool IsReadOnly
@@ -113,11 +177,20 @@ public partial class DashboardView : UserControl
         set => SetValue(UseDefaultBehaviorsProperty, value);
     }
 
-    /// <summary>The panel arranging the items.</summary>
-    public DashboardPanel Panel => PART_Panel;
+    /// <summary>The panel arranging the items; the template shows it (<c>Content="{Binding Panel, RelativeSource={RelativeSource TemplatedParent}}"</c>).</summary>
+    public DashboardPanel Panel { get; }
+
+    protected override System.Collections.IEnumerator LogicalChildren => new[] { Panel }.GetEnumerator();
 
     /// <summary>Items in the panel.</summary>
     public IEnumerable<DashboardItem> Items => Panel.Children.OfType<DashboardItem>();
+
+    /// <summary>
+    /// The selected items, in the order they were selected (see <see cref="Select(IEnumerable{DashboardItem}, DashboardSelectionMode)"/>).
+    /// <see cref="Behaviors.SelectionBehavior"/> selects them with the mouse and the keyboard; the selection commands act on them.
+    /// Not to be confused with the cross-filter selection of a visual (<see cref="EasyBI.Core.FilterContext.Selection"/>).
+    /// </summary>
+    public ReadOnlyObservableCollection<DashboardItem> SelectedItems { get; }
 
     /// <summary>Largest image the built-in picker embeds, in bytes (2 MB by default).</summary>
     public int MaxImageBytes { get; set; } = 2 * 1024 * 1024;
@@ -131,6 +204,8 @@ public partial class DashboardView : UserControl
         new MoveBehavior(),
         new ResizeBehavior(),
         new ItemToolbarBehavior(),
+        new SelectionBehavior(),
+        new KeyboardLayoutBehavior(),
         new BandMenuBehavior(),
         new BandScrollBehavior(),
         new TextEditBehavior(),
@@ -168,6 +243,15 @@ public partial class DashboardView : UserControl
 
     private void Show(DashboardDocument document)
     {
+        Apply(document);
+        _committed = Capture();
+        PushDocument();
+        PruneSelection();
+    }
+
+    // Shows a document without making it the committed state: a change made this way is reported by Commit
+    private void Apply(DashboardDocument document)
+    {
         _report = document.Report;
         var visuals = document.Report.Visuals.GroupBy(v => v.Id).ToDictionary(g => g.Key, g => g.First());
         var layout = DashboardLayoutEngine.Place(document.Layout, document.Report.Visuals.Select(v => v.Id));
@@ -191,8 +275,6 @@ public partial class DashboardView : UserControl
         {
             _editDepth--;
         }
-        _committed = Capture();
-        PushDocument();
     }
 
     /// <summary>The current report and layout.</summary>
@@ -230,6 +312,7 @@ public partial class DashboardView : UserControl
         if (_editDepth > 0) return;
         var after = Capture();
         var before = _committed;
+        PruneSelection();
         if (DashboardSerializer.Serialize(after) == DashboardSerializer.Serialize(before)) return;
         _committed = after;
         PushDocument();
@@ -265,7 +348,64 @@ public partial class DashboardView : UserControl
         foreach (var item in Items) item.Context = context;
     }
 
-    private DashboardItem NewItem(VisualDefinition? visual) => new() { Visual = visual, Context = Context };
+    // Out of view until the panel placed it, so that a new item does not query before knowing where it is
+    private DashboardItem NewItem(VisualDefinition? visual) => new() { Visual = visual, Context = Context, IsInViewport = !LoadsVisibleItemsOnly };
+
+    // --- Loading the visible items ---
+
+    private void OnScrollChanged(object sender, ScrollChangedEventArgs e) => QueueViewportUpdate();
+
+    // Once per layout pass: arranging the items may move them again
+    private void QueueViewportUpdate()
+    {
+        if (_viewportQueued) return;
+        _viewportQueued = true;
+        Dispatcher.InvokeAsync(() =>
+        {
+            _viewportQueued = false;
+            UpdateViewport();
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    /// <summary>Marks the items in or near the visible part of the dashboard (<see cref="DashboardItem.IsInViewport"/>).</summary>
+    public void UpdateViewport()
+    {
+        var viewport = Viewport();
+        foreach (var item in Items)
+        {
+            var bounds = Panel.GetItemBounds(item);
+            item.IsInViewport = !LoadsVisibleItemsOnly || (!bounds.IsEmpty && viewport is { } area && area.IntersectsWith(bounds));
+        }
+    }
+
+    // The scroll viewer showing the panel, if the template has one: looked up once the panel is in it, and followed
+    private ScrollViewer? ScrollViewerOfPanel()
+    {
+        if (_viewer is not null && Panel.IsDescendantOf(_viewer)) return _viewer;
+        if (_viewer is not null) _viewer.ScrollChanged -= OnScrollChanged;
+        _viewer = null;
+        for (var element = VisualTreeHelper.GetParent(Panel); element is not null && element != this; element = VisualTreeHelper.GetParent(element))
+        {
+            if (element is not ScrollViewer viewer) continue;
+            _viewer = viewer;
+            viewer.ScrollChanged += OnScrollChanged;
+            break;
+        }
+        return _viewer;
+    }
+
+    // The visible part of the panel, grown by the margin; null before the panel is shown
+    private Rect? Viewport()
+    {
+        if (!Panel.IsVisible) return null;
+        var viewer = ScrollViewerOfPanel();
+        var visible = viewer is null
+            ? new Rect(Panel.RenderSize)
+            : new Rect(viewer.TranslatePoint(new Point(), Panel), new Size(viewer.ViewportWidth, viewer.ViewportHeight));
+        var margin = ViewportMargin;
+        visible.Inflate(visible.Width * margin, visible.Height * margin);
+        return visible;
+    }
 
     private void AttachDefaultBehaviors()
     {
@@ -358,6 +498,8 @@ public partial class DashboardView : UserControl
         if (args.Handled || Context is not { } context) return;
 
         var editor = new VisualEditorWindow(context, item.Kind == DashboardItemKind.Visual ? item.Visual : null) { Owner = Window.GetWindow(this) };
+        // The dialog is not below the dashboard: it takes the slots the dashboard sees, for its designer
+        if (GetValue(Slots.ItemsProperty) is SlotCollection slots) Slots.SetItems(editor, slots);
         if (editor.ShowDialog() == true && editor.Visual is { } visual)
             args.Complete(visual);
     }
@@ -411,6 +553,233 @@ public partial class DashboardView : UserControl
         _ => "image/png",
     };
 
+    // --- Selection ---
+
+    public void Select(DashboardItem item, DashboardSelectionMode mode = DashboardSelectionMode.Replace) => Select([item], mode);
+
+    /// <summary>Selects items of the dashboard; items that are not in it are ignored.</summary>
+    public void Select(IEnumerable<DashboardItem> items, DashboardSelectionMode mode = DashboardSelectionMode.Replace)
+    {
+        var shown = items.Where(i => i.Parent == Panel).Distinct().ToList();
+        SetSelection(mode switch
+        {
+            DashboardSelectionMode.Add => [.. _selected, .. shown.Except(_selected)],
+            DashboardSelectionMode.Toggle => [.. _selected.Except(shown), .. shown.Except(_selected)],
+            _ => shown,
+        });
+    }
+
+    /// <summary>Selects every item, in reading order.</summary>
+    public void SelectAll() => SetSelection(Enumerable.Range(0, Panel.BandCount).SelectMany(Panel.ChildrenOf).OfType<DashboardItem>().ToList());
+
+    public void UnselectAll() => SetSelection([]);
+
+    /// <summary>Removes the selected items as one change (each one unless <see cref="ItemRemoving"/> cancels it); returns how many were removed.</summary>
+    public int RemoveSelected()
+    {
+        using var edit = BeginEdit();
+        var removed = _selected.ToArray().Count(Remove);
+        edit.Commit();
+        return removed;
+    }
+
+    /// <summary>Duplicates the selected items as one change, each to the right of its original, and selects the copies.</summary>
+    public IReadOnlyList<DashboardItem> DuplicateSelected()
+    {
+        using var edit = BeginEdit();
+        var copies = _selected.ToArray().Select(item =>
+        {
+            var copy = AddNextTo(item, ItemSide.Right);
+            copy.Visual = item.Visual is { } visual ? visual with { Id = Guid.NewGuid().ToString("N") } : null;
+            return copy;
+        }).ToArray();
+        edit.Commit();
+        Select(copies);
+        return copies;
+    }
+
+    /// <summary>
+    /// Moves the selected item one step (Ctrl+arrows, Ctrl+Shift+Up/Down for a new band; see
+    /// <see cref="DashboardLayoutEngine.Step"/>) as one change; false when several or no items are selected, or nothing moved.
+    /// </summary>
+    public bool MoveSelected(ItemSide direction, bool toNewBand = false)
+    {
+        if (IsReadOnly || _selected is not [var item]) return false;
+        var before = LayoutJson();
+        DashboardLayout.Step(item, direction, toNewBand);
+        item.BringIntoView();
+        return LayoutJson() != before;
+    }
+
+    /// <summary>
+    /// Extends the selected items over the free room next to them, in width (Alt+Left/Right) or height (Alt+Up/Down),
+    /// as one change (see <see cref="DashboardLayoutEngine.Fill"/>); false when nothing changed.
+    /// </summary>
+    public bool ExtendSelected(bool width)
+    {
+        if (IsReadOnly || _selected.Count == 0) return false;
+        var before = LayoutJson();
+        using var edit = BeginEdit();
+        foreach (var item in _selected) DashboardLayout.Fill(item, width);
+        edit.Commit();
+        return LayoutJson() != before;
+    }
+
+    // The layout as saved: operations always give a new instance, even when nothing changed
+    private string LayoutJson() => System.Text.Json.JsonSerializer.Serialize(Panel.Layout, ReportSerializer.Options);
+
+    // --- Copy and paste ---
+
+    /// <summary>Name of the clipboard format holding the layout of copied items (see <see cref="DashboardLayoutEngine.Extract"/>).</summary>
+    public const string LayoutClipboardFormat = "EasyBI.DashboardLayout";
+
+    /// <summary>
+    /// The visuals of the selected items with the calculated measures they use, in the
+    /// <see cref="VisualTransfer.ClipboardFormat"/> format and as their titles in text; null when no selected item shows
+    /// a visual. <see cref="CopySelected"/> puts it on the clipboard.
+    /// </summary>
+    public DataObject? CreateCopy()
+    {
+        var visuals = _selected.Select(i => i.Visual).OfType<VisualDefinition>().ToArray();
+        if (visuals.Length == 0) return null;
+        var data = new DataObject();
+        data.SetData(VisualTransfer.ClipboardFormat, VisualTransfer.Copy(visuals, Context?.Measures ?? new MeasureContext()));
+        data.SetText(string.Join(Environment.NewLine, visuals.Select(v => v.Title).Where(t => !string.IsNullOrEmpty(t))));
+        // Their arrangement and sizes, so that they are pasted as they were laid out
+        var layout = DashboardLayoutEngine.Extract(Capture().Layout ?? new DashboardLayoutDefinition(), visuals.Select(v => v.Id).ToHashSet());
+        data.SetData(LayoutClipboardFormat, System.Text.Json.JsonSerializer.Serialize(layout, ReportSerializer.Options));
+        return data;
+    }
+
+    /// <summary>Copies the selected items to the clipboard (<see cref="CreateCopy"/>); returns the copied data, or null when there is nothing to copy.</summary>
+    public DataObject? CopySelected()
+    {
+        if (CreateCopy() is not { } data) return null;
+        try
+        {
+            Clipboard.SetDataObject(data, copy: true);
+        }
+        catch (System.Runtime.InteropServices.ExternalException)
+        {
+            // The clipboard is busy (another application holds it): the copy is still returned
+        }
+        return data;
+    }
+
+    /// <summary>Copies the selected items (<see cref="CopySelected"/>), then removes them (<see cref="RemoveSelected"/>).</summary>
+    public DataObject? CutSelected()
+    {
+        var data = CopySelected();
+        if (data is not null) RemoveSelected();
+        return data;
+    }
+
+    /// <summary>
+    /// Adds the visuals copied in <paramref name="data"/> (the clipboard when null), possibly from another dashboard, as
+    /// one change, and selects them. Copied with their layout, they keep their arrangement and sizes and go after the
+    /// line of the last selected item, or at the end (see <see cref="DashboardLayoutEngine.Insert"/>); otherwise each one
+    /// goes to the right of the previous one. Visuals of a model the <see cref="Context"/> does not know are left out;
+    /// the calculated measures they use are added (see <see cref="VisualTransfer.Paste"/>). Returns the new items.
+    /// </summary>
+    public IReadOnlyList<DashboardItem> Paste(IDataObject? data = null)
+    {
+        if (IsReadOnly || Copied(data) is not { } json) return [];
+        var measures = Context?.Measures ?? new MeasureContext();
+        var visuals = VisualTransfer.Paste(json, measures, model => Context?.Models.Any(m => m.Metadata.Name == model) ?? false);
+        if (visuals.Count == 0) return [];
+        if (CopiedLayout(data) is { } copiedLayout) return PasteWithLayout(visuals, copiedLayout);
+
+        using var edit = BeginEdit();
+        var anchor = _selected.LastOrDefault();
+        var pasted = new List<DashboardItem>();
+        foreach (var visual in visuals.Select(p => p.Visual))
+        {
+            var item = anchor is null ? AddItem(Math.Max(0, Panel.BandCount - 1)) : AddNextTo(anchor, ItemSide.Right);
+            item.Visual = visual;
+            pasted.Add(item);
+            anchor = item;
+        }
+        edit.Commit();
+        Select(pasted);
+        return pasted;
+    }
+
+    private IReadOnlyList<DashboardItem> PasteWithLayout(IReadOnlyList<PastedVisual> visuals, DashboardLayoutDefinition copied)
+    {
+        var ids = visuals.ToDictionary(p => p.CopiedId, p => p.Visual.Id);
+        LayoutNode Remap(LayoutNode node) => node with
+        {
+            VisualId = node.VisualId is { } id ? ids.GetValueOrDefault(id) : null,
+            Children = node.Children.Select(Remap).ToArray(),
+        };
+        // Visuals left out leave the copied layout
+        var layout = DashboardLayoutEngine.Extract(copied with { Bands = copied.Bands.Select(b => b with { Items = b.Items.Select(Remap).ToArray() }).ToArray() },
+            ids.Values.ToHashSet());
+
+        var document = Capture();
+        using var edit = BeginEdit();
+        Apply(document with
+        {
+            Report = document.Report with { Visuals = [.. document.Report.Visuals, .. visuals.Select(p => p.Visual)] },
+            Layout = DashboardLayoutEngine.Insert(document.Layout ?? new DashboardLayoutDefinition(), layout, _selected.LastOrDefault()?.Visual?.Id),
+        });
+        edit.Commit();
+        var pasted = Items.Where(i => i.Visual?.Id is { } id && ids.ContainsValue(id)).ToArray();
+        Select(pasted);
+        return pasted;
+    }
+
+    private static DashboardLayoutDefinition? CopiedLayout(IDataObject? data)
+    {
+        try
+        {
+            data ??= Clipboard.GetDataObject();
+            return data?.GetData(LayoutClipboardFormat) is string json
+                ? System.Text.Json.JsonSerializer.Deserialize<DashboardLayoutDefinition>(json, ReportSerializer.Options)
+                : null;
+        }
+        catch (Exception e) when (e is System.Runtime.InteropServices.ExternalException or System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Whether <paramref name="data"/> (the clipboard when null) holds copied visuals.</summary>
+    public static bool CanPaste(IDataObject? data = null) => Copied(data) is not null;
+
+    private static string? Copied(IDataObject? data)
+    {
+        try
+        {
+            data ??= Clipboard.GetDataObject();
+            return data?.GetDataPresent(VisualTransfer.ClipboardFormat) == true ? data.GetData(VisualTransfer.ClipboardFormat) as string : null;
+        }
+        catch (System.Runtime.InteropServices.ExternalException)
+        {
+            return null;
+        }
+    }
+
+    private void SetSelection(IReadOnlyList<DashboardItem> items)
+    {
+        if (items.SequenceEqual(_selected)) return;
+        foreach (var item in _selected.Except(items)) item.IsSelected = false;
+        _selected.Clear();
+        foreach (var item in items)
+        {
+            item.IsSelected = true;
+            _selected.Add(item);
+        }
+        CommandManager.InvalidateRequerySuggested();
+        SelectionChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    // Removed items leave the selection
+    private void PruneSelection()
+    {
+        if (_selected.Any(i => i.Parent != Panel)) SetSelection(_selected.Where(i => i.Parent == Panel).ToList());
+    }
+
     // --- Bands ---
 
     /// <summary>Inserts a band holding one empty item.</summary>
@@ -462,12 +831,39 @@ public partial class DashboardView : UserControl
         BindItem(DashboardCommands.AddBelow, item => AddNextTo(item, ItemSide.Below));
         BindBand(DashboardCommands.InsertBand, index => InsertBand(index));
         BindBand(DashboardCommands.RemoveBand, RemoveBand);
+        BindSelection(ApplicationCommands.Delete, () => RemoveSelected());
+        BindSelection(DashboardCommands.Duplicate, () => DuplicateSelected());
+        BindSelection(ApplicationCommands.Copy, () => CopySelected());
+        BindSelection(ApplicationCommands.Cut, () => CutSelected());
+        CommandBindings.Add(new CommandBinding(ApplicationCommands.Paste,
+            (_, e) => Paste(e.Parameter as IDataObject),
+            (_, e) => e.CanExecute = !IsReadOnly && CanPaste(e.Parameter as IDataObject)));
+        CommandBindings.Add(new CommandBinding(ApplicationCommands.SelectAll, (_, _) => SelectAll(), (_, e) => e.CanExecute = !IsReadOnly));
+        BindSide(DashboardCommands.MoveItem, single: true, _ => true, side => MoveSelected(side));
+        BindSide(DashboardCommands.MoveItemToNewBand, single: true, side => side is ItemSide.Above or ItemSide.Below, side => MoveSelected(side, toNewBand: true));
+        BindSide(DashboardCommands.ExtendItem, single: false, _ => true, side => ExtendSelected(width: side is ItemSide.Left or ItemSide.Right));
     }
 
     private void BindItem(ICommand command, Action<DashboardItem> execute) =>
         CommandBindings.Add(new CommandBinding(command,
             (_, e) => { if (Target(e) is { } item && !IsReadOnly) execute(item); },
             (_, e) => e.CanExecute = !IsReadOnly && Target(e) is not null));
+
+    private void BindSelection(ICommand command, Action execute) =>
+        CommandBindings.Add(new CommandBinding(command,
+            (_, _) => { if (!IsReadOnly) execute(); },
+            (_, e) => e.CanExecute = !IsReadOnly && _selected.Count > 0));
+
+    // Commands on the selection taking a direction (an ItemSide or its name)
+    private void BindSide(ICommand command, bool single, Func<ItemSide, bool> accepts, Action<ItemSide> execute)
+    {
+        ItemSide? Side(object? parameter) =>
+            !IsReadOnly && (single ? _selected.Count == 1 : _selected.Count > 0)
+            && DashboardCommands.SideOf(parameter) is { } side && accepts(side) ? side : null;
+        CommandBindings.Add(new CommandBinding(command,
+            (_, e) => { if (Side(e.Parameter) is { } side) execute(side); },
+            (_, e) => e.CanExecute = Side(e.Parameter) is not null));
+    }
 
     private void BindBand(ICommand command, Action<int> execute) =>
         CommandBindings.Add(new CommandBinding(command,
@@ -477,7 +873,9 @@ public partial class DashboardView : UserControl
     private static DashboardItem? Target(RoutedEventArgs e) =>
         (e as ExecutedRoutedEventArgs)?.Parameter as DashboardItem
         ?? (e as CanExecuteRoutedEventArgs)?.Parameter as DashboardItem
-        ?? ItemOf(e.OriginalSource as DependencyObject);
+        ?? ItemOf(e.OriginalSource as DependencyObject)
+        // Content drawn outside the items (the toolbar slot, in the adorner layer) has its item as data context
+        ?? (e.OriginalSource as FrameworkElement)?.DataContext as DashboardItem;
 
     private static int? BandIndex(object? parameter) => parameter switch
     {

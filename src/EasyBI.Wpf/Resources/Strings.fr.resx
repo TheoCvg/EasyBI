@@ -300,4 +300,160 @@
   <data name="TimeHint" xml:space="preserve">
     <value>La mesure vue dans le temps : comparer à N-1 demande une date sur l&apos;axe ou un filtre de date.</value>
   </data>
+  <data name="RendererOptions" xml:space="preserve">
+    <value>Options</value>
+  </data>
+  <data name="Sort" xml:space="preserve">
+    <value>Tri</value>
+  </data>
+  <data name="SortNone" xml:space="preserve">
+    <value>Pas de tri</value>
+  </data>
+  <data name="SortAscending" xml:space="preserve">
+    <value>croissant</value>
+  </data>
+  <data name="SortDescending" xml:space="preserve">
+    <value>décroissant</value>
+  </data>
+  <data name="SortSummary" xml:space="preserve">
+    <value>{0}, {1}</value>
+  </data>
+  <data name="NoSort" xml:space="preserve">
+    <value>Aucun : dans l'ordre de l'axe</value>
+  </data>
+  <data name="SortHint" xml:space="preserve">
+    <value>Trier le visuel sur ce champ</value>
+  </data>
+  <data name="Top" xml:space="preserve">
+    <value>Top</value>
+  </data>
+  <data name="TopHint" xml:space="preserve">
+    <value>N'afficher que les premières lignes, après le tri (vide : toutes)</value>
+  </data>
+  <data name="SearchFields" xml:space="preserve">
+    <value>Rechercher un champ</value>
+  </data>
+  <data name="SearchValues" xml:space="preserve">
+    <value>Rechercher une valeur</value>
+  </data>
+  <data name="DropOtherModel" xml:space="preserve">
+    <value>{0} appartient au modèle « {1} » : choisissez d'abord ce modèle</value>
+  </data>
+  <data name="DropMeasuresOnly" xml:space="preserve">
+    <value>Seules les mesures vont dans Valeurs</value>
+  </data>
+  <data name="DropDimensionsOnly" xml:space="preserve">
+    <value>Seules les dimensions vont dans {0}</value>
+  </data>
+  <data name="DropAlreadyThere" xml:space="preserve">
+    <value>{0} est déjà dans {1}</value>
+  </data>
+  <data name="DropAxisFull" xml:space="preserve">
+    <value>L'axe contient au plus {0} champs</value>
+  </data>
+  <data name="DropFilterFromList" xml:space="preserve">
+    <value>Pour filtrer sur {0}, faites-le glisser depuis la liste des champs</value>
+  </data>
+  <data name="DropFilterStays" xml:space="preserve">
+    <value>Un filtre reste dans Filtres</value>
+  </data>
+  <data name="PropertyAggregation" xml:space="preserve">
+    <value>Agrégation</value>
+  </data>
+  <data name="PropertyGrain" xml:space="preserve">
+    <value>Granularité</value>
+  </data>
+  <data name="PropertyTime" xml:space="preserve">
+    <value>Dans le temps</value>
+  </data>
+  <data name="PropertySeriesMark" xml:space="preserve">
+    <value>Type de graphique</value>
+  </data>
+  <data name="PropertySecondaryAxis" xml:space="preserve">
+    <value>Axe secondaire</value>
+  </data>
+  <data name="PropertiesVisual" xml:space="preserve">
+    <value>Visuel</value>
+  </data>
+  <data name="BadgeAverage" xml:space="preserve">
+    <value>moy</value>
+  </data>
+  <data name="BadgeMin" xml:space="preserve">
+    <value>min</value>
+  </data>
+  <data name="BadgeMax" xml:space="preserve">
+    <value>max</value>
+  </data>
+  <data name="BadgeCount" xml:space="preserve">
+    <value>nb</value>
+  </data>
+  <data name="BadgePreviousYear" xml:space="preserve">
+    <value>N-1</value>
+  </data>
+  <data name="BadgeChange" xml:space="preserve">
+    <value>Δ N-1</value>
+  </data>
+  <data name="BadgePercentChange" xml:space="preserve">
+    <value>Δ% N-1</value>
+  </data>
+  <data name="BadgeYearToDate" xml:space="preserve">
+    <value>Cumul</value>
+  </data>
+  <data name="Properties" xml:space="preserve">
+    <value>Propriétés</value>
+  </data>
+  <data name="ToggleFieldPanel" xml:space="preserve">
+    <value>Afficher ou masquer les champs</value>
+  </data>
+  <data name="TogglePropertiesPanel" xml:space="preserve">
+    <value>Afficher ou masquer les propriétés</value>
+  </data>
+  <data name="SelectChipHint" xml:space="preserve">
+    <value>Cliquez sur un champ pour voir ses réglages. Les flèches passent d'un champ à l'autre, Ctrl+flèches le déplacent, Suppr le retire.</value>
+  </data>
+  <data name="MarkGroupComparison" xml:space="preserve">
+    <value>Comparaison</value>
+  </data>
+  <data name="MarkGroupTrend" xml:space="preserve">
+    <value>Évolution</value>
+  </data>
+  <data name="MarkGroupComposition" xml:space="preserve">
+    <value>Répartition</value>
+  </data>
+  <data name="MarkGroupIndicators" xml:space="preserve">
+    <value>Indicateurs et tableaux</value>
+  </data>
+  <data name="VisualTypeHint" xml:space="preserve">
+    <value>Changer le type de visuel</value>
+  </data>
+  <data name="WellCategory" xml:space="preserve">
+    <value>Catégorie</value>
+  </data>
+  <data name="WellValue" xml:space="preserve">
+    <value>Valeur</value>
+  </data>
+  <data name="WellRows" xml:space="preserve">
+    <value>Lignes</value>
+  </data>
+  <data name="WellUnused" xml:space="preserve">
+    <value>Non utilisé par ce type de visuel</value>
+  </data>
+  <data name="WellHintDimension" xml:space="preserve">
+    <value>Déposez une dimension ici</value>
+  </data>
+  <data name="WellHintMeasure" xml:space="preserve">
+    <value>Déposez une mesure ici</value>
+  </data>
+  <data name="WellHintFilter" xml:space="preserve">
+    <value>Déposez une dimension pour filtrer</value>
+  </data>
+  <data name="DropNotUsed" xml:space="preserve">
+    <value>« {0} » n'est pas utilisé par ce type de visuel</value>
+  </data>
+  <data name="DesignerUndo" xml:space="preserve">
+    <value>Annuler (Ctrl+Z)</value>
+  </data>
+  <data name="DesignerRedo" xml:space="preserve">
+    <value>Rétablir (Ctrl+Y)</value>
+  </data>
 </root>

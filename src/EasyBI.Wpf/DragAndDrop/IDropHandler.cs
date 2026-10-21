@@ -16,6 +16,12 @@ public interface IDropHandler
 
     /// <summary>Called on a drop that <see cref="DragOver"/> accepted.</summary>
     void Drop(DropInfo drop);
+
+    /// <summary>
+    /// Called when <see cref="DragOver"/> refused a drag: why, in words for the end user (shown next to the target,
+    /// see <see cref="DropTarget.RefusalProperty"/>), or null to say nothing.
+    /// </summary>
+    string? RefusalReason(DropInfo drop) => null;
 }
 
 /// <summary>A drag over a drop target, or a drop on it.</summary>

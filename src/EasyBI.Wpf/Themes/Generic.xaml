@@ -8,6 +8,12 @@
     <!-- Default values of the EasyBITheme keys: the light theme -->
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/Light.xaml" />
+        <!-- Default templates of the lookless controls -->
+        <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/DashboardView.xaml" />
+        <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/ReportDesigner.xaml" />
+        <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/FieldList.xaml" />
+        <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/FilterBar.xaml" />
+        <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/FilterEditor.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
     <!-- Dashboard item: a card showing its visual, or the choices of an empty item -->
@@ -26,26 +32,40 @@
                                 BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{DynamicResource {x:Static bi:EasyBITheme.CornerRadiusKey}}"
                                 Padding="{TemplateBinding Padding}" ClipToBounds="True">
                             <Grid>
-                                <bi:VisualView x:Name="View" Definition="{TemplateBinding Visual}" Context="{TemplateBinding Context}" />
-                                <TextBlock x:Name="TextPlaceholder" Visibility="Collapsed" Text="{bi:Localize TextPlaceholder}"
-                                           Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" FontStyle="Italic" IsHitTestVisible="False" />
-                                <WrapPanel x:Name="Choices" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <Button Content="{bi:Localize AddVisual}" Margin="4" Padding="12,6" Cursor="Hand"
-                                            Command="{x:Static local:DashboardCommands.AddVisual}"
-                                            CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
-                                    <Button Content="{bi:Localize AddText}" Margin="4" Padding="12,6" Cursor="Hand"
-                                            Command="{x:Static local:DashboardCommands.AddText}"
-                                            CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
-                                    <Button Content="{bi:Localize AddImage}" Margin="4" Padding="12,6" Cursor="Hand"
-                                            Command="{x:Static local:DashboardCommands.AddImage}"
-                                            CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
-                                </WrapPanel>
+                                <!-- Slots: their content takes the item as data context -->
+                                <bi:SlotHost x:Name="Content" Slot="{x:Static local:DashboardSlots.ItemContent}" Orientation="Vertical"
+                                             DataContext="{Binding RelativeSource={RelativeSource TemplatedParent}}">
+                                    <Grid>
+                                        <bi:VisualView x:Name="View" Definition="{TemplateBinding Visual}" Context="{TemplateBinding Context}" IsActive="{TemplateBinding IsInViewport}" />
+                                        <TextBlock x:Name="TextPlaceholder" Visibility="Collapsed" Text="{bi:Localize TextPlaceholder}"
+                                                   Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" FontStyle="Italic" IsHitTestVisible="False" />
+                                    </Grid>
+                                </bi:SlotHost>
+                                <bi:SlotHost x:Name="Choices" Slot="{x:Static local:DashboardSlots.EmptyItemChoices}" Visibility="Collapsed"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"
+                                             DataContext="{Binding RelativeSource={RelativeSource TemplatedParent}}">
+                                    <WrapPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Button Content="{bi:Localize AddVisual}" Margin="4" Padding="12,6" Cursor="Hand"
+                                                Command="{x:Static local:DashboardCommands.AddVisual}"
+                                                CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
+                                        <Button Content="{bi:Localize AddText}" Margin="4" Padding="12,6" Cursor="Hand"
+                                                Command="{x:Static local:DashboardCommands.AddText}"
+                                                CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
+                                        <Button Content="{bi:Localize AddImage}" Margin="4" Padding="12,6" Cursor="Hand"
+                                                Command="{x:Static local:DashboardCommands.AddImage}"
+                                                CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
+                                    </WrapPanel>
+                                </bi:SlotHost>
                             </Grid>
                         </Border>
+                        <!-- Selected item (DashboardView.SelectedItems): a ring over the card's border, inside the item (the panel
+                             clips what goes beyond its edges) -->
+                        <Border x:Name="SelectionRing" BorderThickness="2" IsHitTestVisible="False" Visibility="Collapsed"
+                                BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" CornerRadius="{DynamicResource {x:Static bi:EasyBITheme.CornerRadiusKey}}" />
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="Kind" Value="Empty">
-                            <Setter TargetName="View" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="Content" Property="Visibility" Value="Collapsed" />
                             <Setter TargetName="Choices" Property="Visibility" Value="Visible" />
                             <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.BorderStrongBrushKey}}" />
                             <Setter TargetName="Card" Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.SurfaceAltBrushKey}}" />
@@ -57,6 +77,9 @@
                             </MultiDataTrigger.Conditions>
                             <Setter TargetName="TextPlaceholder" Property="Visibility" Value="Visible" />
                         </MultiDataTrigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="SelectionRing" Property="Visibility" Value="Visible" />
+                        </Trigger>
                         <Trigger Property="local:DashboardView.IsReadOnly" Value="True">
                             <Setter TargetName="Choices" Property="Visibility" Value="Collapsed" />
                             <Setter TargetName="TextPlaceholder" Property="Visibility" Value="Collapsed" />
@@ -183,6 +206,17 @@
         </Setter>
     </Style>
 
+    <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type behaviors:DashboardOverlay}, ResourceId=SelectionBox}" TargetType="ContentControl">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContentControl">
+                    <Border Background="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}"
+                            BorderThickness="1" Opacity="0.6" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type behaviors:DashboardOverlay}, ResourceId=DragGhost}" TargetType="ContentControl">
         <Setter Property="Opacity" Value="0.8" />
         <Setter Property="Template">
@@ -219,5 +253,20 @@
     <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type dnd:DropTarget}, ResourceId=InsertionLine}" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
         <Setter Property="CornerRadius" Value="1" />
+    </Style>
+
+    <!-- Why a drop is refused: a bubble under the target -->
+    <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type dnd:DropTarget}, ResourceId=Refusal}" TargetType="ContentControl">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContentControl">
+                    <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderStrongBrushKey}}"
+                            BorderThickness="1" CornerRadius="4" Padding="8,4">
+                        <TextBlock Text="{TemplateBinding Content}" FontSize="12" TextWrapping="Wrap" MaxWidth="360"
+                                   Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 </ResourceDictionary>

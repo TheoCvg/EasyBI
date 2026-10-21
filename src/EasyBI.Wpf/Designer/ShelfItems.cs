@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Windows.Input;
 using EasyBI.Abstractions;
 using EasyBI.Core;
 using EasyBI.Wpf.Resources;
@@ -39,7 +41,17 @@ public sealed class ShelfItemViewModel : ObservableObject
         new(TimeCalculation.YearToDate, () => Strings.TimeYearToDate),
     ];
 
+    /// <summary>How the visual can be sorted on a field: not at all, ascending or descending.</summary>
+    public static IReadOnlyList<SortOption> SortOptions { get; } =
+    [
+        new(null, "⇅", () => Strings.SortNone),
+        new(ListSortDirection.Ascending, "↑", () => Strings.SortAscending),
+        new(ListSortDirection.Descending, "↓", () => Strings.SortDescending),
+    ];
+
     private readonly Action _changed;
+    private bool _isSelected;
+    private ListSortDirection? _sortDirection;
     private DateGrain _grain;
     private TimeCalculation _time;
     private Aggregation _aggregation;
@@ -54,6 +66,51 @@ public sealed class ShelfItemViewModel : ObservableObject
         _changed = changed;
         _grain = HasGrain ? DateGrain.Month : DateGrain.None;
         _aggregation = field.DefaultAggregation ?? Aggregation.Sum;
+        SortCommand = new RelayCommand<ListSortDirection?>(direction => SortDirection = direction);
+        SelectCommand = new RelayCommand<object?>(_ => Selecting?.Invoke(this));
+        // The badges sum the settings up: they follow them, and the language
+        PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is not (nameof(Badges) or nameof(IsSelected))) OnPropertyChanged(nameof(Badges));
+        };
+        PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, (_, _) => OnPropertyChanged(nameof(Badges)), string.Empty);
+    }
+
+    /// <summary>Selects the chip in its designer (a click on it), whose properties panel then shows its settings.</summary>
+    public ICommand SelectCommand { get; }
+
+    internal Action<object>? Selecting { get; set; }
+
+    /// <summary>
+    /// Short marks of the chip's settings, shown on it (the settings themselves are in the properties panel):
+    /// aggregation, granularity, time calculation, chart type, secondary axis, sort.
+    /// </summary>
+    public IReadOnlyList<string> Badges
+    {
+        get
+        {
+            var badges = new List<string>();
+            if (HasAggregation) badges.Add(Aggregation switch
+            {
+                Aggregation.Average => Strings.BadgeAverage,
+                Aggregation.Min => Strings.BadgeMin,
+                Aggregation.Max => Strings.BadgeMax,
+                Aggregation.Count => Strings.BadgeCount,
+                _ => "Σ",
+            });
+            if (HasGrain) badges.Add(DateGrains.Caption(Grain));
+            if (IsValue && Time != TimeCalculation.None) badges.Add(Time switch
+            {
+                TimeCalculation.PreviousYear => Strings.BadgePreviousYear,
+                TimeCalculation.ChangeFromPreviousYear => Strings.BadgeChange,
+                TimeCalculation.PercentChangeFromPreviousYear => Strings.BadgePercentChange,
+                _ => Strings.BadgeYearToDate,
+            });
+            if (ShowSeriesOptions && SeriesMark is not null) badges.Add(SeriesMarkOption.Label);
+            if (ShowSeriesOptions && SecondaryAxis) badges.Add(Strings.SecondaryAxis);
+            if (CanSort && SortDirection is not null) badges.Add(SortOption.Symbol);
+            return badges;
+        }
     }
 
     public FieldDescriptor Field { get; }
@@ -63,6 +120,41 @@ public sealed class ShelfItemViewModel : ObservableObject
     public string Caption => Field.Caption;
 
     public bool HasGrain => Field.Kind == FieldKind.Dimension && Field.DataType == DataType.Date;
+
+    /// <summary>True while the chip is the designer's <see cref="DesignerViewModel.SelectedItem"/>.</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        internal set => SetProperty(ref _isSelected, value);
+    }
+
+    /// <summary>The visual can be sorted on the fields of the Axis and Values shelves.</summary>
+    public bool CanSort => Shelf is Shelf.Axis or Shelf.Values;
+
+    /// <summary>The sort of the visual on this field, or null; the designer keeps at most one sorted field.</summary>
+    public ListSortDirection? SortDirection
+    {
+        get => _sortDirection;
+        set
+        {
+            if (!SetProperty(ref _sortDirection, value)) return;
+            OnPropertyChanged(nameof(SortOption));
+            _changed();
+        }
+    }
+
+    /// <summary>Sorts on this field in the direction given as parameter (none to remove the sort).</summary>
+    public ICommand SortCommand { get; }
+
+    /// <summary>The option of <see cref="SortDirection"/>, with its symbol (a combo box cannot select a null value).</summary>
+    public SortOption SortOption
+    {
+        get => SortOptions.First(o => o.Value == _sortDirection);
+        set => SortDirection = value?.Value;
+    }
+
+    /// <summary>The column of this field in the query result: what a sort on it refers to.</summary>
+    public string Key => Field.Kind == FieldKind.Measure ? ToMeasureRef().Key : ToFieldRef().Key;
 
     /// <summary>A measure of the Values shelf: it can be seen through time.</summary>
     public bool IsValue => Field.Kind == FieldKind.Measure && Shelf == Shelf.Values;
@@ -131,6 +223,12 @@ public sealed class ShelfItemViewModel : ObservableObject
     };
 }
 
+/// <summary>A sort direction: its <see cref="Symbol"/> stands for it on a chip.</summary>
+public sealed class SortOption(ListSortDirection? direction, string symbol, Func<string> label) : Option<ListSortDirection?>(direction, label)
+{
+    public string Symbol { get; } = symbol;
+}
+
 /// <summary>
 /// A filter on a dimension. Most dimensions list their values to check: "one of" (In) or, for an existing filter
 /// loaded as-is, "all except" (NotIn). A date dimension filters on a period instead: between two dates, or relative to
@@ -139,6 +237,8 @@ public sealed class ShelfItemViewModel : ObservableObject
 public sealed class FilterItemViewModel : ObservableObject
 {
     private readonly Action _changed;
+    private bool _isSelected;
+    private ICommand? _selectCommand;
     private HashSet<string?>? _pendingSelection;
     private bool _isLoading = true;
     private Option<FilterOperator?> _periodKind;
@@ -146,6 +246,10 @@ public sealed class FilterItemViewModel : ObservableObject
     private DateTime? _to;
     private int _count = 12;
     private Option<DateGrain> _unit;
+    private string _search = "";
+
+    /// <summary>A list of values shows a search box from this number of values on.</summary>
+    public const int SearchThreshold = 8;
 
     public FilterItemViewModel(
         FieldDescriptor field,
@@ -158,6 +262,8 @@ public sealed class FilterItemViewModel : ObservableObject
         Field = field;
         Operator = @operator;
         _changed = changed;
+        // While loading, the values are announced once at the end
+        Values.CollectionChanged += (_, _) => { if (!IsLoading) OnValuesChanged(); };
         PeriodKinds =
         [
             new(null, () => Strings.PeriodKindAny),
@@ -182,6 +288,18 @@ public sealed class FilterItemViewModel : ObservableObject
 
     public FieldDescriptor Field { get; }
 
+    /// <summary>True while the filter is the designer's <see cref="DesignerViewModel.SelectedItem"/>.</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        internal set => SetProperty(ref _isSelected, value);
+    }
+
+    /// <summary>Selects the filter in its designer (a click on it), whose properties panel then shows its editor.</summary>
+    public ICommand SelectCommand => _selectCommand ??= new RelayCommand<object?>(_ => Selecting?.Invoke(this));
+
+    internal Action<object>? Selecting { get; set; }
+
     public FilterOperator Operator { get; }
 
     public string Caption => Field.Caption;
@@ -192,6 +310,22 @@ public sealed class FilterItemViewModel : ObservableObject
     public bool IsValueList => !IsPeriod;
 
     public ObservableCollection<FilterValueViewModel> Values { get; } = [];
+
+    /// <summary>The <see cref="Values"/> matching <see cref="Search"/>: the checked values that do not match stay checked.</summary>
+    public IReadOnlyList<FilterValueViewModel> VisibleValues => Values.Where(v => TextMatch.Matches(v.Label, _search)).ToArray();
+
+    /// <summary>Text searched in the values (see <see cref="TextMatch"/>).</summary>
+    public string Search
+    {
+        get => _search;
+        set
+        {
+            if (SetProperty(ref _search, value ?? "")) OnPropertyChanged(nameof(VisibleValues));
+        }
+    }
+
+    /// <summary>Whether the values are many enough to need a search box (<see cref="SearchThreshold"/>).</summary>
+    public bool ShowSearch => Values.Count >= SearchThreshold;
 
     public bool IsLoading
     {
@@ -320,7 +454,14 @@ public sealed class FilterItemViewModel : ObservableObject
             _pendingSelection = null;
             IsLoading = false;
             OnPropertyChanged(nameof(Summary));
+            OnValuesChanged();
         }
+    }
+
+    private void OnValuesChanged()
+    {
+        OnPropertyChanged(nameof(VisibleValues));
+        OnPropertyChanged(nameof(ShowSearch));
     }
 
     private void OnValueToggled()

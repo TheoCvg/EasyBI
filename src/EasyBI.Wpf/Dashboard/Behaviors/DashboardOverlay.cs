@@ -40,6 +40,9 @@ public sealed class DashboardOverlay : Adorner
     /// <summary>Style of the picture of a moved item following the pointer (a <c>ContentControl</c> holding an <c>Image</c>).</summary>
     public static ComponentResourceKey DragGhostStyleKey { get; } = new(typeof(DashboardOverlay), "DragGhost");
 
+    /// <summary>Style of the box drawn to select items (a <c>ContentControl</c>, see <see cref="SelectionBehavior"/>).</summary>
+    public static ComponentResourceKey SelectionBoxStyleKey { get; } = new(typeof(DashboardOverlay), "SelectionBox");
+
     /// <summary>Distance around an item within which it stays hovered (its "+" buttons sit on its edges).</summary>
     public const double HoverMargin = 14;
 

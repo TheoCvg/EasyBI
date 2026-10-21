@@ -1,0 +1,99 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:bi="clr-namespace:EasyBI.Wpf"
+                    xmlns:designer="clr-namespace:EasyBI.Wpf.Designer">
+
+    <Style TargetType="bi:FilterBar">
+        <Style.Resources>
+            <Style x:Key="ChipButton" TargetType="Button">
+                <Setter Property="Content" Value="✕" />
+                <Setter Property="FontSize" Value="10" />
+                <Setter Property="Width" Value="18" />
+                <Setter Property="Height" Value="18" />
+                <Setter Property="Margin" Value="4,0,0,0" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bg" Background="Transparent" CornerRadius="9">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bg" Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.HoverBrushKey}}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <DataTemplate x:Key="SlicerTemplate" DataType="{x:Type bi:SlicerViewModel}">
+                <bi:SlotHost Slot="{x:Static bi:FilterBarSlots.Slicer}">
+                    <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SecondarySoftBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.SecondarySoftBorderBrushKey}}" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock VerticalAlignment="Center"><Run Text="{Binding Caption, Mode=OneWay}" /><Run Text="{bi:Localize LabelSuffix}" /></TextBlock>
+                            <ToggleButton x:Name="Toggle" Margin="6,0,0,0" Padding="6,1" FontSize="11"
+                                          Content="{Binding Filter.Summary}"
+                                          IsEnabled="{Binding Filter.IsLoading, Converter={x:Static designer:InverseBooleanConverter.Instance}}" />
+                            <Popup IsOpen="{Binding IsChecked, ElementName=Toggle}" StaysOpen="False"
+                                   PlacementTarget="{Binding ElementName=Toggle}" Placement="Bottom" AllowsTransparency="True">
+                                <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="1"
+                                        CornerRadius="6" Padding="8" MaxHeight="300" MinWidth="160">
+                                    <designer:FilterEditor DataContext="{Binding Filter}" />
+                                </Border>
+                            </Popup>
+                            <Button Style="{StaticResource ChipButton}" Command="{x:Static bi:FilterBar.RemoveFilterCommand}" ToolTip="{bi:Localize RemoveFilter}" />
+                        </StackPanel>
+                    </Border>
+                </bi:SlotHost>
+            </DataTemplate>
+        </Style.Resources>
+        <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="bi:FilterBar">
+                    <DockPanel Background="{TemplateBinding Background}">
+                        <!-- Current cross-filter -->
+                        <bi:SlotHost Slot="{x:Static bi:FilterBarSlots.Selection}" DockPanel.Dock="Right">
+                            <Border x:Name="SelectionChip" VerticalAlignment="Center"
+                                    Background="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.AccentSoftBorderBrushKey}}" BorderThickness="1" CornerRadius="13" Padding="10,3,4,3" Margin="3">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{TemplateBinding SelectionDescription}" VerticalAlignment="Center" MaxWidth="360" TextTrimming="CharacterEllipsis" />
+                                    <Button Style="{StaticResource ChipButton}" Command="{x:Static bi:FilterBar.ClearSelectionCommand}" ToolTip="{bi:Localize ClearSelection}" />
+                                </StackPanel>
+                            </Border>
+                        </bi:SlotHost>
+
+                        <bi:SlotHost Slot="{x:Static bi:FilterBarSlots.Filters}" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <bi:SlotHost Slot="{x:Static bi:FilterBarSlots.Label}">
+                                    <TextBlock Text="{bi:Localize Filters}" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" Margin="0,0,6,0" />
+                                </bi:SlotHost>
+                                <ItemsControl ItemsSource="{Binding Slicers, RelativeSource={RelativeSource TemplatedParent}}" ItemTemplate="{StaticResource SlicerTemplate}" VerticalAlignment="Center" Focusable="False">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                                <bi:SlotHost Slot="{x:Static bi:FilterBarSlots.AddButton}">
+                                    <Button Content="{bi:Localize AddFilter}" Command="{x:Static bi:FilterBar.AddFilterCommand}" Margin="6,0,0,0" Padding="8,2"
+                                            VerticalAlignment="Center" Cursor="Hand" />
+                                </bi:SlotHost>
+                            </StackPanel>
+                        </bi:SlotHost>
+                    </DockPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="SelectionDescription" Value="{x:Null}">
+                            <Setter TargetName="SelectionChip" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

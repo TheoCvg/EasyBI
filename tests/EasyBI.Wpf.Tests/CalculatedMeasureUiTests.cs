@@ -89,17 +89,15 @@ public class CalculatedMeasureUiTests
     {
         var context = EasyBIContext.Create().AddModel(Model());
         var list = new FieldList { Context = context };
-        var measures = (ListBox)LogicalTreeHelper.FindLogicalNode(list, "MeasureList");
-
         context.Measures.Set(Rate());
 
-        var fields = measures.ItemsSource.Cast<ModelField>().ToArray();
+        var fields = list.Measures.ToArray();
         Assert.Equal(["Chiffre d'affaires", "Marge", "Taux de marge"], fields.Select(f => f.Caption));
         Assert.True(fields[^1].IsEditable);
         Assert.False(fields[0].IsEditable);
 
         context.Measures.Remove("calc_rate");
-        Assert.Equal(2, measures.ItemsSource.Cast<ModelField>().Count());
+        Assert.Equal(2, list.Measures.Count);
     });
 
     [Fact]

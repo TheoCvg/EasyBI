@@ -79,6 +79,40 @@ Context.RefreshData("sales");   // the visuals of this model; RefreshData() for 
 <bi:VisualView Context="{Binding Context}" Definition="{Binding Visual}" />   <!-- display -->
 ```
 
+### The designer
+
+The `ReportDesigner` has three zones: the fields on the left, the wells and the preview in the middle, the
+**properties** on the right (both side panels fold: `IsFieldPanelOpen`, `IsPropertiesPanelOpen`).
+
+- **Chips** show their field and badges summing their settings up (Σ, avg, Quarter, PY, Y2, ↓...). A click selects one
+  (`DesignerViewModel.SelectedItem`) and the properties panel shows its settings in sections: aggregation, granularity,
+  time calculation, chart type, secondary axis, sort for a field; the editor of a filter. Without a selection it shows
+  the visual's: title, sort, Top N, and the options of the renderer.
+- **The visual type** is chosen in a gallery grouped by use (comparison, trend, composition, indicators and tables);
+  types no renderer draws are greyed.
+- **Wells follow the type**: a pie shows "Category" and "Value", a table "Rows", a KPI only "Values"; a well the type
+  does not use refuses fields and stays shown while it still holds some. Empty wells say what to drop, and while a
+  field or a chip is dragged the wells that accept it light up (`DragSource.DragStarted`).
+- **Undo and redo** every change of the visual (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z, the header's buttons,
+  `UndoCommand`/`RedoCommand`; 100 steps, `MaxHistory`). Loading another visual starts a new history.
+- **Keyboard**: arrows go from chip to chip (Up/Down from well to well), Ctrl+Left/Right move the selected chip within
+  its well, Delete removes it, Escape selects the visual again.
+
+Everything stays replaceable: the template is lookless and made of slots (see below); the properties are descriptors
+(`DesignerProperty`: toggle, choice, number, text, info or any object shown with its `DataTemplate`, grouped in
+`DesignerPropertySection`s), which `DesignerViewModel.PropertiesBuilding` lets an application add, remove or reorder;
+each kind of editor is a `DataTemplate` under a `DesignerPropertyTemplates` key; the icons of the types are geometries
+under `VisualTypeIcons` keys.
+
+```csharp
+designer.ViewModel!.PropertiesBuilding += (_, e) =>
+{
+    if (e.Selection is ShelfItemViewModel { IsValue: true } chip)
+        e.Sections.Add(new DesignerPropertySection("Notes", () => "Notes",
+            [DesignerProperty.Text("Comment", () => "Comment", () => Comments.Get(chip), text => Comments.Set(chip, text))]));
+};
+```
+
 ### Calculated measures
 
 A measure is a row value that the end user aggregates (sum, average...). Ratios need more: the margin rate of a region
@@ -168,6 +202,11 @@ without a constraint, they share the room their neighbours leave, so a dashboard
   container, constrained children keep their size (`ColumnSpan` in columns, `RowSpan` in rows) and the others share
   the rest; across it, every child takes the whole room. An item with a `RowSpan` sets the height of its line and the
   items next to it stretch, so items stacked beside a tall item share its height.
+- **Column tiers**: on a narrow panel, Fit bands show fewer columns (`DashboardPanel.ColumnTiers`; by default
+  1 column under 600 px and 6 under 960 px, `ColumnTier.Defaults`). Spans are scaled to the tier, a line whose items
+  would get less than 3 columns each is broken into several lines (one item per line in a single column), and
+  constrained items keep their proportions while filling their line. Only the display adapts: the saved layout does
+  not change, and a resize in a tier is saved in the layout's columns (`DashboardPanel.ActiveColumns`, `ToLayoutSpan`).
 - **Wrap** bands start their items at `DashboardPanel.MinItemWidth` (or their fixed `Width` in pixels), break lines
   when the next one does not fit, then share what is left on each line. **Scroll** bands do the same on one line,
   and scroll horizontally when the items do not fit.
@@ -206,7 +245,7 @@ side along its container joins it (the line's columns are shared when it has no 
 wraps the item and the newcomer in a new container. The rules are pure functions on records in
 `DashboardLayoutEngine`, usable without any UI.
 
-**`DashboardView`** is the ready-made `UserControl`: `DashboardItem`s showing visuals in a
+**`DashboardView`** is the ready-made (lookless) control: `DashboardItem`s showing visuals in a
 `DashboardPanel`, with every interaction provided by a **behavior** (Microsoft.Xaml.Behaviors):
 
 | Behavior | Feature |
@@ -217,6 +256,8 @@ wraps the item and the newcomer in a new container. The rules are pure functions
 | `MoveBehavior` | grip to drag an item: a picture follows the pointer and a placeholder shows where it lands, the others making room live; near an item's edge it goes next to it (like "+"), between two lines it becomes a line, over a free space it fills it; across bands, auto-scroll near the edges; Escape cancels |
 | `ResizeBehavior` | corner handle: constrains the item (columns and rows in a grid band, pixels and rows elsewhere) |
 | `ItemToolbarBehavior` | automatic size (for a resized item), edit, remove; text size, bold, alignment; image fit |
+| `SelectionBehavior` | click selects an item (Ctrl+click adds or removes it), click on the background unselects, drag from the background draws a selection box; arrows go to the nearest item (Shift adds it), Escape unselects |
+| `KeyboardLayoutBehavior` | Ctrl+arrows move the selected item, Ctrl+Shift+Down/Up put it in a new band, Alt+arrows extend the selected items over the free room next to them (through the commands below) |
 | `BandMenuBehavior` | ⋮ menu of a band: Fit / Scroll / Wrap, insert, remove (`MenuOpening` to customize it) |
 | `BandScrollBehavior` | scroll bar and Shift+wheel for scrolling bands |
 | `TextEditBehavior` | double-click a text to edit it in place |
@@ -236,11 +277,40 @@ Hooks for applications:
 - events `EditVisualRequested` (replace the built-in designer dialog), `ImageRequested` (replace the file
   dialog), `TextEditRequested`, `ItemRemoving` (veto), `Changed` (every change, with the documents before
   and after), `DocumentLoaded`;
+- the item selection: `SelectedItems`, `SelectionChanged`, `Select(items, DashboardSelectionMode.Replace/Add/Toggle)`,
+  `SelectAll`, `UnselectAll`, `RemoveSelected` and `DuplicateSelected` (one change each), also reached through
+  `ApplicationCommands.Delete` (Del), `ApplicationCommands.SelectAll` (Ctrl+A) and `DashboardCommands.Duplicate`
+  (Ctrl+D); `DashboardItem.IsSelected` for templates (the default one draws a ring) and the
+  `DashboardOverlay.SelectionBoxStyleKey` style. A read-only dashboard has no selection;
+- lazy loading: only the visuals of the items in or near the visible part of the dashboard query their data
+  (`DashboardItem.IsInViewport`, bound to `VisualView.IsActive` by the default template); the others query once they
+  scroll into view, a change of filters or data giving them one query then. `ViewportMargin` sets how far ahead items
+  load (one viewport by default), `LoadsVisibleItemsOnly = false` loads them all (to print or export, for instance).
+  `VisualView.IsActive = false` holds back the queries of any visual;
+- keyboard layout: `MoveSelected(side, toNewBand)` (`DashboardCommands.MoveItem` and `MoveItemToNewBand`, Ctrl+arrows
+  and Ctrl+Shift+Down/Up; `DashboardLayoutEngine.Step`): Down takes an item
+  sharing its line to a new line below; alone on its line, it joins the next line, and from the last line it goes into
+  the band below (created past the last one); Up the same upwards, so that Down and Up undo each other; Ctrl+Shift+Down/Up puts it in a new band below/above; Left/Right swap it with its
+  neighbour. `ExtendSelected(width)` (`DashboardCommands.ExtendItem`, Alt+arrows; `DashboardLayoutEngine.Fill`) extends the selected items over the
+  free room next to them without shrinking their neighbours;
+- copy and paste of the selected items, possibly between dashboards: `CopySelected` / `CutSelected` / `Paste`
+  (Ctrl+C, Ctrl+X, Ctrl+V through `ApplicationCommands`; `CreateCopy` and `Paste(data)` work without the clipboard).
+  The clipboard holds an `easybi/v1` report (format `VisualTransfer.ClipboardFormat`) with the visuals and the
+  calculated measures they use, plus their titles as text, and their layout (format
+  `DashboardView.LayoutClipboardFormat`: their arrangement and sizes, `DashboardLayoutEngine.Extract`). Pasted items get
+  new ids, keep their arrangement and sizes, and go after the line of the last selected item, or at the end
+  (`DashboardLayoutEngine.Insert`; lines of a grid band join the anchor's grid band, other bands come as new bands);
+  without the layout format, each one goes to the right of the previous one. Visuals of a model the context does not
+  know are left out, and a calculated measure whose name is taken by another definition is renamed (`VisualTransfer`
+  in `EasyBI.Core`);
 - `DashboardCommands` (`AddVisual`, `AddText`, `AddImage`, `EditItem`, `RemoveItem`, `ResetSize`,
-  `AddRight`, `AddBelow`, `InsertBand`, `RemoveBand`...) for custom templates, and public methods
+  `AddRight`, `AddBelow`, `InsertBand`, `RemoveBand`, `Duplicate`, `MoveItem`, `MoveItemToNewBand`, `ExtendItem`
+  — the last three take an `ItemSide` or its name, as `CommandParameter="Below"`...) for custom templates, and public methods
   (`AddNextTo`, `AddIn` a free space, `InsertLine`, `SetAutoSize`, `SetVisual`, `InsertBand`, `BeginEdit` to group
   changes into one undo step...);
-- an implicit style for `DashboardItem` (lookless control) and the `DashboardOverlay` style keys
+- a default template for `DashboardView` (its `Panel` in a scroll viewer, under an `AdornerDecorator` where behaviors
+  draw: a custom template shows it with `<ContentPresenter Content="{Binding Panel, RelativeSource={RelativeSource TemplatedParent}}" />`),
+  an implicit style for `DashboardItem` (lookless control) and the `DashboardOverlay` style keys
   (`PlusButtonStyleKey`, `IconButtonStyleKey`, `GripStyleKey`, `ResizeGripStyleKey`, `FreeSpaceStyleKey`,
   `DropPlaceholderStyleKey`, `DragGhostStyleKey`) to restyle;
 - `DashboardBehavior` as a base class for new interactions: it gives access to the view, the panel and the
@@ -268,6 +338,13 @@ dimensions, measures) and drags them as `ModelField`s. Placed next to a dashboar
   `AddField` replace them. Each drop is one undo step.
 
 The designer's field panel is the same `FieldList` (its shelves accept the `ModelField`s of the selected model).
+A search box at the top of the field list (`FieldList.Search`) and above the values of a filter (from 8 values on,
+`FilterItemViewModel.Search`; checked values that are not shown stay checked) narrow the lists down: case and accents
+are ignored and every word must appear (`TextMatch.Matches` in `EasyBI.Core`).
+
+In the designer, the visual is sorted from the properties of a chip of the Axis or Values well (ascending ↑ or
+descending ↓; one sorted field at a time, the sort following the field when its aggregation or grain changes). The
+visual's properties recall the active sort and limit the visual to its first rows (`Top`).
 `DashboardDropTarget.Find`, the place an item dropped at a point goes, is shared by moves and field drops.
 
 ### Drag and drop
@@ -296,13 +373,16 @@ public sealed class MyViewModel : IDropHandler
   `Index` among the target's items and the raw `Data` for drags coming from elsewhere.
 - `DropTarget.IsDragOver` is true while an accepted drag is over the target (style triggers);
   `DropTarget.Orientation` switches the insertion rules to a vertical stack.
+- A handler may explain a refusal (`IDropHandler.RefusalReason`, optional): the reason is shown under the target and
+  set on it as `DropTarget.Refusal` while the drag is over it.
 - A scrollable target, or its scroll viewer, scrolls when the pointer nears its edges (`AutoScroller`, also usable
   on its own); `InsertionIndex` holds the pure insertion rules.
-- Style keys `DragSource.PreviewStyleKey` (a `ContentControl`; `DragSource.PreviewTemplate` sets the content) and
-  `DropTarget.InsertionLineStyleKey` (a `Border`).
+- Style keys `DragSource.PreviewStyleKey` (a `ContentControl`; `DragSource.PreviewTemplate` sets the content),
+  `DropTarget.InsertionLineStyleKey` (a `Border`) and `DropTarget.RefusalStyleKey` (a `ContentControl` holding the reason).
 
 In the designer, fields are dropped between chips, chips are reordered within a shelf, and dimensions move between
-Axis and Legend keeping their granularity.
+Axis and Legend keeping their granularity. A refused field says why (`DesignerViewModel.RefusalReason`): only measures
+in Values, only dimensions elsewhere, a field already on the shelf, a full axis, a field of another model.
 
 ## Filtering: global filters and cross-filtering
 
@@ -337,6 +417,58 @@ PeriodFilters.Describe(filter);                                               //
 A connector only has to call `request.Select?.Invoke(new CategorySelection(category, series))` on
 click (or `RowSelection` for a table): `Select` is null when interactivity is disabled, for example
 in the designer preview.
+
+## Customizing the components: slots
+
+The parts of the `ReportDesigner`, `FieldList`, `FilterBar`, `FilterEditor` and `DashboardView` are **slots**: named places
+where an application adds its own content (before or after the default content), replaces it, or hides it.
+
+```xml
+<bi:ReportDesigner Context="{Binding Context}">
+    <bi:Slots.Items>
+        <!-- Under the preview -->
+        <bi:Slot Name="{x:Static bi:ReportDesignerSlots.Preview}">
+            <Button Content="Publish" Command="{Binding DataContext.PublishCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+        </bi:Slot>
+        <bi:Slot Name="{x:Static bi:ReportDesignerSlots.Title}" Mode="Before"><TextBlock Text="Title:" /></bi:Slot>
+        <bi:Slot Name="{x:Static bi:ReportDesignerSlots.FiltersShelf}" Mode="Hide" />
+    </bi:Slots.Items>
+</bi:ReportDesigner>
+```
+
+```csharp
+Slots.Add(designer, ReportDesignerSlots.Header, exportButton);              // after the default content
+Slots.Add(designer, ReportDesignerSlots.Fields, help, SlotMode.Before);      // above the field list
+Slots.Add(filterBar, FilterBarSlots.AddButton, myAddButton, SlotMode.Replace);
+Slots.Hide(designer, ReportDesignerSlots.FieldPanel);
+```
+
+- **Names**: `ReportDesignerSlots` (`FieldPanel`, `Fields`, `Header`, `Title`, `VisualTypes`, `Shelves`, `AxisShelf`,
+  `LegendShelf`, `ValuesShelf`, `FiltersShelf`, `Preview`, `Properties`), `FieldListSlots` (`Model`, `Search`, `Dimensions`,
+  `Measures`, `AddMeasureButton`), `FilterBarSlots` (`Filters`, `Label`, `Slicer`, `AddButton`, `Selection`),
+  `FilterEditorSlots` (`Values`, `Period`) and `DashboardSlots` (`Body`, `ItemContent`, `EmptyItemChoices`, `ItemToolbar`). Slots can be
+  nested: `Header` contains `Title` and `VisualTypes`. The band menu of a dashboard is customized through
+  `BandMenuBehavior.MenuOpening`.
+- **Modes**: `After` (default), `Before`, `Replace`, `Hide`. Before and after are left and right of the default content,
+  or above and below it in a vertical slot (`Fields`, `Shelves`, `Preview`); several slots with the same name are shown
+  in declaration order, and the last `Replace` or `Hide` wins.
+- **Data context**: the content takes the data context of the place it is shown in: the `DesignerViewModel` in the
+  designer, the application's in the filter bar and the field list, the `SlicerViewModel` in `FilterBarSlots.Slicer`, the
+  `FilterItemViewModel` in the filter editor (shown once per filter, so its slots take a template), the `DashboardItem`
+  in the dashboard item slots (commands such as `DashboardCommands.RemoveItem` act on the item containing them).
+- **Repeated slots**: an element can only be shown once. A slot shown several times (`FilterBarSlots.Slicer`, once per
+  global filter, the dashboard item slots, once per item, or slots declared for several components) takes a `ContentTemplate` (`Slots.AddTemplate(...)` in
+  code), applied to the data context of each place.
+- **Inheritance**: `Slots.Items` is inherited, so slots declared on a window or a panel apply to every component in it;
+  the nearest declaration replaces the others. The designer opened to edit a dashboard visual takes the slots of the
+  dashboard.
+- **Custom templates**: the components are lookless controls. Their default templates (`Themes/*.xaml` of `EasyBI.Wpf`)
+  are built from `SlotHost`s (`<bi:SlotHost Slot="..." Orientation="Vertical">` with the default content inside), so a
+  template of the application keeps the slots it hosts. A template works with the components' read-only properties
+  and commands: `ReportDesigner.ViewModel` (the template's data context); `FieldList.ModelOptions`, `Dimensions`,
+  `Measures`, `CanAddMeasure` and `AddMeasureCommand`, `EditMeasureCommand`, `DeleteMeasureCommand`;
+  `FilterBar.Slicers`, `SelectionDescription` and `AddFilterCommand`, `RemoveFilterCommand` (on the slicer of its
+  data context), `ClearSelectionCommand`; `DashboardView.Panel` and `DashboardCommands`.
 
 ## Theming
 
@@ -510,6 +642,38 @@ Draw on a transparent background, so that the chart sits on the theme's surface.
 `EasyBIContext.ResolveRenderer` negotiates capabilities: the active renderer if it supports every type the
 visual uses (the visual's and its measures'), otherwise another plugged-in renderer, otherwise a built-in one. The designer disables
 the types that no renderer can draw.
+
+### Renderer options
+
+A connector offers settings of its own to the end user by declaring them in its capabilities: the designer shows them
+in the "Options" section of its properties panel (`DesignerPropertySections.Options`) for the visuals they apply to, as
+a check box, a list or a number box, and saves their values with the visual.
+
+```csharp
+public RendererCapabilities Capabilities { get; } = new(marks)
+{
+    Options =
+    [
+        RendererOption.Toggle("scrollable", () => Strings.Scrollable, appliesTo: v => v.Mark.IsCartesian()),
+        RendererOption.Choice("curve", () => Strings.Curve, [new("straight", () => Strings.Straight), new("smooth", () => Strings.Smooth)]),
+        RendererOption.Number("barWidth", () => Strings.BarWidth, 48, minimum: 4, maximum: 120),
+    ],
+};
+
+public FrameworkElement Render(RenderRequest request)
+{
+    var scrollable = request.Visual.GetRendererOption<bool>(Name, "scrollable");   // EasyBI.Core
+    ...
+}
+```
+
+- Labels are functions, read when shown, so that they follow the EasyBI language (`EasyBILocalization.UICulture`).
+- Values are stored in `VisualDefinition.Extensions`, one JSON object per renderer under its name
+  (`"LiveCharts2": "{\"scrollable\":true}"`); a value equal to the option's default is not stored. The settings of a
+  renderer are kept while another one draws the visual. `WithRendererOption` sets one in code.
+- The LiveCharts2 connector offers **Scroll bar** (`LiveCharts2Renderer.ScrollableOption`) on cartesian charts: the chart
+  shows the first 20 categories (`ScrollWindow`) above a small chart of all of them, where a band marks the visible
+  ones; dragging on it scrolls, the mouse wheel on the chart zooms.
 
 ## Report format (`easybi/v1`)
 

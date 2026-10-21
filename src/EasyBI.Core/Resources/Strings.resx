@@ -64,10 +64,10 @@
     <value>Drop at least one measure on “Values”.</value>
   </data>
   <data name="ValidationKpi" xml:space="preserve">
-    <value>A KPI uses neither “Axis” nor “Legend”.</value>
+    <value>A KPI only shows values: remove the fields of the other wells.</value>
   </data>
   <data name="ValidationPie" xml:space="preserve">
-    <value>A pie chart needs one dimension on “Axis”, a single measure and no legend.</value>
+    <value>A pie chart needs one category and a single value.</value>
   </data>
   <data name="ValidationNoImage" xml:space="preserve">
     <value>Choose an image to show.</value>
