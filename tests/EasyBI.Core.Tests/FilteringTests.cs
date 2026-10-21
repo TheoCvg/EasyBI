@@ -47,7 +47,7 @@ public class FilteringTests
 
         filters.Select(request, new CategorySelection(sud, web));
 
-        Assert.Equal("Région = Sud, Canal = Web", filters.Selection!.Describe(Model().Metadata));
+        Assert.Equal("Région = Sud, Canal = Web", Assert.Single(filters.Selections).Describe(Model().Metadata));
         Assert.Equal(300m, await TotalAsync(filters));
         // The source visual is not filtered by its own selection
         Assert.Same(ByRegionAndChannel, filters.Apply(ByRegionAndChannel));
@@ -64,7 +64,7 @@ public class FilteringTests
         filters.Select(request, new CategorySelection(0, 0));
         filters.Select(request, new CategorySelection(0, 0));
 
-        Assert.Null(filters.Selection);
+        Assert.Empty(filters.Selections);
         Assert.Equal(2, changes);
         Assert.Equal(640m, await TotalAsync(filters));
     }
@@ -78,7 +78,7 @@ public class FilteringTests
 
         filters.Select(request, new CategorySelection(request.Chart.Categories.ToList().IndexOf("2024 Q1")));
 
-        var filter = Assert.Single(filters.Selection!.Filters);
+        var filter = Assert.Single(Assert.Single(filters.Selections).Filters);
         Assert.Equal(("Date", DateGrain.Quarter), (filter.Field, filter.Grain));
         Assert.Equal(["20241"], filter.Values);
         Assert.Equal(400m, await TotalAsync(filters));
@@ -101,7 +101,7 @@ public class FilteringTests
     {
         var filters = new FilterContext();
         filters.Select(await VisualPipeline.PrepareAsync(Model(), Total), new CategorySelection(0));
-        Assert.Null(filters.Selection);
+        Assert.Empty(filters.Selections);
     }
 
     [Fact]
@@ -141,7 +141,7 @@ public class FilteringTests
         filters.Load([new ReportFilter("sales", new FilterSpec("Channel", FilterOperator.NotIn, ["Web"]))]);
 
         Assert.Equal("Channel", Assert.Single(filters.Filters).Filter.Field);
-        Assert.Null(filters.Selection);
+        Assert.Empty(filters.Selections);
     }
 
     [Fact]

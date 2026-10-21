@@ -256,7 +256,7 @@ wraps the item and the newcomer in a new container. The rules are pure functions
 | `MoveBehavior` | grip to drag an item: a picture follows the pointer and a placeholder shows where it lands, the others making room live; near an item's edge it goes next to it (like "+"), between two lines it becomes a line, over a free space it fills it; across bands, auto-scroll near the edges; Escape cancels |
 | `ResizeBehavior` | corner handle: constrains the item (columns and rows in a grid band, pixels and rows elsewhere) |
 | `ItemToolbarBehavior` | automatic size (for a resized item), edit, remove; text size, bold, alignment; image fit |
-| `SelectionBehavior` | click selects an item (Ctrl+click adds or removes it), click on the background unselects, drag from the background draws a selection box; arrows go to the nearest item (Shift adds it), Escape unselects |
+| `SelectionBehavior` | click selects an item (Ctrl+click adds or removes it, except on a bar, slice or row of a chart, where it extends the cross-filtering: `VisualView.DataSelectedEvent`), click on the background unselects, drag from the background draws a selection box; arrows go to the nearest item (Shift adds it), Escape unselects |
 | `KeyboardLayoutBehavior` | Ctrl+arrows move the selected item, Ctrl+Shift+Down/Up put it in a new band, Alt+arrows extend the selected items over the free room next to them (through the commands below) |
 | `BandMenuBehavior` | ⋮ menu of a band: Fit / Scroll / Wrap, insert, remove (`MenuOpening` to customize it) |
 | `BandScrollBehavior` | scroll bar and Shift+wheel for scrolling bands |
@@ -399,8 +399,13 @@ inherited property), it is used by the `FilterBar` and by every `VisualView`:
 - **Global filters** (slicers): added from the `FilterBar`, they apply to every visual of the same
   model and are saved with the report (`ReportDefinition.Filters`).
 - **Cross-filtering**: clicking a bar, a point, a slice or a table row filters the other visuals of
-  the same model on the element's dimensions (axis, plus legend for a bar). Clicking the same element
-  again clears the selection. The source visual is not filtered and shows the current selection.
+  the same model on the element's dimensions (axis, plus legend for a bar). Ctrl+click adds an element to the
+  selection of its visual, or removes it: the other visuals keep the rows of any selected element. Ctrl+click in
+  another visual adds that visual's own selection (`FilterContext.Selections`, one per visual): a visual is filtered by
+  the selections of all the others, "(Region = North or South) and Channel = Web". A plain click replaces every
+  selection, clicking the only selected element again clears it. A visual is not filtered by its own selection: it dims
+  what is left out of it and shows a summary of it, whose ✕ clears it (`ClearSelection(visualId)`); the `FilterBar`
+  sums them all up and clears them all.
   Periods (quarter, month...) filter through `FilterSpec.Grain`.
 - **Period filters**: a date dimension, in the `FilterBar` or on the designer's Filters shelf, is filtered on a
   period rather than on a list of values: between two dates, the current day / month / quarter / year, the last n
@@ -416,7 +421,10 @@ PeriodFilters.Describe(filter);                                               //
 
 A connector only has to call `request.Select?.Invoke(new CategorySelection(category, series))` on
 click (or `RowSelection` for a table): `Select` is null when interactivity is disabled, for example
-in the designer preview.
+in the designer preview. When the visual is the source of the selection, `request.Highlight` lists the selected
+elements: draw them as usual and the others with `SelectionFilters.DimmedOpacity`, using
+`request.IsEmphasized(category, series)` (or `IsRowEmphasized(row)`). The OxyPlot connector dims bars and slices one
+by one, but lines and points by series only.
 
 ## Customizing the components: slots
 
@@ -703,7 +711,10 @@ public FrameworkElement Render(RenderRequest request)
 
 `null` in `values` means a missing value. Besides `In` and `NotIn`, a date filter's `operator` can be `Between`
 (values: from and to as `yyyy-MM-dd`, inclusive, `null` for an open end), `Current`, `Last` or `Previous` (value: the
-number of periods; `grain` is their unit). `EasyBIContext.Validate(report)` reports the unknown
+number of periods; `grain` is their unit). An `AnyOf` filter keeps the rows matching every filter of one of its
+`alternatives` (its `field` and `values` are empty): cross-filtering builds one when several selected elements differ
+on more than one dimension, `{ "field": "", "operator": "AnyOf", "values": [], "alternatives": [[...], [...]] }`.
+`EasyBIContext.Validate(report)` reports the unknown
 models and fields of a loaded report, and the formulas that no longer match their model.
 
 Calculated measures created by the end user are saved with the report (the property is omitted when there are none),
@@ -768,8 +779,6 @@ See [AGENTS.md](AGENTS.md) for the code style, language rules and Git workflow.
 
 ## Known limitations / roadmap
 
-- Cross-filtering: one selection at a time; the selected element is not yet highlighted in the
-  source chart (a "Sélection : ..." banner shows it).
 - Designer and `FilterBar` filters: "one of" a list of values, or a period for a date dimension; no ranges on numbers.
 - Relative periods ("last 12 months") are resolved in the local time zone when a visual queries; an open dashboard does
   not query again at midnight.

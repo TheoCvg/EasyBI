@@ -7,6 +7,8 @@ using EasyBI.Wpf;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.Drawing;
+using LiveChartsCore.Kernel;
+using LiveChartsCore.Kernel.Events;
 using LiveChartsCore.Measure;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
@@ -142,7 +144,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
     private static CartesianChart RenderCartesian(RenderRequest request)
     {
         var chart = request.Chart;
-        var series = chart.Series.Select((s, i) => CreateSeries(s, Color(request.Theme, i))).ToArray();
+        var series = chart.Series.Select((_, i) => CreateSeries(request, i)).ToArray();
         var hasSecondary = chart.Series.Any(s => s.SecondaryAxis);
 
         var theme = request.Theme;
@@ -174,12 +176,11 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                 ? FindingStrategy.ExactMatch
                 : FindingStrategy.CompareOnlyXTakeClosest;
             view.Cursor = System.Windows.Input.Cursors.Hand;
-            view.DataPointerDown += (_, points) =>
+            OnPointClicked(view, view.FindingStrategy, point =>
             {
-                if (points?.FirstOrDefault() is not { } point) return;
                 var index = Array.IndexOf(series, point.Context.Series);
                 select(new CategorySelection(point.Index, index < 0 ? null : index));
-            };
+            });
         }
         return view;
     }
@@ -255,12 +256,24 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
 
     private static SKColor? Parse(string? color) => color is null ? null : SKColor.Parse(color);
 
-    private static ISeries CreateSeries(ChartSeries source, SKColor color)
+    /// <summary>
+    /// The series in its color; with a highlight (cross-filtering), the points left out of it are faded, and so is
+    /// the line or area of a series that has none of them.
+    /// </summary>
+    private static ISeries CreateSeries(RenderRequest request, int index)
     {
+        var source = request.Chart.Series[index];
+        var color = Color(request.Theme, index);
+        var lineColor = request.IsEmphasized(index) ? color : Dim(color);
         // ObservableValue(null) = missing point: LiveCharts2 draws it as a gap (or no bar, no point).
         var values = source.Values.Select(v => new ObservableValue(v)).ToArray();
         var axis = source.SecondaryAxis ? 1 : 0;
         string Tooltip(double value) => ValueFormatter.Format(value, source.Format);
+        void Fade(IDrawnElement? point, int category)
+        {
+            if (point is not null && request.Highlight is { Count: > 0 })
+                point.Opacity = request.IsEmphasized(category, index) ? 1f : (float)SelectionFilters.DimmedOpacity;
+        }
 
         return source.Mark switch
         {
@@ -268,14 +281,14 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
             {
                 Name = source.Name,
                 Values = values,
-                Stroke = new SolidColorPaint(color, 3),
-                Fill = source.Mark == MarkType.Area ? new SolidColorPaint(color.WithAlpha(0x55)) : null,
+                Stroke = new SolidColorPaint(lineColor, 3),
+                Fill = source.Mark == MarkType.Area ? new SolidColorPaint(color.WithAlpha((byte)(lineColor.Alpha * 0x55 / 0xFF))) : null,
                 GeometrySize = source.Mark == MarkType.Area ? 0 : 8,
                 GeometryStroke = new SolidColorPaint(color, 3),
                 LineSmoothness = 0.3,
                 ScalesYAt = axis,
                 YToolTipLabelFormatter = p => Tooltip(p.Coordinate.PrimaryValue),
-            },
+            }.OnPointMeasured(p => Fade(p.Visual, p.Index)),
             // Points sit on the categories, without a line between them
             MarkType.Scatter => new LineSeries<ObservableValue>
             {
@@ -288,7 +301,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                 GeometryStroke = new SolidColorPaint(color, 2),
                 ScalesYAt = axis,
                 YToolTipLabelFormatter = p => Tooltip(p.Coordinate.PrimaryValue),
-            },
+            }.OnPointMeasured(p => Fade(p.Visual, p.Index)),
             MarkType.StackedBar => new StackedColumnSeries<ObservableValue>
             {
                 Name = source.Name,
@@ -299,7 +312,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                 StackGroup = axis,
                 ScalesYAt = axis,
                 YToolTipLabelFormatter = p => Tooltip(p.Coordinate.PrimaryValue),
-            },
+            }.OnPointMeasured(p => Fade(p.Visual, p.Index)),
             _ => new ColumnSeries<ObservableValue>
             {
                 Name = source.Name,
@@ -308,9 +321,11 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                 MaxBarWidth = 48,
                 ScalesYAt = axis,
                 YToolTipLabelFormatter = p => Tooltip(p.Coordinate.PrimaryValue),
-            },
+            }.OnPointMeasured(p => Fade(p.Visual, p.Index)),
         };
     }
+
+    private static SKColor Dim(SKColor color) => color.WithAlpha((byte)(color.Alpha * SelectionFilters.DimmedOpacity));
 
     private static PieChart RenderPie(RenderRequest request)
     {
@@ -325,7 +340,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
             {
                 Name = category,
                 Values = [value],
-                Fill = new SolidColorPaint(Color(request.Theme, i)),
+                Fill = new SolidColorPaint(request.IsEmphasized(i, 0) ? Color(request.Theme, i) : Dim(Color(request.Theme, i))),
                 ToolTipLabelFormatter = p => ValueFormatter.Format(p.Coordinate.PrimaryValue, source.Format),
             }] = i;
         }
@@ -337,13 +352,32 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         if (request.Select is { } select)
         {
             view.Cursor = System.Windows.Input.Cursors.Hand;
-            view.DataPointerDown += (_, points) =>
+            OnPointClicked(view, FindingStrategy.Automatic, point =>
             {
-                if (points?.FirstOrDefault() is { } point && slices.TryGetValue(point.Context.Series, out var category))
+                if (slices.TryGetValue(point.Context.Series, out var category))
                     select(new CategorySelection(category));
-            };
+            });
         }
         return view;
+    }
+
+    /// <summary>
+    /// Reports the clicked point. LiveCharts2 ignores a click made with a modifier key held down, so a Ctrl+click
+    /// (adding to the selection) looks for the point itself.
+    /// </summary>
+    private static void OnPointClicked<TView>(TView view, FindingStrategy strategy, Action<ChartPoint> clicked)
+        where TView : Control, LiveChartsCore.Kernel.Sketches.IChartView
+    {
+        view.DataPointerDown += (_, points) =>
+        {
+            if (points?.FirstOrDefault() is { } point) clicked(point);
+        };
+        view.MouseLeftButtonDown += (_, e) =>
+        {
+            if (System.Windows.Input.Keyboard.Modifiers == System.Windows.Input.ModifierKeys.None) return;
+            var position = e.GetPosition(view);
+            if (view.GetPointsAt(new LvcPointD(position.X, position.Y), strategy).FirstOrDefault() is { } point) clicked(point);
+        };
     }
 
     private static void FitPie(PieChart view, IEnumerable<ISeries> slices, ChartData chart)

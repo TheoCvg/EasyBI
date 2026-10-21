@@ -8,7 +8,8 @@ namespace EasyBI.Wpf.Dashboard.Behaviors;
 
 /// <summary>
 /// Selects items (<see cref="DashboardView.SelectedItems"/>) with the mouse and the keyboard: a click selects an item
-/// (Ctrl+click adds or removes it) without stopping the click, so that charts still cross-filter; a click on the
+/// without stopping the click, so that charts still cross-filter. Ctrl+click adds or removes the item, unless it picks
+/// an element of a chart (<see cref="VisualView.DataSelectedEvent"/>), which then extends the cross-filtering; a click on the
 /// background unselects everything and a drag from it draws a selection box (Ctrl adds to the selection). Arrows go to
 /// the nearest item in their direction (Shift adds it), Escape unselects. Delete, Ctrl+D and Ctrl+A are commands of the
 /// view (<see cref="ApplicationCommands.Delete"/>, <see cref="DashboardCommands.Duplicate"/>, <see cref="ApplicationCommands.SelectAll"/>);
@@ -21,6 +22,8 @@ public class SelectionBehavior : DashboardBehavior
     private Rect? _boxBounds;
     private IReadOnlyList<DashboardItem> _before = [];
     private bool _adding;
+    // Ctrl+click on an item: toggled when the button is released, unless the visual took the click
+    private DashboardItem? _toggleOnRelease;
 
     protected override void OnAttach()
     {
@@ -28,6 +31,8 @@ public class SelectionBehavior : DashboardBehavior
         AddToOverlay(_box, (_, _) => _boxBounds);
         _gesture = new DragGesture(View, View, CanDrawBox, OnBoxStarted, OnBoxMoved, OnBoxEnded);
         View.PreviewMouseLeftButtonDown += OnPreviewMouseDown;
+        View.AddHandler(UIElement.MouseLeftButtonUpEvent, new MouseButtonEventHandler(OnMouseUp), handledEventsToo: true);
+        View.AddHandler(VisualView.DataSelectedEvent, new RoutedEventHandler(OnDataSelected));
         View.PreviewKeyDown += OnPreviewKeyDown;
     }
 
@@ -35,17 +40,23 @@ public class SelectionBehavior : DashboardBehavior
     {
         _gesture?.Cancel();
         View.PreviewMouseLeftButtonDown -= OnPreviewMouseDown;
+        View.RemoveHandler(UIElement.MouseLeftButtonUpEvent, new MouseButtonEventHandler(OnMouseUp));
+        View.RemoveHandler(VisualView.DataSelectedEvent, new RoutedEventHandler(OnDataSelected));
         View.PreviewKeyDown -= OnPreviewKeyDown;
+        _toggleOnRelease = null;
     }
 
-    private static bool Ctrl => Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+    private static bool Ctrl => ModifierKeysState.Ctrl;
 
     private void OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
+        _toggleOnRelease = null;
         if (!CanEdit) return;
         if (DashboardView.ItemOf(e.OriginalSource as DependencyObject) is { } item && item.Parent == Panel)
         {
-            View.Select(item, Ctrl ? DashboardSelectionMode.Toggle : DashboardSelectionMode.Replace);
+            // The chart only knows whether a bar was hit once it gets the click
+            if (Ctrl) _toggleOnRelease = item;
+            else View.Select(item, DashboardSelectionMode.Replace);
             // The keys act on the selection; a control of the item (a text box) keeps its focus
             if (!View.IsKeyboardFocusWithin) View.Focus();
         }
@@ -54,6 +65,15 @@ public class SelectionBehavior : DashboardBehavior
             if (!Ctrl) View.UnselectAll();
             if (!View.IsKeyboardFocusWithin) View.Focus();
         }
+    }
+
+    private void OnDataSelected(object sender, RoutedEventArgs e) => _toggleOnRelease = null;
+
+    private void OnMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_toggleOnRelease is not { } item) return;
+        _toggleOnRelease = null;
+        if (item.Parent == Panel) View.Select(item, DashboardSelectionMode.Toggle);
     }
 
     // The dashboard's empty room: the element under the pointer is the panel or one of its containers (the view's
@@ -91,7 +111,7 @@ public class SelectionBehavior : DashboardBehavior
         // Typing in a text box (in-place text editing, a slot's content) is not for the selection
         if (!CanEdit || e.OriginalSource is TextBoxBase || View.SelectedItems.Count == 0) return;
         // Arrows with Ctrl (or Alt, reported as a system key) are KeyboardLayoutBehavior's
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) return;
+        if (Ctrl) return;
         switch (e.Key)
         {
             case Key.Escape:
@@ -101,7 +121,7 @@ public class SelectionBehavior : DashboardBehavior
             case Key.Left or Key.Right or Key.Up or Key.Down:
                 if (Nearest(View.SelectedItems[^1], e.Key) is { } next)
                 {
-                    View.Select(next, Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? DashboardSelectionMode.Add : DashboardSelectionMode.Replace);
+                    View.Select(next, ModifierKeysState.Shift ? DashboardSelectionMode.Add : DashboardSelectionMode.Replace);
                     next.BringIntoView();
                 }
                 // Taken even at the edge of the dashboard: WPF would otherwise move the focus to another control

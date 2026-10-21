@@ -210,4 +210,10 @@
   <data name="TimeYearToDate" xml:space="preserve">
     <value>{0}, year to date</value>
   </data>
+  <data name="SelectionAnd" xml:space="preserve">
+    <value>and</value>
+  </data>
+  <data name="SelectionOr" xml:space="preserve">
+    <value>or</value>
+  </data>
 </root>

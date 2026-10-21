@@ -110,9 +110,9 @@ public class LocalizationTests
         var visual = new VisualDefinition { Model = "sales", Mark = MarkType.Line, Axis = [new("Date", DateGrain.Quarter)], Values = [new("Amount")] };
         filters.Select(await VisualPipeline.PrepareAsync(model, visual), new CategorySelection(0));
 
-        Assert.Equal("Date (Quarter) = 2024 Q1", filters.Selection!.Describe(model.Metadata));
+        Assert.Equal("Date (Quarter) = 2024 Q1", Assert.Single(filters.Selections).Describe(model.Metadata));
         using (TestCulture.Use("fr-FR"))
-            Assert.Equal("Date (Trimestre) = 2024 T1", filters.Selection.Describe(model.Metadata));
+            Assert.Equal("Date (Trimestre) = 2024 T1", filters.Selections[0].Describe(model.Metadata));
     }
 
     private static List<string> Keys(ResourceManager resources, CultureInfo culture) =>

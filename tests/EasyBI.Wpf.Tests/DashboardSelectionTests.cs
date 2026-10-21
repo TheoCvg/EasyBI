@@ -97,6 +97,25 @@ public class DashboardSelectionTests
     });
 
     [Fact]
+    public void Removing_a_visual_clears_its_cross_filtering_selection_only() => Sta.Run(() =>
+    {
+        var view = View("a", "b");
+        var filters = new EasyBI.Core.FilterContext();
+        VisualView.SetFilterContext(view, filters);
+        RenderRequest Clicked(string id) => new(
+            new VisualDefinition { Id = id, Model = "sales", Mark = MarkType.Bar, Axis = [new("Region")] },
+            new ResultSet([], []),
+            new ChartData(null, ["North"], []) { CategoryValues = [["North"]] },
+            BiTheme.Default);
+        filters.Select(Clicked("a"), new CategorySelection(0));
+        filters.Select(Clicked("b"), new CategorySelection(0), extend: true);
+
+        view.Remove(Item(view, "a"));
+
+        Assert.Equal("b", Assert.Single(filters.Selections).SourceVisualId);
+    });
+
+    [Fact]
     public void Duplicating_the_selection_copies_the_visuals_next_to_them_and_selects_the_copies() => Sta.Run(() =>
     {
         var view = View("a", "b");
@@ -157,6 +176,47 @@ public class DashboardSelectionTests
 
             Click(view.Panel);
             Assert.Empty(view.SelectedItems);
+        });
+    });
+
+    private static void Release(UIElement element) =>
+        element.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = Mouse.MouseUpEvent });
+
+    [Fact]
+    public void Ctrl_click_adds_or_removes_an_item_when_the_button_is_released() => Sta.Run(() =>
+    {
+        var view = View("a", "b");
+        Shown(view, () =>
+        {
+            view.Select(Item(view, "a"));
+            using var ctrl = ModifierKeysState.Simulate(ModifierKeys.Control);
+
+            Click(Item(view, "b"));
+            Assert.Equal(["a"], Selected(view));
+            Release(Item(view, "b"));
+            Assert.Equal(["a", "b"], Selected(view));
+
+            Click(Item(view, "a"));
+            Release(Item(view, "a"));
+            Assert.Equal(["b"], Selected(view));
+        });
+    });
+
+    [Fact]
+    public void Ctrl_click_on_an_element_of_a_chart_leaves_the_items_selection_to_the_cross_filtering() => Sta.Run(() =>
+    {
+        var view = View("a", "b");
+        Shown(view, () =>
+        {
+            view.Select(Item(view, "a"));
+            using var ctrl = ModifierKeysState.Simulate(ModifierKeys.Control);
+
+            Click(Item(view, "b"));
+            // The chart of b reports a picked bar during the click
+            Item(view, "b").RaiseEvent(new RoutedEventArgs(VisualView.DataSelectedEvent));
+            Release(Item(view, "b"));
+
+            Assert.Equal(["a"], Selected(view));
         });
     });
 

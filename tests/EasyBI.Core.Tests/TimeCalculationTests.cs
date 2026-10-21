@@ -64,6 +64,20 @@ public class TimeCalculationTests
     }
 
     [Fact]
+    public async Task Dates_inside_alternative_filters_are_shifted_a_year_earlier()
+    {
+        // Selected elements: (2024, North) or (2024, South)
+        var filter = FilterSpec.AnyOf([
+            [new FilterSpec("Date", FilterOperator.In, ["2024"], DateGrain.Year), new FilterSpec("Region", FilterOperator.In, ["Nord"])],
+            [new FilterSpec("Date", FilterOperator.In, ["2024"], DateGrain.Year), new FilterSpec("Region", FilterOperator.In, ["Sud"])],
+        ]);
+
+        var result = await Run(new([], [Amount(), Amount(TimeCalculation.PreviousYear)], [filter]));
+
+        Assert.Equal((235d, 190d), (Num(result.Rows[0][0])!.Value, Num(result.Rows[0][1])!.Value));
+    }
+
+    [Fact]
     public async Task Without_any_date_the_previous_year_is_left_empty()
     {
         var result = await Run(new([new("Region")], [Amount(), Amount(TimeCalculation.PreviousYear)]));

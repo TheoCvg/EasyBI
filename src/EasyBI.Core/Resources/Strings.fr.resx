@@ -210,4 +210,10 @@
   <data name="TimeYearToDate" xml:space="preserve">
     <value>{0}, cumul annuel</value>
   </data>
+  <data name="SelectionAnd" xml:space="preserve">
+    <value>et</value>
+  </data>
+  <data name="SelectionOr" xml:space="preserve">
+    <value>ou</value>
+  </data>
 </root>

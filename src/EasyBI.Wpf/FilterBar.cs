@@ -61,7 +61,7 @@ public class FilterBar : Control
             (_, e) => e.CanExecute = SlicerOf(e) is not null));
         CommandBindings.Add(new CommandBinding(ClearSelectionCommand,
             (_, _) => FilterContext?.ClearSelection(),
-            (_, e) => e.CanExecute = FilterContext?.Selection is not null));
+            (_, e) => e.CanExecute = FilterContext?.Selections.Count > 0));
         Loaded += (_, _) =>
         {
             if (FilterContext is { } filters) filters.Changed += OnFiltersUpdated;
@@ -118,11 +118,10 @@ public class FilterBar : Control
     private void Sync()
     {
         var filters = FilterContext;
-        var selection = filters?.Selection;
         SetValue(SelectionDescriptionPropertyKey,
-            selection is null ? null
-            : Context?.Models.FirstOrDefault(m => m.Metadata.Name == selection.Model) is { } selectionModel
-                ? Strings.Format(Strings.Selection, selection.Describe(selectionModel.Metadata))
+            filters is not { Selections.Count: > 0 } ? null
+            : filters.DescribeSelections(model => Context?.Models.FirstOrDefault(m => m.Metadata.Name == model)?.Metadata) is { Length: > 0 } description
+                ? Strings.Format(Strings.Selection, description)
                 : "");
         CommandManager.InvalidateRequerySuggested();
 

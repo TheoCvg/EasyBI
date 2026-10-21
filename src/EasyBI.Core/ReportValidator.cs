@@ -64,7 +64,12 @@ public static class ReportValidator
 
     private static void CheckFilter(ModelMetadata model, FilterSpec filter, string where, List<string> problems)
     {
-        if (!filter.Operator.IsPeriod())
+        if (filter.Operator == FilterOperator.AnyOf)
+        {
+            foreach (var alternative in (filter.Alternatives ?? []).SelectMany(group => group))
+                CheckFilter(model, alternative, where, problems);
+        }
+        else if (!filter.Operator.IsPeriod())
             CheckDimension(model, filter.Field, filter.Grain, where, problems);
         else if (CheckField(model, filter.Field, FieldKind.Dimension, where, problems) is { DataType: not DataType.Date })
             problems.Add(Strings.Format(Strings.ReportPeriodOnNonDate, where, filter.Field));
