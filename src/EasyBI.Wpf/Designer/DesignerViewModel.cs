@@ -112,6 +112,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             new(MarkType.Pie, MarkGroup.Composition, () => Strings.MarkPie),
             new(MarkType.Kpi, MarkGroup.IndicatorsAndTables, () => Strings.MarkKpi),
             new(MarkType.Table, MarkGroup.IndicatorsAndTables, () => Strings.MarkTable),
+            new(MarkType.Matrix, MarkGroup.IndicatorsAndTables, () => Strings.MarkMatrix),
         ];
         MarkGroups = MarkOptions.GroupBy(o => o.Group).Select(g => new MarkGroupViewModel(g.Key, g.ToArray())).ToArray();
         foreach (var option in MarkOptions) option.Choosing = mark =>

@@ -235,6 +235,13 @@ public static class SelectionFilters
                     picked.Add((legend, request.Chart.Series[series].LegendValue));
                 break;
 
+            case MatrixSelection { Row: var r, Column: var c } when request.Matrix is { } matrix:
+                if (r is { } matrixRow && matrixRow >= 0 && matrixRow < matrix.Rows.Count)
+                    picked.AddRange(visual.Axis.Select((a, i) => (a, matrix.Rows[matrixRow].Values.ElementAtOrDefault(i))));
+                if (c is { } matrixColumn && matrixColumn >= 0 && matrixColumn < matrix.Columns.Count && visual.Legend is { } columns)
+                    picked.Add((columns, matrix.Columns[matrixColumn].Values[0]));
+                break;
+
             case RowSelection { Row: var r } when r >= 0 && r < request.Result.Rows.Count:
                 var row = request.Result.Rows[r];
                 foreach (var field in visual.Axis.Append(visual.Legend).OfType<FieldRef>())
@@ -254,6 +261,11 @@ public static class SelectionFilters
         var highlight = new List<DataSelection>();
         foreach (var element in selection.Elements)
         {
+            if (request.Matrix is { } matrix)
+            {
+                highlight.AddRange(MatrixHighlight(visual, matrix, element));
+                continue;
+            }
             if (visual.Mark == MarkType.Table)
             {
                 var columns = element.Fields.Select(f => request.Result.IndexOf(f.Key)).ToArray();
@@ -299,6 +311,42 @@ public static class SelectionFilters
     public static bool IsEmphasized(this RenderRequest request, int series) =>
         request.Highlight is not { Count: > 0 } highlight
         || highlight.Any(h => h is CategorySelection c && (c.Series is null || c.Series == series));
+
+    // A matrix's element: its rows (axis values), its column (legend value), or the cells of both
+    private static IEnumerable<DataSelection> MatrixHighlight(VisualDefinition visual, MatrixData matrix, SelectedElement element)
+    {
+        var axis = visual.Axis.Count;
+        var onRows = element.Fields.Count >= axis && axis > 0 && element.Fields.Take(axis).SequenceEqual(visual.Axis);
+        var columnField = onRows ? axis : 0;
+        var onColumn = element.Fields.Count == columnField + 1 && element.Fields[columnField] == visual.Legend;
+        if (!onRows && !onColumn || element.Fields.Count != (onRows ? axis : 0) + (onColumn ? 1 : 0)) return [];
+
+        int?[] rows = onRows
+            ? [.. Enumerable.Range(0, matrix.Rows.Count)
+                .Where(r => Enumerable.Range(0, axis).All(i => InvariantValue.Format(matrix.Rows[r].Values[i]) == element.Keys[i]))
+                .Select(r => (int?)r)]
+            : [null];
+        int?[] columns = onColumn
+            ? [.. Enumerable.Range(0, matrix.Columns.Count)
+                .Where(c => InvariantValue.Format(matrix.Columns[c].Values[0]) == element.Keys[columnField])
+                .Select(c => (int?)c)]
+            : [null];
+        return rows.SelectMany(r => columns.Select(c => (DataSelection)new MatrixSelection(r, c)));
+    }
+
+    /// <summary>
+    /// True when a part of a matrix is drawn as usual: a cell (row and column), a row's header or total (no column), a
+    /// column's total (no row), the grand total (neither). Nothing highlighted, or the part belongs to the highlight.
+    /// </summary>
+    public static bool IsMatrixEmphasized(this RenderRequest request, int? row, int? column) =>
+        request.Highlight is not { Count: > 0 } highlight
+        || highlight.OfType<MatrixSelection>().Any(m => (row, column) switch
+        {
+            ({ } r, { } c) => (m.Row is null || m.Row == r) && (m.Column is null || m.Column == c),
+            ({ } r, null) => m.Row == r,
+            (null, { } c) => m.Column == c,
+            _ => false,
+        });
 
     /// <summary>True when a row of a table is drawn as usual: nothing is highlighted, or it is part of the highlight.</summary>
     public static bool IsRowEmphasized(this RenderRequest request, int row) =>

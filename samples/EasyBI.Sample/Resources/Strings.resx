@@ -108,6 +108,9 @@
   <data name="RevenueByRegionAndChannel" xml:space="preserve">
     <value>Revenue by region and channel</value>
   </data>
+  <data name="RevenueByCategoryAndYear" xml:space="preserve">
+    <value>Revenue by category and year</value>
+  </data>
   <data name="RevenueByCategory" xml:space="preserve">
     <value>Revenue by category</value>
   </data>

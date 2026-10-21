@@ -8,7 +8,7 @@ namespace EasyBI.Wpf.Designer;
 
 /// <summary>
 /// A well of the designer (the Axis, Legend, Values or Filters shelf) as the visual type sees it: its name ("Category"
-/// for a pie, "Rows" for a table), whether the type uses it, the hint of an empty well, and whether the item being
+/// for a pie, "Rows" and "Columns" for a matrix), whether the type uses it, the hint of an empty well, and whether the item being
 /// dragged can be dropped on it.
 /// </summary>
 public sealed class ShelfViewModel : ObservableObject
@@ -40,8 +40,9 @@ public sealed class ShelfViewModel : ObservableObject
     public string Label => (Kind, Designer.SelectedMark) switch
     {
         (Shelf.Axis, MarkType.Pie) => Strings.WellCategory,
-        (Shelf.Axis, MarkType.Table) => Strings.WellRows,
+        (Shelf.Axis, MarkType.Table or MarkType.Matrix) => Strings.WellRows,
         (Shelf.Axis, _) => Strings.Axis,
+        (Shelf.Legend, MarkType.Matrix) => Strings.WellColumns,
         (Shelf.Legend, _) => Strings.Legend,
         (Shelf.Values, MarkType.Pie) => Strings.WellValue,
         (Shelf.Values, _) => Strings.Values,

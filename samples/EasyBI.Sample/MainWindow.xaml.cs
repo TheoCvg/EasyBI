@@ -200,6 +200,16 @@ public partial class MainWindow : Window
             Axis = [new("Product.Category")],
             Values = [new("Amount")],
         };
+        // A matrix: categories by year, with the total of each row and each column
+        VisualDefinition matrix = new()
+        {
+            Title = Text("RevenueByCategoryAndYear"),
+            Model = "sales",
+            Mark = MarkType.Matrix,
+            Axis = [new("Product.Category")],
+            Legend = new("Date", DateGrain.Year),
+            Values = [new("Amount")],
+        };
         VisualDefinition note = new()
         {
             Mark = MarkType.Text,
@@ -217,7 +227,7 @@ public partial class MainWindow : Window
 
         return new DashboardDocument
         {
-            Report = new ReportDefinition { Title = Text("ReportTitle"), Visuals = [title, kpis, quarters, regions, categories, lastYear, note] },
+            Report = new ReportDefinition { Title = Text("ReportTitle"), Visuals = [title, kpis, quarters, regions, categories, lastYear, matrix, note] },
             Layout = new DashboardLayoutDefinition
             {
                 Bands =
@@ -229,6 +239,7 @@ public partial class MainWindow : Window
                             new LayoutNode { VisualId = title.Id, RowSpan = 1 },
                             new LayoutNode { VisualId = kpis.Id, RowSpan = 2 },
                             LayoutNode.Row(LayoutNode.Item(quarters.Id), LayoutNode.Item(regions.Id)),
+                            new LayoutNode { VisualId = matrix.Id, RowSpan = 2 },
                         ],
                     },
                     new BandLayout

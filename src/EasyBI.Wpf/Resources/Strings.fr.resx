@@ -483,4 +483,13 @@
   <data name="ConditionNumber" xml:space="preserve">
     <value>Un nombre</value>
   </data>
+  <data name="MarkMatrix" xml:space="preserve">
+    <value>Tableau croisé</value>
+  </data>
+  <data name="WellColumns" xml:space="preserve">
+    <value>Colonnes</value>
+  </data>
+  <data name="MatrixTotal" xml:space="preserve">
+    <value>Total</value>
+  </data>
 </root>

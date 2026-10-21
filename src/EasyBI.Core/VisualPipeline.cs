@@ -60,6 +60,11 @@ public static class VisualPipeline
         IEnumerable<CalculatedMeasure>? measures = null,
         CancellationToken cancellationToken = default)
     {
+        if (visual.Mark == MarkType.Matrix)
+        {
+            var (cells, matrix) = await MatrixBuilder.ExecuteAsync(model, visual, measures, cancellationToken).ConfigureAwait(false);
+            return new RenderRequest(visual, cells, ChartDataBuilder.Build(visual, cells), theme ?? BiTheme.Default) { Matrix = matrix };
+        }
         var result = await model.ExecuteWithTimeAsync(visual.ToQuery(measures), cancellationToken).ConfigureAwait(false);
         return new RenderRequest(visual, result, ChartDataBuilder.Build(visual, result), theme ?? BiTheme.Default);
     }

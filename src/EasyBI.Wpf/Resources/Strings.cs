@@ -14,6 +14,8 @@ internal static class Strings
     public static string MarkPie => Get();
     public static string MarkKpi => Get();
     public static string MarkTable => Get();
+    public static string MarkMatrix => Get();
+    public static string MatrixTotal => Get();
     public static string MarkArea => Get();
     public static string MarkScatter => Get();
     public static string MarkStackedBar => Get();
@@ -104,6 +106,7 @@ internal static class Strings
     public static string WellCategory => Get();
     public static string WellValue => Get();
     public static string WellRows => Get();
+    public static string WellColumns => Get();
     public static string WellUnused => Get();
     public static string WellHintDimension => Get();
     public static string WellHintMeasure => Get();

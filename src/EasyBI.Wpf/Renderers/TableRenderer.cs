@@ -12,7 +12,7 @@ namespace EasyBI.Wpf.Renderers;
 public sealed class TableRenderer : IVisualRenderer
 {
     // Headers follow the theme (the system's stay light whatever the theme)
-    private static readonly Style HeaderStyle = CreateHeaderStyle();
+    internal static readonly Style HeaderStyle = CreateHeaderStyle();
 
     public string Name => "EasyBI Table";
 
@@ -32,24 +32,7 @@ public sealed class TableRenderer : IVisualRenderer
 
     public FrameworkElement Render(RenderRequest request)
     {
-        var grid = new DataGrid
-        {
-            AutoGenerateColumns = false,
-            IsReadOnly = true,
-            CanUserSortColumns = false,
-            HeadersVisibility = DataGridHeadersVisibility.Column,
-            GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
-            Background = Brushes.Transparent,
-            RowBackground = Brushes.Transparent,
-            // A minimum, not a fixed height: control libraries give cells larger paddings
-            MinRowHeight = 26,
-            BorderThickness = new Thickness(0),
-            ItemsSource = request.Result.Rows,
-            ColumnHeaderStyle = HeaderStyle,
-        }
-            .Themed(DataGrid.HorizontalGridLinesBrushProperty, EasyBITheme.GridLineBrushKey)
-            .Themed(DataGrid.AlternatingRowBackgroundProperty, EasyBITheme.SurfaceAltBrushKey)
-            .Themed(Control.ForegroundProperty, EasyBITheme.ForegroundBrushKey);
+        var grid = Grid(request.Result.Rows);
 
         for (var i = 0; i < request.Result.Columns.Count; i++)
         {
@@ -88,6 +71,29 @@ public sealed class TableRenderer : IVisualRenderer
             };
         }
         return grid;
+    }
+
+    /// <summary>A read-only grid in the theme's colors, without columns yet (shared with <see cref="MatrixRenderer"/>).</summary>
+    internal static DataGrid Grid(System.Collections.IEnumerable items)
+    {
+        return new DataGrid
+        {
+            AutoGenerateColumns = false,
+            IsReadOnly = true,
+            CanUserSortColumns = false,
+            HeadersVisibility = DataGridHeadersVisibility.Column,
+            GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
+            Background = Brushes.Transparent,
+            RowBackground = Brushes.Transparent,
+            // A minimum, not a fixed height: control libraries give cells larger paddings
+            MinRowHeight = 26,
+            BorderThickness = new Thickness(0),
+            ItemsSource = items,
+            ColumnHeaderStyle = HeaderStyle,
+        }
+            .Themed(DataGrid.HorizontalGridLinesBrushProperty, EasyBITheme.GridLineBrushKey)
+            .Themed(DataGrid.AlternatingRowBackgroundProperty, EasyBITheme.SurfaceAltBrushKey)
+            .Themed(Control.ForegroundProperty, EasyBITheme.ForegroundBrushKey);
     }
 }
 

@@ -108,6 +108,9 @@
   <data name="RevenueByRegionAndChannel" xml:space="preserve">
     <value>CA par région et canal</value>
   </data>
+  <data name="RevenueByCategoryAndYear" xml:space="preserve">
+    <value>CA par catégorie et par année</value>
+  </data>
   <data name="RevenueByCategory" xml:space="preserve">
     <value>Répartition du CA par catégorie</value>
   </data>
