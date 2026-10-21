@@ -70,6 +70,7 @@ public sealed class FormatRuleViewModel : ObservableObject
     private string _number;
     private string _secondNumber;
     private bool _isBold;
+    private bool _showOnChart;
 
     public FormatRuleViewModel(FormatRule rule, Action changed)
     {
@@ -77,6 +78,7 @@ public sealed class FormatRuleViewModel : ObservableObject
         _condition = Conditions.FirstOrDefault(c => c.Value == rule.Operator) ?? Conditions[0];
         (_number, _secondNumber) = (ValueFormatViewModel.Show(rule.Value), ValueFormatViewModel.Show(rule.Maximum));
         _isBold = rule.IsBold;
+        _showOnChart = rule.ShowOnChart;
         Color = new ColorChoiceViewModel(rule.Color, changed);
         Background = new ColorChoiceViewModel(rule.Background, changed);
     }
@@ -121,6 +123,13 @@ public sealed class FormatRuleViewModel : ObservableObject
         set { if (SetProperty(ref _isBold, value)) _changed(); }
     }
 
+    /// <summary>Shades the rule's zone on the value axis of a chart.</summary>
+    public bool ShowOnChart
+    {
+        get => _showOnChart;
+        set { if (SetProperty(ref _showOnChart, value)) _changed(); }
+    }
+
     public ColorChoiceViewModel Color { get; }
 
     public ColorChoiceViewModel Background { get; }
@@ -133,6 +142,7 @@ public sealed class FormatRuleViewModel : ObservableObject
         Color = Color.Value,
         Background = Background.Value,
         IsBold = IsBold,
+        ShowOnChart = ShowOnChart,
     };
 }
 

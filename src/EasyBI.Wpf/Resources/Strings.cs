@@ -29,6 +29,7 @@ internal static class Strings
     public static string RemoveRule => Get();
     public static string RuleColor => Get();
     public static string RuleBackground => Get();
+    public static string RuleShowOnChart => Get();
     public static string FormatScale => Get();
     public static string ScaleMinimum => Get();
     public static string ScaleMiddle => Get();

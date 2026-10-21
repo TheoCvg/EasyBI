@@ -81,6 +81,9 @@
                                                 <ContentPresenter Content="{Binding Background}" />
                                             </DockPanel>
                                             <CheckBox Content="{bi:Localize FormatBold}" IsChecked="{Binding IsBold}" Margin="0,4,0,0" />
+                                            <CheckBox IsChecked="{Binding ShowOnChart}" Margin="0,4,0,0">
+                                                <TextBlock Text="{bi:Localize RuleShowOnChart}" TextWrapping="Wrap" />
+                                            </CheckBox>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>

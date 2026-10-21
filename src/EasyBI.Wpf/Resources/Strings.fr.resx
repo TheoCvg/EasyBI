@@ -597,4 +597,7 @@
   <data name="ColorCustom" xml:space="preserve">
     <value>Personnalisée (#RRGGBB)</value>
   </data>
+  <data name="RuleShowOnChart" xml:space="preserve">
+    <value>Afficher sa zone sur les graphiques</value>
+  </data>
 </root>

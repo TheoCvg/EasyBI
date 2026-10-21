@@ -3,6 +3,7 @@ using EasyBI.Abstractions;
 using EasyBI.Core;
 using EasyBI.Wpf;
 using OxyPlot;
+using OxyPlot.Annotations;
 using OxyPlot.Axes;
 using OxyPlot.Legends;
 using OxyPlot.Series;
@@ -149,8 +150,11 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         if (chart.Series.Any(s => s.SecondaryAxis))
             model.Axes.Add(ValueAxis(chart, secondary: true));
 
+        var formatting = ChartFormatting.For(request);
         for (var i = 0; i < chart.Series.Count; i++)
-            model.Series.Add(CreateSeries(request, i));
+            model.Series.Add(CreateSeries(request, formatting, i));
+        foreach (var band in formatting.Bands)
+            model.Annotations.Add(Zone(band, request.Theme));
 
         if (chart.Series.Count > 1)
             model.Legends.Add(new Legend { LegendPosition = LegendPosition.RightTop, LegendPlacement = LegendPlacement.Outside });
@@ -181,7 +185,31 @@ public sealed class OxyPlotRenderer : IVisualRenderer
     /// The series in its color. With a highlight (cross-filtering), the bars left out of it are faded; OxyPlot has
     /// no color per point for lines and points, so a series is faded when none of its points is highlighted.
     /// </summary>
-    private static Series CreateSeries(RenderRequest request, int index)
+    /// <summary>
+    /// The zone of a rule shown on the chart (<see cref="ChartBand"/>): a translucent band across the chart between
+    /// its values, an open end reaching the edge of the value axis, with the rule's condition as text.
+    /// </summary>
+    private static RectangleAnnotation Zone(ChartBand band, BiTheme theme)
+    {
+        var color = OxyColor.Parse(band.Color);
+        var zone = new RectangleAnnotation
+        {
+            XAxisKey = CategoryAxisKey,
+            YAxisKey = band.SecondaryAxis ? SecondaryAxisKey : PrimaryAxisKey,
+            Fill = OxyColor.FromAColor(0x26, color),
+            Stroke = OxyColor.FromAColor(0x99, color),
+            StrokeThickness = 1,
+            Text = band.Label,
+            TextColor = Parse(theme.MutedForeground) ?? color,
+            TextHorizontalAlignment = global::OxyPlot.HorizontalAlignment.Left,
+            Layer = AnnotationLayer.BelowSeries,
+        };
+        if (band.From is { } from) zone.MinimumY = from;
+        if (band.To is { } to) zone.MaximumY = to;
+        return zone;
+    }
+
+    private static Series CreateSeries(RenderRequest request, ChartFormatting formatting, int index)
     {
         var source = request.Chart.Series[index];
         var color = request.IsEmphasized(index) ? Color(request.Theme, index) : Dim(Color(request.Theme, index));
@@ -235,7 +263,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
                 };
                 bars.Items.AddRange(source.Values.Select((v, category) => new BarItem(v ?? 0)
                 {
-                    Color = request.IsEmphasized(category, index) ? OxyColors.Automatic : Dim(Color(request.Theme, index)),
+                    Color = BarColor(request, formatting, index, category),
                 }));
                 return bars;
         }
@@ -247,6 +275,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
     {
         var chart = request.Chart;
         var source = chart.Series[0];
+        var formatting = ChartFormatting.For(request);
         var pie = new PieSeries
         {
             InnerDiameter = 0.45,
@@ -264,7 +293,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         for (var i = 0; i < chart.Categories.Count; i++)
         {
             if (source.Values[i] is not { } value) continue;
-            var fill = Color(request.Theme, i);
+            var fill = formatting.PointColor(0, i) is { } formatted ? OxyColor.Parse(formatted) : Color(request.Theme, i);
             pie.Slices.Add(new PieSlice(chart.Categories[i], value) { Fill = request.IsEmphasized(i, 0) ? fill : Dim(fill) });
             categories.Add(i);
         }
@@ -276,6 +305,14 @@ public sealed class OxyPlotRenderer : IVisualRenderer
     }
 
     private static OxyColor Color(BiTheme theme, int index) => OxyColor.Parse(theme.ColorAt(index));
+
+    // A bar: the color of its rule or scale (as LiveCharts2's conditional draw), else the series'; faded when left out of the highlight
+    private static OxyColor BarColor(RenderRequest request, ChartFormatting formatting, int series, int category)
+    {
+        var formatted = formatting.PointColor(series, category) is { } hex ? OxyColor.Parse(hex) : (OxyColor?)null;
+        if (request.IsEmphasized(category, series)) return formatted ?? OxyColors.Automatic;
+        return Dim(formatted ?? Color(request.Theme, series));
+    }
 
     private static OxyColor Dim(OxyColor color) => OxyColor.FromAColor((byte)(color.A * SelectionFilters.DimmedOpacity), color);
 
