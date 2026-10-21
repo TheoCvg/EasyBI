@@ -445,7 +445,7 @@
     <value>Déposez une mesure ici</value>
   </data>
   <data name="WellHintFilter" xml:space="preserve">
-    <value>Déposez une dimension pour filtrer</value>
+    <value>Déposez un champ pour filtrer</value>
   </data>
   <data name="DropNotUsed" xml:space="preserve">
     <value>« {0} » n'est pas utilisé par ce type de visuel</value>
@@ -455,5 +455,32 @@
   </data>
   <data name="DesignerRedo" xml:space="preserve">
     <value>Rétablir (Ctrl+Y)</value>
+  </data>
+  <data name="ConditionValues" xml:space="preserve">
+    <value>Liste de valeurs</value>
+  </data>
+  <data name="ConditionAny" xml:space="preserve">
+    <value>Toute valeur</value>
+  </data>
+  <data name="ConditionRange" xml:space="preserve">
+    <value>Entre</value>
+  </data>
+  <data name="ConditionGreaterThan" xml:space="preserve">
+    <value>Supérieur à</value>
+  </data>
+  <data name="ConditionGreaterThanOrEqual" xml:space="preserve">
+    <value>Au moins</value>
+  </data>
+  <data name="ConditionLessThan" xml:space="preserve">
+    <value>Inférieur à</value>
+  </data>
+  <data name="ConditionLessThanOrEqual" xml:space="preserve">
+    <value>Au plus</value>
+  </data>
+  <data name="ConditionAnd" xml:space="preserve">
+    <value>et</value>
+  </data>
+  <data name="ConditionNumber" xml:space="preserve">
+    <value>Un nombre</value>
   </data>
 </root>

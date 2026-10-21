@@ -324,7 +324,8 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         Shelf.Values => field.Kind == FieldKind.Measure,
         Shelf.Axis => field.Kind == FieldKind.Dimension && Axis.Count < MaxAxisFields && Axis.All(a => a.Field != field),
         Shelf.Legend => field.Kind == FieldKind.Dimension,
-        Shelf.Filters => field.Kind == FieldKind.Dimension && Filters.All(f => f.Field != field),
+        // A measure filters the visual's groups by comparing its value
+        Shelf.Filters => Filters.All(f => f.Field != field),
         _ => false,
     };
 
@@ -418,7 +419,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     {
         if (shelf == Shelf.Values)
             return field.Kind == FieldKind.Measure ? null : Strings.DropMeasuresOnly;
-        if (field.Kind != FieldKind.Dimension) return Strings.Format(Strings.DropDimensionsOnly, ShelfName(shelf));
+        if (field.Kind != FieldKind.Dimension && shelf != Shelf.Filters) return Strings.Format(Strings.DropDimensionsOnly, ShelfName(shelf));
         return shelf switch
         {
             Shelf.Axis when Axis.Any(a => a.Field == field) => Strings.Format(Strings.DropAlreadyThere, field.Caption, ShelfName(shelf)),
@@ -537,7 +538,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         {
             // Filters on period keys (a clicked quarter...) or on several fields have no shelf: they are kept without being shown
             if (f.Operator != FilterOperator.AnyOf && (f.Grain == DateGrain.None || f.Operator.IsPeriod()))
-                Filters.Add(new(metadata.GetField(f.Field), model, Rebuild, f.Values, f.Operator, f.Grain));
+                Filters.Add(new(Context.GetField(model, f.Field), model, Rebuild, f.Values, f.Operator, f.Grain));
             else
                 _hiddenFilters = [.. _hiddenFilters, f];
         }

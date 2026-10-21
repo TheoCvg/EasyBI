@@ -69,6 +69,15 @@ internal static class Strings
     public static string TimeYearToDate => Get();
     public static string TimeHint => Get();
     public static string PeriodKindAny => Get();
+    public static string ConditionValues => Get();
+    public static string ConditionAny => Get();
+    public static string ConditionRange => Get();
+    public static string ConditionGreaterThan => Get();
+    public static string ConditionGreaterThanOrEqual => Get();
+    public static string ConditionLessThan => Get();
+    public static string ConditionLessThanOrEqual => Get();
+    public static string ConditionAnd => Get();
+    public static string ConditionNumber => Get();
     public static string PeriodKindBetween => Get();
     public static string PeriodKindCurrent => Get();
     public static string PeriodKindLast => Get();

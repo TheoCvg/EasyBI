@@ -44,11 +44,14 @@ public sealed record MeasureRef(string Measure, Aggregation? Aggregation = null)
 /// period relative to today whose unit is the filter's granularity: the <see cref="Current"/> one, the <see cref="Last"/>
 /// n ending with the current one (value: n), the n complete periods <see cref="Previous"/> to the current one (value: n).
 /// <see cref="AnyOf"/> keeps the rows matching at least one of its <see cref="FilterSpec.Alternatives"/>.
+/// The comparisons filter a number dimension, or a measure of a visual (after aggregation, for each group): greater or
+/// less than a value (value: the number, invariant), or <see cref="Range"/> between two numbers (values: minimum and
+/// maximum, inclusive, null for an open end).
 /// </summary>
-public enum FilterOperator { In, NotIn, Between, Current, Last, Previous, AnyOf }
+public enum FilterOperator { In, NotIn, Between, Current, Last, Previous, AnyOf, GreaterThan, GreaterThanOrEqual, LessThan, LessThanOrEqual, Range }
 
 /// <summary>
-/// Filter on a dimension. Values are stored in invariant form so they stay serializable
+/// Filter on a dimension, or with a comparison on a measure of a visual. Values are stored in invariant form so they stay serializable
 /// (<c>null</c> = missing value). With <see cref="FilterOperator.In"/> or <see cref="FilterOperator.NotIn"/> and a
 /// granularity, the date is first reduced to its period (<see cref="DatePeriod.Key"/>: 2024, 20241, 202403...) before
 /// the comparison; for a relative period, the granularity is its unit (12 last months: Last, ["12"], Month).

@@ -412,11 +412,20 @@ inherited property), it is used by the `FilterBar` and by every `VisualView`:
   (current one included: "Last 12 months") or the n previous complete ones ("Last month"). Relative periods are
   resolved when the query runs, so a saved report keeps showing the last 12 months; the date column is compared to
   the period's bounds (`date >= start AND date < end`), so a database can use an index on it.
+- **Numeric filters**: a number dimension, in the `FilterBar` or on the designer's Filters shelf, is filtered on a list
+  of values or compared with numbers: between two numbers (inclusive, one end may stay open), greater / less than, at
+  least / at most. A **measure** dropped on the designer's Filters shelf filters the visual's groups by their
+  aggregated value ("regions whose revenue ≥ 10,000"): the comparison runs after the grouping (SQL `HAVING`), before
+  the sort and `Top`. Calculated measures can filter too, shown or not. Measures only filter a visual: their meaning
+  depends on its grouping, so the `FilterBar` and the report's filters do not offer them.
 
 ```csharp
 PeriodFilters.Relative("Date", FilterOperator.Last, DateGrain.Month, 12);     // last 12 months
 PeriodFilters.Between("Date", new DateOnly(2024, 1, 1), null);                // since January 1st, 2024
 PeriodFilters.Describe(filter);                                               // "Last 12 months", localized
+NumericFilters.Range("Quantity", 10, null);                                   // Quantity >= 10
+NumericFilters.Compare("Amount", FilterOperator.GreaterThanOrEqual, 10_000);  // on a measure: groups >= 10,000
+NumericFilters.Describe(filter);                                              // "≥ 10,000", localized
 ```
 
 A connector only has to call `request.Select?.Invoke(new CategorySelection(category, series))` on
@@ -711,7 +720,9 @@ public FrameworkElement Render(RenderRequest request)
 
 `null` in `values` means a missing value. Besides `In` and `NotIn`, a date filter's `operator` can be `Between`
 (values: from and to as `yyyy-MM-dd`, inclusive, `null` for an open end), `Current`, `Last` or `Previous` (value: the
-number of periods; `grain` is their unit). An `AnyOf` filter keeps the rows matching every filter of one of its
+number of periods; `grain` is their unit). A number dimension or, in a visual, a measure can be compared:
+`GreaterThan`, `GreaterThanOrEqual`, `LessThan`, `LessThanOrEqual` (value: the number, invariant) or `Range` (values:
+minimum and maximum, inclusive, `null` for an open end). An `AnyOf` filter keeps the rows matching every filter of one of its
 `alternatives` (its `field` and `values` are empty): cross-filtering builds one when several selected elements differ
 on more than one dimension, `{ "field": "", "operator": "AnyOf", "values": [], "alternatives": [[...], [...]] }`.
 `EasyBIContext.Validate(report)` reports the unknown
@@ -779,7 +790,7 @@ See [AGENTS.md](AGENTS.md) for the code style, language rules and Git workflow.
 
 ## Known limitations / roadmap
 
-- Designer and `FilterBar` filters: "one of" a list of values, or a period for a date dimension; no ranges on numbers.
+- A filter on a measure compares the measure as the model aggregates it, whatever aggregation the visual shows.
 - Relative periods ("last 12 months") are resolved in the local time zone when a visual queries; an open dashboard does
   not query again at midnight.
 - `Top` applies to aggregated rows, not to categories when a legend is present.

@@ -216,4 +216,25 @@
   <data name="SelectionOr" xml:space="preserve">
     <value>ou</value>
   </data>
+  <data name="CompareGreaterThan" xml:space="preserve">
+    <value>&gt; {0}</value>
+  </data>
+  <data name="CompareGreaterThanOrEqual" xml:space="preserve">
+    <value>≥ {0}</value>
+  </data>
+  <data name="CompareLessThan" xml:space="preserve">
+    <value>&lt; {0}</value>
+  </data>
+  <data name="CompareLessThanOrEqual" xml:space="preserve">
+    <value>≤ {0}</value>
+  </data>
+  <data name="CompareRange" xml:space="preserve">
+    <value>entre {0} et {1}</value>
+  </data>
+  <data name="ReportComparisonOnNonNumber" xml:space="preserve">
+    <value>{0} : comparaison sur &apos;{1}&apos;, qui n&apos;est pas un nombre.</value>
+  </data>
+  <data name="ReportMeasureFilterOnReport" xml:space="preserve">
+    <value>{0} : &apos;{1}&apos; est une mesure, qui ne peut filtrer qu&apos;un visuel.</value>
+  </data>
 </root>
