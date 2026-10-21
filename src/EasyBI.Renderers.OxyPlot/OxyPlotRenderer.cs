@@ -86,15 +86,20 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         return true;
     }
 
-    /// <summary>Left click: shows the tracker as usual, and selects the element that was hit.</summary>
+    /// <summary>
+    /// Left click: shows the tracker as usual, and selects the element that was hit. A binding only applies to its own
+    /// modifier keys: Ctrl+click (adding to the selection) is bound too.
+    /// </summary>
     private static PlotController SelectionController(PlotModel model, Action<DataSelection> select)
     {
         var controller = new PlotController();
-        controller.BindMouseDown(OxyMouseButton.Left, new DelegatePlotCommand<OxyMouseDownEventArgs>((view, ctl, args) =>
+        var click = new DelegatePlotCommand<OxyMouseDownEventArgs>((view, ctl, args) =>
         {
             global::OxyPlot.PlotCommands.SnapTrack.Execute(view, ctl, args);
             if (HitTest(model, args.Position) is { } selection) select(selection);
-        }));
+        });
+        controller.BindMouseDown(OxyMouseButton.Left, click);
+        controller.BindMouseDown(OxyMouseButton.Left, OxyModifierKeys.Control, click);
         return controller;
     }
 

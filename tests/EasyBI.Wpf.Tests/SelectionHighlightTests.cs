@@ -72,6 +72,21 @@ public class SelectionHighlightTests
     });
 
     [Fact]
+    public void OxyPlot_reports_ctrl_clicks_too() => Sta.Run(() =>
+    {
+        var request = Request(MarkType.Bar) with { Select = _ => { } };
+
+        var view = (PlotView)new OxyPlotRenderer().Render(request);
+
+        // A binding only applies to its own modifier keys: Ctrl+click must select like a click
+        var bindings = ((global::OxyPlot.PlotController)view.Controller).InputCommandBindings;
+        global::OxyPlot.IViewCommand Command(global::OxyPlot.OxyModifierKeys modifiers) => bindings
+            .Single(b => b.Gesture is global::OxyPlot.OxyMouseDownGesture { MouseButton: global::OxyPlot.OxyMouseButton.Left } g && g.Modifiers == modifiers)
+            .Command;
+        Assert.Same(Command(global::OxyPlot.OxyModifierKeys.None), Command(global::OxyPlot.OxyModifierKeys.Control));
+    });
+
+    [Fact]
     public void A_table_fades_the_rows_left_out_of_the_selection() => Sta.Run(() =>
     {
         var result = new ResultSet([new ResultColumn("Region", "Region", FieldKind.Dimension, DataType.Text)], [["North"], ["South"], ["East"]]);

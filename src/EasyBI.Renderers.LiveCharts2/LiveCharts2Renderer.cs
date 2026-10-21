@@ -7,6 +7,7 @@ using EasyBI.Wpf;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.Drawing;
+using LiveChartsCore.Kernel;
 using LiveChartsCore.Kernel.Events;
 using LiveChartsCore.Measure;
 using LiveChartsCore.SkiaSharpView;
@@ -175,12 +176,11 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                 ? FindingStrategy.ExactMatch
                 : FindingStrategy.CompareOnlyXTakeClosest;
             view.Cursor = System.Windows.Input.Cursors.Hand;
-            view.DataPointerDown += (_, points) =>
+            OnPointClicked(view, view.FindingStrategy, point =>
             {
-                if (points?.FirstOrDefault() is not { } point) return;
                 var index = Array.IndexOf(series, point.Context.Series);
                 select(new CategorySelection(point.Index, index < 0 ? null : index));
-            };
+            });
         }
         return view;
     }
@@ -352,13 +352,32 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         if (request.Select is { } select)
         {
             view.Cursor = System.Windows.Input.Cursors.Hand;
-            view.DataPointerDown += (_, points) =>
+            OnPointClicked(view, FindingStrategy.Automatic, point =>
             {
-                if (points?.FirstOrDefault() is { } point && slices.TryGetValue(point.Context.Series, out var category))
+                if (slices.TryGetValue(point.Context.Series, out var category))
                     select(new CategorySelection(category));
-            };
+            });
         }
         return view;
+    }
+
+    /// <summary>
+    /// Reports the clicked point. LiveCharts2 ignores a click made with a modifier key held down, so a Ctrl+click
+    /// (adding to the selection) looks for the point itself.
+    /// </summary>
+    private static void OnPointClicked<TView>(TView view, FindingStrategy strategy, Action<ChartPoint> clicked)
+        where TView : Control, LiveChartsCore.Kernel.Sketches.IChartView
+    {
+        view.DataPointerDown += (_, points) =>
+        {
+            if (points?.FirstOrDefault() is { } point) clicked(point);
+        };
+        view.MouseLeftButtonDown += (_, e) =>
+        {
+            if (System.Windows.Input.Keyboard.Modifiers == System.Windows.Input.ModifierKeys.None) return;
+            var position = e.GetPosition(view);
+            if (view.GetPointsAt(new LvcPointD(position.X, position.Y), strategy).FirstOrDefault() is { } point) clicked(point);
+        };
     }
 
     private static void FitPie(PieChart view, IEnumerable<ISeries> slices, ChartData chart)
