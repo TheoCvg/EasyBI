@@ -51,7 +51,7 @@ public class DesignerPropertiesTests
         designer.SelectCommand.Execute(amount);
 
         Assert.True(amount.IsSelected);
-        Assert.Equal([DesignerPropertySections.Field, DesignerPropertySections.Visual], designer.Properties.Select(s => s.Key));
+        Assert.Equal([DesignerPropertySections.Field, DesignerPropertySections.Formatting, DesignerPropertySections.Visual], designer.Properties.Select(s => s.Key));
         var field = designer.Properties[0];
         Assert.Equal("Amount", field.Header);
         Assert.Equal(["Aggregation", "Time", "SeriesMark", "SecondaryAxis", "Sort"], Keys(field));
@@ -62,7 +62,7 @@ public class DesignerPropertiesTests
         Assert.Equal(Aggregation.Average, designer.Visual!.Values.Single().Aggregation);
 
         field["Sort"]!.Value = ListSortDirection.Descending;
-        Assert.Equal("Amount, descending", designer.Properties[1]["Sort"]!.TextValue); // the visual's summary follows
+        Assert.Equal("Amount, descending", designer.Properties.Single(s => s.Key == DesignerPropertySections.Visual)["Sort"]!.TextValue); // the visual's summary follows
     }
 
     [Fact]
@@ -119,10 +119,10 @@ public class DesignerPropertiesTests
         };
 
         designer.SelectedItem = designer.Values.Single();
-        Assert.Equal([DesignerPropertySections.Field, DesignerPropertySections.Visual, "Notes"], designer.Properties.Select(s => s.Key));
+        Assert.Equal([DesignerPropertySections.Field, DesignerPropertySections.Formatting, DesignerPropertySections.Visual, "Notes"], designer.Properties.Select(s => s.Key));
         Assert.Null(designer.Properties[0]["Time"]);
 
-        designer.Properties[1].IsExpanded = false;
+        designer.Properties.Single(s => s.Key == DesignerPropertySections.Visual).IsExpanded = false;
         designer.SelectedItem = null;
         Assert.False(designer.Properties.Single(s => s.Key == DesignerPropertySections.Visual).IsExpanded);
     }

@@ -23,13 +23,15 @@ public sealed class MatrixRenderer : IVisualRenderer
     {
         var style = new Style(typeof(System.Windows.Controls.Primitives.DataGridColumnHeader), TableRenderer.HeaderStyle);
         style.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Right));
+        // Shared by every grid, whatever its thread: a sealed style belongs to none
+        style.Seal();
         return style;
     }
 
     public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType> { MarkType.Matrix });
 
     /// <summary>A line of the grid: a row of the matrix, or its total (no row).</summary>
-    public sealed record Line(int? Row, object?[] Cells, double[] Opacities);
+    public sealed record Line(int? Row, object?[] Cells, double[] Opacities, ValueStyle?[] Styles);
 
     // A column of the grid: a row header, a column of the matrix (and a measure), or a total (no column)
     private sealed record GridColumn(string Header, int? Column, int Measure, bool IsRowHeader);
@@ -51,12 +53,19 @@ public sealed class MatrixRenderer : IVisualRenderer
             columns.Add(new GridColumn(header, null, m, false));
         }
 
-        var lines = matrix.Rows.Select((row, r) => LineOf(request, columns, r, row.Labels, c => matrix.Cells[r][c], matrix.RowTotals[r])).ToList();
-        lines.Add(LineOf(request, columns, null, [Strings.MatrixTotal], c => matrix.ColumnTotals[c], matrix.GrandTotals));
+        // A measure's format compares its cells with each other, not with the totals
+        var stylers = measures
+            .Select((m, i) => ValueStyler.For(request.Visual.Values.FirstOrDefault(v => v.Key == m.Key),
+                matrix.Cells.SelectMany(row => row.Select(cell => cell[i])), request.Theme))
+            .ToArray();
+        var lines = matrix.Rows.Select((row, r) => LineOf(request, columns, stylers, r, row.Labels, c => matrix.Cells[r][c], matrix.RowTotals[r])).ToList();
+        lines.Add(LineOf(request, columns, stylers, null, [Strings.MatrixTotal], c => matrix.ColumnTotals[c], matrix.GrandTotals));
 
         var grid = TableRenderer.Grid(lines);
         for (var i = 0; i < columns.Count; i++)
-            grid.Columns.Add(Column(columns[i], i, measures));
+            grid.Columns.Add(stylers[columns[i].Measure] is not null && columns[i] is { IsRowHeader: false, Column: not null }
+                ? Formatted(columns[i], i, measures)
+                : Column(columns[i], i, measures));
         grid.LoadingRow += (_, e) =>
             e.Row.FontWeight = e.Row.Item is Line { Row: null } ? FontWeights.SemiBold : FontWeights.Normal;
 
@@ -78,6 +87,7 @@ public sealed class MatrixRenderer : IVisualRenderer
     private static Line LineOf(
         RenderRequest request,
         List<GridColumn> columns,
+        ValueStyler?[] stylers,
         int? row,
         IReadOnlyList<string> labels,
         Func<int, IReadOnlyList<double?>> column,
@@ -85,13 +95,24 @@ public sealed class MatrixRenderer : IVisualRenderer
     {
         var cells = new object?[columns.Count];
         var opacities = new double[columns.Count];
+        var styles = new ValueStyle?[columns.Count];
         for (var i = 0; i < columns.Count; i++)
         {
             var c = columns[i];
             cells[i] = c.IsRowHeader ? labels.ElementAtOrDefault(i) : c.Column is { } index ? column(index)[c.Measure] : totals[c.Measure];
             opacities[i] = request.IsMatrixEmphasized(row, c.IsRowHeader ? null : c.Column) ? 1 : SelectionFilters.DimmedOpacity;
+            if (row is not null && c is { IsRowHeader: false, Column: not null }) styles[i] = stylers[c.Measure]?.Style(cells[i] as double?);
         }
-        return new Line(row, cells, opacities);
+        return new Line(row, cells, opacities, styles);
+    }
+
+    private static DataGridTemplateColumn Formatted(GridColumn column, int index, IReadOnlyList<MatrixMeasure> measures)
+    {
+        var formatted = TableRenderer.FormattedColumn(column.Header, $"{nameof(Line.Cells)}[{index}]", measures[column.Measure].Format,
+            new Binding($"{nameof(Line.Styles)}[{index}]"), new Binding($"{nameof(Line.Opacities)}[{index}]"));
+        formatted.HeaderStyle = NumberHeaderStyle;
+        formatted.MinWidth = 60;
+        return formatted;
     }
 
     private static DataGridTextColumn Column(GridColumn column, int index, IReadOnlyList<MatrixMeasure> measures)

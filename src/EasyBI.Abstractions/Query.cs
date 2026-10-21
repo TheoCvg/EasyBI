@@ -36,6 +36,10 @@ public sealed record MeasureRef(string Measure, Aggregation? Aggregation = null)
     /// <summary>Draws this measure's series against a second value axis, on the right. Display only.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] // reports only mention it when it is used
     public bool SecondaryAxis { get; init; }
+
+    /// <summary>How its values look in a table, a matrix or a KPI (fixed style and conditional formats). Display only.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ValueFormat? Format { get; init; }
 }
 
 /// <summary>

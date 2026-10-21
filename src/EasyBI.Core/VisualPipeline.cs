@@ -37,8 +37,8 @@ public static class VisualPipeline
             .ToArray();
         return new AnalyticQuery(
             groupBy,
-            // Chart types and axes only change the drawing: changing them must not query again
-            visual.Values.Select(v => v with { Mark = null, SecondaryAxis = false }).ToArray(),
+            // Chart types, axes and formats only change the drawing: changing them must not query again
+            visual.Values.Select(v => v with { Mark = null, SecondaryAxis = false, Format = null }).ToArray(),
             visual.Filters,
             visual.Sort is null ? null : [visual.Sort],
             visual.Top,

@@ -14,6 +14,8 @@
         <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/FieldList.xaml" />
         <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/FilterBar.xaml" />
         <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/FilterEditor.xaml" />
+        <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/FormattedValue.xaml" />
+        <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/ValueFormatEditor.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
     <!-- Dashboard item: a card showing its visual, or the choices of an empty item -->

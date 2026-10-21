@@ -51,6 +51,7 @@ public sealed class ShelfItemViewModel : ObservableObject
     ];
 
     private readonly Action _changed;
+    private ValueFormatViewModel? _format;
     private bool _isSelected;
     private ListSortDirection? _sortDirection;
     private DateGrain _grain;
@@ -216,11 +217,18 @@ public sealed class ShelfItemViewModel : ObservableObject
 
     public FieldRef ToFieldRef() => new(Field.Name, Grain);
 
+    /// <summary>The format of this measure's values (Values shelf), edited in the properties panel.</summary>
+    public ValueFormatViewModel Format => _format ??= new ValueFormatViewModel(null, _changed);
+
+    /// <summary>Starts from a saved format (when a visual is loaded).</summary>
+    internal void LoadFormat(ValueFormat? format) => _format = new ValueFormatViewModel(format, _changed);
+
     public MeasureRef ToMeasureRef() => new(Field.Name, HasAggregation && Aggregation != Field.DefaultAggregation ? Aggregation : null)
     {
         Mark = SeriesMark,
         SecondaryAxis = SecondaryAxis,
         Time = Time,
+        Format = _format?.ToFormat(),
     };
 }
 

@@ -208,6 +208,40 @@ new VisualDefinition
 };
 ```
 
+### Conditional formatting
+
+Each measure of a table, a matrix or a KPI can have a **format** (`MeasureRef.Format`, a `ValueFormat`), edited in the
+designer's properties panel when its chip is selected ("Formatting" section). It holds:
+
+- a **fixed style**: text color, bold, italic, alignment;
+- **rules**, checked in order, the first matching one applies: a comparison (`GreaterThan`... `Range`, as in numeric
+  filters) and the text color, background and weight it gives;
+- a **color scale**: a background going from one color to another (optionally through a middle one) between the
+  smallest and the largest value shown;
+- **data bars**: a bar in the cell as long as the value compared with the largest one (negative values in their own
+  color);
+- **icons** (arrows, triangles, circles) for high, middle and low values, split at two thresholds or, without them,
+  in thirds.
+
+Colors are the theme's (`ThemeColors`: `accent`, `success`, `warning`, `error`, `muted`), which follow light and dark
+themes and control libraries, or a custom `#RRGGBB`. As backgrounds, the theme's colors are softened with the theme's
+background so that values stay readable. The scale, the bars and the automatic thresholds compare a value with the
+cells shown, not with the totals; a matrix leaves its totals unformatted. A format only changes the drawing: the
+source is not queried again. `ValueStyler` (Core) computes the `ValueStyle` of a value for any renderer, and the
+`FormattedValue` control (lookless) draws it in the built-in grids.
+
+```csharp
+new MeasureRef("Amount")
+{
+    Format = new ValueFormat
+    {
+        Rules = [new FormatRule { Operator = FilterOperator.LessThan, Value = 1000, Color = ThemeColors.Error, IsBold = true }],
+        Bar = new DataBar(),
+        Icons = new IconSet { Kind = IconKind.Triangles },
+    },
+};
+```
+
 Besides charts, KPIs, tables and matrices, a visual can be a **text** (`MarkType.Text`, content in
 `VisualDefinition.Text`) or an **image** (`MarkType.Image`, embedded as base64 in `VisualDefinition.Image`).
 They query no model and are drawn by the built-in `TextRenderer` and `ImageRenderer`.
@@ -563,7 +597,8 @@ The complete list, with their light and dark values, is in
 | `AccentSoftBrushKey`, `AccentSoftBorderBrushKey` | field chips, selection chip, drop placeholders |
 | `SecondarySoftBrushKey`, `SecondarySoftBorderBrushKey` | filter chips |
 | `HoverBrushKey` | small buttons under the pointer |
-| `ErrorBrushKey` | error messages |
+| `ErrorBrushKey` | error messages, bad values of conditional formats |
+| `SuccessBrushKey`, `WarningBrushKey` | good and middle values of conditional formats |
 | `MeasureBrushKey` | the Σ of measures in field lists |
 | `GridLineBrushKey` | grid lines of charts and tables |
 | `ChartPaletteKey` (`ChartPalette`) | colors of chart series, in order |
@@ -604,7 +639,8 @@ EasyBI's surfaces, text, accent and charts then take the library's colors, light
 
 `WpfUiTheme.Map` and `MaterialDesignTheme.Map` list which library resource each EasyBI key takes. For another library
 or an application's own design system, derive from `EasyBIThemeMapping` and map the keys you need; unmapped keys keep
-EasyBI's light values, and the chart palette follows the mapped background (light or dark palette). If the library
+EasyBI's light values, while the keys listed in `Kept` (colors the system has no equivalent for, such as Material
+Design's success and warning) and the chart palette follow the mapped background (EasyBI's light or dark values). If the library
 switches theme by swapping dictionaries without notifying, call `Refresh()` on the mapping afterwards.
 
 `ApplicationThemeManager.Apply` sets the main window's `Background` itself: put an EasyBI background on the window's root

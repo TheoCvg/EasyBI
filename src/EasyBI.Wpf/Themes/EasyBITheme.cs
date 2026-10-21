@@ -69,6 +69,12 @@ public static class EasyBITheme
     /// <summary>Error messages.</summary>
     public static ComponentResourceKey ErrorBrushKey { get; } = Key("Error");
 
+    /// <summary>Good values (conditional formats: the "success" color, high icons).</summary>
+    public static ComponentResourceKey SuccessBrushKey { get; } = Key("Success");
+
+    /// <summary>Values to watch (conditional formats: the "warning" color, middle icons).</summary>
+    public static ComponentResourceKey WarningBrushKey { get; } = Key("Warning");
+
     /// <summary>The Σ of measures in field lists.</summary>
     public static ComponentResourceKey MeasureBrushKey { get; } = Key("Measure");
 
@@ -99,6 +105,9 @@ public static class EasyBITheme
             MutedForeground = theme.MutedForeground ?? Color(MutedForegroundBrushKey),
             GridLine = theme.GridLine ?? Color(GridLineBrushKey),
             Background = theme.Background ?? Color(SurfaceBrushKey),
+            Success = theme.Success ?? Color(SuccessBrushKey),
+            Warning = theme.Warning ?? Color(WarningBrushKey),
+            Error = theme.Error ?? Color(ErrorBrushKey),
         };
     }
 

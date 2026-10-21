@@ -105,7 +105,7 @@ public sealed class TextEditBehavior : DashboardBehavior
             End(commit: false);
             e.Handled = true;
         }
-        else if (e.Key == Key.Enter && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        else if (e.Key == Key.Enter && ModifierKeysState.Ctrl)
         {
             End(commit: true);
             e.Handled = true;

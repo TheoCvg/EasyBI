@@ -67,6 +67,11 @@
                 <local:FilterEditor />
             </DataTemplate>
 
+            <!-- So is the format of the selected measure -->
+            <DataTemplate DataType="{x:Type local:ValueFormatViewModel}">
+                <local:ValueFormatEditor />
+            </DataTemplate>
+
             <!-- Dragged chip: its caption only -->
             <DataTemplate x:Key="ChipPreviewTemplate">
                 <TextBlock Text="{Binding Caption}" Margin="6,2" />

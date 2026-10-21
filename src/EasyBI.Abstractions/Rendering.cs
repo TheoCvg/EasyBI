@@ -41,6 +41,27 @@ public sealed record BiTheme(IReadOnlyList<string> Palette)
     /// <summary>What the chart is drawn on (tooltips, slice borders).</summary>
     public string? Background { get; init; }
 
+    /// <summary>The theme's colors for good, warning and bad values (conditional formats); null keeps EasyBI's.</summary>
+    public string? Success { get; init; }
+
+    public string? Warning { get; init; }
+
+    public string? Error { get; init; }
+
+    /// <summary>
+    /// The color a format names: a theme color (<see cref="ThemeColors"/>) or <c>#RRGGBB</c> as is; null for no color.
+    /// </summary>
+    public string? Resolve(string? color) => color switch
+    {
+        null or "" => null,
+        ThemeColors.Accent => ColorAt(0),
+        ThemeColors.Success => Success ?? "#2BA37B",
+        ThemeColors.Warning => Warning ?? "#D97706",
+        ThemeColors.Error => Error ?? "#D64550",
+        ThemeColors.Muted => MutedForeground ?? "#6B7280",
+        _ => color,
+    };
+
     public static BiTheme Default { get; } = new([
         "#2E6BE6", "#E8833A", "#2BA37B", "#D64550", "#8A5CD6",
         "#C9A227", "#3AA6C9", "#8C6D52", "#D46BAE", "#6B7A8F"]);
