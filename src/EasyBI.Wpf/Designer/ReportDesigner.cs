@@ -104,13 +104,19 @@ public class ReportDesigner : Control
     // Text boxes, lists, date pickers... and their popups
     private static bool TakesTyping(DependencyObject? element)
     {
-        for (; element is not null; element = element is System.Windows.Media.Visual ? System.Windows.Media.VisualTreeHelper.GetParent(element) : LogicalTreeHelper.GetParent(element))
+        for (; element is not null; element = ParentOf(element))
         {
             if (element is System.Windows.Controls.Primitives.TextBoxBase or System.Windows.Controls.Primitives.Selector or DatePicker) return true;
             if (element is ReportDesigner) return false;
         }
         return false;
     }
+
+    // A popup's content (the items of an open list) has its own visual root: its logical parent, the popup, leads
+    // back to the control that opened it
+    private static DependencyObject? ParentOf(DependencyObject element) =>
+        (element is System.Windows.Media.Visual ? System.Windows.Media.VisualTreeHelper.GetParent(element) : null)
+            ?? LogicalTreeHelper.GetParent(element);
 
     private void OnDragStarted(object? sender, DragAndDrop.DragStartedEventArgs e)
     {

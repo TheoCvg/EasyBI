@@ -398,6 +398,41 @@ public class DesignerPropertiesTests
         }
     });
 
+    [Fact]
+    public void A_click_in_the_open_list_of_a_property_leaves_the_keyboard_to_the_list() => Sta.Run(() =>
+    {
+        SynchronizationContext.SetSynchronizationContext(new System.Windows.Threading.DispatcherSynchronizationContext());
+        var control = new ReportDesigner { Context = EasyBIContext.Create().AddModel(
+            SemanticModel.For(new[] { new Sale("Nord", new(2024, 1, 1), 1m) }, "sales").Dimension(s => s.Date, "Date").Measure(s => s.Amount, "Amount")) };
+        var window = new System.Windows.Window { Content = control, Width = 1200, Height = 800, Left = -10000, Top = -10000, ShowActivated = false, ShowInTaskbar = false };
+        window.Show();
+        try
+        {
+            var designer = control.ViewModel!;
+            designer.Load(new VisualDefinition { Model = "sales", Axis = [new("Date", DateGrain.Month)], Values = [new("Amount")] });
+            designer.SelectedItem = designer.Axis[0];
+            control.UpdateLayout();
+            var grain = Descendants<System.Windows.Controls.ComboBox>(control).First(c => c.DataContext is DesignerProperty { Key: "Grain" });
+            Assert.True(grain.Focus());
+            grain.IsDropDownOpen = true;
+            grain.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle); // the popup shows its items
+            var item = (System.Windows.Controls.ComboBoxItem)grain.ItemContainerGenerator.ContainerFromIndex((int)DateGrain.Year);
+            var text = Descendants<System.Windows.Controls.TextBlock>(item).First();
+
+            // The item is in the list's popup, out of the designer's visual tree: the designer must not take the
+            // keyboard, which would close the list before the click selects the item
+            text.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, System.Windows.Input.MouseButton.Left)
+                { RoutedEvent = System.Windows.Input.Mouse.PreviewMouseDownEvent });
+
+            Assert.False(control.IsKeyboardFocused);
+            Assert.True(grain.IsDropDownOpen);
+        }
+        finally
+        {
+            window.Close();
+        }
+    });
+
     private static IEnumerable<T> Descendants<T>(System.Windows.DependencyObject root)
     {
         for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
