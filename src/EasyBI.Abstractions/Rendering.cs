@@ -67,6 +67,43 @@ public sealed record CategorySelection(int Category, int? Series = null) : DataS
 /// <summary>A row of the <see cref="ResultSet"/> (table).</summary>
 public sealed record RowSelection(int Row) : DataSelection;
 
+/// <summary>
+/// An element of a <see cref="MatrixData"/>: a cell (row and column), a whole row (its header or total, no column) or a
+/// whole column (its total, no row).
+/// </summary>
+public sealed record MatrixSelection(int? Row, int? Column) : DataSelection;
+
+/// <summary>A row or a column of a matrix: the value of each of its dimensions, and how it reads.</summary>
+public sealed record MatrixMember(IReadOnlyList<object?> Values, IReadOnlyList<string> Labels);
+
+/// <summary>A measure shown in each cell of a matrix.</summary>
+public sealed record MatrixMeasure(string Key, string Caption, string? Format);
+
+/// <summary>
+/// Pre-pivoted data of a <see cref="MarkType.Matrix"/>: rows (the axis), columns (the legend, none without one) and,
+/// for each measure, the value of every cell and the totals. Each total is the measure computed on all the rows it
+/// covers (an average stays an average), not a sum of cells.
+/// </summary>
+public sealed record MatrixData(
+    IReadOnlyList<string> RowCaptions,
+    string? ColumnCaption,
+    IReadOnlyList<MatrixMember> Rows,
+    IReadOnlyList<MatrixMember> Columns,
+    IReadOnlyList<MatrixMeasure> Measures)
+{
+    /// <summary>Values by row, column and measure: <c>Cells[row][column][measure]</c>.</summary>
+    public IReadOnlyList<IReadOnlyList<IReadOnlyList<double?>>> Cells { get; init; } = [];
+
+    /// <summary>Total of each row (all its columns): <c>RowTotals[row][measure]</c>.</summary>
+    public IReadOnlyList<IReadOnlyList<double?>> RowTotals { get; init; } = [];
+
+    /// <summary>Total of each column (all the rows): <c>ColumnTotals[column][measure]</c>.</summary>
+    public IReadOnlyList<IReadOnlyList<double?>> ColumnTotals { get; init; } = [];
+
+    /// <summary>Total of the whole matrix, by measure.</summary>
+    public IReadOnlyList<double?> GrandTotals { get; init; } = [];
+}
+
 /// <summary>Everything a renderer needs to draw a visual.</summary>
 public sealed record RenderRequest(VisualDefinition Visual, ResultSet Result, ChartData Chart, BiTheme Theme)
 {
@@ -82,4 +119,7 @@ public sealed record RenderRequest(VisualDefinition Visual, ResultSet Result, Ch
     /// selected in this visual.
     /// </summary>
     public IReadOnlyList<DataSelection>? Highlight { get; init; }
+
+    /// <summary>The pivoted data of a <see cref="MarkType.Matrix"/>; null for the other types.</summary>
+    public MatrixData? Matrix { get; init; }
 }

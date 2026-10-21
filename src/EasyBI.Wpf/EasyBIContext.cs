@@ -10,7 +10,7 @@ namespace EasyBI.Wpf;
 /// </summary>
 public sealed class EasyBIContext
 {
-    private static readonly IVisualRenderer[] BuiltInRenderers = [new KpiRenderer(), new TableRenderer(), new TextRenderer(), new ImageRenderer()];
+    private static readonly IVisualRenderer[] BuiltInRenderers = [new KpiRenderer(), new TableRenderer(), new MatrixRenderer(), new TextRenderer(), new ImageRenderer()];
 
     private readonly List<ISemanticModel> _models = [];
     private readonly List<IVisualRenderer> _renderers = [];
