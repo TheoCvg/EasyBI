@@ -51,9 +51,9 @@ public class CrossFilteringTests
         filters.Select(request, new CategorySelection(Category(request, "Nord")));
         filters.Select(request, new CategorySelection(Category(request, "Sud")), extend: true);
 
-        var filter = Assert.Single(filters.Selection!.Filters);
+        var filter = Assert.Single(Assert.Single(filters.Selections).Filters);
         Assert.Equal(["Nord", "Sud"], filter.Values);
-        Assert.Equal("Région = Nord or Sud", filters.Selection.Describe(Model().Metadata));
+        Assert.Equal("Région = Nord or Sud", filters.Selections[0].Describe(Model().Metadata));
         Assert.Equal(640m, await TotalAsync(filters));
     }
 
@@ -67,8 +67,8 @@ public class CrossFilteringTests
         filters.Select(request, new CategorySelection(Category(request, "Sud"), Series(request, "Magasin")), extend: true);
 
         // Region in (Nord, Sud) and Channel in (Web, Magasin) would keep all four bars
-        Assert.Equal(FilterOperator.AnyOf, Assert.Single(filters.Selection!.Filters).Operator);
-        Assert.Equal("(Région = Nord, Canal = Web) or (Région = Sud, Canal = Magasin)", filters.Selection.Describe(Model().Metadata));
+        Assert.Equal(FilterOperator.AnyOf, Assert.Single(Assert.Single(filters.Selections).Filters).Operator);
+        Assert.Equal("(Région = Nord, Canal = Web) or (Région = Sud, Canal = Magasin)", filters.Selections[0].Describe(Model().Metadata));
         Assert.Equal(140m, await TotalAsync(filters));
     }
 
@@ -100,7 +100,7 @@ public class CrossFilteringTests
 
         filters.Select(request, sud, extend: true);
 
-        Assert.Null(filters.Selection);
+        Assert.Empty(filters.Selections);
     }
 
     [Fact]
@@ -117,18 +117,76 @@ public class CrossFilteringTests
     }
 
     [Fact]
-    public async Task Ctrl_clicking_in_another_visual_replaces_the_selection()
+    public async Task Ctrl_clicking_in_another_visual_combines_both_selections()
     {
         var filters = new FilterContext();
-        var regions = await VisualPipeline.PrepareAsync(Model(), ByRegion);
-        var channels = await VisualPipeline.PrepareAsync(Model(), ByRegion with { Id = "channels", Axis = [new("Channel")] });
+        var (regions, channels) = await RegionsAndChannelsAsync();
         filters.Select(regions, new CategorySelection(Category(regions, "Nord")));
 
         filters.Select(channels, new CategorySelection(Category(channels, "Web")), extend: true);
+        filters.Select(regions, new CategorySelection(Category(regions, "Sud")), extend: true);
 
-        Assert.Equal("channels", filters.Selection!.SourceVisualId);
+        // (Nord or Sud) and Web
+        Assert.Equal(["Region", "Channel"], filters.Selections.Select(s => s.Elements[0].Fields[0].Field));
+        Assert.Equal(400m, await TotalAsync(filters));
+        Assert.Equal("(Région = Nord or Sud) and Canal = Web", filters.DescribeSelections(_ => Model().Metadata));
+    }
+
+    [Fact]
+    public async Task Each_visual_is_filtered_by_the_selections_of_the_others_and_highlights_its_own()
+    {
+        var filters = new FilterContext();
+        var (regions, channels) = await RegionsAndChannelsAsync();
+        filters.Select(regions, new CategorySelection(Category(regions, "Nord")));
+        filters.Select(channels, new CategorySelection(Category(channels, "Web")), extend: true);
+
+        Assert.Equal("Channel", Assert.Single(filters.FiltersFor(regions.Visual)).Field);
+        Assert.Equal("Region", Assert.Single(filters.FiltersFor(channels.Visual)).Field);
+        var highlight = Assert.Single(filters.HighlightFor(channels)!);
+        Assert.Equal(new CategorySelection(Category(channels, "Web")), highlight);
+    }
+
+    [Fact]
+    public async Task A_plain_click_replaces_the_selections_of_every_visual()
+    {
+        var filters = new FilterContext();
+        var (regions, channels) = await RegionsAndChannelsAsync();
+        filters.Select(regions, new CategorySelection(Category(regions, "Nord")));
+        filters.Select(channels, new CategorySelection(Category(channels, "Web")), extend: true);
+
+        filters.Select(regions, new CategorySelection(Category(regions, "Sud")));
+
+        Assert.Equal("regions", Assert.Single(filters.Selections).SourceVisualId);
+        Assert.Equal(340m, await TotalAsync(filters));
+    }
+
+    [Fact]
+    public async Task Clearing_the_selection_of_one_visual_keeps_the_others()
+    {
+        var filters = new FilterContext();
+        var (regions, channels) = await RegionsAndChannelsAsync();
+        filters.Select(regions, new CategorySelection(Category(regions, "Nord")));
+        filters.Select(channels, new CategorySelection(Category(channels, "Web")), extend: true);
+
+        filters.ClearSelection("regions");
+
+        Assert.Equal("channels", Assert.Single(filters.Selections).SourceVisualId);
         Assert.Equal(407m, await TotalAsync(filters));
     }
+
+    [Fact]
+    public async Task A_selection_only_filters_the_visuals_of_its_model()
+    {
+        var filters = new FilterContext();
+        var (regions, _) = await RegionsAndChannelsAsync();
+        filters.Select(regions, new CategorySelection(Category(regions, "Nord")));
+
+        Assert.Empty(filters.FiltersFor(Total with { Model = "other" }));
+    }
+
+    private static async Task<(RenderRequest Regions, RenderRequest Channels)> RegionsAndChannelsAsync() => (
+        await VisualPipeline.PrepareAsync(Model(), ByRegion with { Id = "regions" }),
+        await VisualPipeline.PrepareAsync(Model(), ByRegion with { Id = "channels", Axis = [new("Channel")] }));
 
     [Fact]
     public async Task The_source_visual_emphasizes_its_selected_bars_only()

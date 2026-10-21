@@ -93,7 +93,7 @@ public class VisualViewSelectionTests
             Pick(renderer, "Sud");
 
         Assert.Equal(2, picked);
-        Assert.Equal(2, filters.Selection!.Elements.Count);
+        Assert.Equal(2, Assert.Single(filters.Selections).Elements.Count);
         var drawn = renderer.Last!;
         Assert.True(drawn.IsEmphasized(Category(drawn, "Nord"), 0));
         Assert.True(drawn.IsEmphasized(Category(drawn, "Sud"), 0));
@@ -107,6 +107,6 @@ public class VisualViewSelectionTests
 
         Pick(renderer, "Sud");
 
-        Assert.Equal(["Sud"], filters.Selection!.Elements.Select(e => (string?)e.Values[0]));
+        Assert.Equal(["Sud"], Assert.Single(filters.Selections).Elements.Select(e => (string?)e.Values[0]));
     });
 }

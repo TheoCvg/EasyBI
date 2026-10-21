@@ -188,7 +188,7 @@ public class DashboardView : Control
     /// <summary>
     /// The selected items, in the order they were selected (see <see cref="Select(IEnumerable{DashboardItem}, DashboardSelectionMode)"/>).
     /// <see cref="Behaviors.SelectionBehavior"/> selects them with the mouse and the keyboard; the selection commands act on them.
-    /// Not to be confused with the cross-filter selection of a visual (<see cref="EasyBI.Core.FilterContext.Selection"/>).
+    /// Not to be confused with the cross-filter selection of a visual (<see cref="EasyBI.Core.FilterContext.Selections"/>).
     /// </summary>
     public ReadOnlyObservableCollection<DashboardItem> SelectedItems { get; }
 
@@ -812,9 +812,9 @@ public class DashboardView : Control
     /// <summary>A removed visual can no longer filter the others.</summary>
     private void ClearSelectionOf(IEnumerable<DashboardItem> items)
     {
-        if (VisualView.GetFilterContext(this) is { Selection: { } selection } filters
-            && items.Any(i => i.Visual?.Id == selection.SourceVisualId))
-            filters.ClearSelection();
+        if (VisualView.GetFilterContext(this) is not { } filters) return;
+        foreach (var id in items.Select(i => i.Visual?.Id).OfType<string>())
+            filters.ClearSelection(id);
     }
 
     // --- Commands ---

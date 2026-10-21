@@ -341,10 +341,10 @@ public class VisualView : ContentControl
             DockPanel.SetDock(title, Dock.Top);
             root.Children.Add(title);
         }
-        if (FilterContext is { Selection: { } selection } filters && selection.SourceVisualId == visual.Id
+        if (FilterContext is { } filters && filters.SelectionOf(visual.Id) is { } selection
             && Context?.Models.FirstOrDefault(m => m.Metadata.Name == selection.Model) is { } model)
         {
-            var chip = SelectionChip(selection.Describe(model.Metadata), filters);
+            var chip = SelectionChip(selection.Describe(model.Metadata), () => filters.ClearSelection(visual.Id));
             DockPanel.SetDock(chip, Dock.Top);
             root.Children.Add(chip);
         }
@@ -352,7 +352,7 @@ public class VisualView : ContentControl
         Content = root;
     }
 
-    private static FrameworkElement SelectionChip(string description, FilterContext filters)
+    private static FrameworkElement SelectionChip(string description, Action clearSelection)
     {
         var clear = new Button
         {
@@ -365,7 +365,7 @@ public class VisualView : ContentControl
             Cursor = System.Windows.Input.Cursors.Hand,
             ToolTip = Strings.ClearSelection,
         };
-        clear.Click += (_, _) => filters.ClearSelection();
+        clear.Click += (_, _) => clearSelection();
         var panel = new StackPanel { Orientation = Orientation.Horizontal };
         TextElement.SetFontSize(panel, 12);
         panel.Children.Add(new TextBlock

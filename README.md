@@ -400,9 +400,12 @@ inherited property), it is used by the `FilterBar` and by every `VisualView`:
   model and are saved with the report (`ReportDefinition.Filters`).
 - **Cross-filtering**: clicking a bar, a point, a slice or a table row filters the other visuals of
   the same model on the element's dimensions (axis, plus legend for a bar). Ctrl+click adds an element to the
-  selection of the same visual, or removes it; the other visuals keep the rows of any selected element. A plain click
-  replaces the selection, clicking the only selected element again clears it. The source visual is not filtered: it
-  dims what is left out of its selection and shows a summary of it ("Region = North or South").
+  selection of its visual, or removes it: the other visuals keep the rows of any selected element. Ctrl+click in
+  another visual adds that visual's own selection (`FilterContext.Selections`, one per visual): a visual is filtered by
+  the selections of all the others, "(Region = North or South) and Channel = Web". A plain click replaces every
+  selection, clicking the only selected element again clears it. A visual is not filtered by its own selection: it dims
+  what is left out of it and shows a summary of it, whose ✕ clears it (`ClearSelection(visualId)`); the `FilterBar`
+  sums them all up and clears them all.
   Periods (quarter, month...) filter through `FilterSpec.Grain`.
 - **Period filters**: a date dimension, in the `FilterBar` or on the designer's Filters shelf, is filtered on a
   period rather than on a list of values: between two dates, the current day / month / quarter / year, the last n
@@ -776,7 +779,6 @@ See [AGENTS.md](AGENTS.md) for the code style, language rules and Git workflow.
 
 ## Known limitations / roadmap
 
-- Cross-filtering: the selection comes from one visual at a time (Ctrl+click combines elements of the same visual).
 - Designer and `FilterBar` filters: "one of" a list of values, or a period for a date dimension; no ranges on numbers.
 - Relative periods ("last 12 months") are resolved in the local time zone when a visual queries; an open dashboard does
   not query again at midnight.

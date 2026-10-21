@@ -70,18 +70,26 @@ public sealed record CrossFilter(string SourceVisualId, string Model, IReadOnlyL
 
 /// <summary>
 /// Filtering state of a dashboard: global filters (slicers, saved with the report)
-/// and cross-filtering (transient selection made by clicking in a visual).
+/// and cross-filtering (transient selections made by clicking in visuals, at most one per visual).
 /// </summary>
 public sealed class FilterContext
 {
     private readonly List<ReportFilter> _filters = [];
+    private readonly List<CrossFilter> _selections = [];
 
     /// <summary>Raised whenever a global filter or the selection changes.</summary>
     public event EventHandler? Changed;
 
     public IReadOnlyList<ReportFilter> Filters => _filters;
 
-    public CrossFilter? Selection { get; private set; }
+    /// <summary>
+    /// Selections made in visuals, one per source visual (Ctrl+click in another visual adds one). A visual is filtered
+    /// by the selections of the others: a row must belong to each of them.
+    /// </summary>
+    public IReadOnlyList<CrossFilter> Selections => _selections;
+
+    /// <summary>The selection made in a visual, if any.</summary>
+    public CrossFilter? SelectionOf(string visualId) => _selections.FirstOrDefault(s => s.SourceVisualId == visualId);
 
     /// <summary>Adds or replaces the global filter on this field; a filter without values is removed.</summary>
     public void SetFilter(string model, FilterSpec filter)
@@ -109,54 +117,82 @@ public sealed class FilterContext
     {
         _filters.Clear();
         _filters.AddRange(filters);
-        Selection = null;
+        _selections.Clear();
         OnChanged();
     }
 
     /// <summary>
-    /// Selects the element clicked in a visual, in place of the current selection; clicking the only selected element
-    /// again clears it. With <paramref name="extend"/> (Ctrl+click), the element is added to the selection of the same
-    /// visual, or removed from it when it was already selected.
+    /// Selects the element clicked in a visual, in place of every current selection; clicking the only selected element
+    /// again clears it. With <paramref name="extend"/> (Ctrl+click), the element is added to the selection of its visual,
+    /// or removed from it when it was already selected, and the selections of the other visuals are kept.
     /// </summary>
     public void Select(RenderRequest request, DataSelection selection, bool extend = false)
     {
         if (SelectionFilters.Element(request, selection) is not { } element) return;
         var visual = request.Visual;
-        if (extend && Selection is { } current && current.SourceVisualId == visual.Id)
+        var index = _selections.FindIndex(s => s.SourceVisualId == visual.Id);
+        if (extend && index >= 0)
         {
+            var current = _selections[index];
             List<SelectedElement> elements = [.. current.Elements.Where(e => !e.SameAs(element))];
             if (elements.Count == current.Elements.Count) elements.Add(element);
-            Selection = elements.Count == 0 ? null : current with { Elements = elements };
+            if (elements.Count == 0) _selections.RemoveAt(index);
+            else _selections[index] = current with { Elements = elements };
+        }
+        else if (extend)
+        {
+            _selections.Add(new CrossFilter(visual.Id, visual.Model, [element]));
         }
         else
         {
-            var same = Selection is { Elements: [var only] } previous && previous.SourceVisualId == visual.Id && only.SameAs(element);
-            Selection = same ? null : new CrossFilter(visual.Id, visual.Model, [element]);
+            var same = _selections is [{ Elements: [var only] } previous] && previous.SourceVisualId == visual.Id && only.SameAs(element);
+            _selections.Clear();
+            if (!same) _selections.Add(new CrossFilter(visual.Id, visual.Model, [element]));
         }
         OnChanged();
     }
 
+    /// <summary>Clears every selection.</summary>
     public void ClearSelection()
     {
-        if (Selection is null) return;
-        Selection = null;
+        if (_selections.Count == 0) return;
+        _selections.Clear();
         OnChanged();
     }
 
-    /// <summary>The elements of the selection to emphasize in the request's visual, when it is the selection's source.</summary>
-    public IReadOnlyList<DataSelection>? HighlightFor(RenderRequest request) =>
-        Selection is { } selection && selection.SourceVisualId == request.Visual.Id
-            ? SelectionFilters.Highlight(request, selection)
-            : null;
+    /// <summary>Clears the selection made in one visual (removed from a dashboard, or its own clear button).</summary>
+    public void ClearSelection(string visualId)
+    {
+        if (_selections.RemoveAll(s => s.SourceVisualId == visualId) > 0)
+            OnChanged();
+    }
 
     /// <summary>
-    /// Filters to add to a visual: global filters of its model, then the selection made
-    /// in another visual of the same model (the source visual is not filtered by its own selection).
+    /// Readable summary of every selection in the current language, "Region = North or South and Channel = Web";
+    /// <paramref name="metadata"/> gives the metadata of a model (selections of unknown models are left out).
+    /// </summary>
+    public string DescribeSelections(Func<string, ModelMetadata?> metadata)
+    {
+        var several = _selections.Count > 1;
+        return string.Join($" {Strings.SelectionAnd} ", _selections
+            .Select(s => (Selection: s, Model: metadata(s.Model)))
+            .Where(d => d.Model is not null)
+            .Select(d => (d.Selection, Text: d.Selection.Describe(d.Model!)))
+            .Select(d => several && d.Selection.Elements.Count > 1 ? $"({d.Text})" : d.Text));
+    }
+
+    /// <summary>The elements of the selection to emphasize in the request's visual, when it is the source of one.</summary>
+    public IReadOnlyList<DataSelection>? HighlightFor(RenderRequest request) =>
+        SelectionOf(request.Visual.Id) is { } selection ? SelectionFilters.Highlight(request, selection) : null;
+
+    /// <summary>
+    /// Filters to add to a visual: global filters of its model, then the selections made in the other visuals of the
+    /// same model (a visual is not filtered by its own selection).
     /// </summary>
     public IReadOnlyList<FilterSpec> FiltersFor(VisualDefinition visual)
     {
         var filters = _filters.Where(f => f.Model == visual.Model).Select(f => f.Filter).ToList();
-        if (Selection is { } selection && selection.Model == visual.Model && selection.SourceVisualId != visual.Id)
+        foreach (var selection in _selections.Where(s => s.Model == visual.Model && s.SourceVisualId != visual.Id))
             filters.AddRange(selection.Filters);
         return filters;
     }

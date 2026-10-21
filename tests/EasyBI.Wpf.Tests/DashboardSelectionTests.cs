@@ -97,6 +97,25 @@ public class DashboardSelectionTests
     });
 
     [Fact]
+    public void Removing_a_visual_clears_its_cross_filtering_selection_only() => Sta.Run(() =>
+    {
+        var view = View("a", "b");
+        var filters = new EasyBI.Core.FilterContext();
+        VisualView.SetFilterContext(view, filters);
+        RenderRequest Clicked(string id) => new(
+            new VisualDefinition { Id = id, Model = "sales", Mark = MarkType.Bar, Axis = [new("Region")] },
+            new ResultSet([], []),
+            new ChartData(null, ["North"], []) { CategoryValues = [["North"]] },
+            BiTheme.Default);
+        filters.Select(Clicked("a"), new CategorySelection(0));
+        filters.Select(Clicked("b"), new CategorySelection(0), extend: true);
+
+        view.Remove(Item(view, "a"));
+
+        Assert.Equal("b", Assert.Single(filters.Selections).SourceVisualId);
+    });
+
+    [Fact]
     public void Duplicating_the_selection_copies_the_visuals_next_to_them_and_selects_the_copies() => Sta.Run(() =>
     {
         var view = View("a", "b");

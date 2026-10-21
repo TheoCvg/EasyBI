@@ -23,6 +23,7 @@ internal static class Strings
     public static string No => Get();
     public static string Total => Get();
     public static string SelectionOr => Get();
+    public static string SelectionAnd => Get();
     public static string QuarterLabel => Get();
     public static string ValidationEmptyTable => Get();
     public static string ValidationNoMeasure => Get();
