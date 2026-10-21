@@ -47,6 +47,13 @@ public class VisualView : ContentControl
         nameof(FilterContext), typeof(FilterContext), typeof(VisualView),
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.Inherits, OnFilterContextChanged));
 
+    /// <summary>
+    /// Raised (bubbling) when the user picks an element of the visual (a bar, a slice, a row), just before it changes the
+    /// cross-filtering selection: containers use it to leave such a click to the visual (Ctrl+click on a dashboard).
+    /// </summary>
+    public static readonly RoutedEvent DataSelectedEvent = EventManager.RegisterRoutedEvent(
+        "DataSelected", RoutingStrategy.Bubble, typeof(RoutedEventHandler), typeof(VisualView));
+
     // Follow the theme: these properties take the theme's resources, and redraw the chart when they change
     private static readonly DependencyProperty ForegroundProbeProperty = DependencyProperty.Register(
         "ForegroundProbe", typeof(object), typeof(VisualView), new PropertyMetadata(null, OnThemeChanged));
@@ -99,6 +106,13 @@ public class VisualView : ContentControl
     {
         get => (FilterContext?)GetValue(FilterContextProperty);
         set => SetValue(FilterContextProperty, value);
+    }
+
+    /// <inheritdoc cref="DataSelectedEvent"/>
+    public event RoutedEventHandler DataSelected
+    {
+        add => AddHandler(DataSelectedEvent, value);
+        remove => RemoveHandler(DataSelectedEvent, value);
     }
 
     public static FilterContext? GetFilterContext(DependencyObject element) =>
@@ -289,7 +303,16 @@ public class VisualView : ContentControl
         var filters = FilterContext;
         var request = VisualPipeline.Redraw(_last, filters?.Apply(visual) ?? visual) with { Theme = ChartTheme(context) };
         if (filters is not null)
-            request = request with { Select = selection => filters.Select(request, selection) };
+            request = request with
+            {
+                Highlight = filters.HighlightFor(request),
+                // Ctrl+click adds to (or removes from) the selection of this visual
+                Select = selection =>
+                {
+                    RaiseEvent(new RoutedEventArgs(DataSelectedEvent, this));
+                    filters.Select(request, selection, ModifierKeysState.Ctrl);
+                },
+            };
 
         try
         {

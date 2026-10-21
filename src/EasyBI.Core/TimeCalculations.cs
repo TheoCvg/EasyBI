@@ -44,13 +44,20 @@ public static class TimeCalculations
     // Without a date in the groups or the filters, "a year earlier" selects the same rows: it is left empty instead
     private static bool HasDates(ModelMetadata metadata, AnalyticQuery query) =>
         query.GroupBy.Any(g => IsDate(metadata, g.Field))
-        || query.Filters?.Any(f => f.Operator.IsPeriod() || f.Grain != DateGrain.None || IsDate(metadata, f.Field)) == true;
+        || query.Filters?.Any(f => FiltersDates(metadata, f)) == true;
+
+    private static bool FiltersDates(ModelMetadata metadata, FilterSpec filter) =>
+        filter.Operator == FilterOperator.AnyOf
+            ? filter.Alternatives?.Any(group => group.Any(f => FiltersDates(metadata, f))) == true
+            : filter.Operator.IsPeriod() || filter.Grain != DateGrain.None || IsDate(metadata, filter.Field);
 
     private static bool IsDate(ModelMetadata metadata, string field) =>
         metadata.Fields.FirstOrDefault(f => f.Name == field)?.DataType == DataType.Date;
 
     private static FilterSpec ShiftFilter(ModelMetadata metadata, FilterSpec filter)
     {
+        if (filter.Operator == FilterOperator.AnyOf)
+            return filter with { Alternatives = filter.Alternatives?.Select(group => (IReadOnlyList<FilterSpec>)[.. group.Select(f => ShiftFilter(metadata, f))]).ToArray() };
         if (filter.Operator.IsPeriod())
         {
             var (start, end) = PeriodFilters.Range(filter, DateOnly.FromDateTime(DateTime.Today));

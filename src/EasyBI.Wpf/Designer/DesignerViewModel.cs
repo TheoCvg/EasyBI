@@ -535,8 +535,8 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             sorted.SortDirection = sort.Descending ? ListSortDirection.Descending : ListSortDirection.Ascending;
         foreach (var f in visual.Filters)
         {
-            // Filters on period keys (a clicked quarter...) have no shelf: they are kept without being shown
-            if (f.Grain == DateGrain.None || f.Operator.IsPeriod())
+            // Filters on period keys (a clicked quarter...) or on several fields have no shelf: they are kept without being shown
+            if (f.Operator != FilterOperator.AnyOf && (f.Grain == DateGrain.None || f.Operator.IsPeriod()))
                 Filters.Add(new(metadata.GetField(f.Field), model, Rebuild, f.Values, f.Operator, f.Grain));
             else
                 _hiddenFilters = [.. _hiddenFilters, f];

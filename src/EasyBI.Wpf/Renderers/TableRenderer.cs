@@ -72,6 +72,12 @@ public sealed class TableRenderer : IVisualRenderer
                 Width = new DataGridLength(1, DataGridLengthUnitType.Star),
             });
         }
+        if (request.Highlight is { Count: > 0 })
+        {
+            // Rows are recycled while scrolling: their opacity is set each time one shows a row
+            grid.LoadingRow += (_, e) =>
+                e.Row.Opacity = request.IsRowEmphasized(e.Row.GetIndex()) ? 1 : SelectionFilters.DimmedOpacity;
+        }
         if (request.Select is { } select)
         {
             grid.Cursor = System.Windows.Input.Cursors.Hand;

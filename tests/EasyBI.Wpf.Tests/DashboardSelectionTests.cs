@@ -160,6 +160,47 @@ public class DashboardSelectionTests
         });
     });
 
+    private static void Release(UIElement element) =>
+        element.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = Mouse.MouseUpEvent });
+
+    [Fact]
+    public void Ctrl_click_adds_or_removes_an_item_when_the_button_is_released() => Sta.Run(() =>
+    {
+        var view = View("a", "b");
+        Shown(view, () =>
+        {
+            view.Select(Item(view, "a"));
+            using var ctrl = ModifierKeysState.Simulate(ModifierKeys.Control);
+
+            Click(Item(view, "b"));
+            Assert.Equal(["a"], Selected(view));
+            Release(Item(view, "b"));
+            Assert.Equal(["a", "b"], Selected(view));
+
+            Click(Item(view, "a"));
+            Release(Item(view, "a"));
+            Assert.Equal(["b"], Selected(view));
+        });
+    });
+
+    [Fact]
+    public void Ctrl_click_on_an_element_of_a_chart_leaves_the_items_selection_to_the_cross_filtering() => Sta.Run(() =>
+    {
+        var view = View("a", "b");
+        Shown(view, () =>
+        {
+            view.Select(Item(view, "a"));
+            using var ctrl = ModifierKeysState.Simulate(ModifierKeys.Control);
+
+            Click(Item(view, "b"));
+            // The chart of b reports a picked bar during the click
+            Item(view, "b").RaiseEvent(new RoutedEventArgs(VisualView.DataSelectedEvent));
+            Release(Item(view, "b"));
+
+            Assert.Equal(["a"], Selected(view));
+        });
+    });
+
     [Fact]
     public void Arrows_go_to_the_nearest_item_and_escape_unselects() => Sta.Run(() =>
     {

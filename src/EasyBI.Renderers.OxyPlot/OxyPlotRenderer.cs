@@ -145,7 +145,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
             model.Axes.Add(ValueAxis(chart, secondary: true));
 
         for (var i = 0; i < chart.Series.Count; i++)
-            model.Series.Add(CreateSeries(chart.Series[i], Color(request.Theme, i)));
+            model.Series.Add(CreateSeries(request, i));
 
         if (chart.Series.Count > 1)
             model.Legends.Add(new Legend { LegendPosition = LegendPosition.RightTop, LegendPlacement = LegendPlacement.Outside });
@@ -172,8 +172,14 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         };
     }
 
-    private static Series CreateSeries(ChartSeries source, OxyColor color)
+    /// <summary>
+    /// The series in its color. With a highlight (cross-filtering), the bars left out of it are faded; OxyPlot has
+    /// no color per point for lines and points, so a series is faded when none of its points is highlighted.
+    /// </summary>
+    private static Series CreateSeries(RenderRequest request, int index)
     {
+        var source = request.Chart.Series[index];
+        var color = request.IsEmphasized(index) ? Color(request.Theme, index) : Dim(Color(request.Theme, index));
         var valueAxis = source.SecondaryAxis ? SecondaryAxisKey : PrimaryAxisKey;
         var valueFormat = "{4:" + (source.Format ?? "#,##0.##") + "}";
         switch (source.Mark)
@@ -222,7 +228,10 @@ public sealed class OxyPlotRenderer : IVisualRenderer
                     StackGroup = source.SecondaryAxis ? SecondaryAxisKey : PrimaryAxisKey,
                     TrackerFormatString = "{0}\n{1}: {2:" + (source.Format ?? "#,##0.##") + "}",
                 };
-                bars.Items.AddRange(source.Values.Select(v => new BarItem(v ?? 0)));
+                bars.Items.AddRange(source.Values.Select((v, category) => new BarItem(v ?? 0)
+                {
+                    Color = request.IsEmphasized(category, index) ? OxyColors.Automatic : Dim(Color(request.Theme, index)),
+                }));
                 return bars;
         }
     }
@@ -250,7 +259,8 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         for (var i = 0; i < chart.Categories.Count; i++)
         {
             if (source.Values[i] is not { } value) continue;
-            pie.Slices.Add(new PieSlice(chart.Categories[i], value) { Fill = Color(request.Theme, i) });
+            var fill = Color(request.Theme, i);
+            pie.Slices.Add(new PieSlice(chart.Categories[i], value) { Fill = request.IsEmphasized(i, 0) ? fill : Dim(fill) });
             categories.Add(i);
         }
         // Categories without a value have no slice: slice index → category index
@@ -261,6 +271,8 @@ public sealed class OxyPlotRenderer : IVisualRenderer
     }
 
     private static OxyColor Color(BiTheme theme, int index) => OxyColor.Parse(theme.ColorAt(index));
+
+    private static OxyColor Dim(OxyColor color) => OxyColor.FromAColor((byte)(color.A * SelectionFilters.DimmedOpacity), color);
 
     /// <summary>Text, axes, grid lines and slice borders in the theme's colors (EasyBI's light colors when it has none).</summary>
     private static void ApplyTheme(PlotModel model, BiTheme theme)

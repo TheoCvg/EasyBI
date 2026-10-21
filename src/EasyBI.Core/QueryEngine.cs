@@ -188,38 +188,52 @@ internal static class QueryEngine<T>
         ParameterExpression parameter)
     {
         foreach (var filter in filters)
-        {
-            var field = RequireKind(metadata.GetField(filter.Field), FieldKind.Dimension);
-            if (filter.Operator.IsPeriod())
-            {
-                source = source.Where(InPeriod(field, Rebind(selectors[field.Name], parameter), filter, parameter));
-                continue;
-            }
-            var selector = ApplyGrain(field, Rebind(selectors[field.Name], parameter), filter.Grain);
-            var valueType = selector.Type;
-            var acceptsNull = !valueType.IsValueType || Nullable.GetUnderlyingType(valueType) is not null;
-            var values = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(valueType))!;
-            foreach (var text in filter.Values)
-            {
-                var value = InvariantValue.Parse(text, valueType);
-                if (value is not null || acceptsNull) values.Add(value);
-            }
-
-            Expression body = Expression.Call(
-                typeof(Enumerable), nameof(Enumerable.Contains), [valueType],
-                Expression.Constant(values), selector);
-            if (filter.Operator == FilterOperator.NotIn)
-                body = Expression.Not(body);
-            source = source.Where(Expression.Lambda<Func<T, bool>>(body, parameter));
-        }
+            source = source.Where(Expression.Lambda<Func<T, bool>>(Predicate(metadata, selectors, filter, parameter), parameter));
         return source;
+    }
+
+    private static Expression Predicate(
+        ModelMetadata metadata,
+        IReadOnlyDictionary<string, LambdaExpression> selectors,
+        FilterSpec filter,
+        ParameterExpression parameter)
+    {
+        if (filter.Operator == FilterOperator.AnyOf)
+        {
+            // An empty group matches every row, no group matches none
+            var groups = (filter.Alternatives ?? [])
+                .Select(group => group.Count == 0
+                    ? Expression.Constant(true)
+                    : group.Select(f => Predicate(metadata, selectors, f, parameter)).Aggregate(Expression.AndAlso))
+                .ToList();
+            return groups.Count == 0 ? Expression.Constant(false) : groups.Aggregate(Expression.OrElse);
+        }
+
+        var field = RequireKind(metadata.GetField(filter.Field), FieldKind.Dimension);
+        if (filter.Operator.IsPeriod())
+            return InPeriod(field, Rebind(selectors[field.Name], parameter), filter);
+
+        var selector = ApplyGrain(field, Rebind(selectors[field.Name], parameter), filter.Grain);
+        var valueType = selector.Type;
+        var acceptsNull = !valueType.IsValueType || Nullable.GetUnderlyingType(valueType) is not null;
+        var values = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(valueType))!;
+        foreach (var text in filter.Values)
+        {
+            var value = InvariantValue.Parse(text, valueType);
+            if (value is not null || acceptsNull) values.Add(value);
+        }
+
+        Expression body = Expression.Call(
+            typeof(Enumerable), nameof(Enumerable.Contains), [valueType],
+            Expression.Constant(values), selector);
+        return filter.Operator == FilterOperator.NotIn ? Expression.Not(body) : body;
     }
 
     /// <summary>
     /// date &gt;= start AND date &lt; end, resolved today. The date itself is compared, not a period key, so that a
     /// database can use an index on it.
     /// </summary>
-    private static Expression<Func<T, bool>> InPeriod(FieldDescriptor field, Expression date, FilterSpec filter, ParameterExpression parameter)
+    private static Expression InPeriod(FieldDescriptor field, Expression date, FilterSpec filter)
     {
         if (field.DataType != DataType.Date)
             throw new InvalidOperationException($"A period filter requires a date dimension ('{field.Name}').");
@@ -231,7 +245,7 @@ internal static class QueryEngine<T>
             var before = Expression.LessThan(date, Bound(to, date.Type));
             body = body is null ? before : Expression.AndAlso(body, before);
         }
-        return Expression.Lambda<Func<T, bool>>(body ?? Expression.Constant(true), parameter);
+        return body ?? Expression.Constant(true);
     }
 
     private static ConstantExpression Bound(DateTime day, Type dateType)

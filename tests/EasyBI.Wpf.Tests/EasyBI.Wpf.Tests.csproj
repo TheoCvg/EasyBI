@@ -31,6 +31,7 @@
     <ProjectReference Include="..\..\src\EasyBI.Themes.MaterialDesign\EasyBI.Themes.MaterialDesign.csproj" />
     <ProjectReference Include="..\..\src\EasyBI.Themes.WpfUi\EasyBI.Themes.WpfUi.csproj" />
     <ProjectReference Include="..\..\src\EasyBI.Renderers.LiveCharts2\EasyBI.Renderers.LiveCharts2.csproj" />
+    <ProjectReference Include="..\..\src\EasyBI.Renderers.OxyPlot\EasyBI.Renderers.OxyPlot.csproj" />
   </ItemGroup>
 
 </Project>

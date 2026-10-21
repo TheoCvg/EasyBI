@@ -43,8 +43,9 @@ public sealed record MeasureRef(string Measure, Aggregation? Aggregation = null)
 /// a period: <see cref="Between"/> two dates (values: from, to, as yyyy-MM-dd, inclusive, null for an open end), or a
 /// period relative to today whose unit is the filter's granularity: the <see cref="Current"/> one, the <see cref="Last"/>
 /// n ending with the current one (value: n), the n complete periods <see cref="Previous"/> to the current one (value: n).
+/// <see cref="AnyOf"/> keeps the rows matching at least one of its <see cref="FilterSpec.Alternatives"/>.
 /// </summary>
-public enum FilterOperator { In, NotIn, Between, Current, Last, Previous }
+public enum FilterOperator { In, NotIn, Between, Current, Last, Previous, AnyOf }
 
 /// <summary>
 /// Filter on a dimension. Values are stored in invariant form so they stay serializable
@@ -52,7 +53,20 @@ public enum FilterOperator { In, NotIn, Between, Current, Last, Previous }
 /// granularity, the date is first reduced to its period (<see cref="DatePeriod.Key"/>: 2024, 20241, 202403...) before
 /// the comparison; for a relative period, the granularity is its unit (12 last months: Last, ["12"], Month).
 /// </summary>
-public sealed record FilterSpec(string Field, FilterOperator Operator, IReadOnlyList<string?> Values, DateGrain Grain = DateGrain.None);
+public sealed record FilterSpec(string Field, FilterOperator Operator, IReadOnlyList<string?> Values, DateGrain Grain = DateGrain.None)
+{
+    /// <summary>
+    /// For <see cref="FilterOperator.AnyOf"/>: groups of filters, a row is kept when it matches every filter of one of
+    /// them, such as (Region = North and Channel = Web) or (Region = South). <see cref="Field"/> and
+    /// <see cref="Values"/> are then unused (empty).
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<IReadOnlyList<FilterSpec>>? Alternatives { get; init; }
+
+    /// <summary>A filter keeping the rows that match every filter of at least one group.</summary>
+    public static FilterSpec AnyOf(IReadOnlyList<IReadOnlyList<FilterSpec>> alternatives) =>
+        new("", FilterOperator.AnyOf, []) { Alternatives = alternatives };
+}
 
 public sealed record SortSpec(string Key, bool Descending = false);
 

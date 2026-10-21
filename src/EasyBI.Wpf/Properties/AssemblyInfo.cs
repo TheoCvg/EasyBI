@@ -1,5 +1,8 @@
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Markup;
+
+[assembly: InternalsVisibleTo("EasyBI.Wpf.Tests")]
 
 // Default styles of the lookless controls (DashboardItem) are in Themes/Generic.xaml
 [assembly: ThemeInfo(ResourceDictionaryLocation.None, ResourceDictionaryLocation.SourceAssembly)]

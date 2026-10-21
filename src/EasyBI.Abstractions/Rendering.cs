@@ -75,4 +75,11 @@ public sealed record RenderRequest(VisualDefinition Visual, ResultSet Result, Ch
     /// Null when interactivity is disabled (designer preview, export...).
     /// </summary>
     public Action<DataSelection>? Select { get; init; }
+
+    /// <summary>
+    /// Elements selected in this visual (cross-filtering): the renderer draws them as usual and dims the others. A
+    /// <see cref="CategorySelection"/> without a series covers every series of its category. Null when nothing is
+    /// selected in this visual.
+    /// </summary>
+    public IReadOnlyList<DataSelection>? Highlight { get; init; }
 }
