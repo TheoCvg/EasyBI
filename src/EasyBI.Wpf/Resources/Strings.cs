@@ -15,6 +15,7 @@ internal static class Strings
     public static string MarkKpi => Get();
     public static string MarkTable => Get();
     public static string MarkMatrix => Get();
+    public static string MarkDonut => Get();
     public static string PropertiesFormatting => Get();
     public static string FormatColor => Get();
     public static string FormatBold => Get();

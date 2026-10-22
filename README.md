@@ -253,6 +253,9 @@ new MeasureRef("Amount")
 };
 ```
 
+A **pie** (`MarkType.Pie`) is a full disc; a **donut** (`MarkType.Donut`) is a ring with the total of its value in its
+hole (`ChartCenterLabel`, which places a text in the middle of a connector's plot area).
+
 Besides charts, KPIs, tables and matrices, a visual can be a **text** (`MarkType.Text`, content in
 `VisualDefinition.Text`) or an **image** (`MarkType.Image`, embedded as base64 in `VisualDefinition.Image`).
 They query no model and are drawn by the built-in `TextRenderer` and `ImageRenderer`.

@@ -110,6 +110,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             new(MarkType.Line, MarkGroup.Trend, () => Strings.MarkLine),
             new(MarkType.Area, MarkGroup.Trend, () => Strings.MarkArea),
             new(MarkType.Pie, MarkGroup.Composition, () => Strings.MarkPie),
+            new(MarkType.Donut, MarkGroup.Composition, () => Strings.MarkDonut),
             new(MarkType.Kpi, MarkGroup.IndicatorsAndTables, () => Strings.MarkKpi),
             new(MarkType.Table, MarkGroup.IndicatorsAndTables, () => Strings.MarkTable),
             new(MarkType.Matrix, MarkGroup.IndicatorsAndTables, () => Strings.MarkMatrix),

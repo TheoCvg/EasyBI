@@ -606,4 +606,7 @@
   <data name="FormatChartHint" xml:space="preserve">
     <value>On a chart, the rules and the color scale color the bars, points and slices (stacked bars: a frame around the whole stack).</value>
   </data>
+  <data name="MarkDonut" xml:space="preserve">
+    <value>Donut</value>
+  </data>
 </root>

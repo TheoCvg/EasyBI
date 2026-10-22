@@ -1,4 +1,5 @@
 using EasyBI.Abstractions;
+using EasyBI.Core;
 using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf;
@@ -56,7 +57,7 @@ public static class FieldVisuals
         if (visual.Mark is MarkType.Text or MarkType.Image || visual.Model != model.Metadata.Name) return null;
         if (field.Kind == FieldKind.Measure)
         {
-            if (visual.Values.Any(v => v.Measure == field.Name) || (visual.Mark == MarkType.Pie && visual.Values.Count > 0)) return null;
+            if (visual.Values.Any(v => v.Measure == field.Name) || (visual.Mark.IsCircular() && visual.Values.Count > 0)) return null;
             return visual with { Values = [.. visual.Values, new MeasureRef(field.Name)] };
         }
 
@@ -65,7 +66,7 @@ public static class FieldVisuals
         return visual.Mark switch
         {
             MarkType.Kpi => visual with { Mark = MarkType.Bar, Axis = [axis] },
-            MarkType.Pie => visual.Axis.Count == 0 ? visual with { Axis = [axis] } : null,
+            MarkType.Pie or MarkType.Donut => visual.Axis.Count == 0 ? visual with { Axis = [axis] } : null,
             MarkType.Table => visual.Axis.Count < MaxAxisFields ? visual with { Axis = [.. visual.Axis, axis] } : null,
             _ when visual.Axis.Count == 0 => visual with { Axis = [axis] },
             _ when visual.Legend is null => visual with { Legend = axis },

@@ -14,6 +14,9 @@ public static class VisualPipeline
     public static bool IsCartesian(this MarkType mark) =>
         mark is MarkType.Bar or MarkType.StackedBar or MarkType.Line or MarkType.Area or MarkType.Scatter;
 
+    /// <summary>True for the marks drawn as slices of a circle (one category per slice): a pie and a donut.</summary>
+    public static bool IsCircular(this MarkType mark) => mark is MarkType.Pie or MarkType.Donut;
+
     /// <summary>The chart type of a measure's series: its own mark in a cartesian chart, otherwise the visual's.</summary>
     public static MarkType SeriesMark(this VisualDefinition visual, MeasureRef measure) =>
         visual.Mark.IsCartesian() && measure.Mark is { } mark && mark.IsCartesian() ? mark : visual.Mark;

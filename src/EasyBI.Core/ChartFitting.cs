@@ -18,7 +18,7 @@ public sealed record ChartFit
     /// <summary>False when there is no room for the axis titles.</summary>
     public bool ShowAxisTitles { get; init; } = true;
 
-    /// <summary>Inner radius of a donut, in device-independent pixels.</summary>
+    /// <summary>Inner radius of a donut, in device-independent pixels (0 for a pie).</summary>
     public double InnerRadius { get; init; }
 }
 
@@ -101,7 +101,8 @@ public static class ChartFitting
         };
     }
 
-    public static ChartFit Pie(ChartData chart, double width, double height)
+    /// <summary>The fit of a pie, or of a donut (<paramref name="donut"/>), whose hole keeps half of the radius.</summary>
+    public static ChartFit Pie(ChartData chart, double width, double height, bool donut = false)
     {
         var legendWidth = LegendWidth(chart.Categories);
         var legend = width >= legendWidth + 160 && width >= height ? ChartLegend.Right
@@ -114,7 +115,7 @@ public static class ChartFitting
         return new ChartFit
         {
             Legend = legend,
-            InnerRadius = Math.Max(0, Math.Min(pieWidth, pieHeight) / 2 * 0.5),
+            InnerRadius = donut ? Math.Max(0, Math.Min(pieWidth, pieHeight) / 2 * 0.5) : 0,
         };
     }
 }

@@ -4,6 +4,7 @@ using EasyBI.Abstractions;
 using EasyBI.Core;
 using EasyBI.Renderers.LiveCharts2.Resources;
 using EasyBI.Wpf;
+using EasyBI.Wpf.Renderers;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.Drawing;
@@ -30,7 +31,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
 
     public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType>
     {
-        MarkType.Bar, MarkType.StackedBar, MarkType.Line, MarkType.Area, MarkType.Scatter, MarkType.Pie,
+        MarkType.Bar, MarkType.StackedBar, MarkType.Line, MarkType.Area, MarkType.Scatter, MarkType.Pie, MarkType.Donut,
     })
     {
         Options =
@@ -42,7 +43,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
 
     public FrameworkElement Render(RenderRequest request) => request.Visual.Mark switch
     {
-        MarkType.Pie => RenderPie(request),
+        var mark when mark.IsCircular() => RenderPie(request),
         var mark when mark.IsCartesian() => request.Visual.GetRendererOption<bool>(Name, ScrollableOption)
             ? RenderScrollable(request)
             : RenderCartesian(request),
@@ -393,8 +394,10 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
 
     private static SKColor Dim(SKColor color) => color.WithAlpha((byte)(color.Alpha * SelectionFilters.DimmedOpacity));
 
-    private static PieChart RenderPie(RenderRequest request)
+    /// <summary>A pie (a full disc), or a donut with the total in its hole.</summary>
+    private static FrameworkElement RenderPie(RenderRequest request)
     {
+        var donut = request.Visual.Mark == MarkType.Donut;
         var chart = request.Chart;
         var source = chart.Series[0];
         var formatting = ChartFormatting.For(request);
@@ -415,7 +418,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         var view = new PieChart { Series = slices.Keys.ToArray(), LegendPosition = LegendPosition.Right };
         ApplyTheme(view, request.Theme);
         // Legend and donut hole adapt to the room the chart actually gets
-        view.SizeChanged += (_, _) => FitPie(view, slices.Keys, chart);
+        view.SizeChanged += (_, _) => FitPie(view, slices.Keys, chart, donut);
         if (request.Select is { } select)
         {
             view.Cursor = System.Windows.Input.Cursors.Hand;
@@ -425,7 +428,17 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                     select(new CategorySelection(category));
             });
         }
-        return view;
+        if (!donut) return view;
+
+        var total = source.Values.OfType<double>().Sum();
+        var label = new ChartCenterLabel(view, () =>
+            view.CoreChart is { DrawMarginSize: { Width: > 0 } size, DrawMarginLocation: var location }
+                ? new Rect(location.X, location.Y, size.Width, size.Height)
+                : null,
+            ValueFormatter.Format(total, source.Format), source.Name);
+        // LiveCharts2 measures the pie after WPF's layout
+        view.UpdateFinished += _ => view.Dispatcher.InvokeAsync(label.Place);
+        return label;
     }
 
     /// <summary>
@@ -447,10 +460,10 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         };
     }
 
-    private static void FitPie(PieChart view, IEnumerable<ISeries> slices, ChartData chart)
+    private static void FitPie(PieChart view, IEnumerable<ISeries> slices, ChartData chart, bool donut)
     {
         if (view.ActualWidth <= 0) return;
-        var fit = ChartFitting.Pie(chart, view.ActualWidth, view.ActualHeight);
+        var fit = ChartFitting.Pie(chart, view.ActualWidth, view.ActualHeight, donut);
         var legend = Position(fit.Legend);
         if (view.LegendPosition != legend) view.LegendPosition = legend;
         foreach (var slice in slices.OfType<PieSeries<double>>())

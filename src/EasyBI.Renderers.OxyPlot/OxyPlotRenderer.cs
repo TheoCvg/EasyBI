@@ -2,6 +2,7 @@ using System.Windows;
 using EasyBI.Abstractions;
 using EasyBI.Core;
 using EasyBI.Wpf;
+using EasyBI.Wpf.Renderers;
 using OxyPlot;
 using OxyPlot.Annotations;
 using OxyPlot.Axes;
@@ -18,14 +19,14 @@ public sealed class OxyPlotRenderer : IVisualRenderer
 
     public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType>
     {
-        MarkType.Bar, MarkType.StackedBar, MarkType.Line, MarkType.Area, MarkType.Scatter, MarkType.Pie,
+        MarkType.Bar, MarkType.StackedBar, MarkType.Line, MarkType.Area, MarkType.Scatter, MarkType.Pie, MarkType.Donut,
     });
 
     public FrameworkElement Render(RenderRequest request)
     {
         var model = request.Visual.Mark switch
         {
-            MarkType.Pie => BuildPie(request),
+            var mark when mark.IsCircular() => BuildPie(request),
             var mark when mark.IsCartesian() => BuildCartesian(request),
             _ => throw new NotSupportedException($"OxyPlotRenderer does not support '{request.Visual.Mark}'."),
         };
@@ -36,14 +37,21 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         view.SizeChanged += (_, _) => Fit(view, model, request);
         if (request.Select is { } select)
             view.Controller = SelectionController(model, select);
-        return view;
+        if (request.Visual.Mark != MarkType.Donut) return view;
+
+        // A donut shows its total in its hole, the middle of the plot area
+        var source = request.Chart.Series[0];
+        return new ChartCenterLabel(view, () => model.PlotArea is { Width: > 0, Height: > 0 } area
+                ? new Rect(area.Left, area.Top, area.Width, area.Height)
+                : null,
+            ValueFormatter.Format(source.Values.OfType<double>().Sum(), source.Format), source.Name);
     }
 
     private static void Fit(PlotView view, PlotModel model, RenderRequest request)
     {
         if (view.ActualWidth <= 0) return;
-        var changed = request.Visual.Mark == MarkType.Pie
-            ? FitPie(model, ChartFitting.Pie(request.Chart, view.ActualWidth, view.ActualHeight))
+        var changed = request.Visual.Mark.IsCircular()
+            ? FitPie(model, ChartFitting.Pie(request.Chart, view.ActualWidth, view.ActualHeight, request.Visual.Mark == MarkType.Donut))
             : FitCartesian(model, request.Chart, ChartFitting.Cartesian(request.Chart, view.ActualWidth, view.ActualHeight));
         // Only redraw when something changed: SizeChanged fires continuously while a dashboard cell is resized
         if (changed) model.InvalidatePlot(false);
@@ -307,7 +315,8 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         var formatting = ChartFormatting.For(request);
         var pie = new PieSeries
         {
-            InnerDiameter = 0.45,
+            // A donut's hole; a pie is a full disc
+            InnerDiameter = request.Visual.Mark == MarkType.Donut ? 0.5 : 0,
             StrokeThickness = 2,
             Stroke = OxyColors.White,
             InsideLabelPosition = 0.75,

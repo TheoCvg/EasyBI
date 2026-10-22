@@ -39,12 +39,12 @@ public sealed class ShelfViewModel : ObservableObject
     /// <summary>The name of the well for the visual type.</summary>
     public string Label => (Kind, Designer.SelectedMark) switch
     {
-        (Shelf.Axis, MarkType.Pie) => Strings.WellCategory,
+        (Shelf.Axis, MarkType.Pie or MarkType.Donut) => Strings.WellCategory,
         (Shelf.Axis, MarkType.Table or MarkType.Matrix) => Strings.WellRows,
         (Shelf.Axis, _) => Strings.Axis,
         (Shelf.Legend, MarkType.Matrix) => Strings.WellColumns,
         (Shelf.Legend, _) => Strings.Legend,
-        (Shelf.Values, MarkType.Pie) => Strings.WellValue,
+        (Shelf.Values, MarkType.Pie or MarkType.Donut) => Strings.WellValue,
         (Shelf.Values, _) => Strings.Values,
         _ => Strings.Filters,
     };
@@ -74,7 +74,7 @@ public sealed class ShelfViewModel : ObservableObject
     public static bool IsUsedBy(Shelf shelf, MarkType mark) => (shelf, mark) switch
     {
         (Shelf.Axis, MarkType.Kpi) => false,
-        (Shelf.Legend, MarkType.Kpi or MarkType.Pie or MarkType.Table) => false,
+        (Shelf.Legend, MarkType.Kpi or MarkType.Pie or MarkType.Donut or MarkType.Table) => false,
         _ => true,
     };
 

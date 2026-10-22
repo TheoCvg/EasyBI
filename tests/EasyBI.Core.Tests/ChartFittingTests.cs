@@ -77,15 +77,21 @@ public class ChartFittingTests
     {
         var chart = Chart(4, 1);
 
-        var large = ChartFitting.Pie(chart, 600, 300);
+        var large = ChartFitting.Pie(chart, 600, 300, donut: true);
         Assert.Equal(ChartLegend.Right, large.Legend);
         Assert.Equal((300 - 0) / 2 * 0.5, large.InnerRadius);
 
-        var tall = ChartFitting.Pie(chart, 200, 400);
+        var tall = ChartFitting.Pie(chart, 200, 400, donut: true);
         Assert.Equal(ChartLegend.Bottom, tall.Legend);
         Assert.Equal(200 / 2 * 0.5, tall.InnerRadius);
 
-        var tiny = ChartFitting.Pie(chart, 150, 120);
+        var tiny = ChartFitting.Pie(chart, 150, 120, donut: true);
         Assert.Equal((ChartLegend.Hidden, 30d), (tiny.Legend, tiny.InnerRadius));
+    }
+
+    [Fact]
+    public void A_pie_is_a_full_disc()
+    {
+        Assert.Equal(0, ChartFitting.Pie(Chart(4, 1), 600, 300).InnerRadius);
     }
 }

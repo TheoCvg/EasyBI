@@ -67,7 +67,7 @@
     <value>A KPI only shows values: remove the fields of the other wells.</value>
   </data>
   <data name="ValidationPie" xml:space="preserve">
-    <value>A pie chart needs one category and a single value.</value>
+    <value>A pie or a donut needs one category and a single value.</value>
   </data>
   <data name="ValidationNoImage" xml:space="preserve">
     <value>Choose an image to show.</value>

@@ -5,9 +5,10 @@ namespace EasyBI.Abstractions;
 /// (<see cref="VisualDefinition.Text"/>, <see cref="VisualDefinition.Image"/>) and query no model.
 /// The cartesian marks (<see cref="Bar"/>, <see cref="StackedBar"/>, <see cref="Line"/>, <see cref="Area"/>,
 /// <see cref="Scatter"/>) can be mixed in one chart, one per measure (<see cref="MeasureRef.Mark"/>).
-/// A <see cref="Matrix"/> crosses its axis (rows) with its legend (columns), with totals.
+/// A <see cref="Matrix"/> crosses its axis (rows) with its legend (columns), with totals. A <see cref="Pie"/> is a full
+/// disc, a <see cref="Donut"/> a ring with the total in its center.
 /// </summary>
-public enum MarkType { Bar, Line, Pie, Kpi, Table, Text, Image, Area, Scatter, StackedBar, Matrix }
+public enum MarkType { Bar, Line, Pie, Kpi, Table, Text, Image, Area, Scatter, StackedBar, Matrix, Donut }
 
 /// <summary>
 /// Definition of a visual, independent of any charting library.

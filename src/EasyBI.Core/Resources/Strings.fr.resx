@@ -67,7 +67,7 @@
     <value>Un KPI ne montre que des valeurs : retirez les champs des autres zones.</value>
   </data>
   <data name="ValidationPie" xml:space="preserve">
-    <value>Un camembert demande une catégorie et une seule valeur.</value>
+    <value>Un camembert ou un anneau demande une catégorie et une seule valeur.</value>
   </data>
   <data name="ValidationNoImage" xml:space="preserve">
     <value>Choisissez une image à afficher.</value>
