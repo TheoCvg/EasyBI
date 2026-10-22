@@ -600,4 +600,10 @@
   <data name="RuleShowOnChart" xml:space="preserve">
     <value>Show its zone on charts</value>
   </data>
+  <data name="RuleColorChart" xml:space="preserve">
+    <value>Color</value>
+  </data>
+  <data name="FormatChartHint" xml:space="preserve">
+    <value>On a chart, the rules and the color scale color the bars, points and slices (a whole stack for stacked bars).</value>
+  </data>
 </root>

@@ -64,6 +64,31 @@ public class ChartFormattingUiTests
     });
 
     [Fact]
+    public void The_format_editor_only_shows_what_the_visual_type_uses()
+    {
+        var designer = new DesignerViewModel(EasyBIContext.Create().AddModel(
+            SemanticModel.For(new[] { new { Region = "Nord", Amount = 1m } }, "sales").Dimension(s => s.Region, "Région").Measure(s => s.Amount, "CA")));
+        designer.Load(new VisualDefinition { Model = "sales", Mark = MarkType.Bar, Axis = [new("Region")], Values = [new("Amount")] });
+        var chip = designer.Values.Single();
+        designer.SelectedItem = chip;
+        var format = chip.Format;
+        format.AddRuleCommand.Execute(null);
+        var rule = format.Rules.Single();
+
+        // A chart: rules color the points and show zones, a scale colors them; no text style, bars or icons
+        Assert.Equal(FormatTarget.Chart, format.Target);
+        Assert.Equal((false, false, true, false, false), (format.ShowTextStyle, format.ShowAlignment, format.ShowScale, format.ShowBar, format.ShowIcons));
+        Assert.Equal((false, false, true, "Color"), (rule.ShowBackground, rule.ShowBold, rule.ShowZoneOption, rule.ColorLabel));
+
+        designer.SelectedMark = MarkType.Table;
+        Assert.Equal((true, true, true, true, true), (format.ShowTextStyle, format.ShowAlignment, format.ShowScale, format.ShowBar, format.ShowIcons));
+        Assert.Equal((true, true, false, "Text"), (rule.ShowBackground, rule.ShowBold, rule.ShowZoneOption, rule.ColorLabel));
+
+        designer.SelectedMark = MarkType.Kpi;
+        Assert.Equal((true, false, false, false, true), (format.ShowTextStyle, format.ShowAlignment, format.ShowScale, format.ShowBar, format.ShowIcons));
+    }
+
+    [Fact]
     public void A_rule_shown_on_charts_is_saved_from_the_designer()
     {
         var format = new ValueFormatViewModel(null, () => { });

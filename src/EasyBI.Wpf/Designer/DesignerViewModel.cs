@@ -662,8 +662,11 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
                         () => chip.SortDirection, v => chip.SortDirection = v, () => chip.CanSort, () => Strings.SortHint),
                 ]));
                 if (chip.IsValue)
+                {
+                    chip.Format.Target = ValueFormatViewModel.TargetOf(SelectedMark);
                     sections.Add(new DesignerPropertySection(DesignerPropertySections.Formatting, () => Strings.PropertiesFormatting,
                         [DesignerProperty.Custom("Format", () => Strings.PropertiesFormatting, chip.Format)]));
+                }
                 break;
             case FilterItemViewModel filter:
                 sections.Add(new DesignerPropertySection(DesignerPropertySections.Filter, () => filter.Caption,
@@ -909,6 +912,8 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         // The wells take the names and the use of the new type (not built yet while the designer is constructed)
         if (AxisWell is null) return;
         foreach (var well in Wells) well.Refresh();
+        // The format editors show what the new type uses
+        foreach (var chip in Values) chip.Format.Target = ValueFormatViewModel.TargetOf(_selectedMark);
     }
 
     private void RefreshAvailability()

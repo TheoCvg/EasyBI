@@ -257,6 +257,9 @@ public sealed class OxyPlotRenderer : IVisualRenderer
                     XAxisKey = valueAxis,
                     YAxisKey = CategoryAxisKey,
                     IsStacked = source.Mark == MarkType.StackedBar,
+                    // Segments of a stack colored alike stay apart: a thin line of the background between them
+                    StrokeColor = source.Mark == MarkType.StackedBar && formatting.ColorsPoints ? Parse(request.Theme.Background) ?? OxyColors.White : OxyColors.Automatic,
+                    StrokeThickness = source.Mark == MarkType.StackedBar && formatting.ColorsPoints ? 1 : 0,
                     // Series on the right axis stack separately from those on the left
                     StackGroup = source.SecondaryAxis ? SecondaryAxisKey : PrimaryAxisKey,
                     TrackerFormatString = "{0}\n{1}: {2:" + (source.Format ?? "#,##0.##") + "}",

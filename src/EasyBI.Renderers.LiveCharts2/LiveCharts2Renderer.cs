@@ -298,6 +298,8 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         var axis = source.SecondaryAxis ? 1 : 0;
         string Tooltip(double value) => ValueFormatter.Format(value, source.Format);
         var paints = new Dictionary<string, SolidColorPaint>();
+        // Segments of a stack colored alike stay apart: a thin line of the background between them
+        var separator = new SolidColorPaint(Parse(request.Theme.Background) ?? SKColors.White, 1);
         void Fade(IDrawnElement? point, int category)
         {
             if (point is null) return;
@@ -311,6 +313,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                     : null;
                 geometry.Fill = paint;
                 if (source.Mark is MarkType.Line or MarkType.Scatter) geometry.Stroke = paint;
+                else if (source.Mark == MarkType.StackedBar) geometry.Stroke = paint is null ? null : separator;
             }
         }
 

@@ -30,6 +30,8 @@ internal static class Strings
     public static string RuleColor => Get();
     public static string RuleBackground => Get();
     public static string RuleShowOnChart => Get();
+    public static string RuleColorChart => Get();
+    public static string FormatChartHint => Get();
     public static string FormatScale => Get();
     public static string ScaleMinimum => Get();
     public static string ScaleMiddle => Get();

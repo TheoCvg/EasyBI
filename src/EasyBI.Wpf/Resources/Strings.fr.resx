@@ -600,4 +600,10 @@
   <data name="RuleShowOnChart" xml:space="preserve">
     <value>Afficher sa zone sur les graphiques</value>
   </data>
+  <data name="RuleColorChart" xml:space="preserve">
+    <value>Couleur</value>
+  </data>
+  <data name="FormatChartHint" xml:space="preserve">
+    <value>Sur un graphique, les règles et l&apos;échelle de couleurs colorent les barres, points et parts (toute la pile pour des barres empilées).</value>
+  </data>
 </root>

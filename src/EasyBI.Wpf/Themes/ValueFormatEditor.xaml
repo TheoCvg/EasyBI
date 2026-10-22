@@ -35,16 +35,22 @@
             <Setter.Value>
                 <ControlTemplate TargetType="designer:ValueFormatEditor">
                     <StackPanel>
+                        <!-- On a chart: what the format does there -->
+                        <TextBlock Text="{bi:Localize FormatChartHint}" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,4"
+                                   Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}"
+                                   Visibility="{Binding IsChart, Converter={StaticResource Visible}}" />
                         <!-- Every value -->
-                        <DockPanel>
-                            <TextBlock Text="{bi:Localize FormatColor}" Style="{StaticResource Label}" />
-                            <ContentPresenter Content="{Binding Color}" />
-                        </DockPanel>
-                        <WrapPanel Margin="0,6,0,0">
-                            <CheckBox Content="{bi:Localize FormatBold}" IsChecked="{Binding IsBold}" Margin="0,0,16,0" />
-                            <CheckBox Content="{bi:Localize FormatItalic}" IsChecked="{Binding IsItalic}" />
-                        </WrapPanel>
-                        <DockPanel Margin="0,6,0,0">
+                        <StackPanel Visibility="{Binding ShowTextStyle, Converter={StaticResource Visible}}">
+                            <DockPanel>
+                                <TextBlock Text="{bi:Localize FormatColor}" Style="{StaticResource Label}" />
+                                <ContentPresenter Content="{Binding Color}" />
+                            </DockPanel>
+                            <WrapPanel Margin="0,6,0,0">
+                                <CheckBox Content="{bi:Localize FormatBold}" IsChecked="{Binding IsBold}" Margin="0,0,16,0" />
+                                <CheckBox Content="{bi:Localize FormatItalic}" IsChecked="{Binding IsItalic}" />
+                            </WrapPanel>
+                        </StackPanel>
+                        <DockPanel Margin="0,6,0,0" Visibility="{Binding ShowAlignment, Converter={StaticResource Visible}}">
                             <TextBlock Text="{bi:Localize FormatAlignment}" Style="{StaticResource Label}" />
                             <ComboBox ItemsSource="{x:Static designer:ValueFormatViewModel.Alignments}" SelectedItem="{Binding Alignment}" DisplayMemberPath="Label" />
                         </DockPanel>
@@ -73,15 +79,17 @@
                                                 </StackPanel>
                                             </StackPanel>
                                             <DockPanel Margin="0,4,0,0">
-                                                <TextBlock Text="{bi:Localize RuleColor}" Style="{StaticResource Label}" />
+                                                <TextBlock Text="{Binding ColorLabel}" Style="{StaticResource Label}" />
                                                 <ContentPresenter Content="{Binding Color}" />
                                             </DockPanel>
-                                            <DockPanel Margin="0,4,0,0">
+                                            <DockPanel Margin="0,4,0,0" Visibility="{Binding ShowBackground, Converter={StaticResource Visible}}">
                                                 <TextBlock Text="{bi:Localize RuleBackground}" Style="{StaticResource Label}" />
                                                 <ContentPresenter Content="{Binding Background}" />
                                             </DockPanel>
-                                            <CheckBox Content="{bi:Localize FormatBold}" IsChecked="{Binding IsBold}" Margin="0,4,0,0" />
-                                            <CheckBox IsChecked="{Binding ShowOnChart}" Margin="0,4,0,0">
+                                            <CheckBox Content="{bi:Localize FormatBold}" IsChecked="{Binding IsBold}" Margin="0,4,0,0"
+                                                      Visibility="{Binding ShowBold, Converter={StaticResource Visible}}" />
+                                            <CheckBox IsChecked="{Binding ShowOnChart}" Margin="0,4,0,0"
+                                                      Visibility="{Binding ShowZoneOption, Converter={StaticResource Visible}}">
                                                 <TextBlock Text="{bi:Localize RuleShowOnChart}" TextWrapping="Wrap" />
                                             </CheckBox>
                                         </StackPanel>
@@ -92,49 +100,55 @@
                         <Button Content="{bi:Localize AddRule}" HorizontalAlignment="Left" Padding="8,2" Command="{Binding AddRuleCommand}" />
 
                         <!-- Color scale -->
-                        <CheckBox Content="{bi:Localize FormatScale}" IsChecked="{Binding HasScale}" Margin="0,12,0,0" FontWeight="SemiBold" />
-                        <StackPanel Margin="0,4,0,0" Visibility="{Binding HasScale, Converter={StaticResource Visible}}">
-                            <DockPanel>
-                                <TextBlock Text="{bi:Localize ScaleMinimum}" Style="{StaticResource Label}" />
-                                <ContentPresenter Content="{Binding ScaleMinimum}" />
-                            </DockPanel>
-                            <DockPanel Margin="0,4,0,0">
-                                <TextBlock Text="{bi:Localize ScaleMiddle}" Style="{StaticResource Label}" />
-                                <ContentPresenter Content="{Binding ScaleMiddle}" />
-                            </DockPanel>
-                            <DockPanel Margin="0,4,0,0">
-                                <TextBlock Text="{bi:Localize ScaleMaximum}" Style="{StaticResource Label}" />
-                                <ContentPresenter Content="{Binding ScaleMaximum}" />
-                            </DockPanel>
+                        <StackPanel Visibility="{Binding ShowScale, Converter={StaticResource Visible}}">
+                            <CheckBox Content="{bi:Localize FormatScale}" IsChecked="{Binding HasScale}" Margin="0,12,0,0" FontWeight="SemiBold" />
+                            <StackPanel Margin="0,4,0,0" Visibility="{Binding HasScale, Converter={StaticResource Visible}}">
+                                <DockPanel>
+                                    <TextBlock Text="{bi:Localize ScaleMinimum}" Style="{StaticResource Label}" />
+                                    <ContentPresenter Content="{Binding ScaleMinimum}" />
+                                </DockPanel>
+                                <DockPanel Margin="0,4,0,0">
+                                    <TextBlock Text="{bi:Localize ScaleMiddle}" Style="{StaticResource Label}" />
+                                    <ContentPresenter Content="{Binding ScaleMiddle}" />
+                                </DockPanel>
+                                <DockPanel Margin="0,4,0,0">
+                                    <TextBlock Text="{bi:Localize ScaleMaximum}" Style="{StaticResource Label}" />
+                                    <ContentPresenter Content="{Binding ScaleMaximum}" />
+                                </DockPanel>
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- Data bars -->
-                        <CheckBox Content="{bi:Localize FormatBars}" IsChecked="{Binding HasBar}" Margin="0,12,0,0" FontWeight="SemiBold" />
-                        <StackPanel Margin="0,4,0,0" Visibility="{Binding HasBar, Converter={StaticResource Visible}}">
-                            <DockPanel>
-                                <TextBlock Text="{bi:Localize BarPositive}" Style="{StaticResource Label}" />
-                                <ContentPresenter Content="{Binding BarColor}" />
-                            </DockPanel>
-                            <DockPanel Margin="0,4,0,0">
-                                <TextBlock Text="{bi:Localize BarNegative}" Style="{StaticResource Label}" />
-                                <ContentPresenter Content="{Binding BarNegativeColor}" />
-                            </DockPanel>
+                        <StackPanel Visibility="{Binding ShowBar, Converter={StaticResource Visible}}">
+                            <CheckBox Content="{bi:Localize FormatBars}" IsChecked="{Binding HasBar}" Margin="0,12,0,0" FontWeight="SemiBold" />
+                            <StackPanel Margin="0,4,0,0" Visibility="{Binding HasBar, Converter={StaticResource Visible}}">
+                                <DockPanel>
+                                    <TextBlock Text="{bi:Localize BarPositive}" Style="{StaticResource Label}" />
+                                    <ContentPresenter Content="{Binding BarColor}" />
+                                </DockPanel>
+                                <DockPanel Margin="0,4,0,0">
+                                    <TextBlock Text="{bi:Localize BarNegative}" Style="{StaticResource Label}" />
+                                    <ContentPresenter Content="{Binding BarNegativeColor}" />
+                                </DockPanel>
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- Icons -->
-                        <CheckBox Content="{bi:Localize FormatIcons}" IsChecked="{Binding HasIcons}" Margin="0,12,0,0" FontWeight="SemiBold" />
-                        <StackPanel Margin="0,4,0,0" Visibility="{Binding HasIcons, Converter={StaticResource Visible}}">
-                            <ComboBox ItemsSource="{x:Static designer:ValueFormatViewModel.IconKinds}" SelectedItem="{Binding IconStyle}" DisplayMemberPath="Label" />
-                            <DockPanel Margin="0,4,0,0">
-                                <TextBlock Text="{bi:Localize IconHigh}" Style="{StaticResource Label}" />
-                                <TextBox Padding="4,2" Text="{Binding High, UpdateSourceTrigger=PropertyChanged}" />
-                            </DockPanel>
-                            <DockPanel Margin="0,4,0,0">
-                                <TextBlock Text="{bi:Localize IconLow}" Style="{StaticResource Label}" />
-                                <TextBox Padding="4,2" Text="{Binding Low, UpdateSourceTrigger=PropertyChanged}" />
-                            </DockPanel>
-                            <TextBlock Text="{bi:Localize IconThresholdsHint}" Margin="0,4,0,0" FontSize="11" TextWrapping="Wrap"
-                                       Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                        <StackPanel Visibility="{Binding ShowIcons, Converter={StaticResource Visible}}">
+                            <CheckBox Content="{bi:Localize FormatIcons}" IsChecked="{Binding HasIcons}" Margin="0,12,0,0" FontWeight="SemiBold" />
+                            <StackPanel Margin="0,4,0,0" Visibility="{Binding HasIcons, Converter={StaticResource Visible}}">
+                                <ComboBox ItemsSource="{x:Static designer:ValueFormatViewModel.IconKinds}" SelectedItem="{Binding IconStyle}" DisplayMemberPath="Label" />
+                                <DockPanel Margin="0,4,0,0">
+                                    <TextBlock Text="{bi:Localize IconHigh}" Style="{StaticResource Label}" />
+                                    <TextBox Padding="4,2" Text="{Binding High, UpdateSourceTrigger=PropertyChanged}" />
+                                </DockPanel>
+                                <DockPanel Margin="0,4,0,0">
+                                    <TextBlock Text="{bi:Localize IconLow}" Style="{StaticResource Label}" />
+                                    <TextBox Padding="4,2" Text="{Binding Low, UpdateSourceTrigger=PropertyChanged}" />
+                                </DockPanel>
+                                <TextBlock Text="{bi:Localize IconThresholdsHint}" Margin="0,4,0,0" FontSize="11" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </ControlTemplate>

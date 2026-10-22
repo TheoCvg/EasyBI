@@ -53,6 +53,53 @@ public class ChartFormattingTests
     }
 
     [Fact]
+    public void A_stack_is_judged_on_its_total_and_every_segment_takes_its_color()
+    {
+        // Two segments per category (a legend): totals 30, 70 and 150
+        var format = new ValueFormat
+        {
+            Rules = [new FormatRule { Operator = FilterOperator.GreaterThan, Value = 60, Color = ThemeColors.Success }],
+            Scale = new ColorScale { Minimum = "#000000", Maximum = "#FFFFFF" },
+        };
+        var visual = new VisualDefinition { Mark = MarkType.StackedBar, Values = [new("Amount") { Format = format }] };
+        var chart = new ChartData("Region", ["A", "B", "C"],
+        [
+            new ChartSeries("Web", [10, 50, 100], null) { MeasureKey = "Amount", Mark = MarkType.StackedBar },
+            new ChartSeries("Shop", [20, 20, 50], null) { MeasureKey = "Amount", Mark = MarkType.StackedBar },
+        ]);
+
+        var formatting = ChartFormatting.For(new RenderRequest(visual, new ResultSet([], []), chart, Theme));
+
+        // A: 30 is the smallest total (the scale's minimum) for both segments; B and C: above 60, green for both
+        Assert.Equal(["#000000", "#00AA00", "#00AA00"], Enumerable.Range(0, 3).Select(c => formatting.PointColor(0, c)));
+        Assert.Equal(["#000000", "#00AA00", "#00AA00"], Enumerable.Range(0, 3).Select(c => formatting.PointColor(1, c)));
+    }
+
+    [Fact]
+    public void A_stack_takes_the_color_of_any_of_its_measures_formats()
+    {
+        var visual = new VisualDefinition
+        {
+            Mark = MarkType.StackedBar,
+            Values =
+            [
+                new("Amount"),
+                new("Margin") { Format = new ValueFormat { Rules = [new FormatRule { Operator = FilterOperator.GreaterThan, Value = 100, Color = ThemeColors.Error }] } },
+            ],
+        };
+        var chart = new ChartData("Region", ["A", "B"],
+        [
+            new ChartSeries("Amount", [80, 10], null) { MeasureKey = "Amount", Mark = MarkType.StackedBar },
+            new ChartSeries("Margin", [40, 10], null) { MeasureKey = "Margin", Mark = MarkType.StackedBar },
+        ]);
+
+        var formatting = ChartFormatting.For(new RenderRequest(visual, new ResultSet([], []), chart, Theme));
+
+        Assert.Equal(("#CC0000", "#CC0000"), (formatting.PointColor(0, 0), formatting.PointColor(1, 0))); // 120
+        Assert.Null(formatting.PointColor(0, 1)); // 20
+    }
+
+    [Fact]
     public void A_format_without_colors_leaves_the_chart_as_it_is()
     {
         var formatting = ChartFormatting.For(Request(new ValueFormat { IsBold = true, Bar = new DataBar() }));

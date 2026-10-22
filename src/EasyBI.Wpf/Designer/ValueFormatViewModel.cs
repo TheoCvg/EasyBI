@@ -7,6 +7,12 @@ using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf.Designer;
 
+/// <summary>
+/// What a format is edited for: the cells of a table or a matrix, the value of a KPI, or the points of a chart. The
+/// editor only shows what applies; what it hides is kept, for a change of the visual's type.
+/// </summary>
+public enum FormatTarget { Grid, Kpi, Chart }
+
 /// <summary>A color of a format: one of the theme's (<see cref="ThemeColors"/>), a custom #RRGGBB, or none when allowed.</summary>
 public sealed class ColorChoiceViewModel : ObservableObject
 {
@@ -71,14 +77,16 @@ public sealed class FormatRuleViewModel : ObservableObject
     private string _secondNumber;
     private bool _isBold;
     private bool _showOnChart;
+    private FormatTarget _target;
 
-    public FormatRuleViewModel(FormatRule rule, Action changed)
+    public FormatRuleViewModel(FormatRule rule, Action changed, FormatTarget target = FormatTarget.Grid)
     {
         _changed = changed;
         _condition = Conditions.FirstOrDefault(c => c.Value == rule.Operator) ?? Conditions[0];
         (_number, _secondNumber) = (ValueFormatViewModel.Show(rule.Value), ValueFormatViewModel.Show(rule.Maximum));
         _isBold = rule.IsBold;
         _showOnChart = rule.ShowOnChart;
+        _target = target;
         Color = new ColorChoiceViewModel(rule.Color, changed);
         Background = new ColorChoiceViewModel(rule.Background, changed);
     }
@@ -123,6 +131,22 @@ public sealed class FormatRuleViewModel : ObservableObject
         set { if (SetProperty(ref _isBold, value)) _changed(); }
     }
 
+    /// <summary>What the rule is edited for (see <see cref="FormatTarget"/>).</summary>
+    public FormatTarget Target
+    {
+        get => _target;
+        set { if (SetProperty(ref _target, value)) OnPropertyChanged(string.Empty); }
+    }
+
+    /// <summary>On a chart, the rule's color is the point's; elsewhere the text's.</summary>
+    public string ColorLabel => Target == FormatTarget.Chart ? Strings.RuleColorChart : Strings.RuleColor;
+
+    public bool ShowBackground => Target == FormatTarget.Grid;
+
+    public bool ShowBold => Target != FormatTarget.Chart;
+
+    public bool ShowZoneOption => Target == FormatTarget.Chart;
+
     /// <summary>Shades the rule's zone on the value axis of a chart.</summary>
     public bool ShowOnChart
     {
@@ -162,6 +186,7 @@ public sealed class ValueFormatViewModel : ObservableObject
     private Option<IconKind> _iconStyle;
     private string _low;
     private string _high;
+    private FormatTarget _target;
 
     public ValueFormatViewModel(ValueFormat? format, Action changed)
     {
@@ -189,7 +214,7 @@ public sealed class ValueFormatViewModel : ObservableObject
         _iconStyle = IconKinds.First(k => k.Value == (format.Icons?.Kind ?? Abstractions.IconKind.Arrows));
         (_low, _high) = (Show(format.Icons?.Low), Show(format.Icons?.High));
 
-        AddRuleCommand = new RelayCommand(() => Rules.Add(new FormatRuleViewModel(new FormatRule(), _changed)), () => true);
+        AddRuleCommand = new RelayCommand(() => Rules.Add(new FormatRuleViewModel(new FormatRule(), _changed, Target)), () => true);
         RemoveRuleCommand = new RelayCommand<FormatRuleViewModel>(rule => Rules.Remove(rule));
     }
 
@@ -207,6 +232,40 @@ public sealed class ValueFormatViewModel : ObservableObject
         new(Abstractions.IconKind.Triangles, () => Strings.IconTriangles),
         new(Abstractions.IconKind.Circles, () => Strings.IconCircles),
     ];
+
+    /// <summary>What the format is edited for: the editor shows the settings that apply to it.</summary>
+    public FormatTarget Target
+    {
+        get => _target;
+        set
+        {
+            if (!SetProperty(ref _target, value)) return;
+            foreach (var rule in Rules) rule.Target = value;
+            OnPropertyChanged(string.Empty);
+        }
+    }
+
+    /// <summary>The target of a visual type: its grid, its KPI cards or its chart.</summary>
+    public static FormatTarget TargetOf(MarkType mark) => mark switch
+    {
+        MarkType.Table or MarkType.Matrix => FormatTarget.Grid,
+        MarkType.Kpi => FormatTarget.Kpi,
+        _ => FormatTarget.Chart,
+    };
+
+    public bool IsChart => Target == FormatTarget.Chart;
+
+    /// <summary>Text color, bold and italic: for values written as text (a grid, a KPI).</summary>
+    public bool ShowTextStyle => Target != FormatTarget.Chart;
+
+    public bool ShowAlignment => Target == FormatTarget.Grid;
+
+    /// <summary>A scale compares values with each other: not for the single value of a KPI.</summary>
+    public bool ShowScale => Target != FormatTarget.Kpi;
+
+    public bool ShowBar => Target == FormatTarget.Grid;
+
+    public bool ShowIcons => Target != FormatTarget.Chart;
 
     public ColorChoiceViewModel Color { get; }
 
