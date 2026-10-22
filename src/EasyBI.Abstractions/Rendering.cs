@@ -11,6 +11,9 @@ public sealed record ChartSeries(string Name, IReadOnlyList<double?> Values, str
 
     /// <summary>True when the series uses the second value axis, on the right.</summary>
     public bool SecondaryAxis { get; init; }
+
+    /// <summary>The <see cref="MeasureRef.Key"/> of the measure the series shows (its format applies to it).</summary>
+    public string? MeasureKey { get; init; }
 }
 
 /// <summary>

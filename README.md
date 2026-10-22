@@ -230,6 +230,17 @@ cells shown, not with the totals; a matrix leaves its totals unformatted. A form
 source is not queried again. `ValueStyler` (Core) computes the `ValueStyle` of a value for any renderer, and the
 `FormattedValue` control (lookless) draws it in the built-in grids.
 
+**In charts**, the rules and the color scale color each bar, point and slice (LiveCharts2's *conditional draw*:
+`OnPointMeasured` gives each point its paint; OxyPlot colors bars and slices one by one, not the points of lines).
+Stacked bars are judged as a whole and keep their legend colors: a rule or a scale compares the total of the stack,
+and frames the whole stack in its color (`ChartFormatting.StackOutlines`). The designer's editor only shows what the visual's type uses
+(on a chart: the rules' color and zone, and the scale; on a KPI: no scale or bars); what it hides is kept. A
+rule with **"show its zone on charts"** (`FormatRule.ShowOnChart`) shades its zone of the value axis: from its value
+up for "greater than", down for "less than", between its bounds for a range, labelled with the condition
+(`RectangularSection` in LiveCharts2, `RectangleAnnotation` in OxyPlot). `ChartFormatting.For(request)` (Core) gives a
+connector the color of each point (`PointColor`) and the zones (`Bands`); each `ChartSeries` carries the `MeasureKey`
+of its measure.
+
 ```csharp
 new MeasureRef("Amount")
 {

@@ -124,6 +124,7 @@ public static class ChartDataBuilder
                 LegendValue = s.LegendValue,
                 Mark = visual.SeriesMark(visual.Values[s.Measure]),
                 SecondaryAxis = visual.Mark.IsCartesian() && visual.Values[s.Measure].SecondaryAxis,
+                MeasureKey = visual.Values[s.Measure].Key,
             }).ToArray())
         {
             CategoryValues = categories,

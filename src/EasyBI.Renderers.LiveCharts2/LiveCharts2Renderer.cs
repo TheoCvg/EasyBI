@@ -144,7 +144,8 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
     private static CartesianChart RenderCartesian(RenderRequest request)
     {
         var chart = request.Chart;
-        var series = chart.Series.Select((_, i) => CreateSeries(request, i)).ToArray();
+        var formatting = ChartFormatting.For(request);
+        var series = chart.Series.Select((_, i) => CreateSeries(request, formatting, i)).ToArray();
         var hasSecondary = chart.Series.Any(s => s.SecondaryAxis);
 
         var theme = request.Theme;
@@ -157,7 +158,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         }, theme);
         var view = new CartesianChart
         {
-            Series = series,
+            Series = [.. series, .. Outlines(formatting, chart.Categories.Count)],
             XAxes = [categoryAxis],
             YAxes = hasSecondary
                 ? [ValueAxis(chart, theme, secondary: false), ValueAxis(chart, theme, secondary: true)]
@@ -165,6 +166,11 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
             LegendPosition = chart.Series.Count > 1 ? LegendPosition.Right : LegendPosition.Hidden,
         };
         ApplyTheme(view, theme);
+        // LiveCharts2 has no open section end: far beyond the data, the chart clips it to the axis
+        var far = chart.Series.SelectMany(s => s.Values).OfType<double>()
+            .Concat(formatting.Bands.SelectMany(b => new[] { b.From, b.To }).OfType<double>())
+            .Select(Math.Abs).DefaultIfEmpty(1).Max() * 1000 + 1;
+        view.Sections = [.. formatting.Bands.Select(band => Zone(band, theme, far))];
         // Legend, labels and axis title adapt to the room the chart actually gets
         view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, chart);
 
@@ -257,10 +263,52 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
     private static SKColor? Parse(string? color) => color is null ? null : SKColor.Parse(color);
 
     /// <summary>
-    /// The series in its color; with a highlight (cross-filtering), the points left out of it are faded, and so is
-    /// the line or area of a series that has none of them.
+    /// The frames of the stacks a rule or a scale picks out (<see cref="StackOutline"/>): one column series per color,
+    /// empty inside, centered on the category like the stack (same width) and drawn over it.
     /// </summary>
-    private static ISeries CreateSeries(RenderRequest request, int index)
+    private static IEnumerable<ISeries> Outlines(ChartFormatting formatting, int categories) =>
+        formatting.StackOutlines
+            .GroupBy(o => (o.Color, o.SecondaryAxis))
+            .Select(group => new ColumnSeries<ObservableValue>
+            {
+                Values = [.. Enumerable.Range(0, categories).Select(c => new ObservableValue(group.FirstOrDefault(o => o.Category == c)?.Top))],
+                Fill = null,
+                Stroke = new SolidColorPaint(SKColor.Parse(group.Key.Color), 3),
+                MaxBarWidth = 48,
+                IgnoresBarPosition = true,
+                ScalesYAt = group.Key.SecondaryAxis ? 1 : 0,
+                IsHoverable = false,
+                IsVisibleAtLegend = false,
+                ZIndex = 1000,
+            });
+
+    /// <summary>
+    /// The zone of a rule shown on the chart (<see cref="ChartBand"/>): a translucent band across the chart between
+    /// its values, an open end reaching the edge of the axis, with the rule's condition as label.
+    /// </summary>
+    private static RectangularSection Zone(ChartBand band, BiTheme theme, double far)
+    {
+        var color = SKColor.Parse(band.Color);
+        return new RectangularSection
+        {
+            Yi = band.From ?? -far,
+            Yj = band.To ?? far,
+            ScalesYAt = band.SecondaryAxis ? 1 : 0,
+            Fill = new SolidColorPaint(color.WithAlpha(0x26)),
+            Stroke = new SolidColorPaint(color.WithAlpha(0x99), 1),
+            Label = band.Label,
+            LabelSize = 11,
+            LabelPaint = new SolidColorPaint(Parse(theme.MutedForeground) ?? color),
+            ZIndex = -1,
+        };
+    }
+
+    /// <summary>
+    /// The series in its color; a point whose measure's format gives a color (a rule, a scale) is drawn in it, as in
+    /// LiveCharts2's conditional draw. With a highlight (cross-filtering), the points left out of it are faded, and so
+    /// is the line or area of a series that has none of them.
+    /// </summary>
+    private static ISeries CreateSeries(RenderRequest request, ChartFormatting formatting, int index)
     {
         var source = request.Chart.Series[index];
         var color = Color(request.Theme, index);
@@ -269,10 +317,21 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         var values = source.Values.Select(v => new ObservableValue(v)).ToArray();
         var axis = source.SecondaryAxis ? 1 : 0;
         string Tooltip(double value) => ValueFormatter.Format(value, source.Format);
+        var paints = new Dictionary<string, SolidColorPaint>();
         void Fade(IDrawnElement? point, int category)
         {
-            if (point is not null && request.Highlight is { Count: > 0 })
+            if (point is null) return;
+            if (request.Highlight is { Count: > 0 })
                 point.Opacity = request.IsEmphasized(category, index) ? 1f : (float)SelectionFilters.DimmedOpacity;
+            if (formatting.ColorsPoints && point is DrawnGeometry geometry)
+            {
+                // Null gives the point back the series' paint
+                var paint = formatting.PointColor(index, category) is { } hex
+                    ? paints.TryGetValue(hex, out var known) ? known : paints[hex] = new SolidColorPaint(SKColor.Parse(hex))
+                    : null;
+                geometry.Fill = paint;
+                if (source.Mark is MarkType.Line or MarkType.Scatter) geometry.Stroke = paint;
+            }
         }
 
         return source.Mark switch
@@ -325,12 +384,20 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         };
     }
 
+    // A slice: the color of its rule or scale, else the palette's; faded when left out of the highlight
+    private static SKColor SliceColor(RenderRequest request, ChartFormatting formatting, int category)
+    {
+        var color = formatting.PointColor(0, category) is { } hex ? SKColor.Parse(hex) : Color(request.Theme, category);
+        return request.IsEmphasized(category, 0) ? color : Dim(color);
+    }
+
     private static SKColor Dim(SKColor color) => color.WithAlpha((byte)(color.Alpha * SelectionFilters.DimmedOpacity));
 
     private static PieChart RenderPie(RenderRequest request)
     {
         var chart = request.Chart;
         var source = chart.Series[0];
+        var formatting = ChartFormatting.For(request);
         // One series per slice: keep each slice's category index for selection
         var slices = new Dictionary<ISeries, int>();
         foreach (var (category, i) in chart.Categories.Select((category, i) => (category, i)))
@@ -340,7 +407,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
             {
                 Name = category,
                 Values = [value],
-                Fill = new SolidColorPaint(request.IsEmphasized(i, 0) ? Color(request.Theme, i) : Dim(Color(request.Theme, i))),
+                Fill = new SolidColorPaint(SliceColor(request, formatting, i)),
                 ToolTipLabelFormatter = p => ValueFormatter.Format(p.Coordinate.PrimaryValue, source.Format),
             }] = i;
         }
