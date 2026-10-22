@@ -104,7 +104,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         {
             thumb.Xi = axis.MinLimit ?? first;
             thumb.Xj = axis.MaxLimit ?? last;
-            view.Dispatcher.InvokeAsync(() => FitCartesian(view, axis, chart));
+            view.Dispatcher.InvokeAsync(() => FitCartesian(view, axis, chart, request.Visual.LegendPosition, request.LegendPager));
         };
 
         // Dragging on the scroll bar centers the visible categories on the pointer
@@ -174,7 +174,10 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
             .Select(Math.Abs).DefaultIfEmpty(1).Max() * 1000 + 1;
         view.Sections = [.. formatting.Bands.Select(band => Zone(band, theme, far))];
         // Legend, labels and axis title adapt to the room the chart actually gets
-        view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, chart);
+        view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, chart, request.Visual.LegendPosition, request.LegendPager);
+        // The host's pager turns the pages of the legend
+        if (request.LegendPager is { } pager)
+            pager.Changed += (_, _) => FitCartesian(view, categoryAxis, chart, request.Visual.LegendPosition, pager);
 
         // Only bars: the bar under the pointer (category + legend series).
         // With lines, areas or points: the points closest to the pointer's X position.
@@ -246,7 +249,8 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
             LegendPosition = LegendPosition.Hidden,
         };
         ApplyTheme(view, theme);
-        view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, chart);
+        // A waterfall has no legend: its colors are the direction of the steps
+        view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, chart, ChartLegend.Hidden, null);
         view.FindingStrategy = FindingStrategy.CompareOnlyXTakeClosest;
         view.Tooltip = new EasyBITooltip(view, request, points => points.FirstOrDefault() is { } step ? (step.Index, [0]) : null);
         if (request.Select is { } select)
@@ -261,18 +265,20 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         return view;
     }
 
-    private static void FitCartesian(CartesianChart view, Axis categoryAxis, ChartData chart)
+    // The first series of the view are the chart's, in its order: the legend's entries
+    private static void FitCartesian(CartesianChart view, Axis categoryAxis, ChartData chart, ChartLegend preferred, LegendPager? pager)
     {
         if (view.ActualWidth <= 0) return;
         // A zoomed or scrollable chart shows part of the categories: labels are fitted to those
         var shown = categoryAxis.MaxLimit - categoryAxis.MinLimit is double range && range < chart.Categories.Count
             ? chart with { Categories = chart.Categories.Take(Math.Max(1, (int)Math.Ceiling(range))).ToArray() }
             : chart;
-        var fit = ChartFitting.Cartesian(shown, view.ActualWidth, view.ActualHeight);
+        var fit = ChartFitting.Cartesian(shown, view.ActualWidth, view.ActualHeight, preferred);
 
         // Only assign what changed: every assignment redraws the chart
         var legend = Position(fit.Legend);
         if (view.LegendPosition != legend) view.LegendPosition = legend;
+        ShowLegendPage(view.Series.Take(chart.Series.Count), ChartFitting.LegendEntries(fit, pager));
         if (categoryAxis.LabelsRotation != fit.LabelRotation) categoryAxis.LabelsRotation = fit.LabelRotation;
         // Skipped labels are blanked: LiveCharts2 does not apply a step to an axis made of labels
         var labels = chart.Categories.Select((c, i) => i % fit.LabelStep == 0 ? c : "").ToArray();
@@ -285,8 +291,21 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
     {
         ChartLegend.Right => LegendPosition.Right,
         ChartLegend.Bottom => LegendPosition.Bottom,
+        ChartLegend.Top => LegendPosition.Top,
+        ChartLegend.Left => LegendPosition.Left,
         _ => LegendPosition.Hidden,
     };
+
+    // The legend keeps the library's look: only the entries of the page show in it
+    private static void ShowLegendPage(IEnumerable<ISeries> entries, Func<int, bool> shown)
+    {
+        var index = 0;
+        foreach (var entry in entries)
+        {
+            var visible = shown(index++);
+            if (entry.IsVisibleAtLegend != visible) entry.IsVisibleAtLegend = visible;
+        }
+    }
 
     /// <summary>A value axis formatted like the first series drawn against it.</summary>
     private static Axis ValueAxis(ChartData chart, BiTheme theme, bool secondary)
@@ -322,6 +341,8 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         // The chart is drawn on the visual's own background
         view.Background = System.Windows.Media.Brushes.Transparent;
         if (view is not LiveChartsCore.Kernel.Sketches.IChartView chart) return;
+        // The size of the axis labels: the legend's pages (ChartFitting) are measured for it
+        chart.LegendTextSize = 13;
         if (Parse(theme.Foreground) is { } text)
         {
             chart.LegendTextPaint = new SolidColorPaint(text);
@@ -489,7 +510,9 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
             points.FirstOrDefault() is { } slice && slices.TryGetValue(slice.Context.Series, out var category) ? (category, [0]) : null);
         ApplyTheme(view, request.Theme);
         // Legend and donut hole adapt to the room the chart actually gets
-        view.SizeChanged += (_, _) => FitPie(view, slices.Keys, chart, donut);
+        view.SizeChanged += (_, _) => FitPie(view, slices, chart, donut, request);
+        if (request.LegendPager is { } pager)
+            pager.Changed += (_, _) => FitPie(view, slices, chart, donut, request);
         if (request.Select is { } select)
         {
             view.Cursor = System.Windows.Input.Cursors.Hand;
@@ -546,13 +569,17 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         };
     }
 
-    private static void FitPie(PieChart view, IEnumerable<ISeries> slices, ChartData chart, bool donut)
+    // The slices and their categories: the legend's entries
+    private static void FitPie(PieChart view, IReadOnlyDictionary<ISeries, int> slices, ChartData chart, bool donut, RenderRequest request)
     {
         if (view.ActualWidth <= 0) return;
-        var fit = ChartFitting.Pie(chart, view.ActualWidth, view.ActualHeight, donut);
+        var fit = ChartFitting.Pie(chart, view.ActualWidth, view.ActualHeight, donut, request.Visual.LegendPosition);
         var legend = Position(fit.Legend);
         if (view.LegendPosition != legend) view.LegendPosition = legend;
-        foreach (var slice in slices.OfType<PieSeries<double>>())
+        var shown = ChartFitting.LegendEntries(fit, request.LegendPager);
+        foreach (var (slice, category) in slices)
+            if (slice.IsVisibleAtLegend != shown(category)) slice.IsVisibleAtLegend = shown(category);
+        foreach (var slice in slices.Keys.OfType<PieSeries<double>>())
             if (Math.Abs(slice.InnerRadius - fit.InnerRadius) > 1) slice.InnerRadius = fit.InnerRadius;
     }
 

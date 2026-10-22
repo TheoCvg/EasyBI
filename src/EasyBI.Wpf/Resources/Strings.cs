@@ -21,6 +21,16 @@ internal static class Strings
     public static string GaugeMinimum => Get();
     public static string GaugeMaximum => Get();
     public static string GaugeTarget => Get();
+    public static string LegendPreviousPage => Get();
+    public static string LegendNextPage => Get();
+    public static string PropertyLegendPosition => Get();
+    public static string LegendPositionHint => Get();
+    public static string LegendAuto => Get();
+    public static string LegendRight => Get();
+    public static string LegendBottom => Get();
+    public static string LegendTop => Get();
+    public static string LegendLeft => Get();
+    public static string LegendHidden => Get();
     public static string WellTooltip => Get();
     public static string PropertiesTooltips => Get();
     public static string TooltipShow => Get();

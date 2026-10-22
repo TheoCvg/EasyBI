@@ -64,6 +64,10 @@ public sealed record VisualDefinition
     /// <summary>Content of a <see cref="MarkType.Image"/> visual.</summary>
     public ImageContent? Image { get; init; }
 
+    /// <summary>Where the legend of a chart goes; <see cref="ChartLegend.Auto"/> (the default) follows the chart's size.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public ChartLegend LegendPosition { get; init; }
+
     /// <summary>What the tooltips of a chart show; null for the defaults.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public TooltipSettings? Tooltip { get; init; }

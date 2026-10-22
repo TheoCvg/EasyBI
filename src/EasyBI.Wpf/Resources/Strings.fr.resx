@@ -657,4 +657,34 @@
   <data name="TooltipWellHint" xml:space="preserve">
     <value>Mesures affichées dans l'infobulle</value>
   </data>
+  <data name="LegendPreviousPage" xml:space="preserve">
+    <value>Page précédente de la légende</value>
+  </data>
+  <data name="LegendNextPage" xml:space="preserve">
+    <value>Page suivante de la légende</value>
+  </data>
+  <data name="PropertyLegendPosition" xml:space="preserve">
+    <value>Légende</value>
+  </data>
+  <data name="LegendPositionHint" xml:space="preserve">
+    <value>Emplacement de la légende ; un côté ne s'applique que si le graphique a la place. Une longue légende affiche ses éléments par pages.</value>
+  </data>
+  <data name="LegendAuto" xml:space="preserve">
+    <value>Automatique</value>
+  </data>
+  <data name="LegendRight" xml:space="preserve">
+    <value>À droite</value>
+  </data>
+  <data name="LegendBottom" xml:space="preserve">
+    <value>En bas</value>
+  </data>
+  <data name="LegendTop" xml:space="preserve">
+    <value>En haut</value>
+  </data>
+  <data name="LegendLeft" xml:space="preserve">
+    <value>À gauche</value>
+  </data>
+  <data name="LegendHidden" xml:space="preserve">
+    <value>Masquée</value>
+  </data>
 </root>

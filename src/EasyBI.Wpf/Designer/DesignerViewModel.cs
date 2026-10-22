@@ -83,6 +83,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     private int? _top;
     private GaugeSettings? _gauge;
     private TooltipSettings _tooltip = new();
+    private ChartLegend _legendPosition;
     private string? _sortSummary;
     private object? _selectedItem;
     private bool _isTypeGalleryOpen;
@@ -339,6 +340,28 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         set => SetGauge((_gauge ?? new()) with { Target = value });
     }
 
+    /// <summary>Where the legend of a chart goes (cartesian charts, pies and donuts).</summary>
+    public ChartLegend LegendPosition
+    {
+        get => _legendPosition;
+        set
+        {
+            if (SetProperty(ref _legendPosition, value)) Rebuild();
+        }
+    }
+
+    public static IReadOnlyList<Option<ChartLegend>> LegendPositionOptions { get; } =
+    [
+        new(ChartLegend.Auto, () => Strings.LegendAuto),
+        new(ChartLegend.Right, () => Strings.LegendRight),
+        new(ChartLegend.Bottom, () => Strings.LegendBottom),
+        new(ChartLegend.Top, () => Strings.LegendTop),
+        new(ChartLegend.Left, () => Strings.LegendLeft),
+        new(ChartLegend.Hidden, () => Strings.LegendHidden),
+    ];
+
+    private bool HasLegend() => SelectedMark.IsCartesian() || SelectedMark.IsCircular();
+
     /// <summary>Whether the chart shows tooltips.</summary>
     public bool ShowTooltips
     {
@@ -584,6 +607,8 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         _top = null;
         _gauge = null;
         _tooltip = new();
+        _legendPosition = ChartLegend.Auto;
+        OnPropertyChanged(nameof(LegendPosition));
         OnPropertyChanged(nameof(Top));
         _extensions = null;
         _hiddenFilters = [];
@@ -613,6 +638,8 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         _top = visual.Top;
         _gauge = visual.Gauge;
         _tooltip = (visual.Tooltip ?? new()) with { Values = [] };
+        _legendPosition = visual.LegendPosition;
+        OnPropertyChanged(nameof(LegendPosition));
         _extensions = visual.Extensions;
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(SelectedMark));
@@ -698,6 +725,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             Top = _top,
             Gauge = SelectedMark == MarkType.Gauge ? _gauge : null,
             Tooltip = hasTooltip ? tooltip : null,
+            LegendPosition = HasLegend() ? _legendPosition : ChartLegend.Auto,
             Extensions = _extensions,
         };
         RefreshRendererOptions();
@@ -791,6 +819,8 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             DesignerProperty.Text("Title", () => Strings.VisualTitle, () => Title, v => Title = v),
             DesignerProperty.Info("Sort", () => Strings.Sort, () => SortSummary ?? Strings.NoSort),
             DesignerProperty.Number("Top", () => Strings.Top, () => Top, v => Top = v is { } top ? (int)Math.Round(top) : null, description: () => Strings.TopHint),
+            DesignerProperty.Choice("LegendPosition", () => Strings.PropertyLegendPosition, LegendPositionOptions,
+                () => LegendPosition, v => LegendPosition = v, HasLegend, () => Strings.LegendPositionHint),
             DesignerProperty.Number("GaugeMinimum", () => Strings.GaugeMinimum, () => GaugeMinimum, v => GaugeMinimum = v, IsGauge, () => Strings.GaugeScaleHint),
             DesignerProperty.Number("GaugeMaximum", () => Strings.GaugeMaximum, () => GaugeMaximum, v => GaugeMaximum = v, IsGauge),
             DesignerProperty.Number("GaugeTarget", () => Strings.GaugeTarget, () => GaugeTarget, v => GaugeTarget = v, IsGauge),

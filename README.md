@@ -313,6 +313,18 @@ For the developer, the content is a `TooltipContent` (a `Title`, `Items` of labe
 - **Build it** without a view: `Tooltips.Build(request, category, series)` (EasyBI.Core) gives the default content of a
   `RenderRequest`.
 
+### Legends
+
+A chart places its legend from its size: on the right, then below, then hidden. The end user can choose another place
+in the designer's Visual section (**Legend**: automatic, right, bottom, top, left or hidden), saved in
+`VisualDefinition.LegendPosition` (`ChartLegend`, omitted when `Auto`). A chosen side applies while the chart has room
+for it, otherwise the automatic place does.
+
+Legends keep their library's look. When a legend has more entries than its room shows (a column on a side, a row above
+or below), it shows them **by pages**: a small pager (◀ 2/5 ▶, `ChartLegendPager`, restyled like any lookless control)
+appears over the chart in the corner next to the legend; its buttons and the mouse wheel turn the pages. (OxyPlot names
+the slices of a pie around it instead of in a legend: a hidden legend drops those names.)
+
 ## Dashboard
 
 Arranging visuals is a WPF concern: the report (`easybi/v1`) never contains a layout. The dashboard is
@@ -792,6 +804,21 @@ view.MouseMove += (_, e) => tooltip.Show(HitTest(e.GetPosition(view)) is { } hit
     : null);                                           // null hides it
 ```
 
+**Legends** follow `ChartFitting` (EasyBI.Core), which gives the place of the legend and its pages for the chart's size,
+the visual's choice (`request.Visual.LegendPosition`) and the size of the library's entries (`LegendMetrics`). The host
+turns the pages through `request.LegendPager`: a connector shows the entries of its page and fits again when it changes.
+
+```csharp
+void Fit()
+{
+    var fit = ChartFitting.Cartesian(request.Chart, view.ActualWidth, view.ActualHeight, request.Visual.LegendPosition, MyMetrics);
+    var shown = ChartFitting.LegendEntries(fit, request.LegendPager);   // also tells the pager where the legend is
+    for (var i = 0; i < series.Count; i++) series[i].ShowInLegend = shown(i);
+}
+view.SizeChanged += (_, _) => Fit();
+if (request.LegendPager is { } pager) pager.Changed += (_, _) => Fit();
+```
+
 `EasyBIContext.ResolveRenderer` negotiates capabilities: the active renderer if it supports every type the
 visual uses (the visual's and its measures'), otherwise another plugged-in renderer, otherwise a built-in one. The designer disables
 the types that no renderer can draw.
@@ -841,6 +868,7 @@ public FrameworkElement Render(RenderRequest request)
       "mark": "Bar",
       "axis": [ { "field": "Region", "grain": "None" } ],
       "legend": { "field": "Channel", "grain": "None" },
+      "legendPosition": "Bottom",
       "values": [ { "measure": "Amount" }, { "measure": "Count", "mark": "Line", "secondaryAxis": true } ],
       "tooltip": { "showPercent": true, "values": [ { "measure": "Quantity" } ], "template": "{category}: {value}" },
       "filters": [
