@@ -33,15 +33,21 @@ public static class VisualPipeline
     public static AnalyticQuery ToQuery(this VisualDefinition visual, IEnumerable<CalculatedMeasure>? measures = null)
     {
         var groupBy = visual.Legend is null ? visual.Axis : [.. visual.Axis, visual.Legend];
-        // Shown, or filtered on
+        // A chart's tooltips may show other measures: they are queried with it, not drawn
+        IEnumerable<MeasureRef> tooltip = Tooltips.Has(visual.Mark) ? visual.Tooltip?.Values ?? [] : [];
+        // Shown, in a tooltip, or filtered on
         var used = measures?
             .Where(m => m.Model == visual.Model
-                && (visual.Values.Any(v => v.Measure == m.Name) || visual.Filters.Any(f => f.Field == m.Name && f.Operator.IsComparison())))
+                && (visual.Values.Concat(tooltip).Any(v => v.Measure == m.Name)
+                    || visual.Filters.Any(f => f.Field == m.Name && f.Operator.IsComparison())))
             .ToArray();
         return new AnalyticQuery(
             groupBy,
             // Chart types, axes and formats only change the drawing: changing them must not query again
-            visual.Values.Select(v => v with { Mark = null, SecondaryAxis = false, Format = null }).ToArray(),
+            visual.Values.Concat(tooltip)
+                .Select(v => v with { Mark = null, SecondaryAxis = false, Format = null })
+                .DistinctBy(v => v.Key)
+                .ToArray(),
             visual.Filters,
             visual.Sort is null ? null : [visual.Sort],
             visual.Top,

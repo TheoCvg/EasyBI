@@ -395,6 +395,10 @@
                                                  Visibility="{Binding ValuesWell.IsVisible, Converter={StaticResource BoolToVisibility}}">
                                         <ContentControl Content="{Binding ValuesWell}" ContentTemplate="{StaticResource WellTemplate}" Focusable="False" />
                                     </bi:SlotHost>
+                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.TooltipShelf}"
+                                                 Visibility="{Binding TooltipWell.IsVisible, Converter={StaticResource BoolToVisibility}}">
+                                        <ContentControl Content="{Binding TooltipWell}" ContentTemplate="{StaticResource WellTemplate}" Focusable="False" />
+                                    </bi:SlotHost>
                                     <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.FiltersShelf}"
                                                  Visibility="{Binding FiltersWell.IsVisible, Converter={StaticResource BoolToVisibility}}">
                                         <ContentControl Content="{Binding FiltersWell}" ContentTemplate="{StaticResource WellTemplate}" Focusable="False" />

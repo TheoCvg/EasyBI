@@ -28,8 +28,9 @@ public class DesignerPropertiesTests
     {
         var designer = Designer();
 
-        var visual = Assert.Single(designer.Properties);
-        Assert.Equal(DesignerPropertySections.Visual, visual.Key);
+        // A chart also has its tooltips
+        Assert.Equal([DesignerPropertySections.Visual, DesignerPropertySections.Tooltips], designer.Properties.Select(s => s.Key));
+        var visual = designer.Properties[0];
 
         visual["Title"]!.TextValue = "Renamed";
         visual["Top"]!.NumberText = "5";
@@ -51,7 +52,7 @@ public class DesignerPropertiesTests
         designer.SelectCommand.Execute(amount);
 
         Assert.True(amount.IsSelected);
-        Assert.Equal([DesignerPropertySections.Field, DesignerPropertySections.Formatting, DesignerPropertySections.Visual], designer.Properties.Select(s => s.Key));
+        Assert.Equal([DesignerPropertySections.Field, DesignerPropertySections.Formatting, DesignerPropertySections.Visual, DesignerPropertySections.Tooltips], designer.Properties.Select(s => s.Key));
         var field = designer.Properties[0];
         Assert.Equal("Amount", field.Header);
         Assert.Equal(["Aggregation", "Time", "SeriesMark", "SecondaryAxis", "Sort"], Keys(field));
@@ -89,7 +90,8 @@ public class DesignerPropertiesTests
 
         Assert.Null(designer.SelectedItem);
         Assert.False(amount.IsSelected);
-        Assert.Equal(DesignerPropertySections.Visual, Assert.Single(designer.Properties).Key);
+        Assert.Equal(DesignerPropertySections.Visual, designer.Properties[0].Key);
+        Assert.DoesNotContain(designer.Properties, s => s.Key == DesignerPropertySections.Field);
     }
 
     [Fact]
@@ -119,7 +121,7 @@ public class DesignerPropertiesTests
         };
 
         designer.SelectedItem = designer.Values.Single();
-        Assert.Equal([DesignerPropertySections.Field, DesignerPropertySections.Formatting, DesignerPropertySections.Visual, "Notes"], designer.Properties.Select(s => s.Key));
+        Assert.Equal([DesignerPropertySections.Field, DesignerPropertySections.Formatting, DesignerPropertySections.Visual, DesignerPropertySections.Tooltips, "Notes"], designer.Properties.Select(s => s.Key));
         Assert.Null(designer.Properties[0]["Time"]);
 
         designer.Properties.Single(s => s.Key == DesignerPropertySections.Visual).IsExpanded = false;

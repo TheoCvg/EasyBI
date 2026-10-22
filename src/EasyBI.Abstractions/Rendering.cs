@@ -146,4 +146,11 @@ public sealed record RenderRequest(VisualDefinition Visual, ResultSet Result, Ch
 
     /// <summary>The pivoted data of a <see cref="MarkType.Matrix"/>; null for the other types.</summary>
     public MatrixData? Matrix { get; init; }
+
+    /// <summary>
+    /// The content of the tooltip of a category, for the hovered series (indexes in <see cref="ChartData.Series"/>);
+    /// null shows none. Set by the host (with the application's changes); when it is not, a connector uses EasyBI's
+    /// default content (EasyBI.Core's <c>TooltipFor</c> does both).
+    /// </summary>
+    public Func<int, IReadOnlyList<int>, TooltipContent?>? Tooltip { get; init; }
 }

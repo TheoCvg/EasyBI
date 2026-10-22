@@ -82,6 +82,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
 
     private int? _top;
     private GaugeSettings? _gauge;
+    private TooltipSettings _tooltip = new();
     private string? _sortSummary;
     private object? _selectedItem;
     private bool _isTypeGalleryOpen;
@@ -143,10 +144,11 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         // Weak: a designer (a dialog's) may be shorter-lived than the shared context
         WeakEventManager<MeasureContext, EventArgs>.AddHandler(context.Measures, nameof(MeasureContext.Changed), OnMeasuresChanged);
         PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, OnLanguageChanged, string.Empty);
-        foreach (var chips in new[] { Axis, Legend, Values }) chips.CollectionChanged += OnChipsChanged;
+        foreach (var chips in new[] { Axis, Legend, Values, TooltipValues }) chips.CollectionChanged += OnChipsChanged;
         AxisWell = new ShelfViewModel(this, Shelf.Axis, Axis);
         LegendWell = new ShelfViewModel(this, Shelf.Legend, Legend);
         ValuesWell = new ShelfViewModel(this, Shelf.Values, Values);
+        TooltipWell = new ShelfViewModel(this, Shelf.Tooltip, TooltipValues);
         FiltersWell = new ShelfViewModel(this, Shelf.Filters, Filters);
         Filters.CollectionChanged += (_, e) =>
         {
@@ -181,6 +183,9 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
 
     public ObservableCollection<ShelfItemViewModel> Values { get; } = [];
 
+    /// <summary>The measures shown in the tooltips of a chart, besides its values.</summary>
+    public ObservableCollection<ShelfItemViewModel> TooltipValues { get; } = [];
+
     public ObservableCollection<FilterItemViewModel> Filters { get; } = [];
 
     /// <summary>The wells as the visual type sees them (names, use, hints, see <see cref="ShelfViewModel"/>).</summary>
@@ -190,9 +195,11 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
 
     public ShelfViewModel ValuesWell { get; }
 
+    public ShelfViewModel TooltipWell { get; }
+
     public ShelfViewModel FiltersWell { get; }
 
-    private IEnumerable<ShelfViewModel> Wells => [AxisWell, LegendWell, ValuesWell, FiltersWell];
+    private IEnumerable<ShelfViewModel> Wells => [AxisWell, LegendWell, ValuesWell, TooltipWell, FiltersWell];
 
     /// <summary>
     /// The item being dragged (a field or a chip), set by the designer's view while a drag is in progress: each well
@@ -300,6 +307,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         Shelf.Axis => AxisWell,
         Shelf.Legend => LegendWell,
         Shelf.Values => ValuesWell,
+        Shelf.Tooltip => TooltipWell,
         _ => FiltersWell,
     };
 
@@ -331,6 +339,56 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         set => SetGauge((_gauge ?? new()) with { Target = value });
     }
 
+    /// <summary>Whether the chart shows tooltips.</summary>
+    public bool ShowTooltips
+    {
+        get => !_tooltip.IsHidden;
+        set => SetTooltip(_tooltip with { IsHidden = !value });
+    }
+
+    /// <summary>Whether tooltips show the category (their title).</summary>
+    public bool TooltipShowsCategory
+    {
+        get => !_tooltip.HideCategory;
+        set => SetTooltip(_tooltip with { HideCategory = !value });
+    }
+
+    /// <summary>Whether tooltips show the names of the series.</summary>
+    public bool TooltipShowsSeries
+    {
+        get => !_tooltip.HideSeries;
+        set => SetTooltip(_tooltip with { HideSeries = !value });
+    }
+
+    /// <summary>Whether tooltips show each value's share of its series' total.</summary>
+    public bool TooltipShowsPercent
+    {
+        get => _tooltip.ShowPercent;
+        set => SetTooltip(_tooltip with { ShowPercent = value });
+    }
+
+    /// <summary>A text replacing the tooltip's content, with fields between braces ({category}, {value}...); empty for none.</summary>
+    public string TooltipTemplate
+    {
+        get => _tooltip.Template ?? "";
+        set => SetTooltip(_tooltip with { Template = string.IsNullOrWhiteSpace(value) ? null : value });
+    }
+
+    /// <summary>The fields a tooltip text can use: the category, the hovered series and value, and the measures' captions.</summary>
+    public IReadOnlyList<string> TooltipFields =>
+        ["category", "series", "value", "percent", .. Values.Concat(TooltipValues).Select(c => c.Caption).Distinct()];
+
+    private void SetTooltip(TooltipSettings tooltip)
+    {
+        _tooltip = tooltip;
+        OnPropertyChanged(nameof(ShowTooltips));
+        OnPropertyChanged(nameof(TooltipShowsCategory));
+        OnPropertyChanged(nameof(TooltipShowsSeries));
+        OnPropertyChanged(nameof(TooltipShowsPercent));
+        OnPropertyChanged(nameof(TooltipTemplate));
+        Rebuild();
+    }
+
     private void SetGauge(GaugeSettings gauge)
     {
         _gauge = gauge is { Minimum: null, Maximum: null, Target: null } ? null : gauge;
@@ -357,6 +415,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     public bool CanDrop(FieldDescriptor field, Shelf shelf) => ShelfViewModel.IsUsedBy(shelf, SelectedMark) && shelf switch
     {
         Shelf.Values => field.Kind == FieldKind.Measure,
+        Shelf.Tooltip => field.Kind == FieldKind.Measure && TooltipValues.All(t => t.Field != field),
         Shelf.Axis => field.Kind == FieldKind.Dimension && Axis.Count < MaxAxisFields && Axis.All(a => a.Field != field),
         Shelf.Legend => field.Kind == FieldKind.Dimension,
         // A measure filters the visual's groups by comparing its value
@@ -452,8 +511,10 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
 
     private string? FieldRefusal(FieldDescriptor field, Shelf shelf)
     {
-        if (shelf == Shelf.Values)
-            return field.Kind == FieldKind.Measure ? null : Strings.DropMeasuresOnly;
+        if (shelf is Shelf.Values or Shelf.Tooltip)
+            return field.Kind != FieldKind.Measure ? Strings.DropMeasuresOnly
+                : shelf == Shelf.Tooltip && TooltipValues.Any(t => t.Field == field) ? Strings.Format(Strings.DropAlreadyThere, field.Caption, ShelfName(shelf))
+                : null;
         if (field.Kind != FieldKind.Dimension && shelf != Shelf.Filters) return Strings.Format(Strings.DropDimensionsOnly, ShelfName(shelf));
         return shelf switch
         {
@@ -475,6 +536,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         Shelf.Axis => Axis,
         Shelf.Legend => Legend,
         Shelf.Values => Values,
+        Shelf.Tooltip => TooltipValues,
         _ => throw new ArgumentOutOfRangeException(nameof(shelf)),
     };
 
@@ -514,12 +576,14 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         Axis.Clear();
         Legend.Clear();
         Values.Clear();
+        TooltipValues.Clear();
         Filters.Clear();
         _title = "";
         OnPropertyChanged(nameof(Title));
         _visualId = NewId();
         _top = null;
         _gauge = null;
+        _tooltip = new();
         OnPropertyChanged(nameof(Top));
         _extensions = null;
         _hiddenFilters = [];
@@ -548,6 +612,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         _selectedMark = visual.Mark;
         _top = visual.Top;
         _gauge = visual.Gauge;
+        _tooltip = (visual.Tooltip ?? new()) with { Values = [] };
         _extensions = visual.Extensions;
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(SelectedMark));
@@ -569,6 +634,11 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             };
             chip.LoadFormat(v.Format);
             Values.Add(chip);
+        }
+        foreach (var t in visual.Tooltip?.Values ?? [])
+        {
+            var field = Context.GetField(model, t.Measure);
+            TooltipValues.Add(new ShelfItemViewModel(field, Shelf.Tooltip, Rebuild) { Aggregation = t.Aggregation ?? field.DefaultAggregation ?? Aggregation.Sum });
         }
         // A sort on a column that is not displayed is dropped, as the query could not sort on it
         if (visual.Sort is { } sort && Axis.Concat(Legend).Concat(Values).FirstOrDefault(c => c.Key == sort.Key) is { } sorted)
@@ -592,6 +662,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         {
             case ShelfItemViewModel s when s.Shelf == Shelf.Axis: Axis.Remove(s); break;
             case ShelfItemViewModel s when s.Shelf == Shelf.Legend: Legend.Remove(s); break;
+            case ShelfItemViewModel s when s.Shelf == Shelf.Tooltip: TooltipValues.Remove(s); break;
             case ShelfItemViewModel s: Values.Remove(s); break;
             case FilterItemViewModel f: Filters.Remove(f); break;
         }
@@ -606,6 +677,9 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         var axis = Axis.Select(a => a.ToFieldRef()).ToArray();
         var legend = Legend.FirstOrDefault()?.ToFieldRef();
         var values = Values.Select(v => v.ToMeasureRef()).ToArray();
+        // Saved only when it differs from the default; kept for when the user comes back to a chart
+        var tooltip = _tooltip with { Values = [.. TooltipValues.Select(t => t.ToMeasureRef())] };
+        var hasTooltip = Tooltips.Has(SelectedMark) && (tooltip.Values.Count > 0 || _tooltip is not { IsHidden: false, HideCategory: false, HideSeries: false, ShowPercent: false, Template: null });
         // The sort follows its chip: it goes with it, and its key follows the chip's aggregation or grain
         var sorted = Axis.Concat(Legend).Concat(Values).FirstOrDefault(c => c.SortDirection is not null);
         SortSummary = sorted is null ? null : Strings.Format(Strings.SortSummary, sorted.Caption,
@@ -623,6 +697,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             Sort = sorted is null ? null : new SortSpec(sorted.Key, sorted.SortDirection == ListSortDirection.Descending),
             Top = _top,
             Gauge = SelectedMark == MarkType.Gauge ? _gauge : null,
+            Tooltip = hasTooltip ? tooltip : null,
             Extensions = _extensions,
         };
         RefreshRendererOptions();
@@ -657,9 +732,10 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             SelectedItem = null;
             return;
         }
-        var shape = (_selectedItem, Options: RendererOptions.ToArray());
-        if (_propertiesShape is ValueTuple<object?, RendererOptionViewModel[]> previous
-            && Equals(previous.Item1, shape._selectedItem) && previous.Item2.SequenceEqual(shape.Options))
+        // Only charts have a tooltips section
+        var shape = (_selectedItem, Options: RendererOptions.ToArray(), Tooltips: Tooltips.Has(SelectedMark));
+        if (_propertiesShape is ValueTuple<object?, RendererOptionViewModel[], bool> previous
+            && Equals(previous.Item1, shape._selectedItem) && previous.Item2.SequenceEqual(shape.Options) && previous.Item3 == shape.Tooltips)
         {
             foreach (var property in Properties.SelectMany(s => s.Properties)) property.Refresh();
             return;
@@ -719,6 +795,16 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             DesignerProperty.Number("GaugeMaximum", () => Strings.GaugeMaximum, () => GaugeMaximum, v => GaugeMaximum = v, IsGauge),
             DesignerProperty.Number("GaugeTarget", () => Strings.GaugeTarget, () => GaugeTarget, v => GaugeTarget = v, IsGauge),
         ]));
+        if (Tooltips.Has(SelectedMark))
+            sections.Add(new DesignerPropertySection(DesignerPropertySections.Tooltips, () => Strings.PropertiesTooltips,
+            [
+                DesignerProperty.Toggle("ShowTooltips", () => Strings.TooltipShow, () => ShowTooltips, v => ShowTooltips = v),
+                DesignerProperty.Toggle("TooltipCategory", () => Strings.TooltipCategory, () => TooltipShowsCategory, v => TooltipShowsCategory = v, () => ShowTooltips),
+                DesignerProperty.Toggle("TooltipSeries", () => Strings.TooltipSeries, () => TooltipShowsSeries, v => TooltipShowsSeries = v, () => ShowTooltips),
+                DesignerProperty.Toggle("TooltipPercent", () => Strings.TooltipPercent, () => TooltipShowsPercent, v => TooltipShowsPercent = v, () => ShowTooltips),
+                DesignerProperty.Text("TooltipTemplate", () => Strings.TooltipTemplate, () => TooltipTemplate, v => TooltipTemplate = v, () => ShowTooltips,
+                    () => Strings.Format(Strings.TooltipTemplateHint, string.Join(", ", TooltipFields.Select(f => $"{{{f}}}")))),
+            ]));
         if (RendererOptions.Count > 0)
             sections.Add(new DesignerPropertySection(DesignerPropertySections.Options, () => Strings.RendererOptions, RendererOptions.Select(OptionProperty)));
         return sections;
@@ -803,15 +889,20 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     {
         OnPropertyChanged(nameof(Measures));
         if (Visual is not { } visual || _selectedModel is not { } model) return;
-        var calculated = visual.Values.Where(v => !model.Metadata.Fields.Any(f => f.Name == v.Measure)).ToArray();
+        bool Exists(MeasureRef v) => model.Metadata.Fields.Any(f => f.Name == v.Measure) || Context.Measures.Find(model.Metadata.Name, v.Measure) is not null;
+        var calculated = visual.Values.Concat(visual.Tooltip?.Values ?? []).Where(v => !model.Metadata.Fields.Any(f => f.Name == v.Measure)).ToArray();
         if (calculated.Length == 0) return;
-        Reload(visual with { Values = visual.Values.Where(v => !calculated.Contains(v) || Context.Measures.Find(model.Metadata.Name, v.Measure) is not null).ToArray() });
+        Reload(visual with
+        {
+            Values = visual.Values.Where(Exists).ToArray(),
+            Tooltip = visual.Tooltip is { } tooltip ? tooltip with { Values = tooltip.Values.Where(Exists).ToArray() } : null,
+        });
     }
 
     // --- Keyboard ---
 
     // The chips in reading order: the wells from top to bottom
-    private IReadOnlyList<object> Chips => [.. Axis, .. Legend, .. Values, .. Filters];
+    private IReadOnlyList<object> Chips => [.. Axis, .. Legend, .. Values, .. TooltipValues, .. Filters];
 
     private IList Items(Shelf shelf) => shelf == Shelf.Filters ? Filters : Collection(shelf);
 

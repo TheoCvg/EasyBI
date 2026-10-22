@@ -64,6 +64,10 @@ public sealed record VisualDefinition
     /// <summary>Content of a <see cref="MarkType.Image"/> visual.</summary>
     public ImageContent? Image { get; init; }
 
+    /// <summary>What the tooltips of a chart show; null for the defaults.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public TooltipSettings? Tooltip { get; init; }
+
     /// <summary>The scale and the target of a <see cref="MarkType.Gauge"/>; null for the other types or the defaults.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public GaugeSettings? Gauge { get; init; }

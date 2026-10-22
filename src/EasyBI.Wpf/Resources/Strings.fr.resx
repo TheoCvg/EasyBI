@@ -630,4 +630,31 @@
   <data name="MarkWaterfall" xml:space="preserve">
     <value>Cascade</value>
   </data>
+  <data name="WellTooltip" xml:space="preserve">
+    <value>Infobulle</value>
+  </data>
+  <data name="PropertiesTooltips" xml:space="preserve">
+    <value>Infobulles</value>
+  </data>
+  <data name="TooltipShow" xml:space="preserve">
+    <value>Afficher les infobulles</value>
+  </data>
+  <data name="TooltipCategory" xml:space="preserve">
+    <value>Afficher la catégorie</value>
+  </data>
+  <data name="TooltipSeries" xml:space="preserve">
+    <value>Afficher le nom des séries</value>
+  </data>
+  <data name="TooltipPercent" xml:space="preserve">
+    <value>Afficher le % du total</value>
+  </data>
+  <data name="TooltipTemplate" xml:space="preserve">
+    <value>Texte personnalisé</value>
+  </data>
+  <data name="TooltipTemplateHint" xml:space="preserve">
+    <value>Remplace le contenu s'il est rempli. Champs entre accolades : {0}</value>
+  </data>
+  <data name="TooltipWellHint" xml:space="preserve">
+    <value>Mesures affichées dans l'infobulle</value>
+  </data>
 </root>

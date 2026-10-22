@@ -176,13 +176,16 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         // Legend, labels and axis title adapt to the room the chart actually gets
         view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, chart);
 
+        // Only bars: the bar under the pointer (category + legend series).
+        // With lines, areas or points: the points closest to the pointer's X position.
+        view.FindingStrategy = chart.Series.All(s => s.Mark is MarkType.Bar or MarkType.StackedBar)
+            ? FindingStrategy.ExactMatch
+            : FindingStrategy.CompareOnlyXTakeClosest;
+        view.Tooltip = new EasyBITooltip(view, request, points =>
+            points.FirstOrDefault() is { } first ? (first.Index, [.. points.Select(p => Array.IndexOf(series, p.Context.Series)).Where(i => i >= 0)]) : null);
+
         if (request.Select is { } select)
         {
-            // Only bars: the clicked bar is picked (category + legend series).
-            // With lines, areas or points: the point closest to the clicked X position.
-            view.FindingStrategy = chart.Series.All(s => s.Mark is MarkType.Bar or MarkType.StackedBar)
-                ? FindingStrategy.ExactMatch
-                : FindingStrategy.CompareOnlyXTakeClosest;
             view.Cursor = System.Windows.Input.Cursors.Hand;
             OnPointClicked(view, view.FindingStrategy, point =>
             {
@@ -244,6 +247,8 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         };
         ApplyTheme(view, theme);
         view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, chart);
+        view.FindingStrategy = FindingStrategy.CompareOnlyXTakeClosest;
+        view.Tooltip = new EasyBITooltip(view, request, points => points.FirstOrDefault() is { } step ? (step.Index, [0]) : null);
         if (request.Select is { } select)
         {
             view.Cursor = System.Windows.Input.Cursors.Hand;
@@ -480,6 +485,8 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         }
 
         var view = new PieChart { Series = slices.Keys.ToArray(), LegendPosition = LegendPosition.Right };
+        view.Tooltip = new EasyBITooltip(view, request, points =>
+            points.FirstOrDefault() is { } slice && slices.TryGetValue(slice.Context.Series, out var category) ? (category, [0]) : null);
         ApplyTheme(view, request.Theme);
         // Legend and donut hole adapt to the room the chart actually gets
         view.SizeChanged += (_, _) => FitPie(view, slices.Keys, chart, donut);
@@ -503,6 +510,21 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         // LiveCharts2 measures the pie after WPF's layout
         view.UpdateFinished += _ => view.Dispatcher.InvokeAsync(label.Place);
         return label;
+    }
+
+    /// <summary>
+    /// LiveCharts2's tooltip replaced by EasyBI's (<see cref="ChartTooltipHost"/>): <c>locate</c> turns the points found
+    /// under the pointer into the hovered category and series, whose content the request gives.
+    /// </summary>
+    private sealed class EasyBITooltip(FrameworkElement view, RenderRequest request, Func<IReadOnlyList<ChartPoint>, (int Category, IReadOnlyList<int> Series)?> locate)
+        : LiveChartsCore.Kernel.Sketches.IChartTooltip
+    {
+        private readonly ChartTooltipHost _host = new(view);
+
+        public void Show(IEnumerable<ChartPoint> foundPoints, Chart chart) =>
+            _host.Show(locate([.. foundPoints]) is { } at ? request.TooltipFor(at.Category, at.Series) : null);
+
+        public void Hide(Chart chart) => _host.Hide();
     }
 
     /// <summary>

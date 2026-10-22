@@ -197,6 +197,9 @@ public static class DesignerPropertySections
     /// <summary>The visual: title, sort, Top N.</summary>
     public const string Visual = "Visual";
 
+    /// <summary>The tooltips of a chart: shown or not, their parts, a custom text.</summary>
+    public const string Tooltips = "Tooltips";
+
     /// <summary>The options of the renderer drawing the visual (<see cref="Abstractions.RendererCapabilities.Options"/>).</summary>
     public const string Options = "Options";
 }
