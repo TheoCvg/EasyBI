@@ -157,6 +157,9 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
             Name = chart.CategoryCaption,
             NameTextSize = 13,
             TextSize = 12,
+            // Every category gets its label slot: the fit decides which ones show (LiveCharts2 would skip its own on top)
+            MinStep = 1,
+            ForceStepToMin = true,
         }, theme);
         var view = new CartesianChart
         {
