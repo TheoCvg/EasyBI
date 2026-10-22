@@ -155,6 +155,10 @@ public sealed class OxyPlotRenderer : IVisualRenderer
             model.Series.Add(CreateSeries(request, formatting, i));
         foreach (var band in formatting.Bands)
             model.Annotations.Add(Zone(band, request.Theme));
+        var groups = chart.Series.Where(s => s.Mark is MarkType.Bar or MarkType.StackedBar)
+            .Select(s => s.Mark == MarkType.StackedBar ? (s.SecondaryAxis ? "stack2" : "stack") : s.Name).Distinct().ToList();
+        foreach (var outline in formatting.StackOutlines)
+            model.Annotations.Add(Frame(outline, categoryAxis, groups));
 
         if (chart.Series.Count > 1)
             model.Legends.Add(new Legend { LegendPosition = LegendPosition.RightTop, LegendPlacement = LegendPlacement.Outside });
@@ -209,6 +213,31 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         return zone;
     }
 
+    /// <summary>
+    /// The frame of a stack a rule or a scale picks out (<see cref="StackOutline"/>), over the stack's bar: its slot
+    /// among the category's bar groups (each stack is one group, each other bar series one too).
+    /// </summary>
+    private static RectangleAnnotation Frame(StackOutline outline, CategoryAxis axis, List<string> groups)
+    {
+        // OxyPlot shares a category between its bar groups, a gap as wide as one bar on each side
+        var width = 1 / (1 + axis.GapWidth) / Math.Max(1, groups.Count);
+        var slot = groups.IndexOf(outline.SecondaryAxis ? "stack2" : "stack");
+        var left = outline.Category - 0.5 / (1 + axis.GapWidth) + slot * width;
+        return new RectangleAnnotation
+        {
+            XAxisKey = CategoryAxisKey,
+            YAxisKey = outline.SecondaryAxis ? SecondaryAxisKey : PrimaryAxisKey,
+            MinimumX = left,
+            MaximumX = left + width,
+            MinimumY = 0,
+            MaximumY = outline.Top,
+            Fill = OxyColors.Transparent,
+            Stroke = OxyColor.Parse(outline.Color),
+            StrokeThickness = 3,
+            Layer = AnnotationLayer.AboveSeries,
+        };
+    }
+
     private static Series CreateSeries(RenderRequest request, ChartFormatting formatting, int index)
     {
         var source = request.Chart.Series[index];
@@ -257,9 +286,6 @@ public sealed class OxyPlotRenderer : IVisualRenderer
                     XAxisKey = valueAxis,
                     YAxisKey = CategoryAxisKey,
                     IsStacked = source.Mark == MarkType.StackedBar,
-                    // Segments of a stack colored alike stay apart: a thin line of the background between them
-                    StrokeColor = source.Mark == MarkType.StackedBar && formatting.ColorsPoints ? Parse(request.Theme.Background) ?? OxyColors.White : OxyColors.Automatic,
-                    StrokeThickness = source.Mark == MarkType.StackedBar && formatting.ColorsPoints ? 1 : 0,
                     // Series on the right axis stack separately from those on the left
                     StackGroup = source.SecondaryAxis ? SecondaryAxisKey : PrimaryAxisKey,
                     TrackerFormatString = "{0}\n{1}: {2:" + (source.Format ?? "#,##0.##") + "}",

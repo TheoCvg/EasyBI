@@ -63,6 +63,41 @@ public class ChartFormattingUiTests
         Assert.Equal(double.PositiveInfinity, zone.MaximumY); // open at the top
     });
 
+    // Stacked bars (two segments per category): totals 30 and 150, framed above 60
+    private static RenderRequest Stacked()
+    {
+        var visual = new VisualDefinition { Mark = MarkType.StackedBar, Values = [new("Amount") { Format = Format with { Rules = [Format.Rules[0] with { Value = 60 }] } }] };
+        var chart = new ChartData("Region", ["A", "B"],
+        [
+            new ChartSeries("Web", [10, 100], null) { MeasureKey = "Amount", Mark = MarkType.StackedBar },
+            new ChartSeries("Shop", [20, 50], null) { MeasureKey = "Amount", Mark = MarkType.StackedBar },
+        ]);
+        return new RenderRequest(visual, new ResultSet([], []), chart, Theme);
+    }
+
+    [Fact]
+    public void LiveCharts2_frames_a_stack_with_an_empty_column_over_it() => Sta.Run(() =>
+    {
+        var view = (CartesianChart)new LiveCharts2Renderer().Render(Stacked());
+
+        var frame = Assert.IsType<ColumnSeries<LiveChartsCore.Defaults.ObservableValue>>(view.Series.Last());
+        Assert.Equal([null, 150d], frame.Values!.Select(v => v.Value));
+        Assert.Null(frame.Fill);
+        Assert.Equal("#ff00aa00", ((SolidColorPaint)frame.Stroke!).Color.ToString());
+        Assert.True(frame.IgnoresBarPosition && !frame.IsVisibleAtLegend && !frame.IsHoverable);
+    });
+
+    [Fact]
+    public void OxyPlot_frames_a_stack_with_a_rectangle_over_its_bar() => Sta.Run(() =>
+    {
+        var view = (PlotView)new OxyPlotRenderer().Render(Stacked());
+
+        var frame = view.Model.Annotations.OfType<global::OxyPlot.Annotations.RectangleAnnotation>().Single(a => a.MaximumY == 150);
+        Assert.Equal((0.75, 1.25, 0d), (frame.MinimumX, frame.MaximumX, frame.MinimumY)); // the bar takes half of its category
+        Assert.Equal(global::OxyPlot.OxyColor.Parse("#00AA00"), frame.Stroke);
+        Assert.All(view.Model.Series.Cast<global::OxyPlot.Series.BarSeries>().SelectMany(b => b.Items), item => Assert.True(item.Color.IsAutomatic()));
+    });
+
     [Fact]
     public void The_format_editor_only_shows_what_the_visual_type_uses()
     {

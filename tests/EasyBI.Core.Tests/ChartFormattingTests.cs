@@ -53,7 +53,7 @@ public class ChartFormattingTests
     }
 
     [Fact]
-    public void A_stack_is_judged_on_its_total_and_every_segment_takes_its_color()
+    public void A_stack_is_judged_on_its_total_and_framed_while_its_segments_keep_their_colors()
     {
         // Two segments per category (a legend): totals 30, 70 and 150
         var format = new ValueFormat
@@ -70,9 +70,12 @@ public class ChartFormattingTests
 
         var formatting = ChartFormatting.For(new RenderRequest(visual, new ResultSet([], []), chart, Theme));
 
-        // A: 30 is the smallest total (the scale's minimum) for both segments; B and C: above 60, green for both
-        Assert.Equal(["#000000", "#00AA00", "#00AA00"], Enumerable.Range(0, 3).Select(c => formatting.PointColor(0, c)));
-        Assert.Equal(["#000000", "#00AA00", "#00AA00"], Enumerable.Range(0, 3).Select(c => formatting.PointColor(1, c)));
+        // A: 30 is the smallest total (the scale's minimum); B and C: above 60, in green
+        Assert.Equal(
+            [new StackOutline(0, 30, "#000000", false), new StackOutline(1, 70, "#00AA00", false), new StackOutline(2, 150, "#00AA00", false)],
+            formatting.StackOutlines);
+        Assert.All(Enumerable.Range(0, 3), c => Assert.Null(formatting.PointColor(0, c))); // the legend's colors stay
+        Assert.False(formatting.ColorsPoints);
     }
 
     [Fact]
@@ -95,8 +98,7 @@ public class ChartFormattingTests
 
         var formatting = ChartFormatting.For(new RenderRequest(visual, new ResultSet([], []), chart, Theme));
 
-        Assert.Equal(("#CC0000", "#CC0000"), (formatting.PointColor(0, 0), formatting.PointColor(1, 0))); // 120
-        Assert.Null(formatting.PointColor(0, 1)); // 20
+        Assert.Equal(new StackOutline(0, 120, "#CC0000", false), Assert.Single(formatting.StackOutlines)); // 120; 20 is not framed
     }
 
     [Fact]

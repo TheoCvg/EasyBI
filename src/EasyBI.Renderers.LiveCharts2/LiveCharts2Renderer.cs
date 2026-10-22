@@ -158,7 +158,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         }, theme);
         var view = new CartesianChart
         {
-            Series = series,
+            Series = [.. series, .. Outlines(formatting, chart.Categories.Count)],
             XAxes = [categoryAxis],
             YAxes = hasSecondary
                 ? [ValueAxis(chart, theme, secondary: false), ValueAxis(chart, theme, secondary: true)]
@@ -263,6 +263,26 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
     private static SKColor? Parse(string? color) => color is null ? null : SKColor.Parse(color);
 
     /// <summary>
+    /// The frames of the stacks a rule or a scale picks out (<see cref="StackOutline"/>): one column series per color,
+    /// empty inside, centered on the category like the stack (same width) and drawn over it.
+    /// </summary>
+    private static IEnumerable<ISeries> Outlines(ChartFormatting formatting, int categories) =>
+        formatting.StackOutlines
+            .GroupBy(o => (o.Color, o.SecondaryAxis))
+            .Select(group => new ColumnSeries<ObservableValue>
+            {
+                Values = [.. Enumerable.Range(0, categories).Select(c => new ObservableValue(group.FirstOrDefault(o => o.Category == c)?.Top))],
+                Fill = null,
+                Stroke = new SolidColorPaint(SKColor.Parse(group.Key.Color), 3),
+                MaxBarWidth = 48,
+                IgnoresBarPosition = true,
+                ScalesYAt = group.Key.SecondaryAxis ? 1 : 0,
+                IsHoverable = false,
+                IsVisibleAtLegend = false,
+                ZIndex = 1000,
+            });
+
+    /// <summary>
     /// The zone of a rule shown on the chart (<see cref="ChartBand"/>): a translucent band across the chart between
     /// its values, an open end reaching the edge of the axis, with the rule's condition as label.
     /// </summary>
@@ -298,8 +318,6 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         var axis = source.SecondaryAxis ? 1 : 0;
         string Tooltip(double value) => ValueFormatter.Format(value, source.Format);
         var paints = new Dictionary<string, SolidColorPaint>();
-        // Segments of a stack colored alike stay apart: a thin line of the background between them
-        var separator = new SolidColorPaint(Parse(request.Theme.Background) ?? SKColors.White, 1);
         void Fade(IDrawnElement? point, int category)
         {
             if (point is null) return;
@@ -313,7 +331,6 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                     : null;
                 geometry.Fill = paint;
                 if (source.Mark is MarkType.Line or MarkType.Scatter) geometry.Stroke = paint;
-                else if (source.Mark == MarkType.StackedBar) geometry.Stroke = paint is null ? null : separator;
             }
         }
 

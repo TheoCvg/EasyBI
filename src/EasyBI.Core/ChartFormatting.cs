@@ -10,10 +10,18 @@ namespace EasyBI.Core;
 public sealed record ChartBand(double? From, double? To, string Color, bool SecondaryAxis, string Label);
 
 /// <summary>
+/// A frame around a whole stack of bars that a rule or a scale picks out (its segments keep their legend colors): the
+/// stack of <see cref="Category"/>, from 0 to <see cref="Top"/> (the sum of its positive segments), in
+/// <see cref="Color"/> (#RRGGBB), against the right axis when <see cref="SecondaryAxis"/>.
+/// </summary>
+public sealed record StackOutline(int Category, double Top, string Color, bool SecondaryAxis);
+
+/// <summary>
 /// The formats of a chart's measures (<see cref="MeasureRef.Format"/>) as a renderer draws them: the color of each
 /// point from the rules and the color scale (a rule's text color, else its background, full strength), and the zones
 /// of the rules shown on the chart. A scale compares a point with the points of the same measure. Stacked bars are
-/// judged as a whole: a rule or a scale compares the total of the stack, and its color goes to every segment.
+/// judged as a whole and keep their legend colors: a rule or a scale compares the total of the stack, and frames the
+/// stack in its color (<see cref="StackOutlines"/>).
 /// </summary>
 public sealed class ChartFormatting
 {
@@ -45,6 +53,7 @@ public sealed class ChartFormatting
                 : series.Where(o => o.MeasureKey == s.MeasureKey).SelectMany(o => o.Values).OfType<double>().ToList();
             return values.Count == 0 ? (0d, 0d) : (values.Min(), values.Max());
         })];
+        StackOutlines = [.. _totals.SelectMany(stack => stack.Value.Select((total, category) => Outline(stack.Key, category, total))).OfType<StackOutline>()];
         Bands = [.. request.Visual.Values
             .Where(v => v.Format is not null)
             .SelectMany(v => v.Format!.Rules.Where(r => r.ShowOnChart).Select(r => Band(v, r)))
@@ -53,26 +62,22 @@ public sealed class ChartFormatting
 
     public static ChartFormatting For(RenderRequest request) => new(request);
 
-    /// <summary>True when some point gets its own color.</summary>
-    public bool ColorsPoints => _formats.Any(f => f is not null && (f.Rules.Any(HasColor) || f.Scale is not null));
+    /// <summary>True when some point (not stacked) gets its own color.</summary>
+    public bool ColorsPoints => _formats.Where((_, i) => _stacks[i] is null).Any(f => f is not null && (f.Rules.Any(HasColor) || f.Scale is not null));
+
+    /// <summary>The stacks a rule or a scale picks out, to frame in its color.</summary>
+    public IReadOnlyList<StackOutline> StackOutlines { get; }
 
     /// <summary>The zones to shade, in the order of the measures and their rules.</summary>
     public IReadOnlyList<ChartBand> Bands { get; }
 
     /// <summary>
-    /// The color of a point (#RRGGBB) from its measure's rules or scale; null keeps the series' color. A segment of a
-    /// stack takes the color of the stack: the first of its measures' formats that gives one for the stack's total.
+    /// The color of a point (#RRGGBB) from its measure's rules or scale; null keeps the series' color, and always for
+    /// a segment of a stack (the stack is framed instead, see <see cref="StackOutlines"/>).
     /// </summary>
     public string? PointColor(int series, int category)
     {
-        if (_stacks.ElementAtOrDefault(series) is { } stack)
-        {
-            if (_totals[stack].ElementAtOrDefault(category) is not { } total) return null;
-            return Enumerable.Range(0, _stacks.Length)
-                .Where(i => _stacks[i] == stack)
-                .Select(i => _formats[i] is { } format ? ColorOf(format, i, total) : null)
-                .FirstOrDefault(color => color is not null);
-        }
+        if (_stacks.ElementAtOrDefault(series) is not null) return null;
         if (_formats.ElementAtOrDefault(series) is not { } own) return null;
         if (_request.Chart.Series[series].Values.ElementAtOrDefault(category) is not { } value) return null;
         return ColorOf(own, series, value);
@@ -95,6 +100,20 @@ public sealed class ChartFormatting
     }
 
     private static bool HasColor(FormatRule rule) => rule.Color is not null || rule.Background is not null;
+
+    // The frame of a stack: the color of the first of its measures' formats that gives one for the stack's total
+    private StackOutline? Outline(int stack, int category, double? total)
+    {
+        if (total is not { } value) return null;
+        var color = Enumerable.Range(0, _stacks.Length)
+            .Where(i => _stacks[i] == stack)
+            .Select(i => _formats[i] is { } format ? ColorOf(format, i, value) : null)
+            .FirstOrDefault(c => c is not null);
+        if (color is null) return null;
+        var top = _request.Chart.Series.Where((_, i) => _stacks[i] == stack)
+            .Select(s => s.Values.ElementAtOrDefault(category)).OfType<double>().Where(v => v > 0).Sum();
+        return new StackOutline(category, top, color, stack == 1);
+    }
 
     private ChartBand? Band(MeasureRef measure, FormatRule rule)
     {

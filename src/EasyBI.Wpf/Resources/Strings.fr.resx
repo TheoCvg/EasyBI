@@ -604,6 +604,6 @@
     <value>Couleur</value>
   </data>
   <data name="FormatChartHint" xml:space="preserve">
-    <value>Sur un graphique, les règles et l&apos;échelle de couleurs colorent les barres, points et parts (toute la pile pour des barres empilées).</value>
+    <value>Sur un graphique, les règles et l&apos;échelle de couleurs colorent les barres, points et parts (barres empilées : un cadre autour de toute la pile).</value>
   </data>
 </root>

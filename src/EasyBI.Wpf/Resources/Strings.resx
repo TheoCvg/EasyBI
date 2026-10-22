@@ -604,6 +604,6 @@
     <value>Color</value>
   </data>
   <data name="FormatChartHint" xml:space="preserve">
-    <value>On a chart, the rules and the color scale color the bars, points and slices (a whole stack for stacked bars).</value>
+    <value>On a chart, the rules and the color scale color the bars, points and slices (stacked bars: a frame around the whole stack).</value>
   </data>
 </root>

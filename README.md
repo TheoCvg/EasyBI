@@ -232,8 +232,8 @@ source is not queried again. `ValueStyler` (Core) computes the `ValueStyle` of a
 
 **In charts**, the rules and the color scale color each bar, point and slice (LiveCharts2's *conditional draw*:
 `OnPointMeasured` gives each point its paint; OxyPlot colors bars and slices one by one, not the points of lines).
-Stacked bars are judged as a whole: a rule or a scale compares the total of the stack, and its color goes to every
-segment, separated by a thin line of the background. The designer's editor only shows what the visual's type uses
+Stacked bars are judged as a whole and keep their legend colors: a rule or a scale compares the total of the stack,
+and frames the whole stack in its color (`ChartFormatting.StackOutlines`). The designer's editor only shows what the visual's type uses
 (on a chart: the rules' color and zone, and the scale; on a KPI: no scale or bars); what it hides is kept. A
 rule with **"show its zone on charts"** (`FormatRule.ShowOnChart`) shades its zone of the value axis: from its value
 up for "greater than", down for "less than", between its bounds for a range, labelled with the condition
