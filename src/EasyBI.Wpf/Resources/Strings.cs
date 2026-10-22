@@ -17,6 +17,7 @@ internal static class Strings
     public static string MarkMatrix => Get();
     public static string MarkDonut => Get();
     public static string MarkGauge => Get();
+    public static string MarkWaterfall => Get();
     public static string GaugeMinimum => Get();
     public static string GaugeMaximum => Get();
     public static string GaugeTarget => Get();

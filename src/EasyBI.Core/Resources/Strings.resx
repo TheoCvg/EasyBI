@@ -240,4 +240,7 @@
   <data name="ValidationGauge" xml:space="preserve">
     <value>A gauge shows a single value, without axis or legend.</value>
   </data>
+  <data name="ValidationWaterfall" xml:space="preserve">
+    <value>A waterfall needs an axis and a single value, without legend.</value>
+  </data>
 </root>

@@ -138,4 +138,63 @@ public class NewVisualTypesTests
     {
         Assert.IsType<GaugeRenderer>(EasyBIContext.Create().UseRenderer(new LiveCharts2Renderer()).ResolveRenderer(MarkType.Gauge));
     }
+
+    private static RenderRequest WaterfallRequest(params DataSelection[] highlight)
+    {
+        var visual = new VisualDefinition { Mark = MarkType.Waterfall, Axis = [new("Month")], Values = [new("Profit")] };
+        var chart = new ChartData("Month", ["Jan", "Feb"], [new ChartSeries("Profit", [100, -30], "N0") { MeasureKey = "Profit", Mark = MarkType.Waterfall }])
+        {
+            CategoryValues = [["Jan"], ["Feb"]],
+        };
+        return new RenderRequest(visual, new ResultSet([], []), chart, BiTheme.Default with { Success = "#00AA00", Error = "#CC0000" })
+        {
+            Highlight = highlight,
+        };
+    }
+
+    [Fact]
+    public void LiveCharts2_draws_a_waterfall_as_candles_from_one_running_total_to_the_next() => Sta.Run(() =>
+    {
+        var view = (CartesianChart)new LiveCharts2Renderer().Render(WaterfallRequest());
+
+        var steps = Assert.IsType<LiveChartsCore.SkiaSharpView.CandlesticksSeries<LiveChartsCore.Defaults.FinancialPointI>>(Assert.Single(view.Series));
+        Assert.Equal([(100d, 0d, 100d), (100d, 100d, 70d), (70d, 0d, 70d)], steps.Values!.Select(p => (p.High, p.Open, p.Close)));
+        Assert.Equal(["Jan", "Feb", "Total"], ((LiveChartsCore.SkiaSharpView.Axis)view.XAxes.First()).Labels);
+        Assert.Equal("#ff00aa00", ((LiveChartsCore.SkiaSharpView.Painting.SolidColorPaint)steps.UpFill!).Color.ToString());
+        Assert.Equal("#ffcc0000", ((LiveChartsCore.SkiaSharpView.Painting.SolidColorPaint)steps.DownFill!).Color.ToString());
+    });
+
+    [Fact]
+    public void OxyPlot_draws_a_waterfall_with_bars_between_running_totals() => Sta.Run(() =>
+    {
+        var view = (PlotView)new OxyPlotRenderer().Render(WaterfallRequest(new CategorySelection(0)));
+
+        var steps = Assert.IsType<global::OxyPlot.Series.IntervalBarSeries>(Assert.Single(view.Model.Series));
+        Assert.Equal([(0d, 100d), (70d, 100d), (0d, 70d)], steps.Items.Select(i => (i.Start, i.End)));
+        Assert.Equal(global::OxyPlot.OxyColor.Parse("#00AA00"), steps.Items[0].Color);
+        Assert.True(steps.Items[1].Color.A < 255); // the decrease, left out of the highlight
+        Assert.Equal(global::OxyPlot.OxyColor.Parse(BiTheme.Default.ColorAt(0)), steps.Items[2].Color); // the total
+    });
+
+    [Fact]
+    public void OxyPlot_renders_a_waterfall() => Sta.Run(() =>
+    {
+        var view = (PlotView)new OxyPlotRenderer().Render(WaterfallRequest());
+
+        // OxyPlot shows a rendering error inside the image instead of throwing: draw it and look for none
+        using var image = new System.IO.MemoryStream();
+        new global::OxyPlot.Wpf.PngExporter { Width = 400, Height = 300 }.Export(view.Model, image);
+        Assert.Null(view.Model.GetLastPlotException());
+    });
+
+    [Fact]
+    public void The_designer_offers_the_waterfall_with_an_axis_and_a_value()
+    {
+        var designer = new DesignerViewModel(EasyBIContext.Create().UseRenderer(new LiveCharts2Renderer()));
+
+        designer.SelectedMark = MarkType.Waterfall;
+
+        Assert.Equal((true, false, "Value"), (designer.AxisWell.IsUsed, designer.LegendWell.IsUsed, designer.ValuesWell.Label));
+        Assert.True(designer.MarkOptions.Single(o => o.Value == MarkType.Waterfall).IsAvailable);
+    }
 }

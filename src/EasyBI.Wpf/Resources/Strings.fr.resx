@@ -627,4 +627,7 @@
   <data name="GaugeTargetLabel" xml:space="preserve">
     <value>Cible : {0}</value>
   </data>
+  <data name="MarkWaterfall" xml:space="preserve">
+    <value>Cascade</value>
+  </data>
 </root>

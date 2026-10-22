@@ -19,14 +19,17 @@ public sealed class OxyPlotRenderer : IVisualRenderer
 
     public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType>
     {
-        MarkType.Bar, MarkType.StackedBar, MarkType.Line, MarkType.Area, MarkType.Scatter, MarkType.Pie, MarkType.Donut,
+        MarkType.Bar, MarkType.StackedBar, MarkType.Line, MarkType.Area, MarkType.Scatter, MarkType.Pie, MarkType.Donut, MarkType.Waterfall,
     });
 
     public FrameworkElement Render(RenderRequest request)
     {
+        // A waterfall is laid out as a chart with a last "Total" category
+        var fitted = request.Visual.Mark == MarkType.Waterfall ? request with { Chart = Waterfall.Of(request.Chart).Chart } : request;
         var model = request.Visual.Mark switch
         {
             var mark when mark.IsCircular() => BuildPie(request),
+            MarkType.Waterfall => BuildWaterfall(request),
             var mark when mark.IsCartesian() => BuildCartesian(request),
             _ => throw new NotSupportedException($"OxyPlotRenderer does not support '{request.Visual.Mark}'."),
         };
@@ -34,7 +37,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         ApplyTheme(model, request.Theme);
         var view = new PlotView { Model = model, Background = System.Windows.Media.Brushes.Transparent };
         // Legend, labels and axis title adapt to the room the chart actually gets
-        view.SizeChanged += (_, _) => Fit(view, model, request);
+        view.SizeChanged += (_, _) => Fit(view, model, fitted);
         if (request.Select is { } select)
             view.Controller = SelectionController(model, select);
         if (request.Visual.Mark != MarkType.Donut) return view;
@@ -125,6 +128,9 @@ public sealed class OxyPlotRenderer : IVisualRenderer
                     return new CategorySelection(categories[pie.Slices.IndexOf(slice)]);
                 case BarSeries:
                     return new CategorySelection((int)hit.Index, s);
+                // A step of a waterfall; its total (the last item) is no category
+                case IntervalBarSeries steps when (int)hit.Index < steps.Items.Count - 1:
+                    return new CategorySelection((int)hit.Index);
                 case LineSeries or ScatterSeries when hit.Position.DistanceTo(position) <= tolerance:
                     return new CategorySelection((int)Math.Round(hit.DataPoint.X), s);
             }
@@ -304,6 +310,45 @@ public sealed class OxyPlotRenderer : IVisualRenderer
                 }));
                 return bars;
         }
+    }
+
+    /// <summary>
+    /// A waterfall (<see cref="Waterfall"/>): each step a bar from the running total before it to the one after it,
+    /// increases in the theme's success color, decreases in its error color, the total in the first series color; a
+    /// rule of the measure's format colors a step it matches, and the highlight fades the others.
+    /// </summary>
+    private static PlotModel BuildWaterfall(RenderRequest request)
+    {
+        var (chart, steps) = Waterfall.Of(request.Chart);
+        var source = chart.Series[0];
+        var theme = request.Theme;
+        var formatting = ChartFormatting.For(request);
+        var categories = request.Chart.Categories.Count;
+        var model = new PlotModel();
+        var categoryAxis = new CategoryAxis { Position = AxisPosition.Bottom, Title = chart.CategoryCaption, AxisTitleDistance = 10, Key = CategoryAxisKey };
+        categoryAxis.Labels.AddRange(chart.Categories);
+        model.Axes.Add(categoryAxis);
+        model.Axes.Add(ValueAxis(chart, secondary: false));
+        var bars = new IntervalBarSeries
+        {
+            Title = source.Name,
+            XAxisKey = PrimaryAxisKey,
+            YAxisKey = CategoryAxisKey,
+            // OxyPlot's default label ("{2}") points past the values it gives a label: no labels
+            LabelFormatString = null,
+            StrokeThickness = 0,
+        };
+        for (var i = 0; i < steps.Count; i++)
+        {
+            var step = steps[i];
+            var color = i >= categories ? Color(theme, 0)
+                : formatting.PointColor(0, i) is { } hex ? OxyColor.Parse(hex)
+                : OxyColor.Parse(theme.Resolve(step.Kind == WaterfallStepKind.Decrease ? ThemeColors.Error : ThemeColors.Success));
+            if (i < categories && !request.IsEmphasized(i, 0)) color = Dim(color);
+            bars.Items.Add(new IntervalBarItem(Math.Min(step.Start, step.End), Math.Max(step.Start, step.End)) { Color = color });
+        }
+        model.Series.Add(bars);
+        return model;
     }
 
     private const string PieOutsideLabelFormat = "{1}";

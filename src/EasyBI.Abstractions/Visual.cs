@@ -7,9 +7,10 @@ namespace EasyBI.Abstractions;
 /// <see cref="Scatter"/>) can be mixed in one chart, one per measure (<see cref="MeasureRef.Mark"/>).
 /// A <see cref="Matrix"/> crosses its axis (rows) with its legend (columns), with totals. A <see cref="Pie"/> is a full
 /// disc, a <see cref="Donut"/> a ring with the total in its center. A <see cref="Gauge"/> shows one value on an arc
-/// between a minimum and a maximum, with an optional target (<see cref="VisualDefinition.Gauge"/>).
+/// between a minimum and a maximum, with an optional target (<see cref="VisualDefinition.Gauge"/>). A
+/// <see cref="Waterfall"/> stacks each category's value on the running total, up or down, and ends with the total.
 /// </summary>
-public enum MarkType { Bar, Line, Pie, Kpi, Table, Text, Image, Area, Scatter, StackedBar, Matrix, Donut, Gauge }
+public enum MarkType { Bar, Line, Pie, Kpi, Table, Text, Image, Area, Scatter, StackedBar, Matrix, Donut, Gauge, Waterfall }
 
 /// <summary>
 /// The scale of a <see cref="MarkType.Gauge"/>: its <see cref="Minimum"/> (null: 0), its <see cref="Maximum"/> (null: a

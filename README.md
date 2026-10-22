@@ -261,6 +261,12 @@ the connector. Its scale and target are numbers of the visual (`VisualDefinition
 designer's Visual section): `Minimum` (empty: 0), `Maximum` (empty: a round number above 0, the value and the target,
 see `GaugeScale`) and `Target`, marked on the arc. The measure's format colors the value and adds its icon.
 
+A **waterfall** (`MarkType.Waterfall`) shows how each category's value adds to the running total, up in the theme's
+success color, down in its error color, and ends with a bar of the total (`Waterfall.Of` gives any connector the steps
+and the chart with its "Total" category). It takes an axis and a single value; LiveCharts2 draws it with candles,
+OxyPlot with interval bars. A rule of the measure's format colors the steps it matches; clicking a step cross-filters
+on its category.
+
 Besides charts, KPIs, tables and matrices, a visual can be a **text** (`MarkType.Text`, content in
 `VisualDefinition.Text`) or an **image** (`MarkType.Image`, embedded as base64 in `VisualDefinition.Image`).
 They query no model and are drawn by the built-in `TextRenderer` and `ImageRenderer`.
