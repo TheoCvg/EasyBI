@@ -606,4 +606,28 @@
   <data name="FormatChartHint" xml:space="preserve">
     <value>On a chart, the rules and the color scale color the bars, points and slices (stacked bars: a frame around the whole stack).</value>
   </data>
+  <data name="MarkDonut" xml:space="preserve">
+    <value>Donut</value>
+  </data>
+  <data name="MarkGauge" xml:space="preserve">
+    <value>Gauge</value>
+  </data>
+  <data name="GaugeMinimum" xml:space="preserve">
+    <value>Minimum</value>
+  </data>
+  <data name="GaugeMaximum" xml:space="preserve">
+    <value>Maximum</value>
+  </data>
+  <data name="GaugeTarget" xml:space="preserve">
+    <value>Target</value>
+  </data>
+  <data name="GaugeScaleHint" xml:space="preserve">
+    <value>Empty: from 0 to a round number above the value and the target.</value>
+  </data>
+  <data name="GaugeTargetLabel" xml:space="preserve">
+    <value>Target: {0}</value>
+  </data>
+  <data name="MarkWaterfall" xml:space="preserve">
+    <value>Waterfall</value>
+  </data>
 </root>

@@ -249,7 +249,7 @@ public sealed class ValueFormatViewModel : ObservableObject
     public static FormatTarget TargetOf(MarkType mark) => mark switch
     {
         MarkType.Table or MarkType.Matrix => FormatTarget.Grid,
-        MarkType.Kpi => FormatTarget.Kpi,
+        MarkType.Kpi or MarkType.Gauge => FormatTarget.Kpi,
         _ => FormatTarget.Chart,
     };
 

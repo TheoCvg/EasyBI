@@ -81,6 +81,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     private bool _suspended;
 
     private int? _top;
+    private GaugeSettings? _gauge;
     private string? _sortSummary;
     private object? _selectedItem;
     private bool _isTypeGalleryOpen;
@@ -110,7 +111,10 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             new(MarkType.Line, MarkGroup.Trend, () => Strings.MarkLine),
             new(MarkType.Area, MarkGroup.Trend, () => Strings.MarkArea),
             new(MarkType.Pie, MarkGroup.Composition, () => Strings.MarkPie),
+            new(MarkType.Donut, MarkGroup.Composition, () => Strings.MarkDonut),
+            new(MarkType.Waterfall, MarkGroup.Composition, () => Strings.MarkWaterfall),
             new(MarkType.Kpi, MarkGroup.IndicatorsAndTables, () => Strings.MarkKpi),
+            new(MarkType.Gauge, MarkGroup.IndicatorsAndTables, () => Strings.MarkGauge),
             new(MarkType.Table, MarkGroup.IndicatorsAndTables, () => Strings.MarkTable),
             new(MarkType.Matrix, MarkGroup.IndicatorsAndTables, () => Strings.MarkMatrix),
         ];
@@ -306,6 +310,36 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         set { if (SetProperty(ref _top, value is > 0 ? value : null)) Rebuild(); }
     }
 
+    /// <summary>The minimum of a gauge; null: 0.</summary>
+    public double? GaugeMinimum
+    {
+        get => _gauge?.Minimum;
+        set => SetGauge((_gauge ?? new()) with { Minimum = value });
+    }
+
+    /// <summary>The maximum of a gauge; null: a round number above the value and the target.</summary>
+    public double? GaugeMaximum
+    {
+        get => _gauge?.Maximum;
+        set => SetGauge((_gauge ?? new()) with { Maximum = value });
+    }
+
+    /// <summary>The target marked on a gauge; null: none.</summary>
+    public double? GaugeTarget
+    {
+        get => _gauge?.Target;
+        set => SetGauge((_gauge ?? new()) with { Target = value });
+    }
+
+    private void SetGauge(GaugeSettings gauge)
+    {
+        _gauge = gauge is { Minimum: null, Maximum: null, Target: null } ? null : gauge;
+        OnPropertyChanged(nameof(GaugeMinimum));
+        OnPropertyChanged(nameof(GaugeMaximum));
+        OnPropertyChanged(nameof(GaugeTarget));
+        Rebuild();
+    }
+
     /// <summary>The active sort in words ("Amount, descending"), or null when the visual is not sorted.</summary>
     public string? SortSummary
     {
@@ -485,6 +519,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         OnPropertyChanged(nameof(Title));
         _visualId = NewId();
         _top = null;
+        _gauge = null;
         OnPropertyChanged(nameof(Top));
         _extensions = null;
         _hiddenFilters = [];
@@ -512,6 +547,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         _title = visual.Title;
         _selectedMark = visual.Mark;
         _top = visual.Top;
+        _gauge = visual.Gauge;
         _extensions = visual.Extensions;
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(SelectedMark));
@@ -586,6 +622,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             Filters = [.. Filters.Select(f => f.ToFilterSpec()).OfType<FilterSpec>(), .. _hiddenFilters],
             Sort = sorted is null ? null : new SortSpec(sorted.Key, sorted.SortDirection == ListSortDirection.Descending),
             Top = _top,
+            Gauge = SelectedMark == MarkType.Gauge ? _gauge : null,
             Extensions = _extensions,
         };
         RefreshRendererOptions();
@@ -678,11 +715,16 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             DesignerProperty.Text("Title", () => Strings.VisualTitle, () => Title, v => Title = v),
             DesignerProperty.Info("Sort", () => Strings.Sort, () => SortSummary ?? Strings.NoSort),
             DesignerProperty.Number("Top", () => Strings.Top, () => Top, v => Top = v is { } top ? (int)Math.Round(top) : null, description: () => Strings.TopHint),
+            DesignerProperty.Number("GaugeMinimum", () => Strings.GaugeMinimum, () => GaugeMinimum, v => GaugeMinimum = v, IsGauge, () => Strings.GaugeScaleHint),
+            DesignerProperty.Number("GaugeMaximum", () => Strings.GaugeMaximum, () => GaugeMaximum, v => GaugeMaximum = v, IsGauge),
+            DesignerProperty.Number("GaugeTarget", () => Strings.GaugeTarget, () => GaugeTarget, v => GaugeTarget = v, IsGauge),
         ]));
         if (RendererOptions.Count > 0)
             sections.Add(new DesignerPropertySection(DesignerPropertySections.Options, () => Strings.RendererOptions, RendererOptions.Select(OptionProperty)));
         return sections;
     }
+
+    private bool IsGauge() => SelectedMark == MarkType.Gauge;
 
     private static DesignerProperty OptionProperty(RendererOptionViewModel option) => option.Option.Kind switch
     {

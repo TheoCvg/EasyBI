@@ -4,6 +4,7 @@ using EasyBI.Abstractions;
 using EasyBI.Core;
 using EasyBI.Renderers.LiveCharts2.Resources;
 using EasyBI.Wpf;
+using EasyBI.Wpf.Renderers;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.Drawing;
@@ -30,7 +31,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
 
     public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType>
     {
-        MarkType.Bar, MarkType.StackedBar, MarkType.Line, MarkType.Area, MarkType.Scatter, MarkType.Pie,
+        MarkType.Bar, MarkType.StackedBar, MarkType.Line, MarkType.Area, MarkType.Scatter, MarkType.Pie, MarkType.Donut, MarkType.Waterfall,
     })
     {
         Options =
@@ -42,7 +43,8 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
 
     public FrameworkElement Render(RenderRequest request) => request.Visual.Mark switch
     {
-        MarkType.Pie => RenderPie(request),
+        var mark when mark.IsCircular() => RenderPie(request),
+        MarkType.Waterfall => RenderWaterfall(request),
         var mark when mark.IsCartesian() => request.Visual.GetRendererOption<bool>(Name, ScrollableOption)
             ? RenderScrollable(request)
             : RenderCartesian(request),
@@ -186,6 +188,69 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
             {
                 var index = Array.IndexOf(series, point.Context.Series);
                 select(new CategorySelection(point.Index, index < 0 ? null : index));
+            });
+        }
+        return view;
+    }
+
+    /// <summary>
+    /// A waterfall (<see cref="Waterfall"/>): each step a candle from the running total before it to the one after it,
+    /// increases in the theme's success color, decreases in its error color, the total in the first series color; a
+    /// rule of the measure's format colors a step it matches, and the highlight fades the others.
+    /// </summary>
+    private static CartesianChart RenderWaterfall(RenderRequest request)
+    {
+        var (chart, steps) = Waterfall.Of(request.Chart);
+        var source = chart.Series[0];
+        var theme = request.Theme;
+        var formatting = ChartFormatting.For(request);
+        var categories = request.Chart.Categories.Count;
+        SolidColorPaint Paint(string? color, float stroke = 0) =>
+            stroke > 0 ? new SolidColorPaint(SKColor.Parse(color), stroke) : new SolidColorPaint(SKColor.Parse(color));
+        var (up, down) = (theme.Resolve(ThemeColors.Success)!, theme.Resolve(ThemeColors.Error)!);
+        var total = Paint(theme.ColorAt(0));
+        var paints = new Dictionary<string, SolidColorPaint>();
+
+        var series = new CandlesticksSeries<FinancialPointI>
+        {
+            Name = source.Name,
+            Values = [.. steps.Select(s => new FinancialPointI(Math.Max(s.Start, s.End), s.Start, s.End, Math.Min(s.Start, s.End)))],
+            UpFill = Paint(up),
+            UpStroke = Paint(up, 1),
+            DownFill = Paint(down),
+            DownStroke = Paint(down, 1),
+            MaxBarWidth = 48,
+            YToolTipLabelFormatter = p => ValueFormatter.Format(p.Model is { } step ? step.Close - step.Open : 0, source.Format),
+        }.OnPointMeasured(p =>
+        {
+            if (p.Visual is not DrawnGeometry step) return;
+            // The total in its own color; a step matching a rule in the rule's
+            var paint = p.Index >= categories ? total
+                : formatting.PointColor(0, p.Index) is { } hex ? paints.TryGetValue(hex, out var known) ? known : paints[hex] = Paint(hex)
+                : null;
+            step.Fill = paint;
+            step.Stroke = paint;
+            if (request.Highlight is { Count: > 0 })
+                step.Opacity = p.Index < categories && request.IsEmphasized(p.Index, 0) ? 1f : (float)SelectionFilters.DimmedOpacity;
+        });
+
+        var categoryAxis = Themed(new Axis { Labels = [.. chart.Categories], Name = chart.CategoryCaption, NameTextSize = 13, TextSize = 12 }, theme);
+        var view = new CartesianChart
+        {
+            Series = [series],
+            XAxes = [categoryAxis],
+            YAxes = [ValueAxis(chart, theme, secondary: false)],
+            LegendPosition = LegendPosition.Hidden,
+        };
+        ApplyTheme(view, theme);
+        view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, chart);
+        if (request.Select is { } select)
+        {
+            view.Cursor = System.Windows.Input.Cursors.Hand;
+            OnPointClicked(view, FindingStrategy.CompareOnlyXTakeClosest, point =>
+            {
+                // The total is no category: nothing to filter on
+                if (point.Index < categories) select(new CategorySelection(point.Index));
             });
         }
         return view;
@@ -393,8 +458,10 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
 
     private static SKColor Dim(SKColor color) => color.WithAlpha((byte)(color.Alpha * SelectionFilters.DimmedOpacity));
 
-    private static PieChart RenderPie(RenderRequest request)
+    /// <summary>A pie (a full disc), or a donut with the total in its hole.</summary>
+    private static FrameworkElement RenderPie(RenderRequest request)
     {
+        var donut = request.Visual.Mark == MarkType.Donut;
         var chart = request.Chart;
         var source = chart.Series[0];
         var formatting = ChartFormatting.For(request);
@@ -415,7 +482,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         var view = new PieChart { Series = slices.Keys.ToArray(), LegendPosition = LegendPosition.Right };
         ApplyTheme(view, request.Theme);
         // Legend and donut hole adapt to the room the chart actually gets
-        view.SizeChanged += (_, _) => FitPie(view, slices.Keys, chart);
+        view.SizeChanged += (_, _) => FitPie(view, slices.Keys, chart, donut);
         if (request.Select is { } select)
         {
             view.Cursor = System.Windows.Input.Cursors.Hand;
@@ -425,7 +492,17 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                     select(new CategorySelection(category));
             });
         }
-        return view;
+        if (!donut) return view;
+
+        var total = source.Values.OfType<double>().Sum();
+        var label = new ChartCenterLabel(view, () =>
+            view.CoreChart is { DrawMarginSize: { Width: > 0 } size, DrawMarginLocation: var location }
+                ? new Rect(location.X, location.Y, size.Width, size.Height)
+                : null,
+            ValueFormatter.Format(total, source.Format), source.Name);
+        // LiveCharts2 measures the pie after WPF's layout
+        view.UpdateFinished += _ => view.Dispatcher.InvokeAsync(label.Place);
+        return label;
     }
 
     /// <summary>
@@ -447,10 +524,10 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         };
     }
 
-    private static void FitPie(PieChart view, IEnumerable<ISeries> slices, ChartData chart)
+    private static void FitPie(PieChart view, IEnumerable<ISeries> slices, ChartData chart, bool donut)
     {
         if (view.ActualWidth <= 0) return;
-        var fit = ChartFitting.Pie(chart, view.ActualWidth, view.ActualHeight);
+        var fit = ChartFitting.Pie(chart, view.ActualWidth, view.ActualHeight, donut);
         var legend = Position(fit.Legend);
         if (view.LegendPosition != legend) view.LegendPosition = legend;
         foreach (var slice in slices.OfType<PieSeries<double>>())

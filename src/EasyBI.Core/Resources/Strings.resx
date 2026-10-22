@@ -67,7 +67,7 @@
     <value>A KPI only shows values: remove the fields of the other wells.</value>
   </data>
   <data name="ValidationPie" xml:space="preserve">
-    <value>A pie chart needs one category and a single value.</value>
+    <value>A pie or a donut needs one category and a single value.</value>
   </data>
   <data name="ValidationNoImage" xml:space="preserve">
     <value>Choose an image to show.</value>
@@ -236,5 +236,11 @@
   </data>
   <data name="ReportMeasureFilterOnReport" xml:space="preserve">
     <value>{0}: &apos;{1}&apos; is a measure, which can only filter a visual.</value>
+  </data>
+  <data name="ValidationGauge" xml:space="preserve">
+    <value>A gauge shows a single value, without axis or legend.</value>
+  </data>
+  <data name="ValidationWaterfall" xml:space="preserve">
+    <value>A waterfall needs an axis and a single value, without legend.</value>
   </data>
 </root>
