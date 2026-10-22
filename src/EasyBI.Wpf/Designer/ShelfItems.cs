@@ -8,9 +8,9 @@ using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf.Designer;
 
-public enum Shelf { Axis, Legend, Values, Filters }
+public enum Shelf { Axis, Legend, Values, Tooltip, Filters }
 
-/// <summary>A field dropped on the Axis, Legend or Values shelf.</summary>
+/// <summary>A field dropped on the Axis, Legend, Values or Tooltip shelf.</summary>
 public sealed class ShelfItemViewModel : ObservableObject
 {
     public static IReadOnlyList<Option<DateGrain>> GrainOptions { get; } =

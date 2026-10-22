@@ -25,7 +25,21 @@ public sealed class EasyBIContext
     /// <summary>Raised by <see cref="RefreshData"/>: the visuals of the model query again.</summary>
     public event EventHandler<DataChangedEventArgs>? DataChanged;
 
+    /// <summary>
+    /// Raised before the tooltip of a chart opens, with EasyBI's content (following the visual's settings): change
+    /// <see cref="TooltipOpeningEventArgs.Content"/> to show something else, or set it to null to show nothing.
+    /// </summary>
+    public event EventHandler<TooltipOpeningEventArgs>? TooltipOpening;
+
     public IReadOnlyList<ISemanticModel> Models => _models;
+
+    /// <summary>The content of a chart's tooltip: EasyBI's, then the application's changes (<see cref="TooltipOpening"/>).</summary>
+    internal TooltipContent? TooltipFor(RenderRequest request, int category, IReadOnlyList<int> series)
+    {
+        var args = new TooltipOpeningEventArgs(request, category, series, Tooltips.Build(request, category, series));
+        TooltipOpening?.Invoke(this, args);
+        return args.Content;
+    }
 
     /// <summary>
     /// The calculated measures the end user defined in the open report: field lists offer them with the model's
@@ -114,4 +128,22 @@ public sealed class EasyBIContext
 public sealed class DataChangedEventArgs(string? model) : EventArgs
 {
     public string? Model { get; } = model;
+}
+
+/// <summary>The tooltip about to open over a chart (see <see cref="EasyBIContext.TooltipOpening"/>).</summary>
+public sealed class TooltipOpeningEventArgs(RenderRequest request, int category, IReadOnlyList<int> series, TooltipContent? content) : EventArgs
+{
+    /// <summary>What the chart draws: its visual, data and theme.</summary>
+    public RenderRequest Request { get; } = request;
+
+    public VisualDefinition Visual => Request.Visual;
+
+    /// <summary>The hovered category, an index in <see cref="ChartData.Categories"/> (a waterfall's total is the last one + 1).</summary>
+    public int Category { get; } = category;
+
+    /// <summary>The hovered series, indexes in <see cref="ChartData.Series"/>.</summary>
+    public IReadOnlyList<int> Series { get; } = series;
+
+    /// <summary>What the tooltip shows; null shows no tooltip.</summary>
+    public TooltipContent? Content { get; set; } = content;
 }

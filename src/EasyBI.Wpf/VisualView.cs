@@ -313,6 +313,9 @@ public class VisualView : ContentControl
                     filters.Select(request, selection, ModifierKeysState.Ctrl);
                 },
             };
+        // Tooltips: EasyBI's content, with the application's changes
+        var drawn = request;
+        request = request with { Tooltip = (category, series) => context.TooltipFor(drawn, category, series) };
 
         try
         {

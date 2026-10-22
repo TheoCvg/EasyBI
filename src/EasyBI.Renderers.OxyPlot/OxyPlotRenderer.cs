@@ -38,8 +38,16 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         var view = new PlotView { Model = model, Background = System.Windows.Media.Brushes.Transparent };
         // Legend, labels and axis title adapt to the room the chart actually gets
         view.SizeChanged += (_, _) => Fit(view, model, fitted);
-        if (request.Select is { } select)
-            view.Controller = SelectionController(model, select);
+        view.Controller = Controller(model, request.Select);
+        // EasyBI's tooltip over the element under the pointer, instead of OxyPlot's tracker
+        var tooltip = new ChartTooltipHost(view);
+        view.MouseMove += (_, e) =>
+        {
+            var pointer = e.GetPosition(view);
+            tooltip.Show(HitTest(model, new ScreenPoint(pointer.X, pointer.Y), withTotal: true) is CategorySelection hovered
+                ? request.TooltipFor(hovered.Category, [hovered.Series ?? 0])
+                : null);
+        };
         if (request.Visual.Mark != MarkType.Donut) return view;
 
         // A donut shows its total in its hole, the middle of the plot area
@@ -99,15 +107,16 @@ public sealed class OxyPlotRenderer : IVisualRenderer
     }
 
     /// <summary>
-    /// Left click: shows the tracker as usual, and selects the element that was hit. A binding only applies to its own
-    /// modifier keys: Ctrl+click (adding to the selection) is bound too.
+    /// Left click selects the element that was hit (OxyPlot's tracker gives way to EasyBI's tooltip). A binding only
+    /// applies to its own modifier keys: Ctrl+click (adding to the selection) is bound too.
     /// </summary>
-    private static PlotController SelectionController(PlotModel model, Action<DataSelection> select)
+    private static PlotController Controller(PlotModel model, Action<DataSelection>? select)
     {
         var controller = new PlotController();
-        var click = new DelegatePlotCommand<OxyMouseDownEventArgs>((view, ctl, args) =>
+        controller.UnbindMouseDown(OxyMouseButton.Left);
+        if (select is null) return controller;
+        var click = new DelegatePlotCommand<OxyMouseDownEventArgs>((_, _, args) =>
         {
-            global::OxyPlot.PlotCommands.SnapTrack.Execute(view, ctl, args);
             if (HitTest(model, args.Position) is { } selection) select(selection);
         });
         controller.BindMouseDown(OxyMouseButton.Left, click);
@@ -115,7 +124,8 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         return controller;
     }
 
-    private static DataSelection? HitTest(PlotModel model, ScreenPoint position)
+    // The element under the pointer; a waterfall's total (its last item) is no category to select, but has a tooltip
+    private static DataSelection? HitTest(PlotModel model, ScreenPoint position, bool withTotal = false)
     {
         const double tolerance = 12;
         for (var s = 0; s < model.Series.Count; s++)
@@ -129,7 +139,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
                 case BarSeries:
                     return new CategorySelection((int)hit.Index, s);
                 // A step of a waterfall; its total (the last item) is no category
-                case IntervalBarSeries steps when (int)hit.Index < steps.Items.Count - 1:
+                case IntervalBarSeries steps when withTotal || (int)hit.Index < steps.Items.Count - 1:
                     return new CategorySelection((int)hit.Index);
                 case LineSeries or ScatterSeries when hit.Position.DistanceTo(position) <= tolerance:
                     return new CategorySelection((int)Math.Round(hit.DataPoint.X), s);

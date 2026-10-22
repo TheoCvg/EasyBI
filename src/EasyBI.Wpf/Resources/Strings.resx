@@ -630,4 +630,31 @@
   <data name="MarkWaterfall" xml:space="preserve">
     <value>Waterfall</value>
   </data>
+  <data name="WellTooltip" xml:space="preserve">
+    <value>Tooltip</value>
+  </data>
+  <data name="PropertiesTooltips" xml:space="preserve">
+    <value>Tooltips</value>
+  </data>
+  <data name="TooltipShow" xml:space="preserve">
+    <value>Show tooltips</value>
+  </data>
+  <data name="TooltipCategory" xml:space="preserve">
+    <value>Show the category</value>
+  </data>
+  <data name="TooltipSeries" xml:space="preserve">
+    <value>Show series names</value>
+  </data>
+  <data name="TooltipPercent" xml:space="preserve">
+    <value>Show the % of total</value>
+  </data>
+  <data name="TooltipTemplate" xml:space="preserve">
+    <value>Custom text</value>
+  </data>
+  <data name="TooltipTemplateHint" xml:space="preserve">
+    <value>Replaces the content when filled in. Fields between braces: {0}</value>
+  </data>
+  <data name="TooltipWellHint" xml:space="preserve">
+    <value>Measures shown in the tooltip</value>
+  </data>
 </root>

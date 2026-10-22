@@ -2,12 +2,13 @@ using System.Collections;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using EasyBI.Abstractions;
+using EasyBI.Core;
 using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf.Designer;
 
 /// <summary>
-/// A well of the designer (the Axis, Legend, Values or Filters shelf) as the visual type sees it: its name ("Category"
+/// A well of the designer (the Axis, Legend, Values, Tooltip or Filters shelf) as the visual type sees it: its name ("Category"
 /// for a pie, "Rows" and "Columns" for a matrix), whether the type uses it, the hint of an empty well, and whether the item being
 /// dragged can be dropped on it.
 /// </summary>
@@ -46,6 +47,7 @@ public sealed class ShelfViewModel : ObservableObject
         (Shelf.Legend, _) => Strings.Legend,
         (Shelf.Values, MarkType.Pie or MarkType.Donut or MarkType.Gauge or MarkType.Waterfall) => Strings.WellValue,
         (Shelf.Values, _) => Strings.Values,
+        (Shelf.Tooltip, _) => Strings.WellTooltip,
         _ => Strings.Filters,
     };
 
@@ -59,6 +61,7 @@ public sealed class ShelfViewModel : ObservableObject
     public string Hint => Kind switch
     {
         Shelf.Values => Strings.WellHintMeasure,
+        Shelf.Tooltip => Strings.TooltipWellHint,
         Shelf.Filters => Strings.WellHintFilter,
         _ => Strings.WellHintDimension,
     };
@@ -70,9 +73,10 @@ public sealed class ShelfViewModel : ObservableObject
         internal set => SetProperty(ref _isDropAllowed, value);
     }
 
-    /// <summary>The wells each type uses: a KPI only shows values, a pie and a table have no legend.</summary>
+    /// <summary>The wells each type uses: a KPI only shows values, a pie and a table have no legend, only charts have tooltips.</summary>
     public static bool IsUsedBy(Shelf shelf, MarkType mark) => (shelf, mark) switch
     {
+        (Shelf.Tooltip, _) => Tooltips.Has(mark),
         (Shelf.Axis, MarkType.Kpi or MarkType.Gauge) => false,
         (Shelf.Legend, MarkType.Kpi or MarkType.Gauge or MarkType.Pie or MarkType.Donut or MarkType.Waterfall or MarkType.Table) => false,
         _ => true,

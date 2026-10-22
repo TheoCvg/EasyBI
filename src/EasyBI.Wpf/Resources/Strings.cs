@@ -21,6 +21,15 @@ internal static class Strings
     public static string GaugeMinimum => Get();
     public static string GaugeMaximum => Get();
     public static string GaugeTarget => Get();
+    public static string WellTooltip => Get();
+    public static string PropertiesTooltips => Get();
+    public static string TooltipShow => Get();
+    public static string TooltipCategory => Get();
+    public static string TooltipSeries => Get();
+    public static string TooltipPercent => Get();
+    public static string TooltipTemplate => Get();
+    public static string TooltipTemplateHint => Get();
+    public static string TooltipWellHint => Get();
     public static string GaugeScaleHint => Get();
     public static string GaugeTargetLabel => Get();
     public static string PropertiesFormatting => Get();

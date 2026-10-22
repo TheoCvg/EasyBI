@@ -33,6 +33,9 @@ public static class ReportDesignerSlots
     /// <summary>The Values shelf, with its label.</summary>
     public const string ValuesShelf = "ReportDesigner.ValuesShelf";
 
+    /// <summary>The Tooltip shelf (measures shown in a chart's tooltips), with its label.</summary>
+    public const string TooltipShelf = "ReportDesigner.TooltipShelf";
+
     /// <summary>The Filters shelf, with its label.</summary>
     public const string FiltersShelf = "ReportDesigner.FiltersShelf";
 
