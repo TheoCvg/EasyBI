@@ -44,7 +44,7 @@ public sealed class ShelfViewModel : ObservableObject
         (Shelf.Axis, _) => Strings.Axis,
         (Shelf.Legend, MarkType.Matrix) => Strings.WellColumns,
         (Shelf.Legend, _) => Strings.Legend,
-        (Shelf.Values, MarkType.Pie or MarkType.Donut) => Strings.WellValue,
+        (Shelf.Values, MarkType.Pie or MarkType.Donut or MarkType.Gauge) => Strings.WellValue,
         (Shelf.Values, _) => Strings.Values,
         _ => Strings.Filters,
     };
@@ -73,8 +73,8 @@ public sealed class ShelfViewModel : ObservableObject
     /// <summary>The wells each type uses: a KPI only shows values, a pie and a table have no legend.</summary>
     public static bool IsUsedBy(Shelf shelf, MarkType mark) => (shelf, mark) switch
     {
-        (Shelf.Axis, MarkType.Kpi) => false,
-        (Shelf.Legend, MarkType.Kpi or MarkType.Pie or MarkType.Donut or MarkType.Table) => false,
+        (Shelf.Axis, MarkType.Kpi or MarkType.Gauge) => false,
+        (Shelf.Legend, MarkType.Kpi or MarkType.Gauge or MarkType.Pie or MarkType.Donut or MarkType.Table) => false,
         _ => true,
     };
 

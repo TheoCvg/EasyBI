@@ -19,6 +19,8 @@ public static class VisualValidator
             Strings.ValidationSeriesMark,
         _ when visual.Values.Count == 0 =>
             Strings.ValidationNoMeasure,
+        MarkType.Gauge when visual.Axis.Count > 0 || visual.Legend is not null || visual.Values.Count != 1 =>
+            Strings.ValidationGauge,
         MarkType.Kpi when visual.Axis.Count > 0 || visual.Legend is not null =>
             Strings.ValidationKpi,
         var mark when mark.IsCircular() && (visual.Axis.Count != 1 || visual.Legend is not null || visual.Values.Count != 1) =>

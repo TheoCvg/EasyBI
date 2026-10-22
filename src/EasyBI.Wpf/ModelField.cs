@@ -57,7 +57,7 @@ public static class FieldVisuals
         if (visual.Mark is MarkType.Text or MarkType.Image || visual.Model != model.Metadata.Name) return null;
         if (field.Kind == FieldKind.Measure)
         {
-            if (visual.Values.Any(v => v.Measure == field.Name) || (visual.Mark.IsCircular() && visual.Values.Count > 0)) return null;
+            if (visual.Values.Any(v => v.Measure == field.Name) || ((visual.Mark.IsCircular() || visual.Mark == MarkType.Gauge) && visual.Values.Count > 0)) return null;
             return visual with { Values = [.. visual.Values, new MeasureRef(field.Name)] };
         }
 
@@ -65,7 +65,7 @@ public static class FieldVisuals
         var axis = AxisOf(field);
         return visual.Mark switch
         {
-            MarkType.Kpi => visual with { Mark = MarkType.Bar, Axis = [axis] },
+            MarkType.Kpi or MarkType.Gauge => visual with { Mark = MarkType.Bar, Axis = [axis], Gauge = null },
             MarkType.Pie or MarkType.Donut => visual.Axis.Count == 0 ? visual with { Axis = [axis] } : null,
             MarkType.Table => visual.Axis.Count < MaxAxisFields ? visual with { Axis = [.. visual.Axis, axis] } : null,
             _ when visual.Axis.Count == 0 => visual with { Axis = [axis] },

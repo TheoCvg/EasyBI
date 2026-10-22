@@ -237,4 +237,7 @@
   <data name="ReportMeasureFilterOnReport" xml:space="preserve">
     <value>{0}: &apos;{1}&apos; is a measure, which can only filter a visual.</value>
   </data>
+  <data name="ValidationGauge" xml:space="preserve">
+    <value>A gauge shows a single value, without axis or legend.</value>
+  </data>
 </root>

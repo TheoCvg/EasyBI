@@ -71,4 +71,71 @@ public class NewVisualTypesTests
         Assert.Equal("A pie or a donut needs one category and a single value.", VisualValidator.Validate(new VisualDefinition { Mark = MarkType.Donut, Values = [new("Amount")] }));
         Assert.Null(VisualValidator.Validate(new VisualDefinition { Mark = MarkType.Donut, Axis = [new("Region")], Values = [new("Amount")] }));
     }
+
+    private static RenderRequest Gauge(double? value, GaugeSettings? settings = null, ValueFormat? format = null)
+    {
+        var visual = new VisualDefinition { Mark = MarkType.Gauge, Values = [new("Amount") { Format = format }], Gauge = settings };
+        var chart = new ChartData(null, ["Total"], [new ChartSeries("Revenue", [value], "N0") { MeasureKey = "Amount" }]);
+        return new RenderRequest(visual, new ResultSet([], []), chart, BiTheme.Default with { Error = "#CC0000" });
+    }
+
+    private static System.Windows.Controls.Canvas Drawing(System.Windows.FrameworkElement gauge) =>
+        (System.Windows.Controls.Canvas)((System.Windows.Controls.Viewbox)gauge).Child;
+
+    private static IEnumerable<string> Texts(System.Windows.Controls.Canvas canvas) =>
+        canvas.Children.OfType<System.Windows.Controls.TextBlock>()
+            .Concat(canvas.Children.OfType<System.Windows.Controls.StackPanel>().SelectMany(p => p.Children.Cast<object>())
+                .Select(c => c is System.Windows.Controls.Viewbox box ? box.Child : c).OfType<System.Windows.Controls.TextBlock>())
+            .Select(t => new System.Windows.Documents.TextRange(t.ContentStart, t.ContentEnd).Text);
+
+    [Fact]
+    public void A_gauge_fills_its_arc_up_to_the_value_and_marks_its_target() => Sta.Run(() =>
+    {
+        var canvas = Drawing(new GaugeRenderer().Render(Gauge(750, new GaugeSettings { Maximum = 1000, Target = 900 })));
+
+        var arcs = canvas.Children.OfType<System.Windows.Shapes.Path>().ToArray();
+        Assert.Equal(2, arcs.Length); // the track and the value
+        var end = ((System.Windows.Media.ArcSegment)((System.Windows.Media.PathGeometry)arcs[1].Data).Figures[0].Segments[0]).Point;
+        Assert.Equal(120 + 96 * Math.Cos(Math.PI * 0.25), end.X, 6); // three quarters of the way
+        Assert.Single(canvas.Children.OfType<System.Windows.Shapes.Line>()); // the target
+        Assert.Equal(["0", "1,000", "Revenue", "750", "Target: 900"], Texts(canvas));
+    });
+
+    [Fact]
+    public void A_gauge_takes_the_color_of_its_format() => Sta.Run(() =>
+    {
+        var format = new ValueFormat { Rules = [new FormatRule { Operator = FilterOperator.LessThan, Value = 800, Color = ThemeColors.Error }] };
+
+        var canvas = Drawing(new GaugeRenderer().Render(Gauge(750, format: format)));
+
+        var value = (System.Windows.Media.SolidColorBrush)canvas.Children.OfType<System.Windows.Shapes.Path>().Last().Stroke;
+        Assert.Equal(System.Windows.Media.Color.FromRgb(0xCC, 0, 0), value.Color);
+    });
+
+    [Fact]
+    public void The_designer_edits_the_scale_of_a_gauge_and_keeps_it_for_gauges_only()
+    {
+        var designer = new DesignerViewModel(EasyBIContext.Create().AddModel(
+            SemanticModel.For(new[] { new { Region = "Nord", Amount = 1m } }, "sales").Dimension(s => s.Region, "Région").Measure(s => s.Amount, "CA")));
+        designer.Load(new VisualDefinition { Model = "sales", Mark = MarkType.Gauge, Values = [new("Amount")] });
+        Assert.Equal((false, false), (designer.AxisWell.IsUsed, designer.LegendWell.IsUsed));
+        var visual = designer.Properties.Single(s => s.Key == DesignerPropertySections.Visual);
+        Assert.True(visual["GaugeTarget"]!.IsAvailable);
+
+        designer.GaugeMaximum = 2000;
+        designer.GaugeTarget = 1500;
+        Assert.Equal((2000d, 1500d), (designer.Visual!.Gauge!.Maximum!.Value, designer.Visual.Gauge.Target!.Value));
+
+        designer.SelectedMark = MarkType.Kpi;
+        Assert.Null(designer.Visual!.Gauge);
+        Assert.False(designer.Properties.Single(s => s.Key == DesignerPropertySections.Visual)["GaugeTarget"]!.IsAvailable);
+        designer.SelectedMark = MarkType.Gauge; // kept while the type changes
+        Assert.Equal(1500d, designer.Visual!.Gauge!.Target);
+    }
+
+    [Fact]
+    public void A_gauge_is_drawn_by_the_built_in_renderer()
+    {
+        Assert.IsType<GaugeRenderer>(EasyBIContext.Create().UseRenderer(new LiveCharts2Renderer()).ResolveRenderer(MarkType.Gauge));
+    }
 }

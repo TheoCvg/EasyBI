@@ -609,4 +609,22 @@
   <data name="MarkDonut" xml:space="preserve">
     <value>Anneau</value>
   </data>
+  <data name="MarkGauge" xml:space="preserve">
+    <value>Jauge</value>
+  </data>
+  <data name="GaugeMinimum" xml:space="preserve">
+    <value>Minimum</value>
+  </data>
+  <data name="GaugeMaximum" xml:space="preserve">
+    <value>Maximum</value>
+  </data>
+  <data name="GaugeTarget" xml:space="preserve">
+    <value>Cible</value>
+  </data>
+  <data name="GaugeScaleHint" xml:space="preserve">
+    <value>Vide : de 0 à un nombre rond au-dessus de la valeur et de la cible.</value>
+  </data>
+  <data name="GaugeTargetLabel" xml:space="preserve">
+    <value>Cible : {0}</value>
+  </data>
 </root>

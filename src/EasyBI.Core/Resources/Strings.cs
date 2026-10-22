@@ -29,6 +29,7 @@ internal static class Strings
     public static string ValidationNoMeasure => Get();
     public static string ValidationKpi => Get();
     public static string ValidationPie => Get();
+    public static string ValidationGauge => Get();
     public static string ValidationNoImage => Get();
     public static string ValidationSeriesMark => Get();
     public static string ReportUntitledVisual => Get();

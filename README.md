@@ -256,6 +256,11 @@ new MeasureRef("Amount")
 A **pie** (`MarkType.Pie`) is a full disc; a **donut** (`MarkType.Donut`) is a ring with the total of its value in its
 hole (`ChartCenterLabel`, which places a text in the middle of a connector's plot area).
 
+A **gauge** (`MarkType.Gauge`) shows a single value on a half circle, drawn by the built-in `GaugeRenderer` whatever
+the connector. Its scale and target are numbers of the visual (`VisualDefinition.Gauge`, a `GaugeSettings`, edited in the
+designer's Visual section): `Minimum` (empty: 0), `Maximum` (empty: a round number above 0, the value and the target,
+see `GaugeScale`) and `Target`, marked on the arc. The measure's format colors the value and adds its icon.
+
 Besides charts, KPIs, tables and matrices, a visual can be a **text** (`MarkType.Text`, content in
 `VisualDefinition.Text`) or an **image** (`MarkType.Image`, embedded as base64 in `VisualDefinition.Image`).
 They query no model and are drawn by the built-in `TextRenderer` and `ImageRenderer`.
