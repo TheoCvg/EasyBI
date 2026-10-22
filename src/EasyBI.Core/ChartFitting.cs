@@ -2,12 +2,17 @@ using EasyBI.Abstractions;
 
 namespace EasyBI.Core;
 
-public enum ChartLegend { Hidden, Right, Bottom }
-
 /// <summary>How a chart arranges itself in the room it gets (see <see cref="ChartFitting"/>).</summary>
 public sealed record ChartFit
 {
-    public ChartLegend Legend { get; init; }
+    /// <summary>Where the legend goes: a side or <see cref="ChartLegend.Hidden"/>, never <see cref="ChartLegend.Auto"/>.</summary>
+    public ChartLegend Legend { get; init; } = ChartLegend.Hidden;
+
+    /// <summary>
+    /// The entries of the legend each page shows, when they do not all fit in its room (a column on a side, a row
+    /// above or below); a single page otherwise. See <see cref="ChartFitting.LegendEntries"/>.
+    /// </summary>
+    public IReadOnlyList<LegendPage> LegendPages { get; init; } = [];
 
     /// <summary>Angle of the category labels, in degrees (0 = horizontal).</summary>
     public double LabelRotation { get; init; }
@@ -23,9 +28,29 @@ public sealed record ChartFit
 }
 
 /// <summary>
+/// The size of a library's legend entries, from which the pages of a legend are measured: the height of an entry in a
+/// column (on a side), and the width of an entry in a row (<see cref="EntryWidth"/> plus <see cref="CharWidth"/> per
+/// character). The defaults are LiveCharts2's at text size 13.
+/// </summary>
+public sealed record LegendMetrics(double EntryHeight = 34, double CharWidth = 7.5, double EntryWidth = 56)
+{
+    public static LegendMetrics Default { get; } = new();
+
+    /// <summary>The width of an entry in a row (marker, text, spacing).</summary>
+    public double WidthOf(string entry) => entry.Length * CharWidth + EntryWidth;
+}
+
+/// <summary>The entries of a legend page: <see cref="Count"/> entries from <see cref="First"/>.</summary>
+public sealed record LegendPage(int First, int Count)
+{
+    public bool Contains(int entry) => entry >= First && entry < First + Count;
+}
+
+/// <summary>
 /// Renderer-independent rules that keep a chart readable whatever its size: the legend goes from the right to the
-/// bottom, then disappears; category labels rotate, then skip; axis titles are dropped; a donut keeps its proportions.
-/// A connector calls them with the actual size of its chart (and again when it changes).
+/// bottom, then disappears (a visual can prefer a side, kept while there is room for it); a legend with more entries
+/// than its room shows them by pages; category labels rotate, then skip; axis titles are dropped; a donut keeps its
+/// proportions. A connector calls them with the actual size of its chart (and again when it changes).
 /// </summary>
 public static class ChartFitting
 {
@@ -45,26 +70,82 @@ public static class ChartFitting
     private const double LegendRowHeight = 34;
     private const double AxisTitleHeight = 28;
 
+    /// <summary>A plot next to a legend the visual asked for keeps at least this width.</summary>
+    private const double MinPreferredPlotWidth = 160;
+
+    /// <summary>Room of a legend the library takes for its margins.</summary>
+    private const double LegendPadding = 16;
+
+    /// <summary>
+    /// Room left for the host's pager when the legend has pages: twice its size, as libraries center their legend
+    /// (the pager sits in a corner, past the entries).
+    /// </summary>
+    private const double PagerHeight = 26, PagerWidth = 80;
+
     /// <summary>Width of a legend on the right, from its longest entry.</summary>
     public static double LegendWidth(IEnumerable<string> entries) =>
         Math.Clamp(entries.Select(e => e.Length).DefaultIfEmpty(0).Max() * CharWidth + 36, 90, 220);
 
-    /// <summary>Height of a legend below the chart: its entries flow on as many rows as the width requires.</summary>
-    public static double BottomLegendHeight(IEnumerable<string> entries, double width)
+    /// <summary>
+    /// The pages of a legend on <paramref name="side"/> in a chart of the given size: one page when every entry fits
+    /// (a column on the right or left, a row above or below), otherwise as many entries per page as fit next to a pager.
+    /// </summary>
+    public static IReadOnlyList<LegendPage> LegendPages(IReadOnlyList<string> entries, ChartLegend side, double width, double height,
+        LegendMetrics? metrics = null)
     {
-        // Legend texts are a bit larger than axis labels, and each entry has a marker and spacing
-        var total = entries.Sum(e => e.Length * 8.5 + 40);
-        return Math.Max(1, Math.Ceiling(total / Math.Max(1, width))) * LegendRowHeight;
+        metrics ??= LegendMetrics.Default;
+        var entryHeight = metrics.EntryHeight;
+        if (side is ChartLegend.Right or ChartLegend.Left)
+        {
+            var room = height - LegendPadding;
+            if (entries.Count * entryHeight <= room) return [new LegendPage(0, entries.Count)];
+            var perPage = Math.Max(1, (int)((room - 2 * PagerHeight) / entryHeight));
+            return [.. Enumerable.Range(0, (entries.Count + perPage - 1) / perPage)
+                .Select(page => new LegendPage(page * perPage, Math.Min(perPage, entries.Count - page * perPage)))];
+        }
+        if (side is ChartLegend.Top or ChartLegend.Bottom && entries.Sum(metrics.WidthOf) > width - LegendPadding)
+        {
+            // Entries flow on one row per page, at least one each
+            var pages = new List<LegendPage>();
+            var limit = width - LegendPadding - 2 * PagerWidth;
+            for (int first = 0, i = 0; first < entries.Count; first = i)
+            {
+                var used = metrics.WidthOf(entries[i++]);
+                while (i < entries.Count && used + metrics.WidthOf(entries[i]) <= limit) used += metrics.WidthOf(entries[i++]);
+                pages.Add(new LegendPage(first, i - first));
+            }
+            return pages;
+        }
+        return [new LegendPage(0, entries.Count)];
     }
 
-    public static ChartFit Cartesian(ChartData chart, double width, double height)
+    /// <summary>
+    /// Which entries of the legend show: those of the pager's page, or all of them without a pager (the host shows
+    /// none) or pages. The pager learns the legend's position and pages. A connector calls it with each fit.
+    /// </summary>
+    public static Func<int, bool> LegendEntries(ChartFit fit, LegendPager? pager)
     {
-        // A legend on the right only when the plot keeps a comfortable width
-        var legendWidth = LegendWidth(chart.Series.Select(s => s.Name));
-        var right = chart.Series.Count > 1 && width >= legendWidth + MinPlotWidth;
+        IReadOnlyList<LegendPage> pages = fit.Legend == ChartLegend.Hidden ? [] : fit.LegendPages;
+        pager?.Update(fit.Legend, pages.Count);
+        if (pager is null || pages.Count <= 1) return _ => true;
+        return pages[pager.Page].Contains;
+    }
+
+    public static ChartFit Cartesian(ChartData chart, double width, double height, ChartLegend preferred = ChartLegend.Auto,
+        LegendMetrics? metrics = null)
+    {
+        var entries = chart.Series.Select(s => s.Name).ToArray();
+        // Without a choice, a single series needs no legend; a legend on a side only when the plot keeps a comfortable
+        // width (a chosen side: a smaller one)
+        var shown = preferred != ChartLegend.Hidden && entries.Length > 0 && (preferred != ChartLegend.Auto || entries.Length > 1);
+        var legendWidth = LegendWidth(entries);
+        var side = !shown ? ChartLegend.Hidden
+            : preferred is ChartLegend.Right or ChartLegend.Left && width >= legendWidth + MinPreferredPlotWidth ? preferred
+            : preferred == ChartLegend.Auto && width >= legendWidth + MinPlotWidth ? ChartLegend.Right
+            : ChartLegend.Hidden;
 
         var axes = chart.Series.Any(s => s.SecondaryAxis) ? 2 : 1;
-        var plotWidth = Math.Max(40, width - axes * ValueAxisWidth - (right ? legendWidth : 0));
+        var plotWidth = Math.Max(40, width - axes * ValueAxisWidth - (side != ChartLegend.Hidden ? legendWidth : 0));
         var perLabel = plotWidth / Math.Max(1, chart.Categories.Count);
         var longest = chart.Categories.Select(c => c.Length).DefaultIfEmpty(1).Max() * CharWidth + 8;
         // At 45 degrees, a label takes about 0.71 of its length in height
@@ -84,17 +165,17 @@ public static class ChartFitting
         else
             step = (int)Math.Ceiling(longest / perLabel); // no room to rotate: skip horizontal labels
 
-        // Below the plot, the legend and the axis title only take height the plot can spare
+        // Above or below the plot, the legend (one row, by pages) and the axis title only take height the plot can spare
         var spare = height - labelsHeight - MinPlotHeight;
-        var legendHeight = BottomLegendHeight(chart.Series.Select(s => s.Name), width);
-        var legend = right ? ChartLegend.Right
-            : chart.Series.Count > 1 && spare >= legendHeight ? ChartLegend.Bottom
+        var legend = side != ChartLegend.Hidden || !shown ? side
+            : spare >= LegendRowHeight ? preferred == ChartLegend.Top ? ChartLegend.Top : ChartLegend.Bottom
             : ChartLegend.Hidden;
-        if (legend == ChartLegend.Bottom) spare -= legendHeight;
+        if (legend is ChartLegend.Top or ChartLegend.Bottom) spare -= LegendRowHeight;
 
         return new ChartFit
         {
             Legend = legend,
+            LegendPages = LegendPages(entries, legend, width, height, metrics),
             LabelRotation = rotation,
             LabelStep = Math.Max(1, step),
             ShowAxisTitles = spare >= AxisTitleHeight && width >= 260,
@@ -102,19 +183,27 @@ public static class ChartFitting
     }
 
     /// <summary>The fit of a pie, or of a donut (<paramref name="donut"/>), whose hole keeps half of the radius.</summary>
-    public static ChartFit Pie(ChartData chart, double width, double height, bool donut = false)
+    public static ChartFit Pie(ChartData chart, double width, double height, bool donut = false, ChartLegend preferred = ChartLegend.Auto,
+        LegendMetrics? metrics = null)
     {
         var legendWidth = LegendWidth(chart.Categories);
-        var legend = width >= legendWidth + 160 && width >= height ? ChartLegend.Right
-            : height >= 280 ? ChartLegend.Bottom
-            : ChartLegend.Hidden;
+        var legend = preferred switch
+        {
+            ChartLegend.Hidden => ChartLegend.Hidden,
+            ChartLegend.Right or ChartLegend.Left when width >= legendWidth + MinPreferredPlotWidth => preferred,
+            ChartLegend.Top or ChartLegend.Bottom when height >= MinPlotHeight + 80 => preferred,
+            _ when width >= legendWidth + 160 && width >= height => ChartLegend.Right,
+            _ when height >= 280 => ChartLegend.Bottom,
+            _ => ChartLegend.Hidden,
+        };
 
         // The donut hole keeps half of the radius at any size
-        var pieWidth = width - (legend == ChartLegend.Right ? legendWidth : 0);
-        var pieHeight = height - (legend == ChartLegend.Bottom ? 60 : 0);
+        var pieWidth = width - (legend is ChartLegend.Right or ChartLegend.Left ? legendWidth : 0);
+        var pieHeight = height - (legend is ChartLegend.Top or ChartLegend.Bottom ? 60 : 0);
         return new ChartFit
         {
             Legend = legend,
+            LegendPages = LegendPages(chart.Categories, legend, width, height, metrics),
             InnerRadius = donut ? Math.Max(0, Math.Min(pieWidth, pieHeight) / 2 * 0.5) : 0,
         };
     }

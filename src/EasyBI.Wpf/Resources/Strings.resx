@@ -657,4 +657,34 @@
   <data name="TooltipWellHint" xml:space="preserve">
     <value>Measures shown in the tooltip</value>
   </data>
+  <data name="LegendPreviousPage" xml:space="preserve">
+    <value>Previous page of the legend</value>
+  </data>
+  <data name="LegendNextPage" xml:space="preserve">
+    <value>Next page of the legend</value>
+  </data>
+  <data name="PropertyLegendPosition" xml:space="preserve">
+    <value>Legend</value>
+  </data>
+  <data name="LegendPositionHint" xml:space="preserve">
+    <value>Where the legend goes; a side only applies when the chart has room for it. A long legend shows its entries by pages.</value>
+  </data>
+  <data name="LegendAuto" xml:space="preserve">
+    <value>Automatic</value>
+  </data>
+  <data name="LegendRight" xml:space="preserve">
+    <value>Right</value>
+  </data>
+  <data name="LegendBottom" xml:space="preserve">
+    <value>Bottom</value>
+  </data>
+  <data name="LegendTop" xml:space="preserve">
+    <value>Top</value>
+  </data>
+  <data name="LegendLeft" xml:space="preserve">
+    <value>Left</value>
+  </data>
+  <data name="LegendHidden" xml:space="preserve">
+    <value>Hidden</value>
+  </data>
 </root>

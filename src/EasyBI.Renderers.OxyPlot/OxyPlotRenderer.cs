@@ -38,6 +38,8 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         var view = new PlotView { Model = model, Background = System.Windows.Media.Brushes.Transparent };
         // Legend, labels and axis title adapt to the room the chart actually gets
         view.SizeChanged += (_, _) => Fit(view, model, fitted);
+        // The host's pager turns the pages of the legend
+        if (request.LegendPager is { } pager) pager.Changed += (_, _) => Fit(view, model, fitted);
         view.Controller = Controller(model, request.Select);
         // EasyBI's tooltip over the element under the pointer, instead of OxyPlot's tracker
         var tooltip = new ChartTooltipHost(view);
@@ -61,14 +63,22 @@ public sealed class OxyPlotRenderer : IVisualRenderer
     private static void Fit(PlotView view, PlotModel model, RenderRequest request)
     {
         if (view.ActualWidth <= 0) return;
-        var changed = request.Visual.Mark.IsCircular()
-            ? FitPie(model, ChartFitting.Pie(request.Chart, view.ActualWidth, view.ActualHeight, request.Visual.Mark == MarkType.Donut))
-            : FitCartesian(model, request.Chart, ChartFitting.Cartesian(request.Chart, view.ActualWidth, view.ActualHeight));
+        var preferred = request.Visual.LegendPosition;
+        var changed = request.Visual.Mark switch
+        {
+            var mark when mark.IsCircular() => FitPie(model, ChartFitting.Pie(request.Chart, view.ActualWidth, view.ActualHeight, mark == MarkType.Donut, preferred)),
+            // A waterfall has no legend: its colors are the direction of the steps
+            MarkType.Waterfall => FitCartesian(model, request.Chart, ChartFitting.Cartesian(request.Chart, view.ActualWidth, view.ActualHeight, ChartLegend.Hidden), null),
+            _ => FitCartesian(model, request.Chart, ChartFitting.Cartesian(request.Chart, view.ActualWidth, view.ActualHeight, preferred, LegendSize), request.LegendPager),
+        };
         // Only redraw when something changed: SizeChanged fires continuously while a dashboard cell is resized
         if (changed) model.InvalidatePlot(false);
     }
 
-    private static bool FitCartesian(PlotModel model, ChartData chart, ChartFit fit)
+    /// <summary>The size of OxyPlot's legend entries (its default font), for the pages of a legend.</summary>
+    private static readonly LegendMetrics LegendSize = new(EntryHeight: 20, CharWidth: 7, EntryWidth: 40);
+
+    private static bool FitCartesian(PlotModel model, ChartData chart, ChartFit fit, LegendPager? pager)
     {
         var changed = false;
         var axis = (CategoryAxis)model.Axes.First(a => a.Key == CategoryAxisKey);
@@ -81,14 +91,24 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         if (model.IsLegendVisible != visible) (model.IsLegendVisible, changed) = (visible, true);
         if (visible && model.Legends.FirstOrDefault() is { } legend)
         {
-            var position = fit.Legend == ChartLegend.Bottom ? LegendPosition.BottomCenter : LegendPosition.RightTop;
+            var position = fit.Legend switch
+            {
+                ChartLegend.Bottom => LegendPosition.BottomCenter,
+                ChartLegend.Top => LegendPosition.TopCenter,
+                ChartLegend.Left => LegendPosition.LeftTop,
+                _ => LegendPosition.RightTop,
+            };
             if (legend.LegendPosition != position)
             {
                 legend.LegendPosition = position;
-                legend.LegendOrientation = fit.Legend == ChartLegend.Bottom ? LegendOrientation.Horizontal : LegendOrientation.Vertical;
+                legend.LegendOrientation = fit.Legend is ChartLegend.Bottom or ChartLegend.Top ? LegendOrientation.Horizontal : LegendOrientation.Vertical;
                 changed = true;
             }
         }
+        // The legend keeps OxyPlot's look: only the series of the page show in it (the model's first series are the chart's)
+        var shown = ChartFitting.LegendEntries(fit, pager);
+        for (var i = 0; i < chart.Series.Count && i < model.Series.Count; i++)
+            if (model.Series[i].RenderInLegend != shown(i)) (model.Series[i].RenderInLegend, changed) = (shown(i), true);
         return changed;
     }
 
@@ -184,8 +204,8 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         foreach (var outline in formatting.StackOutlines)
             model.Annotations.Add(Frame(outline, categoryAxis, groups));
 
-        if (chart.Series.Count > 1)
-            model.Legends.Add(new Legend { LegendPosition = LegendPosition.RightTop, LegendPlacement = LegendPlacement.Outside });
+        // Shown or not by the fit: a visual can ask for the legend of a single series
+        model.Legends.Add(new Legend { LegendPosition = LegendPosition.RightTop, LegendPlacement = LegendPlacement.Outside });
         return model;
     }
 

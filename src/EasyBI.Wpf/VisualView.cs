@@ -5,6 +5,7 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using EasyBI.Abstractions;
 using EasyBI.Core;
+using EasyBI.Wpf.Renderers;
 using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf;
@@ -316,11 +317,15 @@ public class VisualView : ContentControl
         // Tooltips: EasyBI's content, with the application's changes
         var drawn = request;
         request = request with { Tooltip = (category, series) => context.TooltipFor(drawn, category, series) };
+        // A long legend shows its entries by pages, turned by a pager over the chart
+        var pager = visual.Mark.IsCartesian() || visual.Mark.IsCircular() ? new LegendPager() : null;
+        request = request with { LegendPager = pager };
 
         try
         {
             RenderedBy = renderer.Name;
-            Show(visual, renderer.Render(request));
+            var body = renderer.Render(request);
+            Show(visual, pager is null ? body : new Grid { Children = { body, new ChartLegendPager { Pager = pager } } });
         }
         catch (Exception ex)
         {

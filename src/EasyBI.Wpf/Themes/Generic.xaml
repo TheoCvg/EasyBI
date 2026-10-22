@@ -94,6 +94,32 @@
         </Setter>
     </Style>
 
+    <!-- The pager of a chart's legend: previous page, "2/5", next page -->
+    <Style TargetType="renderers:ChartLegendPager">
+        <Setter Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" />
+        <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Margin" Value="4" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="renderers:ChartLegendPager">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{DynamicResource {x:Static bi:EasyBITheme.CornerRadiusKey}}" Padding="2">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="◀" Command="{Binding PreviousCommand, RelativeSource={RelativeSource TemplatedParent}}"
+                                    ToolTip="{bi:Localize LegendPreviousPage}" Padding="5,0" MinWidth="0" BorderThickness="0" Background="Transparent" Cursor="Hand" />
+                            <TextBlock Text="{TemplateBinding PageText}" Margin="4,0" VerticalAlignment="Center" />
+                            <Button Content="▶" Command="{Binding NextCommand, RelativeSource={RelativeSource TemplatedParent}}"
+                                    ToolTip="{bi:Localize LegendNextPage}" Padding="5,0" MinWidth="0" BorderThickness="0" Background="Transparent" Cursor="Hand" />
+                        </StackPanel>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- The content of a chart tooltip (a TooltipContent): the category, then each series with its color and value,
          or the visual's template text. An application replaces it with the same key. No DataType: in a theme
          dictionary, it would replace the x:Key -->

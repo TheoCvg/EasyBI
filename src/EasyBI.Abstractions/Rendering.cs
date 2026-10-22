@@ -153,4 +153,10 @@ public sealed record RenderRequest(VisualDefinition Visual, ResultSet Result, Ch
     /// default content (EasyBI.Core's <c>TooltipFor</c> does both).
     /// </summary>
     public Func<int, IReadOnlyList<int>, TooltipContent?>? Tooltip { get; init; }
+
+    /// <summary>
+    /// The pages of the legend, when the host shows a pager: a connector whose legend has no room for all its entries
+    /// shows the page of the pager (EasyBI.Core's <c>ChartFitting.LegendEntries</c>). Null: every entry shows.
+    /// </summary>
+    public LegendPager? LegendPager { get; init; }
 }
