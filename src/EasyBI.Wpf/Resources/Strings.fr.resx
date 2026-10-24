@@ -691,9 +691,18 @@
     <value>Libellés des valeurs</value>
   </data>
   <data name="ValueLabelsHint" xml:space="preserve">
-    <value>Texte affiché à la place de chaque valeur dans ce visuel (axe, légende, infobulles, tableaux). Laisser vide pour afficher la valeur.</value>
+    <value>Choisissez une valeur et le texte que ce visuel affiche à sa place (axe, légende, infobulles, tableaux).</value>
   </data>
-  <data name="ValueLabelPlaceholder" xml:space="preserve">
-    <value>Texte affiché à la place de cette valeur ; vide : la valeur elle-même</value>
+  <data name="ValueLabelPick" xml:space="preserve">
+    <value>Valeur à renommer (tapez pour chercher)</value>
+  </data>
+  <data name="ValueLabelText" xml:space="preserve">
+    <value>Texte affiché à la place de la valeur</value>
+  </data>
+  <data name="ValueLabelAdd" xml:space="preserve">
+    <value>Ajouter ce libellé</value>
+  </data>
+  <data name="ValueLabelRemove" xml:space="preserve">
+    <value>Retirer ce libellé : la valeur s'affiche à nouveau telle quelle</value>
   </data>
 </root>

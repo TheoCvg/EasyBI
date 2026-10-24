@@ -23,22 +23,48 @@ public class ValueLabelsUiTests
     }
 
     [Fact]
-    public void A_selected_dimension_lists_its_values_to_label()
+    public async Task Labels_are_added_one_at_a_time_among_the_values_of_the_dimension()
     {
         var designer = Designer();
         designer.SelectedItem = designer.Axis.Single();
 
         var section = designer.Properties.Single(s => s.Key == DesignerPropertySections.ValueLabels);
         var editor = Assert.IsType<ValueLabelsViewModel>(section["Labels"]!.Value);
-        var deadline = DateTime.UtcNow.AddSeconds(5);
-        while (editor.IsLoading && DateTime.UtcNow < deadline) Thread.Sleep(5);
-        Assert.Equal(["Île-de-France", "Nord"], editor.Values.Select(v => v.Original));
+        await editor.Loaded;
+        Assert.Empty(editor.Labels);
+        Assert.Equal(["Île-de-France", "Nord"], editor.AvailableValues.Select(v => v.Label));
+        Assert.False(editor.AddCommand.CanExecute(null));
 
-        editor.Values[0].Text = "IDF";
+        editor.NewValue = editor.AvailableValues[0];
+        editor.NewText = "IDF";
+        editor.AddCommand.Execute(null);
 
         Assert.Equal("IDF", designer.Visual!.Axis[0].Labels!["Île-de-France"]);
-        editor.Values[0].Text = "";
+        Assert.Equal(["Nord"], editor.AvailableValues.Select(v => v.Label));
+        var label = Assert.Single(editor.Labels);
+        Assert.Equal((null, ""), (editor.NewValue, editor.NewText));
+
+        label.Text = "Paris";
+        Assert.Equal("Paris", designer.Visual!.Axis[0].Labels!["Île-de-France"]);
+
+        editor.RemoveCommand.Execute(label);
         Assert.Null(designer.Visual!.Axis[0].Labels);
+        Assert.Equal(["Île-de-France", "Nord"], editor.AvailableValues.Select(v => v.Label));
+    }
+
+    [Fact]
+    public async Task The_labels_of_a_loaded_visual_are_listed()
+    {
+        var designer = Designer();
+        designer.Axis.Single().SetLabel("Nord", "N");
+        designer.Load(designer.Visual!);
+        designer.SelectedItem = designer.Axis.Single();
+
+        var editor = (ValueLabelsViewModel)designer.Properties.Single(s => s.Key == DesignerPropertySections.ValueLabels)["Labels"]!.Value!;
+        await editor.Loaded;
+
+        Assert.Equal(("Nord", "N"), (Assert.Single(editor.Labels).Original, editor.Labels[0].Text));
+        Assert.Equal(["Île-de-France"], editor.AvailableValues.Select(v => v.Label));
     }
 
     [Fact]
