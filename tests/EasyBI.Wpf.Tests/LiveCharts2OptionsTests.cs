@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Globalization;
 using System.Resources;
+using System.Windows;
 using System.Windows.Controls;
 using EasyBI.Abstractions;
 using EasyBI.Core;
@@ -95,6 +96,64 @@ public class LiveCharts2OptionsTests
 
         foreach (var axis in charts.Select(c => (Axis)c.XAxes.Last()))
             Assert.Equal((1d, true), (axis.MinStep, axis.ForceStepToMin));
+    });
+
+    [Fact]
+    public void Labels_under_groups_turn_like_other_category_labels_rather_than_being_skipped() => Sta.Run(() =>
+    {
+        string[] regions = ["Est", "Île-de-France", "Nord", "Ouest", "Sud"];
+        object?[][] keys = [.. new[] { "Équipement", "Services", "Vélos" }.SelectMany(c => regions.Select(r => new object?[] { c, r }))];
+        var chart = new ChartData("Category / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", new double?[keys.Length], null) { Mark = MarkType.Bar }])
+        {
+            CategoryValues = keys,
+        };
+        var view = (CartesianChart)new LiveCharts2Renderer().Render(new RenderRequest(Bars, new ResultSet([], []), chart, BiTheme.Default));
+        var window = new Window { Content = view, Width = 700, Height = 450, Left = -10000, Top = -10000, ShowActivated = false, ShowInTaskbar = false };
+        window.Show();
+        try
+        {
+            System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+
+            var axis = (Axis)view.XAxes.Last();
+            Assert.Equal(-45, axis.LabelsRotation);
+            Assert.Equal(keys.Select(k => (string)k[1]!), axis.Labels);
+        }
+        finally
+        {
+            window.Close();
+        }
+    });
+
+    [Fact]
+    public void A_short_scrollable_chart_keeps_flat_labels_under_its_groups_where_they_fit() => Sta.Run(() =>
+    {
+        // 36 months of 5 regions, 20 bars at a time: too short to turn the labels
+        string[] regions = ["Est", "Île-de-France", "Nord", "Ouest", "Sud"];
+        object?[][] keys = [.. Enumerable.Range(1, 36).SelectMany(m => regions.Select(r => new object?[] { $"M{m:00}", r }))];
+        var chart = new ChartData("Month / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", new double?[keys.Length], null) { Mark = MarkType.Bar }])
+        {
+            CategoryValues = keys,
+        };
+        var renderer = new LiveCharts2Renderer();
+        var visual = Bars.WithRendererOption(renderer.Name, LiveCharts2Renderer.ScrollableOption, true);
+        var grid = (Grid)renderer.Render(new RenderRequest(visual, new ResultSet([], []), chart, BiTheme.Default));
+        var window = new Window { Content = grid, Width = 700, Height = 300, Left = -10000, Top = -10000, ShowActivated = false, ShowInTaskbar = false };
+        window.Show();
+        try
+        {
+            System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+
+            var axis = (Axis)grid.Children.OfType<CartesianChart>().First().XAxes.Last();
+            Assert.Equal(0, axis.LabelsRotation);
+            // At least two regions a month among the 20 bars shown, each one whole
+            var shown = axis.Labels!.Take(20).Where(l => l.Length > 0).ToArray();
+            Assert.True(shown.Length >= 8, string.Join(", ", shown));
+            Assert.All(shown, l => Assert.Contains(l, regions));
+        }
+        finally
+        {
+            window.Close();
+        }
     });
 
     [Fact]
