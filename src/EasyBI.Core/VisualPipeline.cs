@@ -29,18 +29,19 @@ public static class VisualPipeline
     public static RenderRequest PrepareContent(VisualDefinition visual, BiTheme? theme = null) =>
         new(visual, new ResultSet([], []), new ChartData(null, [], []), theme ?? BiTheme.Default);
 
-    /// <summary>The query of a visual; those of the end user's calculated <c>measures</c> it shows go with it.</summary>
-    public static AnalyticQuery ToQuery(this VisualDefinition visual, IEnumerable<CalculatedMeasure>? measures = null)
+    /// <summary>
+    /// The query of a visual; those of the end user's calculated <c>measures</c> it shows go with it, with those they use
+    /// (and, with the model's <c>metadata</c>, those its formula measures use).
+    /// </summary>
+    public static AnalyticQuery ToQuery(this VisualDefinition visual, IEnumerable<CalculatedMeasure>? measures = null, ModelMetadata? metadata = null)
     {
         var groupBy = visual.Legend is null ? visual.Axis : [.. visual.Axis, visual.Legend];
         // A chart's tooltips may show other measures: they are queried with it, not drawn
         IEnumerable<MeasureRef> tooltip = Tooltips.Has(visual.Mark) ? visual.Tooltip?.Values ?? [] : [];
-        // Shown, in a tooltip, or filtered on
-        var used = measures?
-            .Where(m => m.Model == visual.Model
-                && (visual.Values.Concat(tooltip).Any(v => v.Measure == m.Name)
-                    || visual.Filters.Any(f => f.Field == m.Name && f.Operator.IsComparison())))
-            .ToArray();
+        // Shown, in a tooltip, or filtered on, and what they use
+        var names = visual.Values.Concat(tooltip).Select(v => v.Measure)
+            .Concat(visual.Filters.Where(f => f.Operator.IsComparison()).Select(f => f.Field));
+        var used = measures is null ? null : MeasureContext.Needed(names, measures.Where(m => m.Model == visual.Model), metadata);
         return new AnalyticQuery(
             groupBy,
             // Chart types, axes and formats only change the drawing: changing them must not query again
@@ -51,7 +52,7 @@ public static class VisualPipeline
             visual.Filters,
             visual.Sort is null ? null : [visual.Sort],
             visual.Top,
-            used is { Length: > 0 } ? used : null);
+            used is { Count: > 0 } ? used : null);
     }
 
     /// <summary>
@@ -74,7 +75,7 @@ public static class VisualPipeline
             var (cells, matrix) = await MatrixBuilder.ExecuteAsync(model, visual, measures, cancellationToken).ConfigureAwait(false);
             return new RenderRequest(visual, cells, ChartDataBuilder.Build(visual, cells), theme ?? BiTheme.Default) { Matrix = matrix };
         }
-        var result = await model.ExecuteWithTimeAsync(visual.ToQuery(measures), cancellationToken).ConfigureAwait(false);
+        var result = await model.ExecuteWithTimeAsync(visual.ToQuery(measures, model.Metadata), cancellationToken).ConfigureAwait(false);
         return new RenderRequest(visual, result, ChartDataBuilder.Build(visual, result), theme ?? BiTheme.Default);
     }
 }

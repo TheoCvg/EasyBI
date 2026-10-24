@@ -60,6 +60,8 @@ internal static class Strings
     public static string FormulaNotADate => Get();
     public static string FormulaNotANumber => Get();
     public static string FormulaNotACondition => Get();
+    public static string FormulaCycle => Get();
+    public static string FormulaThisMeasure => Get();
     public static string FormulaAmbiguous => Get();
     public static string ReportCalculatedMeasure => Get();
     public static string ReportInvalidFormula => Get();

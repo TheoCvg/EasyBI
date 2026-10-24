@@ -72,9 +72,44 @@ public sealed class MeasureContext
 
     public CalculatedMeasure? Find(string model, string name) => _measures.FirstOrDefault(m => m.Model == model && m.Name == name);
 
-    /// <summary>The definitions a visual needs: the calculated measures among its values.</summary>
-    public IReadOnlyList<CalculatedMeasure> UsedBy(VisualDefinition visual) =>
-        visual.Values.Select(v => Find(visual.Model, v.Measure)).OfType<CalculatedMeasure>().Distinct().ToArray();
+    /// <summary>
+    /// The definitions a visual needs: the calculated measures among its values, and those they use. With the model's
+    /// <paramref name="metadata"/>, those its formula measures use too.
+    /// </summary>
+    public IReadOnlyList<CalculatedMeasure> UsedBy(VisualDefinition visual, ModelMetadata? metadata = null) =>
+        Needed(visual.Values.Select(v => v.Measure), For(visual.Model), metadata);
+
+    /// <summary>The report's measures of a model whose formula uses the measure <paramref name="name"/>.</summary>
+    public IReadOnlyList<CalculatedMeasure> Using(string model, string name) =>
+        For(model).Where(m => m.Name != name && MeasureFormula.References(m.Formula).Contains(name)).ToArray();
+
+    /// <summary>
+    /// The calculated measures among <paramref name="measures"/> (those of one model) that the measures named
+    /// <paramref name="names"/> need: their own, and those their formulas use, through the formulas of the model
+    /// (<paramref name="metadata"/>) too. In the order of <paramref name="measures"/>.
+    /// </summary>
+    public static IReadOnlyList<CalculatedMeasure> Needed(IEnumerable<string> names, IEnumerable<CalculatedMeasure> measures, ModelMetadata? metadata = null)
+    {
+        var all = measures.ToArray();
+        var needed = new HashSet<CalculatedMeasure>();
+        var visited = new HashSet<(string, bool)>();
+        // model: the model's measure is meant (a redefinition reads it under its own name)
+        void Visit(string name, bool model)
+        {
+            if (!visited.Add((name, model))) return;
+            if (!model && all.FirstOrDefault(m => m.Name == name) is { } measure)
+            {
+                needed.Add(measure);
+                foreach (var used in MeasureFormula.References(measure.Formula)) Visit(used, model: used == name);
+            }
+            else if (metadata?.Fields.FirstOrDefault(f => f.Name == name)?.Formula is { } formula)
+            {
+                foreach (var used in MeasureFormula.References(formula)) Visit(used, model: false);
+            }
+        }
+        foreach (var name in names) Visit(name, model: false);
+        return all.Where(needed.Contains).ToArray();
+    }
 
     /// <summary>Adds a measure, or replaces the one with the same name in the same model.</summary>
     public void Set(CalculatedMeasure measure)

@@ -192,10 +192,16 @@ public class FieldList : Control
 
     private void DeleteMeasure(CalculatedMeasure measure)
     {
-        var answer = MessageBox.Show(Window.GetWindow(this)!, Strings.Format(Strings.DeleteMeasureConfirm, measure.Caption),
+        var answer = MessageBox.Show(Window.GetWindow(this)!, DeleteConfirmation(Context?.Measures ?? new MeasureContext(), measure),
             Strings.DeleteMeasure, MessageBoxButton.OKCancel, MessageBoxImage.Question);
         if (answer == MessageBoxResult.OK) Context?.Measures.Remove(measure.Model, measure.Name);
     }
+
+    /// <summary>The question asked before deleting a measure, naming the measures whose formula uses it.</summary>
+    internal static string DeleteConfirmation(MeasureContext measures, CalculatedMeasure measure) =>
+        measures.Using(measure.Model, measure.Name) is { Count: > 0 } users
+            ? Strings.Format(Strings.DeleteUsedMeasureConfirm, measure.Caption, string.Join(", ", users.Select(u => Strings.Format(Strings.QuotedCaption, u.Caption))))
+            : Strings.Format(Strings.DeleteMeasureConfirm, measure.Caption);
 
     private void ResetMeasure(ModelField field)
     {

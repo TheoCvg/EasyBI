@@ -175,13 +175,23 @@ and visual of the context sees them, and a `DashboardView` loads and saves them 
 remove them). An application that saves reports without a dashboard puts `Context.Measures.Measures` in
 `ReportDefinition.Measures` and loads them back with `Context.Measures.Load(...)`.
 
+A formula can use the report's other measures, like those of the model: with `[Cost] = [Revenue] - [Margin]`, the
+cost rate is `[Cost] / [Revenue]`. They are computed for each group, so they are used on their own, not inside a
+function, and they are expanded into the same query (a visual's query carries the measures its measures use:
+`MeasureContext.Needed`, `UsedBy`). A measure cannot use itself, even through others ("A measure cannot use itself:
+this measure → [Cost] → this measure"), which is checked as it is typed and when a report is opened. Deleting a measure
+names the measures that use it (`MeasureContext.Using`); copied visuals take the measures they use along, and the
+formulas of pasted measures follow those that are renamed (`MeasureFormula.Rename`). `MeasureFormula.Validate`,
+`Check` and `ToDisplay` take the report's measures and the name of the measure being written.
+
 End users can also change the measures declared in code (✎ on any measure): the editor starts from the measure's
 formula, or from the measure alone (`[Revenue]`) for one declared with `Measure`, `Ratio` or `Calculated`. Their
 version is saved in the report as a calculated measure **named like the model's measure**, which redefines it for the
 whole report (every visual showing it follows): a formula that is only the measure itself keeps the model's
 computation and the aggregation each visual chooses, and only changes the caption and the format; any other formula
 replaces the computation (`AVERAGE([Revenue])` changes the aggregation), the measure's name in it still meaning the
-model's definition. ↺ in the field list, or **Restore** in the editor, removes the redefinition. `MeasureContext`
+model's definition. Every other formula, the model's ones (`Formula`) included, reads a redefined measure as the
+report defines it. ↺ in the field list, or **Restore** in the editor, removes the redefinition. `MeasureContext`
 merges both (`MeasuresOf`, `GetField`, `Definition`), and pasting a visual never redefines the target's measures: a
 copied redefinition is added as a calculated measure of its own.
 

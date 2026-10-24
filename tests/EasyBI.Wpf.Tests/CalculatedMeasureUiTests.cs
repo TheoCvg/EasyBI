@@ -353,4 +353,77 @@ public class CalculatedMeasureUiTests
         Assert.Equal(2, model.Queries);
         window.Close();
     });
+
+    // --- Measures used by other measures
+
+    private static CalculatedMeasure Cost(string formula = "[Amount] - [Margin]") =>
+        new() { Name = "calc_cost", Caption = "Coût", Model = "sales", Formula = formula };
+
+    [Fact]
+    public async Task The_editor_offers_and_previews_the_reports_other_measures()
+    {
+        var context = EasyBIContext.Create().AddModel(Model());
+        context.Measures.Set(Cost());
+        context.Measures.Set(Rate());
+        var editor = new CalculatedMeasureEditor(context, context.Models[0], Rate());
+
+        Assert.Equal(["[Chiffre d'affaires]", "[Marge]", "[Coût]"], editor.Insertable);
+        var cost = editor.Tabs[1].Items.Single(i => i.Caption == "Coût");
+        Assert.Equal(("ƒx", true), (cost.Glyph, cost.IsReportMeasure));
+
+        editor.Formula = "[Coût] / [Chiffre d'affaires]";
+        await editor.PreviewTask;
+        Assert.True(editor.CanSave);
+        Assert.Equal("[calc_cost] / [Amount]", editor.Result!.Formula);
+        Assert.Equal(ValueFormatter.Format(410d / 600d, "P1"), editor.Preview);
+
+        // Not inside a function, and not itself
+        Assert.Equal(["Chiffre d'affaires", "Marge"], editor.Tabs[1].Items.Where(i => !i.IsReportMeasure).Select(i => i.Caption));
+        editor.Formula = "SUM([";
+        editor.Suggest(editor.Formula.Length);
+        Assert.DoesNotContain(editor.Suggestions, s => s.Caption == "Coût");
+    }
+
+    [Fact]
+    public void The_editor_refuses_a_measure_that_would_use_itself()
+    {
+        var context = EasyBIContext.Create().AddModel(Model());
+        context.Measures.Set(Cost("[calc_rate] * [Amount]"));
+        context.Measures.Set(Rate());
+        var editor = new CalculatedMeasureEditor(context, context.Models[0], Rate()) { Formula = "[Coût] / 2" };
+
+        Assert.Equal("A measure cannot use itself: this measure → [Coût] → this measure.", editor.Error);
+        Assert.Equal((0, 6), (editor.Problem!.Start, editor.Problem.Length));
+    }
+
+    [Fact]
+    public void Deleting_a_measure_names_the_measures_that_use_it()
+    {
+        var context = new MeasureContext();
+        context.Set(Cost());
+        context.Set(Rate("[calc_cost] / [Amount]"));
+
+        Assert.Equal("Delete the measure “Coût”? It is used by “Taux de marge”, which will show an error, as will the visuals that show it.",
+            FieldList.DeleteConfirmation(context, Cost()));
+        Assert.StartsWith("Delete the measure “Taux de marge”?", FieldList.DeleteConfirmation(context, Rate()));
+    }
+
+    [Fact]
+    public void A_visual_queries_again_when_a_measure_used_by_its_measure_changes() => Sta.Run(() =>
+    {
+        var model = new CountingModel(Model());
+        var context = EasyBIContext.Create().AddModel(model);
+        context.Measures.Set(Cost());
+        context.Measures.Set(Rate("[calc_cost] / [Amount]"));
+        var view = new VisualView { Context = context, Definition = new() { Model = "sales", Mark = MarkType.Kpi, Values = [new("calc_rate")] } };
+        var window = new Window { Content = view, Width = 300, Height = 200, Left = -10000, Top = -10000, ShowActivated = false, ShowInTaskbar = false };
+        window.Show();
+        Pump();
+        Assert.Equal(1, model.Queries);
+
+        context.Measures.Set(Cost("[Amount]"));
+        Pump();
+        Assert.Equal(2, model.Queries);
+        window.Close();
+    });
 }

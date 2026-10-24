@@ -68,6 +68,7 @@ internal static class QueryEngine<T>
         for (var i = 0; i < keyBodies.Count; i++)
             cells.Add(Expression.Property(key, $"K{i + 1}"));
 
+        var values = new GroupValues(group, metadata, selectors, query.Calculations ?? []);
         foreach (var measureRef in query.Measures)
         {
             var calculation = query.Calculations?.FirstOrDefault(c => c.Name == measureRef.Measure);
@@ -75,7 +76,7 @@ internal static class QueryEngine<T>
             if (calculation is not null && (declared is null || !MeasureFormula.IsOnly(calculation.Formula, declared.Name)))
             {
                 // The end user's formula: the model's measures aggregated as declared, functions over the group's rows
-                cells.Add(Formula(calculation, group, metadata, selectors));
+                cells.Add(values.Formula(calculation));
                 var named = calculation.Caption is { Length: > 0 } own ? own : declared?.Caption ?? calculation.Name;
                 columns.Add(new ResultColumn(measureRef.Key, named, FieldKind.Measure, DataType.Number, calculation.Format));
                 continue;
@@ -86,7 +87,7 @@ internal static class QueryEngine<T>
                 field = field with { Caption = calculation.Caption is { Length: > 0 } own ? own : field.Caption, Format = calculation.Format };
             // A calculated measure is computed from the group's rows by the model: an aggregation saved with the visual does not apply
             var aggregation = field.IsCalculated ? null : measureRef.Aggregation;
-            cells.Add(MeasureCell(group, metadata, selectors, field.Name, aggregation));
+            cells.Add(values.Declared(field.Name, aggregation));
             var caption = aggregation is { } chosen ? $"{field.Caption} ({Aggregations.Caption(chosen)})" : field.Caption;
             columns.Add(new ResultColumn(measureRef.Key, caption, FieldKind.Measure, DataType.Number, field.Format));
         }
@@ -94,9 +95,7 @@ internal static class QueryEngine<T>
         var grouped = CallQueryable(filtered, nameof(Queryable.GroupBy), [typeof(T), keyType], keySelector);
         foreach (var filter in measureFilters)
         {
-            var cell = query.Calculations?.FirstOrDefault(c => c.Name == filter.Field) is { } calculation
-                ? Formula(calculation, group, metadata, selectors)
-                : MeasureCell(group, metadata, selectors, filter.Field, null);
+            var cell = values.Measure(filter.Field);
             grouped = CallQueryable(grouped, nameof(Queryable.Where), [groupType], Expression.Lambda(Comparison(cell, filter), group));
         }
         var ordered = ApplySort(grouped, groupType, group, columns, cells, query);
@@ -318,34 +317,57 @@ internal static class QueryEngine<T>
         return DateGrains.Apply(body, grain);
     }
 
-    /// <summary>The value of a model's measure for a group: its own expression when calculated, otherwise aggregated.</summary>
-    private static Expression MeasureCell(
+    /// <summary>
+    /// The value of a measure for a group, as the report defines it: the report's calculated measures and redefinitions
+    /// are computed from their formulas, which may use other measures of the report. Under its own name, a measure being
+    /// computed is the model's one (the redefinition of <c>[Amount]</c> reads the model's <c>[Amount]</c>), and the
+    /// model's formulas read the report's measures too.
+    /// </summary>
+    private sealed class GroupValues(
         ParameterExpression group,
         ModelMetadata metadata,
         IReadOnlyDictionary<string, LambdaExpression> selectors,
-        string name,
-        Aggregation? aggregation)
+        IReadOnlyList<CalculatedMeasure> calculations)
     {
-        var field = RequireKind(metadata.GetField(name), FieldKind.Measure);
-        // A formula of the model reads the measures declared before it: no cycle is possible
-        if (field.Formula is { } formula)
-            return MeasureFormula.Build(formula, group, typeof(T),
-                measure => MeasureCell(group, metadata, selectors, measure, null),
-                row => selectors[metadata.GetField(row).Name]);
-        var selector = selectors[field.Name];
-        return field.IsCalculated
-            ? new ParameterReplacer(selector.Parameters[0], group).Visit(selector.Body)
-            : Aggregate(group, selector, aggregation ?? field.DefaultAggregation ?? Aggregation.Sum);
-    }
+        // The measures being computed, to read a measure's own name as the model's one and to stop a loop
+        private readonly List<string> _computing = [];
 
-    private static Expression Formula(
-        CalculatedMeasure calculation,
-        ParameterExpression group,
-        ModelMetadata metadata,
-        IReadOnlyDictionary<string, LambdaExpression> selectors) =>
-        MeasureFormula.Build(calculation.Formula, group, typeof(T),
-            name => MeasureCell(group, metadata, selectors, name, null),
-            name => selectors[metadata.GetField(name).Name]);
+        public Expression Measure(string name)
+        {
+            var calculation = calculations.FirstOrDefault(c => c.Name == name);
+            var declared = metadata.Fields.Any(f => f.Name == name);
+            if (calculation is null || (declared && (_computing.Contains(name) || MeasureFormula.IsOnly(calculation.Formula, name))))
+                return Declared(name, null);
+            if (_computing.Contains(name)) throw new InvalidOperationException($"The measure '{name}' uses itself.");
+            return Formula(calculation);
+        }
+
+        public Expression Formula(CalculatedMeasure calculation) => Computing(calculation.Name, calculation.Formula);
+
+        /// <summary>The model's measure: aggregated, or computed by the model.</summary>
+        public Expression Declared(string name, Aggregation? aggregation)
+        {
+            var field = RequireKind(metadata.GetField(name), FieldKind.Measure);
+            if (field.Formula is { } formula) return Computing(field.Name, formula);
+            var selector = selectors[field.Name];
+            return field.IsCalculated
+                ? new ParameterReplacer(selector.Parameters[0], group).Visit(selector.Body)
+                : Aggregate(group, selector, aggregation ?? field.DefaultAggregation ?? Aggregation.Sum);
+        }
+
+        private Expression Computing(string name, string formula)
+        {
+            _computing.Add(name);
+            try
+            {
+                return MeasureFormula.Build(formula, group, typeof(T), Measure, row => selectors[metadata.GetField(row).Name]);
+            }
+            finally
+            {
+                _computing.RemoveAt(_computing.Count - 1);
+            }
+        }
+    }
 
     private static Expression Aggregate(Expression group, LambdaExpression selector, Aggregation aggregation)
     {

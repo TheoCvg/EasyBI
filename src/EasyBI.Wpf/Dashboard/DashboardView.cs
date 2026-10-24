@@ -643,7 +643,8 @@ public class DashboardView : Control
         var visuals = _selected.Select(i => i.Visual).OfType<VisualDefinition>().ToArray();
         if (visuals.Length == 0) return null;
         var data = new DataObject();
-        data.SetData(VisualTransfer.ClipboardFormat, VisualTransfer.Copy(visuals, Context?.Measures ?? new MeasureContext()));
+        data.SetData(VisualTransfer.ClipboardFormat, VisualTransfer.Copy(visuals, Context?.Measures ?? new MeasureContext(),
+            model => Context?.Models.FirstOrDefault(m => m.Metadata.Name == model)?.Metadata));
         data.SetText(string.Join(Environment.NewLine, visuals.Select(v => v.Title).Where(t => !string.IsNullOrEmpty(t))));
         // Their arrangement and sizes, so that they are pasted as they were laid out
         var layout = DashboardLayoutEngine.Extract(Capture().Layout ?? new DashboardLayoutDefinition(), visuals.Select(v => v.Id).ToHashSet());

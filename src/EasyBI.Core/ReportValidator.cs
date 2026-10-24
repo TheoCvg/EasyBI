@@ -57,7 +57,7 @@ public static class ReportValidator
             var where = Strings.Format(Strings.ReportCalculatedMeasure, measure.Caption.Length > 0 ? measure.Caption : measure.Name);
             if (!byName.TryGetValue(measure.Model, out var model))
                 problems.Add(Strings.Format(Strings.ReportUnknownModel, where, measure.Model));
-            else if (MeasureFormula.Validate(measure.Formula, model) is { } problem)
+            else if (MeasureFormula.Validate(measure.Formula, model, report.Measures, measure.Name) is { } problem)
                 problems.Add(Strings.Format(Strings.ReportInvalidFormula, where, problem));
         }
         return problems;
