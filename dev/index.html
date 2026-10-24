@@ -1599,9 +1599,10 @@
 <h1 id="easybi">EasyBI<a class="headerlink" href="#easybi" title="Permanent link">&para;</a></h1>
 <p>A <strong>self-service BI library for WPF</strong>. The developer declares <em>what can be analyzed</em>, end users build their visuals
 by drag-and-drop, and rendering is delegated to interchangeable <strong>connectors</strong> (LiveCharts2, OxyPlot, ...).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a> Source (IQueryable) ─▶ Semantic model ─▶ AnalyticQuery ─▶ ResultSet ─▶ ChartData ─▶ IVisualRenderer
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>                         (developer)       (end user)       (engine)     (pivot)      (connector)
-</code></pre></div>
+<pre class="mermaid"><code>flowchart LR
+  source["Source&lt;br/&gt;IQueryable"] --&gt; model["Semantic model&lt;br/&gt;&lt;i&gt;developer&lt;/i&gt;"] --&gt; query["AnalyticQuery&lt;br/&gt;&lt;i&gt;end user&lt;/i&gt;"]
+  query --&gt; result["ResultSet&lt;br/&gt;&lt;i&gt;engine&lt;/i&gt;"] --&gt; chart["ChartData&lt;br/&gt;&lt;i&gt;pivot&lt;/i&gt;"] --&gt; renderer["IVisualRenderer&lt;br/&gt;&lt;i&gt;connector&lt;/i&gt;"]</code></pre>
+<p><img alt="A dashboard of the sample: key indicators, combined charts, cross-filtering" src="images/dashboard.png" /></p>
 <div class="grid cards">
 <ul>
 <li>

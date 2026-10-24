@@ -1591,6 +1591,7 @@ application's style). <code>FormulaEditing</code> (<code>Tokenize</code>, <code>
 <code>MeasureFormula.Check</code> (the problem and where it is written) give the same help to an application that builds its own
 editor, and <code>CalculatedMeasureEditor</code> exposes it as a view-model (<code>Tabs</code>, <code>Search</code>, <code>OperatorGroups</code>, <code>Suggest</code>,
 <code>Accept</code>, <code>Insert</code>, <code>CurrentCall</code>, <code>Problem</code>):</p>
+<p><img alt="The calculated measure editor: a colored formula, the help of the function at the caret, the operators and the catalog of functions, measures and dimensions" src="../../images/measure-editor.png" /></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>[Margin] / [Revenue]            ([Revenue] - [Margin]) / [Number of sales]            [Margin] * 100 / [Revenue]
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>SUM([Quantity] * [Unit price])  SUM([Revenue]; [Region] = "North") / [Revenue]        DISTINCTCOUNT([Customer])
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>COUNT([Channel] = "Web" AND [Date] &gt;= "2024-01-01")                                   IF([Revenue] &gt; 1000; [Margin]; 0)
