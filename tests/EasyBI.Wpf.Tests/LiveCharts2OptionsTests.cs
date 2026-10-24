@@ -125,6 +125,38 @@ public class LiveCharts2OptionsTests
     });
 
     [Fact]
+    public void A_short_scrollable_chart_keeps_flat_labels_under_its_groups_where_they_fit() => Sta.Run(() =>
+    {
+        // 36 months of 5 regions, 20 bars at a time: too short to turn the labels
+        string[] regions = ["Est", "Île-de-France", "Nord", "Ouest", "Sud"];
+        object?[][] keys = [.. Enumerable.Range(1, 36).SelectMany(m => regions.Select(r => new object?[] { $"M{m:00}", r }))];
+        var chart = new ChartData("Month / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", new double?[keys.Length], null) { Mark = MarkType.Bar }])
+        {
+            CategoryValues = keys,
+        };
+        var renderer = new LiveCharts2Renderer();
+        var visual = Bars.WithRendererOption(renderer.Name, LiveCharts2Renderer.ScrollableOption, true);
+        var grid = (Grid)renderer.Render(new RenderRequest(visual, new ResultSet([], []), chart, BiTheme.Default));
+        var window = new Window { Content = grid, Width = 700, Height = 300, Left = -10000, Top = -10000, ShowActivated = false, ShowInTaskbar = false };
+        window.Show();
+        try
+        {
+            System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+
+            var axis = (Axis)grid.Children.OfType<CartesianChart>().First().XAxes.Last();
+            Assert.Equal(0, axis.LabelsRotation);
+            // At least two regions a month among the 20 bars shown, each one whole
+            var shown = axis.Labels!.Take(20).Where(l => l.Length > 0).ToArray();
+            Assert.True(shown.Length >= 8, string.Join(", ", shown));
+            Assert.All(shown, l => Assert.Contains(l, regions));
+        }
+        finally
+        {
+            window.Close();
+        }
+    });
+
+    [Fact]
     public void Without_the_option_the_chart_has_no_scroll_bar() => Sta.Run(() =>
     {
         Assert.IsType<CartesianChart>(new LiveCharts2Renderer().Render(Request(Bars, 50)));
