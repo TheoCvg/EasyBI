@@ -30,9 +30,15 @@ public static class VisualTransfer
     /// The visuals of copied report JSON, ready to be added to a report: they get new ids, those of a model the target
     /// does not know are left out (texts and images have none), and the calculated measures they use are added to
     /// <paramref name="measures"/>. A measure whose name the target already uses for another definition is added under
-    /// a new name, which its visuals follow. Content that is not copied visuals gives nothing.
+    /// a new name, which its visuals follow. A copied redefinition of a model's measure (<paramref name="metadata"/> tells
+    /// which fields a model declares) is added as a calculated measure of its own unless the target redefines the measure
+    /// the same way, so that pasting never changes the target's measures. Content that is not copied visuals gives nothing.
     /// </summary>
-    public static IReadOnlyList<PastedVisual> Paste(string json, MeasureContext measures, Func<string, bool> hasModel)
+    public static IReadOnlyList<PastedVisual> Paste(
+        string json,
+        MeasureContext measures,
+        Func<string, bool> hasModel,
+        Func<string, ModelMetadata?>? metadata = null)
     {
         ReportDefinition copied;
         try
@@ -49,14 +55,15 @@ public static class VisualTransfer
         {
             var existing = measures.Find(measure.Model, measure.Name) ?? measures.Measures.FirstOrDefault(m => m.Name == measure.Name);
             if (existing == measure) continue;
-            if (existing is null)
+            var declared = metadata?.Invoke(measure.Model)?.Fields.FirstOrDefault(f => f.Name == measure.Name);
+            if (existing is null && declared is null)
             {
                 measures.Set(measure);
                 continue;
             }
             var name = MeasureContext.NewName();
             renamed[(measure.Model, measure.Name)] = name;
-            measures.Set(measure with { Name = name });
+            measures.Set(measure with { Name = name, Caption = measure.Caption.Length > 0 ? measure.Caption : declared?.Caption ?? measure.Name });
         }
 
         return copied.Visuals

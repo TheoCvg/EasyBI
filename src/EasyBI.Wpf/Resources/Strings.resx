@@ -708,4 +708,19 @@
   <data name="FormulaFunctionsHeader" xml:space="preserve">
     <value>FUNCTIONS</value>
   </data>
+  <data name="MeasureRedefinitionHint" xml:space="preserve">
+    <value>This measure comes from the application: your changes apply to this report only. The formula {0} keeps the application's calculation (and the aggregation chosen in each visual); “Restore” brings back its definition.</value>
+  </data>
+  <data name="ResetMeasure" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+  <data name="ResetMeasureConfirm" xml:space="preserve">
+    <value>Restore “{0}” as the application defines it (“{1}”)? The changes made to its name, format and formula in this report will be lost.</value>
+  </data>
+  <data name="FormatCustom" xml:space="preserve">
+    <value>Custom ({0})</value>
+  </data>
+  <data name="RestoreMeasureTooltip" xml:space="preserve">
+    <value>Restore the application's definition</value>
+  </data>
 </root>

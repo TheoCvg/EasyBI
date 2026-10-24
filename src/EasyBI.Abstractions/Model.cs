@@ -12,7 +12,9 @@ public enum DateGrain { None, Year, Quarter, Month, Day }
 
 /// <summary>
 /// Description of a field exposed to the end user. A calculated measure (a ratio...) is computed from the rows of each
-/// group by the model: it has no aggregation to choose.
+/// group by the model: it has no aggregation to choose. <paramref name="Formula"/> is the formula of a measure the
+/// developer declared as one (with field names, as in <see cref="CalculatedMeasure.Formula"/>), which the end user can
+/// read and rewrite.
 /// </summary>
 public sealed record FieldDescriptor(
     string Name,
@@ -21,7 +23,8 @@ public sealed record FieldDescriptor(
     DataType DataType,
     Aggregation? DefaultAggregation = null,
     string? Format = null,
-    bool IsCalculated = false);
+    bool IsCalculated = false,
+    string? Formula = null);
 
 /// <summary>Metadata of a semantic model: what the user is allowed to analyze.</summary>
 public sealed record ModelMetadata(string Name, string Caption, IReadOnlyList<FieldDescriptor> Fields)

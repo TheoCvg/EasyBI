@@ -15,6 +15,9 @@ internal partial class CalculatedMeasureWindow : Window
         InitializeComponent();
         DataContext = _editor = editor;
         editor.PropertyChanged += OnEditorChanged;
+        ResetButton.Visibility = editor.CanReset ? Visibility.Visible : Visibility.Collapsed;
+        if (editor.DeclaredFormula is { } declared) RedefinitionHint.Text = Strings.Format(Strings.MeasureRedefinitionHint, declared);
+        else RedefinitionHint.Visibility = Visibility.Collapsed;
         ShowStatus();
         Loaded += (_, _) => (editor.IsNew ? CaptionBox : FormulaBox).Focus();
     }
@@ -43,6 +46,12 @@ internal partial class CalculatedMeasureWindow : Window
         FormulaBox.CaretIndex = wraps && selected.Length == 0 ? start + inserted.Length - 1 : start + inserted.Length;
         FormulaBox.SelectionLength = 0;
         FormulaBox.Focus();
+    }
+
+    private void OnReset(object sender, RoutedEventArgs e)
+    {
+        _editor.Reset();
+        DialogResult = true;
     }
 
     private void OnOk(object sender, RoutedEventArgs e)

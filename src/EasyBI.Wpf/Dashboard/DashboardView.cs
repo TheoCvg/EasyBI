@@ -685,7 +685,8 @@ public class DashboardView : Control
     {
         if (IsReadOnly || Copied(data) is not { } json) return [];
         var measures = Context?.Measures ?? new MeasureContext();
-        var visuals = VisualTransfer.Paste(json, measures, model => Context?.Models.Any(m => m.Metadata.Name == model) ?? false);
+        var visuals = VisualTransfer.Paste(json, measures, model => Context?.Models.Any(m => m.Metadata.Name == model) ?? false,
+            model => Context?.Models.FirstOrDefault(m => m.Metadata.Name == model)?.Metadata);
         if (visuals.Count == 0) return [];
         if (CopiedLayout(data) is { } copiedLayout) return PasteWithLayout(visuals, copiedLayout);
 

@@ -708,4 +708,19 @@
   <data name="FormulaFunctionsHeader" xml:space="preserve">
     <value>FONCTIONS</value>
   </data>
+  <data name="MeasureRedefinitionHint" xml:space="preserve">
+    <value>Cette mesure vient de l'application : vos modifications s'appliquent à ce rapport seulement. La formule {0} garde le calcul de l'application (et l'agrégation choisie dans chaque visuel) ; « Rétablir » rend sa définition d'origine.</value>
+  </data>
+  <data name="ResetMeasure" xml:space="preserve">
+    <value>Rétablir</value>
+  </data>
+  <data name="ResetMeasureConfirm" xml:space="preserve">
+    <value>Rétablir « {0} » telle que l'application la définit (« {1} ») ? Les modifications de son nom, de son format et de sa formule dans ce rapport seront perdues.</value>
+  </data>
+  <data name="FormatCustom" xml:space="preserve">
+    <value>Personnalisé ({0})</value>
+  </data>
+  <data name="RestoreMeasureTooltip" xml:space="preserve">
+    <value>Rétablir la définition de l'application</value>
+  </data>
 </root>

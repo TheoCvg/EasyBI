@@ -131,6 +131,16 @@ model
 `Ratio` is empty when the denominator sums to zero. With `Calculated`, guard divisions yourself: some databases fail
 on a division by zero.
 
+A measure can also be declared as a formula, written as end users write theirs (see below) with the names of the
+fields declared before it. It runs inside the query too, and end users can read and rewrite it:
+
+```csharp
+model.Formula("SUM([Amount]; [Channel] = \"Web\") / [Amount]", "Web share", "WebShare", format: "P1");
+```
+
+An invalid formula, or one using a field declared after it, throws an `ArgumentException`. `FieldDescriptor.Formula`
+gives the formula of such a measure.
+
 End users create their own from the field list (**+ Calculated measure**, then ✎ and ✕ on hover): a name, a format
 and a formula over the model's fields, typed with their captions and checked as it is typed, with its total as a
 preview:
@@ -156,6 +166,16 @@ functions with their usage and description in the EasyBI language. These measure
 and visual of the context sees them, and a `DashboardView` loads and saves them with its document (undo does not
 remove them). An application that saves reports without a dashboard puts `Context.Measures.Measures` in
 `ReportDefinition.Measures` and loads them back with `Context.Measures.Load(...)`.
+
+End users can also change the measures declared in code (✎ on any measure): the editor starts from the measure's
+formula, or from the measure alone (`[Revenue]`) for one declared with `Measure`, `Ratio` or `Calculated`. Their
+version is saved in the report as a calculated measure **named like the model's measure**, which redefines it for the
+whole report (every visual showing it follows): a formula that is only the measure itself keeps the model's
+computation and the aggregation each visual chooses, and only changes the caption and the format; any other formula
+replaces the computation (`AVERAGE([Revenue])` changes the aggregation), the measure's name in it still meaning the
+model's definition. ↺ in the field list, or **Restore** in the editor, removes the redefinition. `MeasureContext`
+merges both (`MeasuresOf`, `GetField`, `Definition`), and pasting a visual never redefines the target's measures: a
+copied redefinition is added as a calculated measure of its own.
 
 ### Comparisons over time
 
@@ -651,7 +671,8 @@ Slots.Hide(designer, ReportDesignerSlots.FieldPanel);
   are built from `SlotHost`s (`<bi:SlotHost Slot="..." Orientation="Vertical">` with the default content inside), so a
   template of the application keeps the slots it hosts. A template works with the components' read-only properties
   and commands: `ReportDesigner.ViewModel` (the template's data context); `FieldList.ModelOptions`, `Dimensions`,
-  `Measures`, `CanAddMeasure` and `AddMeasureCommand`, `EditMeasureCommand`, `DeleteMeasureCommand`;
+  `Measures`, `CanAddMeasure` and `AddMeasureCommand`, `EditMeasureCommand`, `DeleteMeasureCommand`,
+  `ResetMeasureCommand` (with `ModelField.IsEditable`, `IsReportMeasure` and `IsRedefined`);
   `FilterBar.Slicers`, `SelectionDescription` and `AddFilterCommand`, `RemoveFilterCommand` (on the slicer of its
   data context), `ClearSelectionCommand`; `DashboardView.Panel` and `DashboardCommands`.
 
@@ -930,9 +951,13 @@ and visuals reference them by name like a field:
 
 ```json
 "measures": [
-  { "name": "calc_3f9a1c0d2b7e", "caption": "Margin rate", "model": "sales", "formula": "[Margin] / [Amount]", "format": "P1" }
+  { "name": "calc_3f9a1c0d2b7e", "caption": "Margin rate", "model": "sales", "formula": "[Margin] / [Amount]", "format": "P1" },
+  { "name": "Amount", "caption": "Average revenue", "model": "sales", "formula": "AVERAGE([Amount])", "format": "N0" }
 ]
 ```
+
+A measure named like a measure of its model (the second one) redefines it in the report; an empty `caption` keeps the
+model's.
 
 Text and image visuals carry their content and no model:
 

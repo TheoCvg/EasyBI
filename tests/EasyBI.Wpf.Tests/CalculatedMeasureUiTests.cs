@@ -147,8 +147,8 @@ public class CalculatedMeasureUiTests
 
         var fields = list.Measures.ToArray();
         Assert.Equal(["Chiffre d'affaires", "Marge", "Taux de marge"], fields.Select(f => f.Caption));
-        Assert.True(fields[^1].IsEditable);
-        Assert.False(fields[0].IsEditable);
+        Assert.True(fields[^1].IsReportMeasure);
+        Assert.False(fields[0].IsReportMeasure);
 
         context.Measures.Remove("calc_rate");
         Assert.Equal(2, list.Measures.Count);
@@ -168,6 +168,82 @@ public class CalculatedMeasureUiTests
 
         context.Measures.Remove("calc_rate");
         Assert.Equal(["Amount"], designer.Visual!.Values.Select(v => v.Measure));
+    }
+
+    // --- Measures of the model, redefined in the report
+
+    private static CalculatedMeasure Redefinition(string formula, string caption = "Ventes") =>
+        new() { Name = "Amount", Caption = caption, Model = "sales", Formula = formula };
+
+    [Fact]
+    public void The_field_list_edits_the_model_measures_and_restores_the_redefined_ones() => Sta.Run(() =>
+    {
+        var context = EasyBIContext.Create().AddModel(Model());
+        var list = new FieldList { Context = context };
+        var amount = list.Measures[0];
+        Assert.Equal((true, false, false), (amount.IsEditable, amount.IsRedefined, amount.IsReportMeasure));
+        Assert.Equal("[Amount]", amount.Definition!.Formula);
+
+        context.Measures.Set(Redefinition("AVERAGE([Amount])"));
+
+        amount = list.Measures[0];
+        Assert.Equal(["Ventes", "Marge"], list.Measures.Select(f => f.Caption));
+        Assert.Equal((true, false), (amount.IsRedefined, amount.IsReportMeasure));
+        Assert.Equal("AVERAGE([Amount])", amount.Definition!.Formula);
+        Assert.True(FieldList.ResetMeasureCommand.CanExecute(amount, list));
+        Assert.False(FieldList.DeleteMeasureCommand.CanExecute(amount, list));
+    });
+
+    [Fact]
+    public void The_editor_redefines_a_model_measure_and_restores_it()
+    {
+        var context = EasyBIContext.Create().AddModel(Model());
+        var model = context.Models[0];
+        var editor = new CalculatedMeasureEditor(context, model, MeasureContext.Definition(model.Metadata.GetField("Amount"), "sales"));
+        Assert.Equal((true, false, false), (editor.IsRedefinition, editor.CanReset, editor.IsNew));
+        Assert.Equal(("Chiffre d'affaires", "[Chiffre d'affaires]", "[Chiffre d'affaires]"), (editor.Caption, editor.Formula, editor.DeclaredFormula));
+
+        Assert.True(editor.Save());
+        Assert.Empty(context.Measures.Measures); // saved as the model defines it: nothing to redefine
+
+        editor.Formula = "AVERAGE([Chiffre d'affaires])";
+        editor.Save();
+        Assert.Equal(("Amount", "AVERAGE([Amount])"), (Assert.Single(context.Measures.Measures).Name, context.Measures.Measures[0].Formula));
+
+        var again = new CalculatedMeasureEditor(context, model, context.Measures.Measures[0]);
+        Assert.True(again.CanReset);
+        again.Reset();
+        Assert.Empty(context.Measures.Measures);
+    }
+
+    [Fact]
+    public void The_editor_keeps_a_format_set_by_the_developer()
+    {
+        var context = EasyBIContext.Create().AddModel(SemanticModel.For(Sales, "sales").Measure(s => s.Amount, "CA", format: "#,##0 €"));
+        var model = context.Models[0];
+
+        var editor = new CalculatedMeasureEditor(context, model, MeasureContext.Definition(model.Metadata.GetField("Amount"), "sales"));
+
+        Assert.Equal("#,##0 €", editor.Format.Value);
+        Assert.Contains("#,##0 €", editor.Format.Label);
+        Assert.Equal(5, editor.FormatOptions.Count);
+    }
+
+    [Fact]
+    public void The_designer_shows_a_redefined_measure_and_keeps_its_aggregation_when_only_renamed()
+    {
+        var context = EasyBIContext.Create().AddModel(Model());
+        context.Measures.Set(Redefinition("[Amount]"));
+        var designer = new DesignerViewModel(context);
+        designer.Load(new VisualDefinition { Model = "sales", Axis = [new("Region")], Values = [new("Amount")] });
+
+        Assert.Equal(("Ventes", true), (designer.Values[0].Caption, designer.Values[0].HasAggregation));
+
+        context.Measures.Set(Redefinition("MAX([Amount])", "CA max"));
+        Assert.Equal(("CA max", false), (designer.Values[0].Caption, designer.Values[0].HasAggregation));
+
+        context.Measures.Remove("sales", "Amount");
+        Assert.Equal(("Chiffre d'affaires", true), (designer.Values[0].Caption, designer.Values[0].HasAggregation));
     }
 
     // --- Dashboards

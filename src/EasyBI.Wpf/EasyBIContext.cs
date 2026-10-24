@@ -89,13 +89,14 @@ public sealed class EasyBIContext
     /// </summary>
     public void RefreshData(string? model = null) => DataChanged?.Invoke(this, new DataChangedEventArgs(model));
 
-    /// <summary>The measures a user can pick in a model: the model's own, then the calculated measures of the report.</summary>
-    public IEnumerable<FieldDescriptor> MeasuresOf(ISemanticModel model) =>
-        model.Metadata.Measures.Concat(Measures.For(model.Metadata.Name).Select(MeasureContext.ToField));
+    /// <summary>
+    /// The measures a user can pick in a model: the model's own, as the report redefines them, then the calculated
+    /// measures of the report.
+    /// </summary>
+    public IEnumerable<FieldDescriptor> MeasuresOf(ISemanticModel model) => Measures.MeasuresOf(model.Metadata);
 
-    /// <summary>A field of a model, or one of the report's calculated measures on it.</summary>
-    public FieldDescriptor GetField(ISemanticModel model, string name) =>
-        Measures.Find(model.Metadata.Name, name) is { } measure ? MeasureContext.ToField(measure) : model.Metadata.GetField(name);
+    /// <summary>A field of a model, as the report redefines it, or one of the report's calculated measures on it.</summary>
+    public FieldDescriptor GetField(ISemanticModel model, string name) => Measures.GetField(model.Metadata, name);
 
     public ISemanticModel GetModel(string name) =>
         _models.FirstOrDefault(m => m.Metadata.Name == name)

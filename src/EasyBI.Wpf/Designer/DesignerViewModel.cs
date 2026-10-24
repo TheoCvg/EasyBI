@@ -923,8 +923,10 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         OnPropertyChanged(nameof(Measures));
         if (Visual is not { } visual || _selectedModel is not { } model) return;
         bool Exists(MeasureRef v) => model.Metadata.Fields.Any(f => f.Name == v.Measure) || Context.Measures.Find(model.Metadata.Name, v.Measure) is not null;
-        var calculated = visual.Values.Concat(visual.Tooltip?.Values ?? []).Where(v => !model.Metadata.Fields.Any(f => f.Name == v.Measure)).ToArray();
-        if (calculated.Length == 0) return;
+        // Reloaded when a measure it shows changed: deleted, or defined differently (renamed, redefined, restored...)
+        var shown = visual.Values.Concat(visual.Tooltip?.Values ?? []).ToArray();
+        if (shown.All(Exists) && Values.Concat(TooltipValues).Select(c => c.Field).SequenceEqual(shown.Select(v => Context.GetField(model, v.Measure))))
+            return;
         Reload(visual with
         {
             Values = visual.Values.Where(Exists).ToArray(),

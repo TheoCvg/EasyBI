@@ -70,14 +70,20 @@ internal static class QueryEngine<T>
 
         foreach (var measureRef in query.Measures)
         {
-            if (query.Calculations?.FirstOrDefault(c => c.Name == measureRef.Measure) is { } calculation)
+            var calculation = query.Calculations?.FirstOrDefault(c => c.Name == measureRef.Measure);
+            var declared = metadata.Fields.FirstOrDefault(f => f.Name == measureRef.Measure);
+            if (calculation is not null && (declared is null || !MeasureFormula.IsOnly(calculation.Formula, declared.Name)))
             {
                 // The end user's formula: the model's measures aggregated as declared, functions over the group's rows
                 cells.Add(Formula(calculation, group, metadata, selectors));
-                columns.Add(new ResultColumn(measureRef.Key, calculation.Caption, FieldKind.Measure, DataType.Number, calculation.Format));
+                var named = calculation.Caption is { Length: > 0 } own ? own : declared?.Caption ?? calculation.Name;
+                columns.Add(new ResultColumn(measureRef.Key, named, FieldKind.Measure, DataType.Number, calculation.Format));
                 continue;
             }
-            var field = RequireKind(metadata.GetField(measureRef.Measure), FieldKind.Measure);
+            // A measure of the model, possibly renamed and reformatted by the report
+            var field = RequireKind(declared ?? metadata.GetField(measureRef.Measure), FieldKind.Measure);
+            if (calculation is not null)
+                field = field with { Caption = calculation.Caption is { Length: > 0 } own ? own : field.Caption, Format = calculation.Format };
             // A calculated measure is computed from the group's rows by the model: an aggregation saved with the visual does not apply
             var aggregation = field.IsCalculated ? null : measureRef.Aggregation;
             cells.Add(MeasureCell(group, metadata, selectors, field.Name, aggregation));
@@ -321,6 +327,11 @@ internal static class QueryEngine<T>
         Aggregation? aggregation)
     {
         var field = RequireKind(metadata.GetField(name), FieldKind.Measure);
+        // A formula of the model reads the measures declared before it: no cycle is possible
+        if (field.Formula is { } formula)
+            return MeasureFormula.Build(formula, group, typeof(T),
+                measure => MeasureCell(group, metadata, selectors, measure, null),
+                row => selectors[metadata.GetField(row).Name]);
         var selector = selectors[field.Name];
         return field.IsCalculated
             ? new ParameterReplacer(selector.Parameters[0], group).Visit(selector.Body)
