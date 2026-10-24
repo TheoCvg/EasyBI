@@ -86,6 +86,18 @@ public class LiveCharts2OptionsTests
     });
 
     [Fact]
+    public void Every_category_has_a_label_slot_so_that_only_the_fit_skips_labels() => Sta.Run(() =>
+    {
+        // LiveCharts2 skips labels by itself unless told not to: on top of the fit's step, almost none were left
+        var renderer = new LiveCharts2Renderer();
+        var scrollable = Bars.WithRendererOption(renderer.Name, LiveCharts2Renderer.ScrollableOption, true);
+        var charts = new[] { (CartesianChart)renderer.Render(Request(Bars, 50)), ((Grid)renderer.Render(Request(scrollable, 50))).Children.OfType<CartesianChart>().First() };
+
+        foreach (var axis in charts.Select(c => (Axis)c.XAxes.Last()))
+            Assert.Equal((1d, true), (axis.MinStep, axis.ForceStepToMin));
+    });
+
+    [Fact]
     public void Without_the_option_the_chart_has_no_scroll_bar() => Sta.Run(() =>
     {
         Assert.IsType<CartesianChart>(new LiveCharts2Renderer().Render(Request(Bars, 50)));

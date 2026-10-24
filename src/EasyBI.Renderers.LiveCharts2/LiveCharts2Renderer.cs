@@ -160,9 +160,9 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
             Name = chart.CategoryCaption,
             NameTextSize = 13,
             TextSize = 12,
-            // Short labels of several axis fields are placed by the renderer, not skipped again by LiveCharts2
-            MinStep = levels is null ? 0 : 1,
-            ForceStepToMin = levels is not null,
+            // Every category gets its label slot: the fit decides which ones show (LiveCharts2 would skip its own on top)
+            MinStep = 1,
+            ForceStepToMin = true,
         }, theme);
         var groupAxes = levels?.Groups.Select(groups => GroupAxis(groups, theme)).ToArray() ?? [];
         var view = new CartesianChart
