@@ -109,7 +109,7 @@
     <value>« {0} » inattendu à la position {1}.</value>
   </data>
   <data name="FormulaExpectedOperand" xml:space="preserve">
-    <value>Une mesure, un nombre ou « ( » est attendu à la position {0}.</value>
+    <value>Un champ, un nombre ou « ( » est attendu à la position {0}.</value>
   </data>
   <data name="FormulaMissingParenthesis" xml:space="preserve">
     <value>Il manque une parenthèse fermante.</value>
@@ -118,16 +118,10 @@
     <value>Il manque un crochet fermant « ] ».</value>
   </data>
   <data name="FormulaDecimalComma" xml:space="preserve">
-    <value>Écrivez les nombres décimaux avec un point (0.5).</value>
-  </data>
-  <data name="FormulaUnknownMeasure" xml:space="preserve">
-    <value>Mesure inconnue : « {0} ».</value>
-  </data>
-  <data name="FormulaNotAMeasure" xml:space="preserve">
-    <value>« {0} » n&apos;est pas une mesure.</value>
+    <value>Écrivez les nombres décimaux avec un point (0.5), et séparez les arguments d'une fonction par « ; ».</value>
   </data>
   <data name="FormulaAmbiguous" xml:space="preserve">
-    <value>Plusieurs mesures s&apos;appellent « {0} ».</value>
+    <value>Plusieurs champs s'appellent « {0} ».</value>
   </data>
   <data name="ReportCalculatedMeasure" xml:space="preserve">
     <value>Mesure calculée « {0} »</value>
@@ -242,5 +236,83 @@
   </data>
   <data name="ValidationWaterfall" xml:space="preserve">
     <value>Une cascade demande un axe et une seule valeur, sans légende.</value>
+  </data>
+  <data name="FormulaUnknownField" xml:space="preserve">
+    <value>Champ inconnu : « {0} ».</value>
+  </data>
+  <data name="FormulaMissingQuote" xml:space="preserve">
+    <value>Il manque un guillemet fermant « " ».</value>
+  </data>
+  <data name="FormulaDimensionOutsideFunction" xml:space="preserve">
+    <value>{0} est une dimension : utilisez-la dans une fonction, comme DISTINCTCOUNT({0}) ou SUM(valeur; {0} = "...").</value>
+  </data>
+  <data name="FormulaNotAggregatable" xml:space="preserve">
+    <value>{0} est calculée pour chaque groupe : elle ne peut pas être utilisée dans {1}(...).</value>
+  </data>
+  <data name="FormulaNestedAggregation" xml:space="preserve">
+    <value>{0}(...) ne peut pas être utilisée dans {1}(...).</value>
+  </data>
+  <data name="FormulaUsage" xml:space="preserve">
+    <value>Écrivez {0}.</value>
+  </data>
+  <data name="FormulaUnknownFunction" xml:space="preserve">
+    <value>Fonction inconnue : « {0} ». Les fonctions sont SUM, AVERAGE, MIN, MAX, COUNT, DISTINCTCOUNT et IF.</value>
+  </data>
+  <data name="FormulaMismatch" xml:space="preserve">
+    <value>« {0} » et « {1} » ne peuvent pas être comparés.</value>
+  </data>
+  <data name="FormulaEqualityOnly" xml:space="preserve">
+    <value>Les textes et les valeurs oui/non se comparent seulement avec = ou &lt;&gt; : « {0} ».</value>
+  </data>
+  <data name="FormulaNotADate" xml:space="preserve">
+    <value>{0} n'est pas une date : écrivez-la comme "2024-12-31".</value>
+  </data>
+  <data name="FormulaNotANumber" xml:space="preserve">
+    <value>« {0} » ne donne pas un nombre.</value>
+  </data>
+  <data name="FormulaNotACondition" xml:space="preserve">
+    <value>« {0} » n'est pas une condition : comparez des valeurs, comme [Région] = "Nord".</value>
+  </data>
+  <data name="FormulaUsageSUM" xml:space="preserve">
+    <value>SUM(valeur) ou SUM(valeur; condition)</value>
+  </data>
+  <data name="FormulaUsageAVERAGE" xml:space="preserve">
+    <value>AVERAGE(valeur) ou AVERAGE(valeur; condition)</value>
+  </data>
+  <data name="FormulaUsageMIN" xml:space="preserve">
+    <value>MIN(valeur) ou MIN(valeur; condition)</value>
+  </data>
+  <data name="FormulaUsageMAX" xml:space="preserve">
+    <value>MAX(valeur) ou MAX(valeur; condition)</value>
+  </data>
+  <data name="FormulaUsageCOUNT" xml:space="preserve">
+    <value>COUNT() ou COUNT(condition)</value>
+  </data>
+  <data name="FormulaUsageDISTINCTCOUNT" xml:space="preserve">
+    <value>DISTINCTCOUNT([champ]) ou DISTINCTCOUNT([champ]; condition)</value>
+  </data>
+  <data name="FormulaUsageIF" xml:space="preserve">
+    <value>IF(condition; valeur si vrai; valeur sinon)</value>
+  </data>
+  <data name="FormulaDescriptionSUM" xml:space="preserve">
+    <value>Somme d'une valeur calculée sur chaque ligne du groupe, comme SUM([Quantité] * [Prix]) ; avec une condition, des seules lignes qui la vérifient, comme SUM([CA]; [Région] = "Nord").</value>
+  </data>
+  <data name="FormulaDescriptionAVERAGE" xml:space="preserve">
+    <value>Moyenne d'une valeur calculée sur chaque ligne du groupe ; avec une condition, des seules lignes qui la vérifient.</value>
+  </data>
+  <data name="FormulaDescriptionMIN" xml:space="preserve">
+    <value>Plus petite valeur calculée sur les lignes du groupe ; avec une condition, sur les seules lignes qui la vérifient.</value>
+  </data>
+  <data name="FormulaDescriptionMAX" xml:space="preserve">
+    <value>Plus grande valeur calculée sur les lignes du groupe ; avec une condition, sur les seules lignes qui la vérifient.</value>
+  </data>
+  <data name="FormulaDescriptionCOUNT" xml:space="preserve">
+    <value>Nombre de lignes du groupe ; avec une condition, des lignes qui la vérifient, comme COUNT([Région] = "Nord").</value>
+  </data>
+  <data name="FormulaDescriptionDISTINCTCOUNT" xml:space="preserve">
+    <value>Nombre de valeurs différentes d'un champ dans le groupe, comme DISTINCTCOUNT([Client]) ; les valeurs vides ne sont pas comptées.</value>
+  </data>
+  <data name="FormulaDescriptionIF" xml:space="preserve">
+    <value>Une valeur ou une autre selon une condition, comme IF([CA] &gt; 1000; [Marge]; 0) ; sans la dernière valeur, vide.</value>
   </data>
 </root>

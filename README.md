@@ -132,16 +132,27 @@ model
 on a division by zero.
 
 End users create their own from the field list (**+ Calculated measure**, then ✎ and ✕ on hover): a name, a format
-and a formula over the model's measures, typed with their captions and checked as it is typed, with its total as a
+and a formula over the model's fields, typed with their captions and checked as it is typed, with its total as a
 preview:
 
 ```
 [Margin] / [Revenue]            ([Revenue] - [Margin]) / [Number of sales]            [Margin] * 100 / [Revenue]
+SUM([Quantity] * [Unit price])  SUM([Revenue]; [Region] = "North") / [Revenue]        DISTINCTCOUNT([Customer])
+COUNT([Channel] = "Web" AND [Date] >= "2024-01-01")                                   IF([Revenue] > 1000; [Margin]; 0)
 ```
 
-Measures in brackets are aggregated as in the field list; the operators are `+ - * /` with parentheses and numbers
-with a decimal point; a division by zero gives an empty value. The formula runs in the same query as the other
-measures. These measures live in `EasyBIContext.Measures` (one context per open report): every field list, designer
+A measure on its own is aggregated as in the field list. The aggregation functions `SUM`, `AVERAGE` (or `AVG`), `MIN`,
+`MAX`, `COUNT` and `DISTINCTCOUNT` compute a value from the rows of each group, like the measures declared in code:
+inside them, measures and dimensions are read row by row, and an optional last argument keeps only the rows matching
+a condition (`COUNT()` counts the rows, `COUNT(condition)` those matching it; `DISTINCTCOUNT` does not count empty
+values). `IF(condition; value if true; value otherwise)` works on the group or on each row; without its last value, it
+is empty. Conditions compare values with `= <> < <= > >=` (texts and yes/no values with `=` and `<>` only) and combine
+them with `AND`, `OR` and `NOT`; `TRUE` and `FALSE` are the yes/no values. The operators are `+ - * /` with
+parentheses; numbers take a decimal point, texts and dates go in double quotes (`"North"`, `"2024-12-31"`), and the
+arguments are separated by `;` or `,`. A division by zero gives an empty value. A dimension cannot be used outside a
+function, nor a measure calculated by the model (`Ratio`, `Calculated`) inside one. The formula runs in the same query
+as the other measures (in SQL with EF Core: `CASE WHEN`, `COUNT(DISTINCT ...)`). `MeasureFormula.Functions` lists the
+functions with their usage and description in the EasyBI language. These measures live in `EasyBIContext.Measures` (one context per open report): every field list, designer
 and visual of the context sees them, and a `DashboardView` loads and saves them with its document (undo does not
 remove them). An application that saves reports without a dashboard puts `Context.Measures.Measures` in
 `ReportDefinition.Measures` and loads them back with `Context.Measures.Load(...)`.

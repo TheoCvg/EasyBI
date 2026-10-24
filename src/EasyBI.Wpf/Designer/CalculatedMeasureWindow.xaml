@@ -2,9 +2,22 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:bi="clr-namespace:EasyBI.Wpf"
-        Title="{bi:Localize CalculatedMeasureTitle}" Width="560" SizeToContent="Height" MinWidth="420"
+        Title="{bi:Localize CalculatedMeasureTitle}" Width="620" SizeToContent="Height" MinWidth="420"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False" ResizeMode="CanResizeWithGrip"
         Background="{DynamicResource {x:Static bi:EasyBITheme.BackgroundBrushKey}}" Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}">
+    <Window.Resources>
+        <ItemsPanelTemplate x:Key="Wrap">
+            <WrapPanel />
+        </ItemsPanelTemplate>
+        <DataTemplate x:Key="InsertField">
+            <Button Content="{Binding}" Tag="{Binding}" Padding="8,2" Margin="0,4,6,0" FontSize="12" Click="OnInsert" />
+        </DataTemplate>
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,10,0,0" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+        </Style>
+    </Window.Resources>
     <DockPanel>
         <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="0,1,0,0" Padding="12,8">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -39,28 +52,48 @@
                      AcceptsReturn="False" TextWrapping="Wrap" FontFamily="Consolas" FontSize="14"
                      Text="{Binding Formula, UpdateSourceTrigger=PropertyChanged}" />
 
-            <!-- Insert buttons: the operators, then the model's measures -->
-            <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,6,0,0">
-                <WrapPanel>
-                    <Button Content="+" Tag=" + " Padding="10,2" Margin="0,4,6,0" Click="OnInsert" />
-                    <Button Content="−" Tag=" - " Padding="10,2" Margin="0,4,6,0" Click="OnInsert" />
-                    <Button Content="×" Tag=" * " Padding="10,2" Margin="0,4,6,0" Click="OnInsert" />
-                    <Button Content="÷" Tag=" / " Padding="10,2" Margin="0,4,6,0" Click="OnInsert" />
-                    <Button Content="( )" Tag="()" Padding="10,2" Margin="0,4,6,0" Click="OnInsert" />
-                </WrapPanel>
-                <ItemsControl ItemsSource="{Binding Insertable}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Button Content="{Binding}" Tag="{Binding}" Padding="8,2" Margin="0,4,6,0" FontSize="12" Click="OnInsert" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
+            <!-- Insert buttons: the operators, the functions, then the model's measures and dimensions -->
+            <ScrollViewer Grid.Row="3" Grid.Column="1" Margin="0,6,0,0" MaxHeight="320" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <WrapPanel>
+                        <Button Content="+" Tag=" + " Padding="10,2" Margin="0,4,6,0" Click="OnInsert" />
+                        <Button Content="−" Tag=" - " Padding="10,2" Margin="0,4,6,0" Click="OnInsert" />
+                        <Button Content="×" Tag=" * " Padding="10,2" Margin="0,4,6,0" Click="OnInsert" />
+                        <Button Content="÷" Tag=" / " Padding="10,2" Margin="0,4,6,0" Click="OnInsert" />
+                        <Button Content="( )" Tag="()" Padding="10,2" Margin="0,4,6,0" Click="OnInsert" />
+                        <Button Content="=" Tag=" = " Padding="10,2" Margin="0,4,6,0" Click="OnInsert" />
+                        <Button Content="≠" Tag=" &lt;&gt; " Padding="10,2" Margin="0,4,6,0" Click="OnInsert" />
+                        <Button Content="&lt;" Tag=" &lt; " Padding="10,2" Margin="0,4,6,0" Click="OnInsert" />
+                        <Button Content="&gt;" Tag=" &gt; " Padding="10,2" Margin="0,4,6,0" Click="OnInsert" />
+                        <Button Content="AND" Tag=" AND " Padding="8,2" Margin="0,4,6,0" FontSize="12" Click="OnInsert" />
+                        <Button Content="OR" Tag=" OR " Padding="8,2" Margin="0,4,6,0" FontSize="12" Click="OnInsert" />
+                        <Button Content="NOT" Tag="NOT " Padding="8,2" Margin="0,4,6,0" FontSize="12" Click="OnInsert" />
+                    </WrapPanel>
+
+                    <TextBlock Text="{bi:Localize FormulaFunctionsHeader}" Style="{StaticResource SectionHeader}" />
+                    <ItemsControl ItemsSource="{Binding Functions}" ItemsPanel="{StaticResource Wrap}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Content="{Binding Name}" Tag="{Binding Name, StringFormat={}{0}()}" Padding="8,2" Margin="0,4,6,0"
+                                        FontSize="12" FontFamily="Consolas" Click="OnInsert">
+                                    <Button.ToolTip>
+                                        <StackPanel MaxWidth="360">
+                                            <TextBlock Text="{Binding Usage}" FontFamily="Consolas" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding Description}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Button.ToolTip>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Text="{bi:Localize MeasuresHeader}" Style="{StaticResource SectionHeader}" />
+                    <ItemsControl ItemsSource="{Binding Insertable}" ItemsPanel="{StaticResource Wrap}" ItemTemplate="{StaticResource InsertField}" />
+
+                    <TextBlock Text="{bi:Localize DimensionsHeader}" Style="{StaticResource SectionHeader}" />
+                    <ItemsControl ItemsSource="{Binding InsertableDimensions}" ItemsPanel="{StaticResource Wrap}" ItemTemplate="{StaticResource InsertField}" />
+                </StackPanel>
+            </ScrollViewer>
 
             <TextBlock Grid.Row="4" Grid.Column="1" Margin="0,8,0,0" Text="{bi:Localize MeasureFormulaHint}" TextWrapping="Wrap" FontSize="11"
                        Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />

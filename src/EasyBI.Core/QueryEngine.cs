@@ -72,8 +72,8 @@ internal static class QueryEngine<T>
         {
             if (query.Calculations?.FirstOrDefault(c => c.Name == measureRef.Measure) is { } calculation)
             {
-                // The end user's formula over the model's measures, each aggregated as the model declares it
-                cells.Add(MeasureFormula.Build(calculation.Formula, name => MeasureCell(group, metadata, selectors, name, null)));
+                // The end user's formula: the model's measures aggregated as declared, functions over the group's rows
+                cells.Add(Formula(calculation, group, metadata, selectors));
                 columns.Add(new ResultColumn(measureRef.Key, calculation.Caption, FieldKind.Measure, DataType.Number, calculation.Format));
                 continue;
             }
@@ -89,7 +89,7 @@ internal static class QueryEngine<T>
         foreach (var filter in measureFilters)
         {
             var cell = query.Calculations?.FirstOrDefault(c => c.Name == filter.Field) is { } calculation
-                ? MeasureFormula.Build(calculation.Formula, name => MeasureCell(group, metadata, selectors, name, null))
+                ? Formula(calculation, group, metadata, selectors)
                 : MeasureCell(group, metadata, selectors, filter.Field, null);
             grouped = CallQueryable(grouped, nameof(Queryable.Where), [groupType], Expression.Lambda(Comparison(cell, filter), group));
         }
@@ -326,6 +326,15 @@ internal static class QueryEngine<T>
             ? new ParameterReplacer(selector.Parameters[0], group).Visit(selector.Body)
             : Aggregate(group, selector, aggregation ?? field.DefaultAggregation ?? Aggregation.Sum);
     }
+
+    private static Expression Formula(
+        CalculatedMeasure calculation,
+        ParameterExpression group,
+        ModelMetadata metadata,
+        IReadOnlyDictionary<string, LambdaExpression> selectors) =>
+        MeasureFormula.Build(calculation.Formula, group, typeof(T),
+            name => MeasureCell(group, metadata, selectors, name, null),
+            name => selectors[metadata.GetField(name).Name]);
 
     private static Expression Aggregate(Expression group, LambdaExpression selector, Aggregation aggregation)
     {
