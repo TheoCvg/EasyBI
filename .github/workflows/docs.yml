@@ -1,0 +1,81 @@
+# Publishes the documentation site (docs folder, zensical.toml) on GitHub Pages, served from the gh-pages branch.
+# mike keeps one version per folder of that branch:
+# - a push to develop updates "dev";
+# - a release tag vX.Y.Z publishes "X.Y.Z" and moves the "latest" alias, the default version, to it;
+# - the tags published before the docs folder existed get a version made of their README, once.
+name: Docs
+
+on:
+  push:
+    branches: [develop]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write # mike commits the built site to the gh-pages branch
+
+# One publication at a time: they all commit to gh-pages
+concurrency:
+  group: docs
+  cancel-in-progress: false
+
+env:
+  ZENSICAL_VERSION: '0.0.72'
+  # The fork of mike that builds with Zensical (not on PyPI): pinned, as Zensical is still in alpha
+  MIKE_FORK: 'git+https://github.com/squidfunk/mike.git@2d4ad799442f4592db8ad53b179bfb33db8c69ac'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the tags, for the versions published before the docs
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install Zensical and mike
+        run: pip install "zensical==$ZENSICAL_VERSION" "$MIKE_FORK"
+
+      - name: Prepare the gh-pages branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages --depth=1 || echo "No gh-pages branch yet: mike creates it"
+
+      - name: Versions published before the docs
+        run: |
+          for tag in $(git tag --list 'v*' --sort=version:refname); do
+            git cat-file -e "$tag:docs/index.md" 2>/dev/null && continue
+            version="${tag#v}"
+            mike list | grep -qF "($version)" && continue
+            rm -rf legacy && mkdir -p legacy/docs
+            # Links to files of the repository point to them on GitHub, at that tag
+            git show "$tag:README.md" \
+              | sed -E "s#\]\(((AGENTS|CLAUDE)\.md|src/[^)]*|samples/[^)]*|tests/[^)]*)\)#](https://github.com/TheoCvg/EasyBI/blob/$tag/\1)#g" \
+              > legacy/docs/index.md
+            sed "s/{version}/$version/" .github/docs-legacy.toml > legacy/zensical.toml
+            mike deploy --config-file legacy/zensical.toml --push --title "$version (README)" "$version"
+          done
+          rm -rf legacy
+
+      - name: Development version
+        if: github.ref == 'refs/heads/develop'
+        run: |
+          # Until a release has its documentation, dev is "latest", the version the site opens on
+          released=$(mike list --json | python -c "import json, sys; print(any('latest' in v['aliases'] and v['version'] != 'dev' for v in json.load(sys.stdin)))")
+          if [ "$released" = "True" ]; then
+            mike deploy --push --title "dev (unreleased)" dev
+          else
+            mike deploy --push --update-aliases --title "dev (unreleased)" dev latest
+            mike set-default --push latest
+          fi
+
+      - name: Released version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          mike deploy --push --update-aliases "$version" latest
+          mike set-default --push latest
