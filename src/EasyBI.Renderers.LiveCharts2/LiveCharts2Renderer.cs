@@ -59,7 +59,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
     {
         var chart = request.Chart;
         var view = RenderCartesian(request);
-        var axis = (Axis)view.XAxes.First();
+        var axis = (Axis)view.XAxes.Last(); // the category axis, below its group axes
         double first = -0.5, last = chart.Categories.Count - 0.5;
         view.ZoomMode = ZoomAndPanMode.X;
         if (chart.Categories.Count > ScrollWindow)
@@ -104,7 +104,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         {
             thumb.Xi = axis.MinLimit ?? first;
             thumb.Xj = axis.MaxLimit ?? last;
-            view.Dispatcher.InvokeAsync(() => FitCartesian(view, axis, chart, request.Visual.LegendPosition, request.LegendPager));
+            view.Dispatcher.InvokeAsync(() => FitCartesian(view, axis, Displayed(chart), request.Visual.LegendPosition, request.LegendPager, CategoryLevels.Of(chart)));
         };
 
         // Dragging on the scroll bar centers the visible categories on the pointer
@@ -151,17 +151,25 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         var hasSecondary = chart.Series.Any(s => s.SecondaryAxis);
 
         var theme = request.Theme;
+        // Several axis fields: each category labelled by its innermost field, the outer ones once under their group
+        var levels = CategoryLevels.Of(chart);
+        var displayed = Displayed(chart);
         var categoryAxis = Themed(new Axis
         {
-            Labels = chart.Categories.ToArray(),
+            Labels = displayed.Categories.ToArray(),
             Name = chart.CategoryCaption,
             NameTextSize = 13,
             TextSize = 12,
+            // Short labels of several axis fields are placed by the renderer, not skipped again by LiveCharts2
+            MinStep = levels is null ? 0 : 1,
+            ForceStepToMin = levels is not null,
         }, theme);
+        var groupAxes = levels?.Groups.Select(groups => GroupAxis(groups, theme)).ToArray() ?? [];
         var view = new CartesianChart
         {
             Series = [.. series, .. Outlines(formatting, chart.Categories.Count)],
-            XAxes = [categoryAxis],
+            // LiveCharts2 stacks the first axis outermost: the outermost field's groups first, the categories last
+            XAxes = [.. groupAxes.Reverse(), categoryAxis],
             YAxes = hasSecondary
                 ? [ValueAxis(chart, theme, secondary: false), ValueAxis(chart, theme, secondary: true)]
                 : [ValueAxis(chart, theme, secondary: false)],
@@ -172,12 +180,22 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         var far = chart.Series.SelectMany(s => s.Values).OfType<double>()
             .Concat(formatting.Bands.SelectMany(b => new[] { b.From, b.To }).OfType<double>())
             .Select(Math.Abs).DefaultIfEmpty(1).Max() * 1000 + 1;
-        view.Sections = [.. formatting.Bands.Select(band => Zone(band, theme, far))];
+        view.Sections = [.. formatting.Bands.Select(band => Zone(band, theme, far)), .. GroupSeparators(levels, theme)];
+        // Series and zones are placed along the category axis
+        foreach (var scaled in view.Series.OfType<LiveChartsCore.Kernel.Sketches.ICartesianSeries>()) scaled.ScalesXAt = groupAxes.Length;
+        foreach (var section in view.Sections.OfType<RectangularSection>()) section.ScalesXAt = groupAxes.Length;
+        if (levels is not null)
+        {
+            // The group axes have no series: they follow the category axis, whose range is set for them to follow
+            categoryAxis.MinLimit = -0.5;
+            categoryAxis.MaxLimit = chart.Categories.Count - 0.5;
+            view.UpdateStarted += _ => FitGroups(view, categoryAxis, groupAxes, levels);
+        }
         // Legend, labels and axis title adapt to the room the chart actually gets
-        view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, chart, request.Visual.LegendPosition, request.LegendPager);
+        view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, displayed, request.Visual.LegendPosition, request.LegendPager, levels);
         // The host's pager turns the pages of the legend
         if (request.LegendPager is { } pager)
-            pager.Changed += (_, _) => FitCartesian(view, categoryAxis, chart, request.Visual.LegendPosition, pager);
+            pager.Changed += (_, _) => FitCartesian(view, categoryAxis, displayed, request.Visual.LegendPosition, pager, levels);
 
         // Only bars: the bar under the pointer (category + legend series).
         // With lines, areas or points: the points closest to the pointer's X position.
@@ -265,26 +283,124 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         return view;
     }
 
+    private const double GroupRowHeight = 26;
+
+    // The axis labels' font, to measure them as they are drawn
+    private static readonly SKFont LabelFont = new(SKTypeface.Default, 12);
+
+    // The width the plot gives the categories: LiveCharts2's once it has drawn, an estimate before
+    private static double PlotWidth(CartesianChart view) =>
+        view.CoreChart?.DrawMarginSize.Width is > 0 and var width ? width : Math.Max(1, view.ActualWidth - 80);
+
+    /// <summary>
+    /// The labels shown under the categories: each label, measured, where it does not overlap the previous label shown
+    /// (blank otherwise). Short labels of different lengths get as many as fit, not one every n.
+    /// </summary>
+    private static string[] PlaceLabels(CartesianChart view, Axis categoryAxis, IReadOnlyList<string> categories, CategoryLevels levels)
+    {
+        var (min, max) = (categoryAxis.MinLimit ?? -0.5, categoryAxis.MaxLimit ?? categories.Count - 0.5);
+        var pitch = PlotWidth(view) / Math.Max(1, max - min);
+        var shown = new string[categories.Count];
+        var end = double.NegativeInfinity;
+        for (var i = 0; i < categories.Count; i++)
+        {
+            var center = (i - min) * pitch;
+            var half = LabelFont.MeasureText(categories[i]) / 2 + 4;
+            shown[i] = center - half >= end ? categories[i] : "";
+            if (shown[i].Length > 0) end = center + half;
+        }
+        // Fewer than two labels a group (one would repeat the same name): the groups' labels say enough
+        var groups = levels.Groups[0];
+        var needed = Math.Min(2, (double)categories.Count / groups.Count) * groups.Count;
+        return shown.Count(l => l.Length > 0) < needed * 0.9 ? new string[categories.Count].Select(_ => "").ToArray() : shown;
+    }
+
+    // The chart as its category axis labels it: by the innermost axis field when the axis has several
+    private static ChartData Displayed(ChartData chart) =>
+        CategoryLevels.Of(chart) is { } levels ? chart with { Categories = levels.Labels } : chart;
+
+    /// <summary>
+    /// An axis below the category axis for an outer axis field: its value once at the center of each group of
+    /// categories sharing it.
+    /// </summary>
+    private static Axis GroupAxis(IReadOnlyList<CategoryGroup> groups, BiTheme theme)
+    {
+        var axis = Themed(new Axis
+        {
+            CustomSeparators = groups.Select(g => g.Center).ToArray(),
+            Labeler = value => groups.FirstOrDefault(g => Math.Abs(g.Center - value) < 0.01)?.Label ?? "",
+            TextSize = 12,
+            NameTextSize = 13,
+            SeparatorsPaint = null,
+            TicksPaint = null,
+        }, theme);
+        // The groups stand out from the category labels
+        if (Parse(theme.Foreground) is { } text) axis.LabelsPaint = new SolidColorPaint(text);
+        return axis;
+    }
+
+    // Lines between the groups of the outermost field, across the plot
+    private static IEnumerable<RectangularSection> GroupSeparators(CategoryLevels? levels, BiTheme theme) =>
+        levels?.Groups[^1].Skip(1).Select(group => new RectangularSection
+        {
+            Xi = group.First - 0.5,
+            Xj = group.First - 0.5,
+            Stroke = new SolidColorPaint(Parse(theme.GridLine) ?? new SKColor(0xD1, 0xD5, 0xDB), 1),
+        }) ?? [];
+
+    /// <summary>
+    /// The group axes show the categories the category axis shows (zoom, scroll), and every n-th group label only
+    /// when the groups are too narrow for their labels.
+    /// </summary>
+    private static void FitGroups(CartesianChart view, Axis categoryAxis, IReadOnlyList<Axis> groupAxes, CategoryLevels levels)
+    {
+        var (min, max) = (categoryAxis.MinLimit ?? -0.5, categoryAxis.MaxLimit ?? levels.Labels.Count - 0.5);
+        var perCategory = PlotWidth(view) / Math.Max(1, max - min);
+        for (var level = 0; level < groupAxes.Count; level++)
+        {
+            var axis = groupAxes[level];
+            if (axis.MinLimit != min) axis.MinLimit = min;
+            if (axis.MaxLimit != max) axis.MaxLimit = max;
+            var groups = levels.Groups[level];
+            var widest = groups.Max(g => LabelFont.MeasureText(g.Label)) + 16;
+            var narrowest = groups.Where(g => g.First + g.Count > min && g.First < max).Select(g => g.Count).DefaultIfEmpty(1).Average() * perCategory;
+            var step = Math.Max(1, (int)Math.Ceiling(widest / Math.Max(1, narrowest)));
+            var shown = groups.Where((_, i) => i % step == 0).Select(g => g.Center).ToArray();
+            if (!shown.SequenceEqual(axis.CustomSeparators ?? [])) axis.CustomSeparators = shown;
+        }
+    }
+
     // The first series of the view are the chart's, in its order: the legend's entries
-    private static void FitCartesian(CartesianChart view, Axis categoryAxis, ChartData chart, ChartLegend preferred, LegendPager? pager)
+    private static void FitCartesian(CartesianChart view, Axis categoryAxis, ChartData chart, ChartLegend preferred, LegendPager? pager,
+        CategoryLevels? levels = null)
     {
         if (view.ActualWidth <= 0) return;
         // A zoomed or scrollable chart shows part of the categories: labels are fitted to those
         var shown = categoryAxis.MaxLimit - categoryAxis.MinLimit is double range && range < chart.Categories.Count
             ? chart with { Categories = chart.Categories.Take(Math.Max(1, (int)Math.Ceiling(range))).ToArray() }
             : chart;
-        var fit = ChartFitting.Cartesian(shown, view.ActualWidth, view.ActualHeight, preferred);
+        // Each group axis below the category labels takes a row of the height
+        var fit = ChartFitting.Cartesian(shown, view.ActualWidth, view.ActualHeight - (view.XAxes.Count() - 1) * GroupRowHeight, preferred);
 
         // Only assign what changed: every assignment redraws the chart
         var legend = Position(fit.Legend);
         if (view.LegendPosition != legend) view.LegendPosition = legend;
         ShowLegendPage(view.Series.Take(chart.Series.Count), ChartFitting.LegendEntries(fit, pager));
-        if (categoryAxis.LabelsRotation != fit.LabelRotation) categoryAxis.LabelsRotation = fit.LabelRotation;
+        // Short labels under groups stay horizontal, each one shown where it does not overlap the previous one
+        var rotation = levels is null ? fit.LabelRotation : 0;
+        if (categoryAxis.LabelsRotation != rotation) categoryAxis.LabelsRotation = rotation;
         // Skipped labels are blanked: LiveCharts2 does not apply a step to an axis made of labels
-        var labels = chart.Categories.Select((c, i) => i % fit.LabelStep == 0 ? c : "").ToArray();
+        var labels = levels is null
+            ? chart.Categories.Select((c, i) => i % fit.LabelStep == 0 ? c : "").ToArray()
+            : PlaceLabels(view, categoryAxis, chart.Categories, levels);
         if (!labels.SequenceEqual(categoryAxis.Labels ?? [])) categoryAxis.Labels = labels;
+        // The axis title goes below everything: under the outermost group axis
         var title = fit.ShowAxisTitles ? chart.CategoryCaption : null;
-        if (categoryAxis.Name != title) categoryAxis.Name = title;
+        foreach (var axis in view.XAxes.OfType<Axis>())
+        {
+            var name = axis == view.XAxes.First() ? title : null;
+            if (axis.Name != name) axis.Name = name;
+        }
     }
 
     private static LegendPosition Position(ChartLegend placement) => placement switch
