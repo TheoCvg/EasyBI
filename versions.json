@@ -1,5 +1,12 @@
 [
   {
+    "version": "dev",
+    "title": "dev (unreleased)",
+    "aliases": [
+      "latest"
+    ]
+  },
+  {
     "version": "0.4.0-beta.1",
     "title": "0.4.0-beta.1 (README)",
     "aliases": []
