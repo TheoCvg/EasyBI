@@ -194,6 +194,9 @@ public static class DesignerPropertySections
     /// <summary>The selected filter: its editor.</summary>
     public const string Filter = "Filter";
 
+    /// <summary>The selected dimension's value labels: texts the visual shows instead of its values.</summary>
+    public const string ValueLabels = "ValueLabels";
+
     /// <summary>The visual: title, sort, Top N.</summary>
     public const string Visual = "Visual";
 

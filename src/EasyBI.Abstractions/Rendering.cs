@@ -24,6 +24,12 @@ public sealed record ChartData(string? CategoryCaption, IReadOnlyList<string> Ca
 {
     /// <summary>Raw values of the axis dimensions for each category (same order as <see cref="Categories"/>).</summary>
     public IReadOnlyList<IReadOnlyList<object?>> CategoryValues { get; init; } = [];
+
+    /// <summary>
+    /// The text of each axis dimension for each category, as the visual shows it (its labels applied); empty when
+    /// built without them. <see cref="Categories"/> joins them.
+    /// </summary>
+    public IReadOnlyList<IReadOnlyList<string>> CategoryLabels { get; init; } = [];
 }
 
 /// <summary>

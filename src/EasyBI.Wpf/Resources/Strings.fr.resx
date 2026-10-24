@@ -687,4 +687,13 @@
   <data name="LegendHidden" xml:space="preserve">
     <value>Masquée</value>
   </data>
+  <data name="PropertiesValueLabels" xml:space="preserve">
+    <value>Libellés des valeurs</value>
+  </data>
+  <data name="ValueLabelsHint" xml:space="preserve">
+    <value>Texte affiché à la place de chaque valeur dans ce visuel (axe, légende, infobulles, tableaux). Laisser vide pour afficher la valeur.</value>
+  </data>
+  <data name="ValueLabelPlaceholder" xml:space="preserve">
+    <value>Texte affiché à la place de cette valeur ; vide : la valeur elle-même</value>
+  </data>
 </root>

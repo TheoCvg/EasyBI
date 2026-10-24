@@ -36,7 +36,7 @@ public sealed record CategoryLevels(IReadOnlyList<string> Labels, IReadOnlyList<
             for (var i = 1; i <= keys.Count; i++)
             {
                 if (i < keys.Count && Enumerable.Range(0, level + 1).All(l => Equals(keys[i][l], keys[first][l]))) continue;
-                runs.Add(new CategoryGroup(ValueFormatter.Display(keys[first][level]), first, i - first));
+                runs.Add(new CategoryGroup(Text(chart, first, level), first, i - first));
                 first = i;
             }
             groups.Add(runs);
@@ -44,6 +44,12 @@ public sealed record CategoryLevels(IReadOnlyList<string> Labels, IReadOnlyList<
         // Mostly groups of one category: not ordered by the outer fields
         if (groups[0].Count > keys.Count * 0.75) return null;
 
-        return new CategoryLevels([.. keys.Select(k => ValueFormatter.Display(k[k.Count - 1]))], groups);
+        return new CategoryLevels([.. keys.Select((_, i) => Text(chart, i, depth - 1))], groups);
     }
+
+    // The text of a category's value for a field, with the visual's labels when the chart has them
+    private static string Text(ChartData chart, int category, int level) =>
+        chart.CategoryLabels.Count > category && chart.CategoryLabels[category].Count > level
+            ? chart.CategoryLabels[category][level]
+            : ValueFormatter.Display(chart.CategoryValues[category][level]);
 }

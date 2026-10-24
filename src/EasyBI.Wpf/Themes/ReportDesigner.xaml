@@ -70,6 +70,31 @@
                 <local:FilterEditor />
             </DataTemplate>
 
+            <!-- And the labels of the selected dimension's values: each value, and the text shown instead -->
+            <DataTemplate DataType="{x:Type local:ValueLabelsViewModel}">
+                <StackPanel>
+                    <TextBlock Text="{bi:Localize ValueLabelsHint}" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,6"
+                               Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                    <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding Values}" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type local:ValueLabelViewModel}">
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Original}" ToolTip="{Binding Original}" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis" Margin="0,0,6,0" />
+                                        <TextBox Grid.Column="1" Text="{Binding Text}" ToolTip="{bi:Localize ValueLabelPlaceholder}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+            </DataTemplate>
+
             <!-- So is the format of the selected measure -->
             <DataTemplate DataType="{x:Type local:ValueFormatViewModel}">
                 <local:ValueFormatEditor />
