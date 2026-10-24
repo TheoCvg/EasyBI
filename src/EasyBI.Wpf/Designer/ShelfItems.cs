@@ -55,6 +55,8 @@ public sealed class ShelfItemViewModel : ObservableObject
     private bool _isSelected;
     private ListSortDirection? _sortDirection;
     private DateGrain _grain;
+    private IReadOnlyDictionary<string, string>? _labels;
+    private ValueLabelsViewModel? _valueLabels;
     private TimeCalculation _time;
     private Aggregation _aggregation;
     private MarkType? _seriesMark;
@@ -215,7 +217,34 @@ public sealed class ShelfItemViewModel : ObservableObject
         internal set => SetProperty(ref _showSeriesOptions, value);
     }
 
-    public FieldRef ToFieldRef() => new(Field.Name, Grain);
+    public FieldRef ToFieldRef() => new(Field.Name, Grain) { Labels = _labels };
+
+    /// <summary>
+    /// The texts the visual shows instead of some values of this dimension (keyed by the value's invariant text).
+    /// Not for dates: their periods are shown by their grain.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? Labels
+    {
+        get => _labels;
+        set
+        {
+            _labels = value is { Count: > 0 } ? value : null;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Whether the visual can show other texts for the values of this field: a dimension other than a date.</summary>
+    public bool HasValueLabels => Field.Kind == FieldKind.Dimension && Field.DataType != DataType.Date;
+
+    /// <summary>The editor of <see cref="Labels"/> (the field's values, loaded once from the model).</summary>
+    internal ValueLabelsViewModel ValueLabels(ISemanticModel model) => _valueLabels ??= new ValueLabelsViewModel(this, model);
+
+    /// <summary>Shows <paramref name="text"/> instead of <paramref name="value"/>; a blank text shows the value again.</summary>
+    public void SetLabel(object? value, string? text)
+    {
+        Labels = ToFieldRef().WithLabel(value, text).Labels;
+        _changed();
+    }
 
     /// <summary>The format of this measure's values (Values shelf), edited in the properties panel.</summary>
     public ValueFormatViewModel Format => _format ??= new ValueFormatViewModel(null, _changed);

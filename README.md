@@ -325,6 +325,27 @@ or below), it shows them **by pages**: a small pager (◀ 2/5 ▶, `ChartLegendP
 appears over the chart in the corner next to the legend; its buttons and the mouse wheel turn the pages. (OxyPlot names
 the slices of a pie around it instead of in a legend: a hidden legend drops those names.)
 
+### Several axis fields
+
+An axis with several fields (Month, then Region) is drawn as a hierarchy: each bar labelled by the innermost field
+("North"), each outer value once, centered under its group of bars ("2024-01"), with a line between the groups. When
+the bars are too narrow for their labels, every n-th group label shows, and the innermost labels give way to the groups'
+when fewer than two a group would fit. Categories not ordered by their outer fields (sorted on a measure) keep joined
+labels ("2024-01 / North"). Tooltips keep the whole category.
+
+`CategoryLevels.Of(request.Chart)` (EasyBI.Core) gives a connector the short labels and the groups of each outer field
+(`CategoryGroup`: label, first category, count, center); LiveCharts2 draws the groups on extra X axes, OxyPlot on axes of
+the next tiers.
+
+### Value labels
+
+A visual can show its own text for values of a dimension: "IDF" for "Île-de-France". Selecting a dimension's chip in the
+designer shows **Value labels**: pick a value (type to search among many), type its text and add it; each label can be
+edited or removed. The labels apply everywhere in the visual (axis, groups, legend, tooltips, tables, matrices, the
+selection's description); filters and cross-filtering keep the values themselves. They are saved with the visual's field
+(`FieldRef.Labels`, keyed by the value's invariant text, omitted when there are none); `field.Display(value)` and
+`field.WithLabel(value, text)` (EasyBI.Core) read and set them. Dates have none: their periods follow their grain.
+
 ## Dashboard
 
 Arranging visuals is a WPF concern: the report (`easybi/v1`) never contains a layout. The dashboard is
@@ -866,7 +887,7 @@ public FrameworkElement Render(RenderRequest request)
       "title": "Revenue by region and channel",
       "model": "sales",
       "mark": "Bar",
-      "axis": [ { "field": "Region", "grain": "None" } ],
+      "axis": [ { "field": "Region", "grain": "None", "labels": { "Île-de-France": "IDF" } } ],
       "legend": { "field": "Channel", "grain": "None" },
       "legendPosition": "Bottom",
       "values": [ { "measure": "Amount" }, { "measure": "Count", "mark": "Line", "secondaryAxis": true } ],

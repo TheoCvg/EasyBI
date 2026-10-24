@@ -16,7 +16,7 @@ public sealed record SelectedElement(IReadOnlyList<FieldRef> Fields, IReadOnlyLi
     public bool SameAs(SelectedElement other) => Fields.SequenceEqual(other.Fields) && Keys.SequenceEqual(other.Keys);
 
     internal string Describe(ModelMetadata metadata) =>
-        string.Join(", ", Fields.Select((f, i) => $"{Caption(metadata, f)} = {ValueFormatter.Display(Values[i])}"));
+        string.Join(", ", Fields.Select((f, i) => $"{Caption(metadata, f)} = {f.Display(Values[i])}"));
 
     internal static string Caption(ModelMetadata metadata, FieldRef field) =>
         DateGrains.Caption(metadata.Fields.FirstOrDefault(f => f.Name == field.Field)?.Caption ?? field.Field, field.Grain);
@@ -51,8 +51,8 @@ public sealed record CrossFilter(string SourceVisualId, string Model, IReadOnlyL
         var or = $" {Strings.SelectionOr} ";
         if (VaryingField() is { } varying)
             return string.Join(", ", Elements[0].Fields.Select((f, i) => $"{SelectedElement.Caption(metadata, f)} = " + (i == varying
-                ? string.Join(or, Elements.Select(e => ValueFormatter.Display(e.Values[i])).Distinct())
-                : ValueFormatter.Display(Elements[0].Values[i]))));
+                ? string.Join(or, Elements.Select(e => f.Display(e.Values[i])).Distinct())
+                : f.Display(Elements[0].Values[i]))));
         return string.Join(or, Elements.Select(e => $"({e.Describe(metadata)})"));
     }
 

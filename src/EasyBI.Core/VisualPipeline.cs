@@ -111,8 +111,8 @@ public static class ChartDataBuilder
                 if (!seriesIndex.TryGetValue(seriesKey, out var s))
                 {
                     var name = legend < 0 ? column.Caption
-                        : measures.Length == 1 ? ValueFormatter.Display(legendValue)
-                        : $"{ValueFormatter.Display(legendValue)} · {column.Caption}";
+                        : measures.Length == 1 ? visual.Legend!.Display(legendValue)
+                        : $"{visual.Legend!.Display(legendValue)} · {column.Caption}";
                     seriesIndex[seriesKey] = s = series.Count;
                     series.Add((name, column.Format, legendValue, m, []));
                 }
@@ -122,9 +122,11 @@ public static class ChartDataBuilder
         }
 
         var caption = axis.Length == 0 ? null : string.Join(" / ", axis.Select(i => result.Columns[i].Caption));
+        // The visual's labels replace the values they name
+        var labels = categories.Select(c => (IReadOnlyList<string>)[.. c.Select((value, i) => visual.Axis[i].Display(value))]).ToArray();
         return new ChartData(
             caption,
-            categories.Select(c => c.Length == 0 ? Strings.Total : string.Join(" / ", c.Select(ValueFormatter.Display))).ToArray(),
+            labels.Select(c => c.Count == 0 ? Strings.Total : string.Join(" / ", c)).ToArray(),
             series.Select(s => new ChartSeries(
                 s.Name,
                 Enumerable.Range(0, categories.Count).Select(i => s.Values.GetValueOrDefault(i)).ToArray(),
@@ -137,6 +139,7 @@ public static class ChartDataBuilder
             }).ToArray())
         {
             CategoryValues = categories,
+            CategoryLabels = labels,
         };
     }
 

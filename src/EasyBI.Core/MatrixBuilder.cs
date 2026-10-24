@@ -71,8 +71,8 @@ public static class MatrixBuilder
         double?[] Values(ResultSet result, object?[] row) =>
             [.. measures.Select(m => result.IndexOf(m.Key) is var i and >= 0 ? ToNumber(row[i]) : null)];
 
-        var rowMembers = rows?.Rows.Select(r => Member(r.Take(axis))).ToArray() ?? [];
-        var columnMembers = columns?.Rows.Select(r => Member(r.Take(1))).ToArray() ?? [];
+        var rowMembers = rows?.Rows.Select(r => Member(r.Take(axis), visual.Axis)).ToArray() ?? [];
+        var columnMembers = columns?.Rows.Select(r => Member(r.Take(1), [visual.Legend!])).ToArray() ?? [];
         var rowIndex = Index(rowMembers);
         var columnIndex = Index(columnMembers);
 
@@ -101,10 +101,11 @@ public static class MatrixBuilder
         };
     }
 
-    private static MatrixMember Member(IEnumerable<object?> values)
+    // A member's values with their texts: the visual's labels, else the formatted values
+    private static MatrixMember Member(IEnumerable<object?> values, IReadOnlyList<FieldRef> fields)
     {
         object?[] array = [.. values];
-        return new MatrixMember(array, [.. array.Select(ValueFormatter.Display)]);
+        return new MatrixMember(array, [.. array.Select((value, i) => fields[i].Display(value))]);
     }
 
     private static Dictionary<string, int> Index(IReadOnlyList<MatrixMember> members)

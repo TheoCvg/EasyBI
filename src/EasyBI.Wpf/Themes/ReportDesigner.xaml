@@ -70,6 +70,51 @@
                 <local:FilterEditor />
             </DataTemplate>
 
+            <!-- And the labels of the selected dimension's values, added one at a time: those given, then a value to pick -->
+            <DataTemplate DataType="{x:Type local:ValueLabelsViewModel}">
+                <StackPanel>
+                    <TextBlock Text="{bi:Localize ValueLabelsHint}" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,6"
+                               Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                    <ItemsControl x:Name="Given" ItemsSource="{Binding Labels}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type local:ValueLabelViewModel}">
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Original}" ToolTip="{Binding Original}" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" Margin="0,0,6,0" />
+                                    <TextBox Grid.Column="1" Text="{Binding Text}" />
+                                    <Button Grid.Column="2" Content="✕" Margin="4,0,0,0" Padding="5,0" MinWidth="0" Cursor="Hand"
+                                            ToolTip="{bi:Localize ValueLabelRemove}" CommandParameter="{Binding}"
+                                            Command="{Binding DataContext.RemoveCommand, ElementName=Given}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <!-- Editable: typing the start of a value finds it among many -->
+                        <ComboBox ItemsSource="{Binding AvailableValues}" SelectedItem="{Binding NewValue}" DisplayMemberPath="Label"
+                                  IsEditable="True" IsTextSearchEnabled="True" TextSearch.TextPath="Label" Margin="0,0,6,0"
+                                  ToolTip="{bi:Localize ValueLabelPick}" />
+                        <TextBox Grid.Column="1" Text="{Binding NewText, UpdateSourceTrigger=PropertyChanged}" ToolTip="{bi:Localize ValueLabelText}">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter" Command="{Binding AddCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <Button Grid.Column="2" Content="+" Margin="4,0,0,0" Padding="6,0" MinWidth="0" Cursor="Hand"
+                                Command="{Binding AddCommand}" ToolTip="{bi:Localize ValueLabelAdd}" />
+                    </Grid>
+                </StackPanel>
+            </DataTemplate>
+
             <!-- So is the format of the selected measure -->
             <DataTemplate DataType="{x:Type local:ValueFormatViewModel}">
                 <local:ValueFormatEditor />

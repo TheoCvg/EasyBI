@@ -490,7 +490,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
                 break;
             case ShelfItemViewModel chip:
                 Collection(chip.Shelf).Remove(chip);
-                Insert(Collection(shelf), index, new ShelfItemViewModel(chip.Field, shelf, Rebuild) { Grain = chip.Grain, SortDirection = chip.SortDirection });
+                Insert(Collection(shelf), index, new ShelfItemViewModel(chip.Field, shelf, Rebuild) { Grain = chip.Grain, SortDirection = chip.SortDirection, Labels = chip.Labels });
                 break;
             case FilterItemViewModel filter:
                 Move(Filters, filter, index);
@@ -646,9 +646,9 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         SyncSelectedMark();
         OnPropertyChanged(nameof(Top));
         foreach (var a in visual.Axis)
-            Axis.Add(new(metadata.GetField(a.Field), Shelf.Axis, Rebuild) { Grain = a.Grain });
+            Axis.Add(new(metadata.GetField(a.Field), Shelf.Axis, Rebuild) { Grain = a.Grain, Labels = a.Labels });
         if (visual.Legend is { } legend)
-            Legend.Add(new(metadata.GetField(legend.Field), Shelf.Legend, Rebuild) { Grain = legend.Grain });
+            Legend.Add(new(metadata.GetField(legend.Field), Shelf.Legend, Rebuild) { Grain = legend.Grain, Labels = legend.Labels });
         foreach (var v in visual.Values)
         {
             var field = Context.GetField(model, v.Measure);
@@ -802,6 +802,9 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
                     DesignerProperty.Choice("Sort", () => Strings.Sort, ShelfItemViewModel.SortOptions,
                         () => chip.SortDirection, v => chip.SortDirection = v, () => chip.CanSort, () => Strings.SortHint),
                 ]));
+                if (chip.HasValueLabels && _selectedModel is { } model)
+                    sections.Add(new DesignerPropertySection(DesignerPropertySections.ValueLabels, () => Strings.PropertiesValueLabels,
+                        [DesignerProperty.Custom("Labels", () => Strings.PropertiesValueLabels, chip.ValueLabels(model))]));
                 if (chip.IsValue)
                 {
                     chip.Format.Target = ValueFormatViewModel.TargetOf(SelectedMark);

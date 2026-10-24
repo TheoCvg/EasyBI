@@ -687,4 +687,22 @@
   <data name="LegendHidden" xml:space="preserve">
     <value>Hidden</value>
   </data>
+  <data name="PropertiesValueLabels" xml:space="preserve">
+    <value>Value labels</value>
+  </data>
+  <data name="ValueLabelsHint" xml:space="preserve">
+    <value>Pick a value and the text this visual shows instead (axis, legend, tooltips, tables).</value>
+  </data>
+  <data name="ValueLabelPick" xml:space="preserve">
+    <value>Value to rename (type to search)</value>
+  </data>
+  <data name="ValueLabelText" xml:space="preserve">
+    <value>Text shown instead of the value</value>
+  </data>
+  <data name="ValueLabelAdd" xml:space="preserve">
+    <value>Add this label</value>
+  </data>
+  <data name="ValueLabelRemove" xml:space="preserve">
+    <value>Remove this label: the value shows as itself again</value>
+  </data>
 </root>

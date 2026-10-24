@@ -52,7 +52,10 @@ public sealed class TableRenderer : IVisualRenderer
             if (column.Role == FieldKind.Measure)
                 binding.StringFormat = $"{{0:{column.Format ?? "#,##0.##"}}}";
             else
-                binding.Converter = DisplayConverter.Instance;
+                // The visual's labels for the values of its dimension
+                binding.Converter = request.Visual.Axis.Append(request.Visual.Legend).FirstOrDefault(f => f?.Key == column.Key) is { Labels: not null } field
+                    ? new LabelConverter(field)
+                    : DisplayConverter.Instance;
 
             var style = new Style(typeof(TextBlock));
             if (column.Role == FieldKind.Measure)
@@ -138,6 +141,14 @@ public sealed class TableRenderer : IVisualRenderer
 internal sealed class StyleConverter(ValueStyler styler) : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => styler.Style(TableRenderer.Number(value));
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
+/// <summary>Displays the values of a dimension with the visual's labels for them.</summary>
+internal sealed class LabelConverter(FieldRef field) : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => field.Display(value);
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
 }

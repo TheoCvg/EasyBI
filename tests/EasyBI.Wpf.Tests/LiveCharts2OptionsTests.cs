@@ -58,6 +58,45 @@ public class LiveCharts2OptionsTests
         Assert.Null(((Axis)grid.Children.OfType<CartesianChart>().First().XAxes.First()).MaxLimit);
     });
 
+    // Two months of three regions: an axis with two fields
+    private static RenderRequest TwoLevels()
+    {
+        object?[][] keys = [["2024-01", "Est"], ["2024-01", "Nord"], ["2024-01", "Sud"], ["2024-02", "Est"], ["2024-02", "Nord"], ["2024-02", "Sud"]];
+        var chart = new ChartData("Month / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", [1, 2, 3, 4, 5, 6], null) { Mark = MarkType.Bar }])
+        {
+            CategoryValues = keys,
+        };
+        return new RenderRequest(Bars, new ResultSet([], []), chart, BiTheme.Default);
+    }
+
+    [Fact]
+    public void Several_axis_fields_show_short_labels_under_the_groups_of_the_outer_field() => Sta.Run(() =>
+    {
+        var view = (CartesianChart)new LiveCharts2Renderer().Render(TwoLevels());
+
+        var axes = view.XAxes.Cast<Axis>().ToArray();
+        // The outermost axis first: LiveCharts2 draws it farthest from the plot
+        Assert.Equal(2, axes.Length);
+        Assert.Equal(["Est", "Nord", "Sud", "Est", "Nord", "Sud"], axes[1].Labels);
+        Assert.Equal([1d, 4d], axes[0].CustomSeparators);
+        Assert.Equal(["2024-01", "2024-02"], axes[0].CustomSeparators!.Select(axes[0].Labeler));
+        // Series follow the category axis; a line separates the months
+        Assert.All(view.Series.OfType<LiveChartsCore.Kernel.Sketches.ICartesianSeries>(), s => Assert.Equal(1, s.ScalesXAt));
+        Assert.Contains(view.Sections.OfType<LiveChartsCore.SkiaSharpView.RectangularSection>(), s => s.Xi == 2.5 && s.Xj == 2.5);
+    });
+
+    [Fact]
+    public void Every_category_has_a_label_slot_so_that_only_the_fit_skips_labels() => Sta.Run(() =>
+    {
+        // LiveCharts2 skips labels by itself unless told not to: on top of the fit's step, almost none were left
+        var renderer = new LiveCharts2Renderer();
+        var scrollable = Bars.WithRendererOption(renderer.Name, LiveCharts2Renderer.ScrollableOption, true);
+        var charts = new[] { (CartesianChart)renderer.Render(Request(Bars, 50)), ((Grid)renderer.Render(Request(scrollable, 50))).Children.OfType<CartesianChart>().First() };
+
+        foreach (var axis in charts.Select(c => (Axis)c.XAxes.Last()))
+            Assert.Equal((1d, true), (axis.MinStep, axis.ForceStepToMin));
+    });
+
     [Fact]
     public void Without_the_option_the_chart_has_no_scroll_bar() => Sta.Run(() =>
     {

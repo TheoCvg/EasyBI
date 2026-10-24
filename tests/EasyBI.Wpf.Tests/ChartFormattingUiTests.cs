@@ -135,4 +135,22 @@ public class ChartFormattingUiTests
         Assert.True(format.ToFormat()!.Rules[0].ShowOnChart);
         Assert.True(new ValueFormatViewModel(format.ToFormat(), () => { }).Rules[0].ShowOnChart);
     }
+
+    [Fact]
+    public void OxyPlot_shows_short_labels_under_the_groups_of_an_outer_axis_field() => Sta.Run(() =>
+    {
+        object?[][] keys = [["2024-01", "Est"], ["2024-01", "Nord"], ["2024-02", "Est"], ["2024-02", "Nord"]];
+        var visual = new VisualDefinition { Mark = MarkType.Bar, Values = [new("Amount")] };
+        var chart = new ChartData("Month / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", [1, 2, 3, 4], null) { Mark = MarkType.Bar }])
+        {
+            CategoryValues = keys,
+        };
+
+        var model = ((PlotView)new OxyPlotRenderer().Render(new RenderRequest(visual, new ResultSet([], []), chart, Theme))).Model!;
+
+        Assert.Equal(["Est", "Nord", "Est", "Nord"], model.Axes.OfType<OxyPlot.Axes.CategoryAxis>().Single().Labels);
+        var groups = Assert.Single(model.Axes, a => a.PositionTier == 1);
+        Assert.Equal(["2024-01", "2024-02"], new[] { 0.5, 2.5 }.Select(groups.LabelFormatter!));
+        Assert.Single(model.Annotations.OfType<OxyPlot.Annotations.LineAnnotation>(), l => l.X == 1.5);
+    });
 }

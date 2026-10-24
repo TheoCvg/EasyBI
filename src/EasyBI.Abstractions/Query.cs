@@ -7,6 +7,21 @@ public sealed record FieldRef(string Field, DateGrain Grain = DateGrain.None)
 {
     /// <summary>Name of the column produced in the <see cref="ResultSet"/>.</summary>
     public string Key => Grain == DateGrain.None ? Field : $"{Field}.{Grain}";
+
+    /// <summary>
+    /// Texts the visual shows instead of some values of the field ("Île-de-France" shown as "IDF"), keyed by the
+    /// value's invariant text. Only what is shown changes: filters and selections keep the values themselves.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyDictionary<string, string>? Labels { get; init; }
+
+    // Labels compare by content: two references to the same field with the same texts are the same field
+    public bool Equals(FieldRef? other) =>
+        other is not null && Field == other.Field && Grain == other.Grain
+        && (Labels?.Count ?? 0) == (other.Labels?.Count ?? 0)
+        && (Labels ?? new Dictionary<string, string>()).All(l => other.Labels!.TryGetValue(l.Key, out var text) && text == l.Value);
+
+    public override int GetHashCode() => HashCode.Combine(Field, Grain);
 }
 
 /// <summary>
