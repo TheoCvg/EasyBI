@@ -143,7 +143,13 @@ gives the formula of such a measure.
 
 End users create their own from the field list (**+ Calculated measure**, then ✎ and ✕ on hover): a name, a format
 and a formula over the model's fields, typed with their captions and checked as it is typed, with its total as a
-preview:
+preview. The editor colors the formula and underlines its problem, suggests functions and fields as they are typed
+(after `[`, or with Ctrl+Space), shows how to write the function the caret is in, and lists on its right the
+functions, measures and dimensions to search and insert, with the values of the selected dimension; every item and
+operator has a help tooltip (a plain content, so tooltips keep the application's style). `FormulaEditing`
+(`Tokenize`, `CallAt`, `CompletionAt`) and `MeasureFormula.Check` (the problem and where it is written) give the same
+help to an application that builds its own editor, and `CalculatedMeasureEditor` exposes it as a view-model
+(`Catalog`, `Search`, `SelectedItem`, `Values`, `Suggest`, `Accept`, `Insert`, `CurrentCall`, `Problem`):
 
 ```
 [Margin] / [Revenue]            ([Revenue] - [Margin]) / [Number of sales]            [Margin] * 100 / [Revenue]
@@ -731,7 +737,8 @@ The complete list, with their light and dark values, is in
 | `HoverBrushKey` | small buttons under the pointer |
 | `ErrorBrushKey` | error messages, bad values of conditional formats |
 | `SuccessBrushKey`, `WarningBrushKey` | good and middle values of conditional formats |
-| `MeasureBrushKey` | the Σ of measures in field lists |
+| `MeasureBrushKey` | the Σ of measures in field lists, measures in formulas |
+| `FormulaFunctionBrushKey`, `FormulaDimensionBrushKey`, `FormulaTextBrushKey`, `FormulaNumberBrushKey` | the parts of a formula in the calculated measure editor (EasyBI's values in the Material Design and WPF UI mappings) |
 | `GridLineBrushKey` | grid lines of charts and tables |
 | `ChartPaletteKey` (`ChartPalette`) | colors of chart series, in order |
 | `CornerRadiusKey` (`CornerRadius`) | rounding of cards |

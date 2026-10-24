@@ -24,6 +24,17 @@ public sealed class WpfUiTheme : EasyBIThemeMapping
         ApplicationThemeManager.Changed += (_, _) => Refresh();
     }
 
+    /// <summary>WPF UI has no colors for the parts of a formula: EasyBI's light or dark ones apply.</summary>
+    public static IReadOnlySet<ComponentResourceKey> KeptKeys { get; } = new HashSet<ComponentResourceKey>
+    {
+        EasyBITheme.FormulaFunctionBrushKey,
+        EasyBITheme.FormulaDimensionBrushKey,
+        EasyBITheme.FormulaTextBrushKey,
+        EasyBITheme.FormulaNumberBrushKey,
+    };
+
+    protected override IEnumerable<ComponentResourceKey> Kept => KeptKeys;
+
     /// <summary>The WPF UI resource each EasyBI key takes its value from.</summary>
     public static IReadOnlyDictionary<ComponentResourceKey, object> Map { get; } = new Dictionary<ComponentResourceKey, object>
     {

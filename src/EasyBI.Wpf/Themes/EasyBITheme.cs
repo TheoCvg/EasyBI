@@ -78,6 +78,18 @@ public static class EasyBITheme
     /// <summary>The Σ of measures in field lists.</summary>
     public static ComponentResourceKey MeasureBrushKey { get; } = Key("Measure");
 
+    /// <summary>Functions (SUM, IF...) and keywords (AND, OR...) in a formula.</summary>
+    public static ComponentResourceKey FormulaFunctionBrushKey { get; } = Key("FormulaFunction");
+
+    /// <summary>Dimensions in a formula and in the formula editor's lists (measures take <see cref="MeasureBrushKey"/>).</summary>
+    public static ComponentResourceKey FormulaDimensionBrushKey { get; } = Key("FormulaDimension");
+
+    /// <summary>Texts and dates ("North") in a formula.</summary>
+    public static ComponentResourceKey FormulaTextBrushKey { get; } = Key("FormulaText");
+
+    /// <summary>Numbers in a formula.</summary>
+    public static ComponentResourceKey FormulaNumberBrushKey { get; } = Key("FormulaNumber");
+
     /// <summary>Grid lines of charts and tables.</summary>
     public static ComponentResourceKey GridLineBrushKey { get; } = Key("GridLine");
 

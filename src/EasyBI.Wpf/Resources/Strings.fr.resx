@@ -244,7 +244,7 @@
     <value>Formule</value>
   </data>
   <data name="MeasureFormulaHint" xml:space="preserve">
-    <value>Cliquez sur un élément pour l'insérer ; survolez une fonction pour voir comment l'écrire. Une mesure seule est agrégée comme dans la liste des champs. Dans une fonction, mesures et dimensions sont lues ligne par ligne : SUM([Quantité] * [Prix]), SUM([CA]; [Région] = "Nord"), DISTINCTCOUNT([Client]). Les textes et les dates s'écrivent entre guillemets ("2024-12-31").</value>
+    <value>Une mesure seule est agrégée comme dans la liste des champs. Dans une fonction, mesures et dimensions sont lues ligne par ligne : SUM([Quantité] * [Prix]), SUM([CA]; [Région] = "Nord"), DISTINCTCOUNT([Client]). Les textes et les dates s'écrivent entre guillemets ("2024-12-31"), les décimales avec un point, les arguments sont séparés par « ; ».</value>
   </data>
   <data name="MeasurePreview" xml:space="preserve">
     <value>Formule valide. Total : {0}</value>
@@ -722,5 +722,92 @@
   </data>
   <data name="RestoreMeasureTooltip" xml:space="preserve">
     <value>Rétablir la définition de l'application</value>
+  </data>
+  <data name="FormulaSearchPlaceholder" xml:space="preserve">
+    <value>Rechercher une fonction ou un champ</value>
+  </data>
+  <data name="FormulaPlaceholder" xml:space="preserve">
+    <value>Tapez une formule, comme SUM([CA]; [Région] = "Nord"), ou choisissez des éléments à droite</value>
+  </data>
+  <data name="FormulaValuesHeader" xml:space="preserve">
+    <value>VALEURS</value>
+  </data>
+  <data name="FormulaInsert" xml:space="preserve">
+    <value>Insérer</value>
+  </data>
+  <data name="FormulaShortcutsHint" xml:space="preserve">
+    <value>Ctrl+Espace : suggestions · Tab ou Entrée : insérer · double-clic dans la liste : insérer</value>
+  </data>
+  <data name="FormulaMeasureHelp" xml:space="preserve">
+    <value>Mesure du modèle. Seule, elle est agrégée comme dans la liste des champs ; dans une fonction comme SUM, elle est lue ligne par ligne.</value>
+  </data>
+  <data name="FormulaCalculatedMeasureHelp" xml:space="preserve">
+    <value>Mesure calculée pour chaque groupe par l'application : utilisez-la seule, pas dans une fonction.</value>
+  </data>
+  <data name="FormulaDimensionHelp" xml:space="preserve">
+    <value>Dimension : utilisez-la dans une fonction, dans une condition comme SUM(valeur; {0} = "...") ou comptée avec DISTINCTCOUNT({0}).</value>
+  </data>
+  <data name="FormulaNoMatch" xml:space="preserve">
+    <value>Aucune fonction ni aucun champ ne correspond.</value>
+  </data>
+  <data name="FormulaValid" xml:space="preserve">
+    <value>Formule valide</value>
+  </data>
+  <data name="FormulaKeywordAND" xml:space="preserve">
+    <value>Les deux conditions sont vraies.</value>
+  </data>
+  <data name="FormulaKeywordOR" xml:space="preserve">
+    <value>Au moins une des conditions est vraie.</value>
+  </data>
+  <data name="FormulaKeywordNOT" xml:space="preserve">
+    <value>Le contraire d'une condition.</value>
+  </data>
+  <data name="FormulaKeywordTRUE" xml:space="preserve">
+    <value>Oui, pour comparer une dimension oui/non.</value>
+  </data>
+  <data name="FormulaKeywordFALSE" xml:space="preserve">
+    <value>Non, pour comparer une dimension oui/non.</value>
+  </data>
+  <data name="OperatorAdd" xml:space="preserve">
+    <value>Additionner</value>
+  </data>
+  <data name="OperatorSubtract" xml:space="preserve">
+    <value>Soustraire</value>
+  </data>
+  <data name="OperatorMultiply" xml:space="preserve">
+    <value>Multiplier</value>
+  </data>
+  <data name="OperatorDivide" xml:space="preserve">
+    <value>Diviser</value>
+  </data>
+  <data name="OperatorDivideHelp" xml:space="preserve">
+    <value>Une division par zéro donne une valeur vide.</value>
+  </data>
+  <data name="OperatorParentheses" xml:space="preserve">
+    <value>Parenthèses</value>
+  </data>
+  <data name="OperatorParenthesesHelp" xml:space="preserve">
+    <value>Calculer une partie d'abord. Avec une sélection, elles l'entourent.</value>
+  </data>
+  <data name="OperatorEqual" xml:space="preserve">
+    <value>Égal à</value>
+  </data>
+  <data name="OperatorNotEqual" xml:space="preserve">
+    <value>Différent de</value>
+  </data>
+  <data name="OperatorLess" xml:space="preserve">
+    <value>Inférieur à</value>
+  </data>
+  <data name="OperatorLessOrEqual" xml:space="preserve">
+    <value>Inférieur ou égal à</value>
+  </data>
+  <data name="OperatorGreater" xml:space="preserve">
+    <value>Supérieur à</value>
+  </data>
+  <data name="OperatorGreaterOrEqual" xml:space="preserve">
+    <value>Supérieur ou égal à</value>
+  </data>
+  <data name="OperatorComparisonHelp" xml:space="preserve">
+    <value>Compare deux valeurs, dans la condition d'une fonction ou de IF. Les textes et les dates s'écrivent entre guillemets.</value>
   </data>
 </root>
