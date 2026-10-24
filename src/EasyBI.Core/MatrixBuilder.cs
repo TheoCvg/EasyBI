@@ -20,7 +20,7 @@ public static class MatrixBuilder
         IEnumerable<CalculatedMeasure>? measures = null,
         CancellationToken cancellationToken = default)
     {
-        var query = visual.ToQuery(measures);
+        var query = visual.ToQuery(measures, model.Metadata);
         var metadata = model.Metadata;
         var rowFilters = (query.Filters ?? []).Where(f => !NumericFilters.IsOnMeasure(f, metadata, query.Calculations)).ToList();
         IReadOnlyList<FieldRef> columnFields = visual.Legend is { } legend ? [legend] : [];

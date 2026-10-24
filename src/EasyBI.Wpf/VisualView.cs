@@ -239,7 +239,7 @@ public class VisualView : ContentControl
         var queryKey = JsonSerializer.Serialize(new
         {
             effective.Model,
-            Query = effective.ToQuery(context.Measures.Measures),
+            Query = effective.ToQuery(context.Measures.Measures, context.Models.FirstOrDefault(m => m.Metadata.Name == effective.Model)?.Metadata),
             Culture = EasyBILocalization.UICulture.Name,
             Format = EasyBILocalization.FormatCulture.Name,
         }, ReportSerializer.Options);

@@ -15,14 +15,17 @@ public static class VisualTransfer
     /// <summary>Name of the clipboard format holding copied visuals (see <see cref="Copy"/>).</summary>
     public const string ClipboardFormat = "EasyBI.Visuals";
 
-    /// <summary>The visuals and the calculated measures they use, as report JSON.</summary>
-    public static string Copy(IEnumerable<VisualDefinition> visuals, MeasureContext measures)
+    /// <summary>
+    /// The visuals and the calculated measures they use, with those these use (see <see cref="MeasureContext.UsedBy"/>),
+    /// as report JSON.
+    /// </summary>
+    public static string Copy(IEnumerable<VisualDefinition> visuals, MeasureContext measures, Func<string, ModelMetadata?>? metadata = null)
     {
         var copied = visuals.ToArray();
         return ReportSerializer.Serialize(new ReportDefinition
         {
             Visuals = copied,
-            Measures = copied.SelectMany(measures.UsedBy).Distinct().ToArray(),
+            Measures = copied.SelectMany(v => measures.UsedBy(v, metadata?.Invoke(v.Model))).Distinct().ToArray(),
         });
     }
 
@@ -32,7 +35,8 @@ public static class VisualTransfer
     /// <paramref name="measures"/>. A measure whose name the target already uses for another definition is added under
     /// a new name, which its visuals follow. A copied redefinition of a model's measure (<paramref name="metadata"/> tells
     /// which fields a model declares) is added as a calculated measure of its own unless the target redefines the measure
-    /// the same way, so that pasting never changes the target's measures. Content that is not copied visuals gives nothing.
+    /// the same way, so that pasting never changes the target's measures. The formulas of the pasted measures follow the
+/// renamed ones. Content that is not copied visuals gives nothing.
     /// </summary>
     public static IReadOnlyList<PastedVisual> Paste(
         string json,
@@ -50,7 +54,9 @@ public static class VisualTransfer
             return [];
         }
 
+        // First the names, then the formulas: a pasted measure may use another one that is renamed
         var renamed = new Dictionary<(string Model, string Name), string>();
+        var added = new List<CalculatedMeasure>();
         foreach (var measure in copied.Measures.Where(m => hasModel(m.Model)))
         {
             var existing = measures.Find(measure.Model, measure.Name) ?? measures.Measures.FirstOrDefault(m => m.Name == measure.Name);
@@ -58,12 +64,20 @@ public static class VisualTransfer
             var declared = metadata?.Invoke(measure.Model)?.Fields.FirstOrDefault(f => f.Name == measure.Name);
             if (existing is null && declared is null)
             {
-                measures.Set(measure);
+                added.Add(measure);
                 continue;
             }
             var name = MeasureContext.NewName();
             renamed[(measure.Model, measure.Name)] = name;
-            measures.Set(measure with { Name = name, Caption = measure.Caption.Length > 0 ? measure.Caption : declared?.Caption ?? measure.Name });
+            added.Add(measure with { Name = name, Caption = measure.Caption.Length > 0 ? measure.Caption : declared?.Caption ?? measure.Name });
+        }
+        foreach (var measure in added)
+        {
+            // Under its own name, a redefinition read the model's measure: it still does once renamed
+            var own = renamed.FirstOrDefault(r => r.Key.Model == measure.Model && r.Value == measure.Name).Key.Name ?? measure.Name;
+            var formula = MeasureFormula.Rename(measure.Formula,
+                used => used != own && renamed.TryGetValue((measure.Model, used), out var name) ? name : used);
+            measures.Set(measure with { Formula = formula });
         }
 
         return copied.Visuals

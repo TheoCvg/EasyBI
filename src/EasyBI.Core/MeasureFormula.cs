@@ -30,13 +30,23 @@ public static class MeasureFormula
         Functions.FirstOrDefault(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase))
         ?? (string.Equals(name, "AVG", StringComparison.OrdinalIgnoreCase) ? Functions[1] : null);
 
-    /// <summary>Checks a stored formula against a model.</summary>
+    /// <summary>Checks a stored formula against a model and the report's calculated measures of it, which it may use.</summary>
+    /// <param name="formula">The formula, with field names.</param>
+    /// <param name="metadata">The model.</param>
+    /// <param name="measures">The report's calculated measures (those of other models are left aside).</param>
+    /// <param name="name">
+    /// The name of the measure the formula defines: a measure cannot use itself, even through others, but the
+    /// redefinition of a model's measure reads the model's one under its own name.
+    /// </param>
     /// <returns>Null when the formula is valid, otherwise the problem worded for the end user.</returns>
-    public static string? Validate(string formula, ModelMetadata metadata)
+    public static string? Validate(string formula, ModelMetadata metadata, IEnumerable<CalculatedMeasure>? measures = null, string? name = null)
     {
+        var scope = new Scope(metadata, measures, name);
         try
         {
-            new Checker(formula, reference => Resolve(metadata, reference, byCaption: false)).Check(Parse(formula));
+            var tree = Parse(formula);
+            new Checker(formula, metadata, reference => scope.Resolve(reference, byCaption: false)).Check(tree);
+            scope.CheckCycles(tree, reference => scope.Resolve(reference, byCaption: false).Name);
             return null;
         }
         catch (FormulaException ex)
@@ -58,37 +68,70 @@ public static class MeasureFormula
         }
     }
 
-    /// <summary>The formula as the user reads it: field names replaced by their captions.</summary>
-    public static string ToDisplay(string formula, ModelMetadata metadata) =>
-        Rewrite(formula, name => metadata.Fields.FirstOrDefault(f => f.Name == name)?.Caption ?? name);
+    /// <summary>
+    /// The names a stored formula refers to, once each: fields of the model and calculated measures of the report.
+    /// It accepts a formula that is not valid.
+    /// </summary>
+    public static IReadOnlyList<string> References(string formula) =>
+        FormulaEditing.Tokenize(formula)
+            .Where(t => t.Kind == FormulaTokenKind.Field)
+            .Select(t => FieldText(formula.Substring(t.Start, t.Length)))
+            .Distinct()
+            .ToArray();
+
+    /// <summary>
+    /// The formula as the user reads it: names replaced by captions, those of the report's <paramref name="measures"/>
+    /// included (see <see cref="Validate"/> for <paramref name="name"/>).
+    /// </summary>
+    public static string ToDisplay(string formula, ModelMetadata metadata, IEnumerable<CalculatedMeasure>? measures = null, string? name = null)
+    {
+        var scope = new Scope(metadata, measures, name);
+        return Rewrite(formula, reference => scope.Fields.FirstOrDefault(f => f.Name == reference)?.Caption ?? reference);
+    }
+
+    /// <summary>The formula with the names it refers to replaced (a measure renamed when pasted...).</summary>
+    public static string Rename(string formula, Func<string, string> rename) => Rewrite(formula, rename);
 
     /// <summary>
     /// The formula typed by the user (fields named by caption, or by name) in its stored form, with field names.
     /// </summary>
     /// <returns>The stored formula, or null with <paramref name="error"/> worded for the end user.</returns>
-    public static string? FromDisplay(string text, ModelMetadata metadata, out string? error)
+    public static string? FromDisplay(
+        string text,
+        ModelMetadata metadata,
+        out string? error,
+        IEnumerable<CalculatedMeasure>? measures = null,
+        string? name = null)
     {
-        error = Check(text, metadata, out var stored)?.Message;
+        error = Check(text, metadata, out var stored, measures, name)?.Message;
         return stored;
     }
 
     /// <summary>
-    /// Checks the formula typed by the user (see <see cref="FromDisplay(string, ModelMetadata, out string?)"/>).
+    /// Checks the formula typed by the user (see <see cref="FromDisplay(string, ModelMetadata, out string?, IEnumerable{CalculatedMeasure}?, string?)"/>
+    /// and <see cref="Validate"/>).
     /// </summary>
     /// <returns>
     /// Null with the <paramref name="stored"/> formula when it is valid, otherwise the problem and where it is written in
     /// <paramref name="text"/>, to point it out.
     /// </returns>
-    public static FormulaProblem? Check(string text, ModelMetadata metadata, out string? stored)
+    public static FormulaProblem? Check(
+        string text,
+        ModelMetadata metadata,
+        out string? stored,
+        IEnumerable<CalculatedMeasure>? measures = null,
+        string? name = null)
     {
+        var scope = new Scope(metadata, measures, name);
         FormulaProblem? problem;
         try
         {
             var tree = Parse(text);
             // Checked as typed, so that the problems name the fields by their captions
-            new Checker(text, reference => Resolve(metadata, reference, byCaption: true)).Check(tree);
+            new Checker(text, metadata, reference => scope.Resolve(reference, byCaption: true)).Check(tree);
+            scope.CheckCycles(tree, reference => scope.Resolve(reference, byCaption: true).Name);
             var references = References(tree).Select(r => r.Text).Distinct()
-                .ToDictionary(reference => reference, reference => Resolve(metadata, reference, byCaption: true).Name);
+                .ToDictionary(reference => reference, reference => scope.Resolve(reference, byCaption: true).Name);
             stored = Rewrite(text, reference => references[reference]);
             return null;
         }
@@ -117,16 +160,80 @@ public static class MeasureFormula
         Func<string, LambdaExpression> selector) =>
         new Builder(rows, rowType, measure, selector).Group(Parse(formula));
 
-    private static FieldDescriptor Resolve(ModelMetadata metadata, string reference, bool byCaption)
+    // "[Région]" → "Région" ("]]" stands for "]")
+    private static string FieldText(string token) => token.TrimStart('[').TrimEnd(']').Replace("]]", "]").Trim();
+
+    /// <summary>
+    /// What a formula can refer to: the model's fields, as the report redefines its measures, and the report's own
+    /// calculated measures, except the one the formula defines (<c>name</c>).
+    /// </summary>
+    private sealed class Scope
     {
-        var byName = metadata.Fields.FirstOrDefault(f => f.Name == reference);
-        if (byCaption)
+        private readonly ModelMetadata _metadata;
+        private readonly string? _name;
+        private readonly CalculatedMeasure[] _measures;
+
+        public Scope(ModelMetadata metadata, IEnumerable<CalculatedMeasure>? measures, string? name)
         {
-            var captioned = metadata.Fields.Where(f => string.Equals(f.Caption, reference, StringComparison.CurrentCultureIgnoreCase)).ToArray();
-            if (captioned.Length > 1) throw new FormulaException(Strings.Format(Strings.FormulaAmbiguous, reference));
-            byName = captioned.SingleOrDefault() ?? byName;
+            _metadata = metadata;
+            _name = name;
+            _measures = (measures ?? []).Where(m => m.Model == metadata.Name && m.Name != name).ToArray();
+            Fields =
+            [
+                .. metadata.Fields.Select(f => f.Kind == FieldKind.Measure && _measures.FirstOrDefault(m => m.Name == f.Name) is { } redefined
+                    ? MeasureContext.ToField(redefined, f)
+                    : f),
+                .. _measures.Where(m => !metadata.Fields.Any(f => f.Name == m.Name)).Select(MeasureContext.ToField),
+            ];
         }
-        return byName ?? throw new FormulaException(Strings.Format(Strings.FormulaUnknownField, reference));
+
+        public IReadOnlyList<FieldDescriptor> Fields { get; }
+
+        public FieldDescriptor Resolve(string reference, bool byCaption)
+        {
+            var byName = Fields.FirstOrDefault(f => f.Name == reference);
+            if (byCaption)
+            {
+                var captioned = Fields.Where(f => string.Equals(f.Caption, reference, StringComparison.CurrentCultureIgnoreCase)).ToArray();
+                if (captioned.Length > 1) throw new FormulaException(Strings.Format(Strings.FormulaAmbiguous, reference));
+                byName = captioned.SingleOrDefault() ?? byName;
+            }
+            return byName ?? throw new FormulaException(Strings.Format(Strings.FormulaUnknownField, reference));
+        }
+
+        /// <summary>
+        /// Refuses a measure that uses itself through others. Under its own name, the redefinition of a model's measure
+        /// reads the model's one, as the query does: only the report's own measures can loop.
+        /// </summary>
+        public void CheckCycles(Node tree, Func<string, string> nameOf)
+        {
+            foreach (var reference in References(tree))
+            {
+                List<string> path = _name is null ? [] : [_name];
+                if (Cycle(nameOf(reference.Text), path) is { } cycle)
+                    throw new FormulaException(Strings.Format(Strings.FormulaCycle, string.Join(" → ", cycle.Select(Caption))), reference.Start, reference.End);
+            }
+        }
+
+        private List<string>? Cycle(string current, List<string> path)
+        {
+            if (path.Contains(current))
+                return IsModelField(current) ? null : [.. path.SkipWhile(p => p != current), current];
+            var formula = _measures.FirstOrDefault(m => m.Name == current)?.Formula ?? _metadata.Fields.FirstOrDefault(f => f.Name == current)?.Formula;
+            if (formula is null) return null;
+            path.Add(current);
+            foreach (var next in MeasureFormula.References(formula))
+            {
+                if (Cycle(next, path) is { } found) return found;
+            }
+            path.RemoveAt(path.Count - 1);
+            return null;
+        }
+
+        private bool IsModelField(string name) => _metadata.Fields.Any(f => f.Name == name);
+
+        private string Caption(string name) =>
+            name == _name ? Strings.FormulaThisMeasure : "[" + (Fields.FirstOrDefault(f => f.Name == name)?.Caption ?? name) + "]";
     }
 
     // Replaces each field reference, keeping the rest of the text (spaces, parentheses) as the user typed it
@@ -160,7 +267,7 @@ public static class MeasureFormula
     /// Checks the kinds of values: a formula gives a number, a condition is a comparison, a dimension is only read row
     /// by row inside an aggregation function.
     /// </summary>
-    private sealed class Checker(string formula, Func<string, FieldDescriptor> resolve)
+    private sealed class Checker(string formula, ModelMetadata metadata, Func<string, FieldDescriptor> resolve)
     {
         public void Check(Node node) => Require(node, Kind(node, null), ValueKind.Number);
 
@@ -183,6 +290,8 @@ public static class MeasureFormula
                             throw Fail(Strings.Format(Strings.FormulaDimensionOutsideFunction, Text(node)), node);
                         return ValueKind.Number;
                     }
+                    // Read row by row, a measure is the model's: what the report redefines is the measure of the group
+                    field = metadata.Fields.FirstOrDefault(f => f.Name == field.Name) ?? field;
                     if (field.Kind == FieldKind.Measure)
                     {
                         if (field.IsCalculated) throw Fail(Strings.Format(Strings.FormulaNotAggregatable, Text(node), aggregation), node);

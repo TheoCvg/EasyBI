@@ -336,4 +336,10 @@
   <data name="FormulaSummaryIF" xml:space="preserve">
     <value>Si … alors … sinon</value>
   </data>
+  <data name="FormulaCycle" xml:space="preserve">
+    <value>Une mesure ne peut pas s’utiliser elle-même : {0}.</value>
+  </data>
+  <data name="FormulaThisMeasure" xml:space="preserve">
+    <value>cette mesure</value>
+  </data>
 </root>

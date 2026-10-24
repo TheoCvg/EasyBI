@@ -23,6 +23,8 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     private readonly string _name;
     // The model's measure being redefined, null for a calculated measure of the report
     private readonly FieldDescriptor? _declared;
+    // The report's other measures of the model, which the formula may use
+    private readonly IReadOnlyList<CalculatedMeasure> _others;
     private string _caption;
     private string _formula;
     private Option<string?> _format;
@@ -70,12 +72,20 @@ public sealed class CalculatedMeasureEditor : ObservableObject
             FormatOptions = [.. FormatOptions, new(format, () => Strings.Format(Strings.FormatCustom, format))];
         _format = FormatOptions.FirstOrDefault(o => o.Value == measure?.Format) ?? FormatOptions[0];
         _caption = measure is null ? "" : measure.Caption.Length > 0 ? measure.Caption : _declared?.Caption ?? "";
-        _formula = measure is null ? "" : MeasureFormula.ToDisplay(measure.Formula, model.Metadata);
-        // Formulas use the model's fields; a calculated measure of the report cannot use another one
+        _others = context.Measures.For(model.Metadata.Name).Where(m => m.Name != _name).ToArray();
+        _formula = measure is null ? "" : MeasureFormula.ToDisplay(measure.Formula, model.Metadata, _others, _name);
+        // Formulas use the model's fields and the report's other measures; under its own name, a redefinition reads the
+        // model's measure
         static string Reference(FieldDescriptor field) => "[" + field.Caption.Replace("]", "]]") + "]";
-        Insertable = model.Metadata.Measures.Select(Reference).ToArray();
+        var measures = model.Metadata.Measures
+            .Select(f => _others.FirstOrDefault(m => m.Name == f.Name) is { } redefined ? MeasureContext.ToField(redefined, f) : f)
+            .Select(FormulaItem.For)
+            .Concat(_others.Where(m => !model.Metadata.Fields.Any(f => f.Name == m.Name))
+                .Select(m => FormulaItem.For(MeasureContext.ToField(m)) with { IsReportMeasure = true, Description = Strings.FormulaReportMeasureHelp, Example = null }))
+            .ToArray();
+        Insertable = measures.Select(m => m.Text).ToArray();
         InsertableDimensions = model.Metadata.Dimensions.Select(Reference).ToArray();
-        _items = [.. MeasureFormula.Functions.Select(FormulaItem.For), .. model.Metadata.Measures.Select(FormulaItem.For), .. model.Metadata.Dimensions.Select(FormulaItem.For)];
+        _items = [.. MeasureFormula.Functions.Select(FormulaItem.For), .. measures, .. model.Metadata.Dimensions.Select(FormulaItem.For)];
         _catalog = _items;
         Tabs =
         [
@@ -99,11 +109,11 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     public bool CanReset => _declared is not null && _context.Measures.Find(Model.Metadata.Name, _name) is not null;
 
     /// <summary>The formula that keeps the model's computation, as the user reads it (<c>[Chiffre d'affaires]</c>).</summary>
-    public string? DeclaredFormula => _declared is null ? null : MeasureFormula.ToDisplay(MeasureContext.Definition(_declared, Model.Metadata.Name).Formula, Model.Metadata);
+    public string? DeclaredFormula => _declared is null ? null : MeasureFormula.ToDisplay(MeasureContext.Definition(_declared, Model.Metadata.Name).Formula, Model.Metadata, _others, _name);
 
     public IReadOnlyList<Option<string?>> FormatOptions { get; }
 
-    /// <summary>The model's measures as they are inserted into the formula.</summary>
+    /// <summary>The model's measures, then the report's other measures, as they are inserted into the formula.</summary>
     public IReadOnlyList<string> Insertable { get; }
 
     /// <summary>The model's dimensions as they are inserted into the formula, to be read inside a function.</summary>
@@ -367,7 +377,7 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     {
         Result = null;
         var caption = Caption.Trim();
-        var problem = MeasureFormula.Check(Formula, Model.Metadata, out var stored);
+        var problem = MeasureFormula.Check(Formula, Model.Metadata, out var stored, _others, _name);
         // Nothing to point out in an empty formula
         Problem = Formula.Trim().Length == 0 ? null : problem;
         Error = caption.Length == 0 ? Strings.MeasureCaptionRequired
@@ -420,7 +430,9 @@ public sealed class CalculatedMeasureEditor : ObservableObject
                 (object? total, string? failure) = (null, null);
                 try
                 {
-                    var result = await Model.ExecuteAsync(new([], [new(measure.Name)], Calculations: [measure]));
+                    // With the measures it uses
+                    var calculations = MeasureContext.Needed([measure.Name], [.. _others, measure], Model.Metadata);
+                    var result = await Model.ExecuteAsync(new([], [new(measure.Name)], Calculations: calculations));
                     total = result.Rows.FirstOrDefault()?[0];
                 }
                 catch (Exception ex)

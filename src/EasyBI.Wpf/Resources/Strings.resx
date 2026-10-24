@@ -822,4 +822,13 @@
   <data name="FormulaTabDimensions" xml:space="preserve">
     <value>Dimensions</value>
   </data>
+  <data name="FormulaReportMeasureHelp" xml:space="preserve">
+    <value>Measure of this report, computed for each group: use it on its own, such as [Margin] / [Revenue], not inside a function.</value>
+  </data>
+  <data name="DeleteUsedMeasureConfirm" xml:space="preserve">
+    <value>Delete the measure “{0}”? It is used by {1}, which will show an error, as will the visuals that show it.</value>
+  </data>
+  <data name="QuotedCaption" xml:space="preserve">
+    <value>“{0}”</value>
+  </data>
 </root>

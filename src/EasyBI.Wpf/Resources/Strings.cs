@@ -240,6 +240,9 @@ internal static class Strings
     public static string FormulaShortcutsHint => Get();
     public static string FormulaMeasureHelp => Get();
     public static string FormulaCalculatedMeasureHelp => Get();
+    public static string FormulaReportMeasureHelp => Get();
+    public static string DeleteUsedMeasureConfirm => Get();
+    public static string QuotedCaption => Get();
     public static string FormulaDimensionHelp => Get();
     public static string FormulaNoMatch => Get();
     public static string FormulaValid => Get();

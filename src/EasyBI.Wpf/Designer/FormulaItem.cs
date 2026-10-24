@@ -28,10 +28,13 @@ public sealed record FormulaItem(FormulaItemKind Kind, string Caption, string Te
     public string Glyph => Kind switch
     {
         FormulaItemKind.Function => "ƒ",
-        FormulaItemKind.Measure => "Σ",
+        FormulaItemKind.Measure => IsReportMeasure ? "ƒx" : "Σ",
         FormulaItemKind.Dimension => Field?.DataType switch { DataType.Date => "◷", DataType.Number => "#", DataType.Boolean => "◑", _ => "Aa" },
         _ => "",
     };
+
+    /// <summary>A calculated measure of the report, computed for each group.</summary>
+    public bool IsReportMeasure { get; init; }
 
     /// <summary>What it does in a few words, shown next to its caption in the lists (functions).</summary>
     public string? Summary { get; init; }
