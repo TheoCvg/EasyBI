@@ -37,6 +37,8 @@ application's style). `FormulaEditing` (`Tokenize`, `Calls`, `CallAt`, `Completi
 editor, and `CalculatedMeasureEditor` exposes it as a view-model (`Tabs`, `Search`, `OperatorGroups`, `Suggest`,
 `Accept`, `Insert`, `CurrentCall`, `Problem`):
 
+![The calculated measure editor: a colored formula, the help of the function at the caret, the operators and the catalog of functions, measures and dimensions](../images/measure-editor.png)
+
 ```
 [Margin] / [Revenue]            ([Revenue] - [Margin]) / [Number of sales]            [Margin] * 100 / [Revenue]
 SUM([Quantity] * [Unit price])  SUM([Revenue]; [Region] = "North") / [Revenue]        DISTINCTCOUNT([Customer])

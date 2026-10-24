@@ -72,6 +72,8 @@ keep the system's light look.
 
 ## Following a control library
 
+![The sample following WPF UI in its dark theme](../images/dashboard-dark.png)
+
 With WPF UI or Material Design in XAML, install the matching package and merge its dictionary **after** the library's:
 EasyBI's surfaces, text, accent and charts then take the library's colors, light or dark, and follow its theme switches
 (`ApplicationThemeManager.Apply`, `PaletteHelper.SetTheme`). Its classes are in the `bi:` XAML namespace.

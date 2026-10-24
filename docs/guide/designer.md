@@ -3,6 +3,8 @@
 The `ReportDesigner` has three zones: the fields on the left, the wells and the preview in the middle, the
 **properties** on the right (both side panels fold: `IsFieldPanelOpen`, `IsPropertiesPanelOpen`).
 
+![The designer: fields on the left, wells and preview in the middle, the properties of the selected chip on the right](../images/designer.png)
+
 - **Chips** show their field and badges summing their settings up (Σ, avg, Quarter, PY, Y2, ↓...). A click selects one
   (`DesignerViewModel.SelectedItem`) and the properties panel shows its settings in sections: aggregation, granularity,
   time calculation, chart type, secondary axis, sort for a field; the editor of a filter. Without a selection it shows
