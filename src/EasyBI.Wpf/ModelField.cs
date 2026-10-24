@@ -6,7 +6,8 @@ namespace EasyBI.Wpf;
 
 /// <summary>
 /// A field of a semantic model: what a <see cref="FieldList"/> drags (to a designer shelf, to a dashboard...).
-/// <paramref name="Measure"/> is the definition of a calculated measure of the report, which the user can edit.
+/// <paramref name="Measure"/> is the report's definition of a measure: one of its calculated measures, or its
+/// redefinition of a measure of the model.
 /// </summary>
 public sealed record ModelField(ISemanticModel Model, FieldDescriptor Field, CalculatedMeasure? Measure = null)
 {
@@ -14,7 +15,20 @@ public sealed record ModelField(ISemanticModel Model, FieldDescriptor Field, Cal
 
     public bool IsMeasure => Field.Kind == FieldKind.Measure;
 
-    public bool IsEditable => Measure is not null;
+    /// <summary>Whether the user can edit the measure: any measure, the model's ones being redefined in the report.</summary>
+    public bool IsEditable => IsMeasure;
+
+    /// <summary>A calculated measure created in the report (ƒx), which the user can delete.</summary>
+    public bool IsReportMeasure => Measure is not null && !IsDeclared;
+
+    /// <summary>A measure of the model that the report redefines, which the user can restore.</summary>
+    public bool IsRedefined => Measure is not null && IsDeclared;
+
+    /// <summary>What the editor starts from: the report's definition, or the model's measure as declared.</summary>
+    public CalculatedMeasure? Definition =>
+        Measure ?? (IsMeasure ? MeasureContext.Definition(Model.Metadata.GetField(Field.Name), Model.Metadata.Name) : null);
+
+    private bool IsDeclared => Model.Metadata.Fields.Any(f => f.Name == Field.Name);
 }
 
 /// <summary>

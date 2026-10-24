@@ -54,7 +54,7 @@ public static class ReportValidator
 
         foreach (var measure in report.Measures)
         {
-            var where = Strings.Format(Strings.ReportCalculatedMeasure, measure.Caption);
+            var where = Strings.Format(Strings.ReportCalculatedMeasure, measure.Caption.Length > 0 ? measure.Caption : measure.Name);
             if (!byName.TryGetValue(measure.Model, out var model))
                 problems.Add(Strings.Format(Strings.ReportUnknownModel, where, measure.Model));
             else if (MeasureFormula.Validate(measure.Formula, model) is { } problem)

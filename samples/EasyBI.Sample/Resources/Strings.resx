@@ -174,4 +174,7 @@
   <data name="LastYearComparison" xml:space="preserve">
     <value>2025 compared with 2024</value>
   </data>
+  <data name="WebShare" xml:space="preserve">
+    <value>Web share</value>
+  </data>
 </root>

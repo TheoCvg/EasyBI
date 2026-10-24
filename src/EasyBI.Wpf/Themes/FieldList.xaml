@@ -74,23 +74,31 @@
                                          dnd:DragSource.IsEnabled="True" dnd:DragSource.AllowedEffects="Copy">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
-                                            <!-- Calculated measures of the report (ƒx) can be edited and deleted from their buttons, shown on hover -->
+                                            <!-- Measures can be edited from their buttons, shown on hover: the report's calculated measures (ƒx) can be
+                                                 deleted, the model's measures it redefines restored -->
                                             <DockPanel>
                                                 <StackPanel x:Name="Actions" DockPanel.Dock="Right" Orientation="Horizontal" Visibility="Collapsed">
                                                     <Button Content="✎" ToolTip="{bi:Localize EditMeasure}" Command="{x:Static bi:FieldList.EditMeasureCommand}"
                                                             Padding="4,0" Background="Transparent" BorderThickness="0" Cursor="Hand"
                                                             Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
-                                                    <Button Content="✕" ToolTip="{bi:Localize DeleteMeasure}" Command="{x:Static bi:FieldList.DeleteMeasureCommand}"
-                                                            Padding="4,0" Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                                    <Button x:Name="Delete" Content="✕" ToolTip="{bi:Localize DeleteMeasure}" Command="{x:Static bi:FieldList.DeleteMeasureCommand}"
+                                                            Padding="4,0" Background="Transparent" BorderThickness="0" Cursor="Hand" Visibility="Collapsed"
+                                                            Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                                                    <Button x:Name="Reset" Content="↺" ToolTip="{bi:Localize RestoreMeasureTooltip}" Command="{x:Static bi:FieldList.ResetMeasureCommand}"
+                                                            Padding="4,0" Background="Transparent" BorderThickness="0" Cursor="Hand" Visibility="Collapsed"
                                                             Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
                                                 </StackPanel>
                                                 <TextBlock x:Name="Glyph" Text="Σ" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MeasureBrushKey}}" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,7,0" />
                                                 <TextBlock Text="{Binding Caption}" Padding="0,3" TextTrimming="CharacterEllipsis" />
                                             </DockPanel>
                                             <DataTemplate.Triggers>
-                                                <DataTrigger Binding="{Binding IsEditable}" Value="True">
+                                                <DataTrigger Binding="{Binding IsReportMeasure}" Value="True">
                                                     <Setter TargetName="Glyph" Property="Text" Value="ƒx" />
                                                     <Setter TargetName="Glyph" Property="FontStyle" Value="Italic" />
+                                                    <Setter TargetName="Delete" Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsRedefined}" Value="True">
+                                                    <Setter TargetName="Reset" Property="Visibility" Value="Visible" />
                                                 </DataTrigger>
                                                 <MultiDataTrigger>
                                                     <MultiDataTrigger.Conditions>

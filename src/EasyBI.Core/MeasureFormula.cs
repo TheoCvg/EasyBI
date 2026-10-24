@@ -45,6 +45,19 @@ public static class MeasureFormula
         }
     }
 
+    /// <summary>Whether the formula is only the field <paramref name="name"/>, such as <c>[Amount]</c> (spaces and parentheses aside).</summary>
+    public static bool IsOnly(string formula, string name)
+    {
+        try
+        {
+            return Parse(formula) is FieldNode reference && reference.Text == name;
+        }
+        catch (FormulaException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>The formula as the user reads it: field names replaced by their captions.</summary>
     public static string ToDisplay(string formula, ModelMetadata metadata) =>
         Rewrite(formula, name => metadata.Fields.FirstOrDefault(f => f.Name == name)?.Caption ?? name);

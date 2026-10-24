@@ -108,6 +108,12 @@ public sealed record ReportDefinition
 /// (SUM, AVERAGE, MIN, MAX, COUNT, DISTINCTCOUNT) read measures and dimensions row by row, optionally on the rows
 /// matching a condition. The formula is computed for each group; a division by zero gives an empty value. Visuals
 /// reference it by <see cref="Name"/>, like a field of the model. See EasyBI.Core's <c>MeasureFormula</c>.
+/// <para>
+/// A measure named like a measure of its model redefines it in the report: its formula replaces the model's (where the
+/// measure's own name still means the model's definition), and an empty <see cref="Caption"/> keeps the model's caption.
+/// A formula that is only the measure itself, such as <c>[Amount]</c> for <c>Amount</c>, keeps the model's computation
+/// and the aggregation chosen by each visual, and only changes the caption and the format.
+/// </para>
 /// </summary>
 public sealed record CalculatedMeasure
 {

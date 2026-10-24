@@ -144,6 +144,20 @@ public sealed class QueryableSemanticModel<T> : ISemanticModel
         return Calculated(Expression.Lambda<Func<IEnumerable<T>, double?>>(ratio, rows), caption, name, format);
     }
 
+    /// <summary>
+    /// Measure computed by a formula, written as the end user writes them (<see cref="MeasureFormula"/>) with the names
+    /// of the fields declared before it: <c>"[Margin] / [Amount]"</c>, <c>"SUM([Amount]; [Channel] = \"Web\")"</c>. It
+    /// runs inside the query like <see cref="Calculated{TValue}"/>, and the end user can read and rewrite it in the
+    /// application (the rewritten formula is saved with the report).
+    /// </summary>
+    /// <exception cref="ArgumentException">The formula is not valid for the fields declared so far.</exception>
+    public QueryableSemanticModel<T> Formula(string formula, string caption, string name, string? format = null)
+    {
+        if (MeasureFormula.Validate(formula, new ModelMetadata(_name, _caption, _fields)) is { } problem)
+            throw new ArgumentException($"Invalid formula for '{name}': {problem}", nameof(formula));
+        return Add(new FieldDescriptor(name, caption, FieldKind.Measure, DataType.Number, Format: format, IsCalculated: true, Formula: formula), null);
+    }
+
     /// <summary>Measure that counts rows.</summary>
     public QueryableSemanticModel<T> Count(string caption, string name = "Count") =>
         Add(new FieldDescriptor(name, caption, FieldKind.Measure, DataType.Number, Aggregation.Count, "N0"),
@@ -170,12 +184,13 @@ public sealed class QueryableSemanticModel<T> : ISemanticModel
             }
         }, cancellationToken);
 
-    private QueryableSemanticModel<T> Add(FieldDescriptor field, LambdaExpression selector)
+    // A formula measure has no selector: the engine builds it from its formula
+    private QueryableSemanticModel<T> Add(FieldDescriptor field, LambdaExpression? selector)
     {
-        if (_selectors.ContainsKey(field.Name))
+        if (_fields.Any(f => f.Name == field.Name))
             throw new InvalidOperationException($"Field '{field.Name}' is already declared.");
         _fields.Add(field);
-        _selectors[field.Name] = selector;
+        if (selector is not null) _selectors[field.Name] = selector;
         _metadata = null;
         return this;
     }

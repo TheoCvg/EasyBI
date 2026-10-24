@@ -5,8 +5,9 @@ using EasyBI.Wpf.Resources;
 namespace EasyBI.Wpf.Designer;
 
 /// <summary>
-/// Creates or changes one of the report's calculated measures: a name, a formula typed with the fields' captions
-/// (<c>[Marge] / [Chiffre d'affaires]</c>, <c>SUM([CA]; [Région] = "Nord")</c>) and a format. The formula is checked as it is typed, and a valid one shows
+/// Creates or changes one of the report's calculated measures, or redefines a measure of the model in the report: a
+/// name, a formula typed with the fields' captions (<c>[Marge] / [Chiffre d'affaires]</c>,
+/// <c>SUM([CA]; [Région] = "Nord")</c>) and a format. The formula is checked as it is typed, and a valid one shows
 /// its total as a preview. One preview query runs at a time and is never cancelled: when it ends, the latest formula
 /// is computed if it changed meanwhile, so typing skips intermediate formulas instead of cancelling a query per key.
 /// </summary>
@@ -14,6 +15,8 @@ public sealed class CalculatedMeasureEditor : ObservableObject
 {
     private readonly EasyBIContext _context;
     private readonly string _name;
+    // The model's measure being redefined, null for a calculated measure of the report
+    private readonly FieldDescriptor? _declared;
     private string _caption;
     private string _formula;
     private Option<string?> _format;
@@ -26,12 +29,16 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     private string? _failure;
     private bool _previewing;
 
-    /// <summary>Edits <c>measure</c>, or a new measure of <c>model</c> when it is null.</summary>
+    /// <summary>
+    /// Edits <c>measure</c>, or a new measure of <c>model</c> when it is null. A measure named like a measure of the
+    /// model (see <see cref="MeasureContext.Definition"/>) redefines it.
+    /// </summary>
     public CalculatedMeasureEditor(EasyBIContext context, ISemanticModel model, CalculatedMeasure? measure = null)
     {
         _context = context;
         Model = model;
         _name = measure?.Name ?? MeasureContext.NewName();
+        _declared = model.Metadata.Fields.FirstOrDefault(f => f.Kind == FieldKind.Measure && f.Name == _name);
         IsNew = measure is null;
         FormatOptions =
         [
@@ -40,8 +47,11 @@ public sealed class CalculatedMeasureEditor : ObservableObject
             new("P1", () => Strings.FormatPercent),
             new("C2", () => Strings.FormatCurrency),
         ];
+        // A format set by the developer ("#,##0 €") is kept as an option of its own
+        if (measure?.Format is { } format && FormatOptions.All(o => o.Value != format))
+            FormatOptions = [.. FormatOptions, new(format, () => Strings.Format(Strings.FormatCustom, format))];
         _format = FormatOptions.FirstOrDefault(o => o.Value == measure?.Format) ?? FormatOptions[0];
-        _caption = measure?.Caption ?? "";
+        _caption = measure is null ? "" : measure.Caption.Length > 0 ? measure.Caption : _declared?.Caption ?? "";
         _formula = measure is null ? "" : MeasureFormula.ToDisplay(measure.Formula, model.Metadata);
         // Formulas use the model's fields; a calculated measure of the report cannot use another one
         static string Reference(FieldDescriptor field) => "[" + field.Caption.Replace("]", "]]") + "]";
@@ -53,6 +63,15 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     public ISemanticModel Model { get; }
 
     public bool IsNew { get; }
+
+    /// <summary>Whether the measure is one of the model's, which the report redefines.</summary>
+    public bool IsRedefinition => _declared is not null;
+
+    /// <summary>Whether the report redefines the model's measure, which <see cref="Reset"/> restores.</summary>
+    public bool CanReset => _declared is not null && _context.Measures.Find(Model.Metadata.Name, _name) is not null;
+
+    /// <summary>The formula that keeps the model's computation, as the user reads it (<c>[Chiffre d'affaires]</c>).</summary>
+    public string? DeclaredFormula => _declared is null ? null : MeasureFormula.ToDisplay(MeasureContext.Definition(_declared, Model.Metadata.Name).Formula, Model.Metadata);
 
     public IReadOnlyList<Option<string?>> FormatOptions { get; }
 
@@ -105,13 +124,20 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     /// <summary>The measure as edited, in its stored form; null while it cannot be saved.</summary>
     public CalculatedMeasure? Result { get; private set; }
 
-    /// <summary>Adds or replaces the measure in the context.</summary>
+    /// <summary>
+    /// Adds or replaces the measure in the context. A model's measure saved as the model defines it is restored rather
+    /// than redefined.
+    /// </summary>
     public bool Save()
     {
         if (Result is null) return false;
-        _context.Measures.Set(Result);
+        if (_declared is not null && Result == MeasureContext.Definition(_declared, Model.Metadata.Name)) Reset();
+        else _context.Measures.Set(Result);
         return true;
     }
+
+    /// <summary>Restores the model's measure: the report no longer redefines it.</summary>
+    public void Reset() => _context.Measures.Remove(Model.Metadata.Name, _name);
 
     private void Check()
     {

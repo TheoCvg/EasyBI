@@ -18,7 +18,8 @@ namespace EasyBI.Wpf;
 /// <remarks>
 /// Lookless: the default template (in <c>Themes/FieldList.xaml</c>) shows <see cref="ModelOptions"/>,
 /// <see cref="Dimensions"/> and <see cref="Measures"/>, declares the <see cref="FieldListSlots"/> and acts through
-/// <see cref="AddMeasureCommand"/>, <see cref="EditMeasureCommand"/> and <see cref="DeleteMeasureCommand"/>.
+/// <see cref="AddMeasureCommand"/>, <see cref="EditMeasureCommand"/>, <see cref="DeleteMeasureCommand"/> and
+/// <see cref="ResetMeasureCommand"/>.
 /// </remarks>
 public class FieldList : Control
 {
@@ -66,11 +67,20 @@ public class FieldList : Control
     /// <summary>Opens the editor of a new calculated measure of the <see cref="SelectedModel"/>.</summary>
     public static RoutedCommand AddMeasureCommand { get; } = new(nameof(AddMeasureCommand), typeof(FieldList));
 
-    /// <summary>Edits a calculated measure: the parameter (or the data context of the source) is its <see cref="ModelField"/>.</summary>
+    /// <summary>
+    /// Edits a measure: a calculated measure of the report, or a measure of the model, which the report then redefines.
+    /// The parameter (or the data context of the source) is its <see cref="ModelField"/>.
+    /// </summary>
     public static RoutedCommand EditMeasureCommand { get; } = new(nameof(EditMeasureCommand), typeof(FieldList));
 
     /// <summary>Deletes a calculated measure after a confirmation; same parameter as <see cref="EditMeasureCommand"/>.</summary>
     public static RoutedCommand DeleteMeasureCommand { get; } = new(nameof(DeleteMeasureCommand), typeof(FieldList));
+
+    /// <summary>
+    /// Restores a measure of the model that the report redefines, after a confirmation; same parameter as
+    /// <see cref="EditMeasureCommand"/>.
+    /// </summary>
+    public static RoutedCommand ResetMeasureCommand { get; } = new(nameof(ResetMeasureCommand), typeof(FieldList));
 
     static FieldList() =>
         DefaultStyleKeyProperty.OverrideMetadata(typeof(FieldList), new FrameworkPropertyMetadata(typeof(FieldList)));
@@ -81,11 +91,14 @@ public class FieldList : Control
             (_, _) => { if (Context is { } context && SelectedModel is { } model) EditMeasure(new CalculatedMeasureEditor(context, model)); },
             (_, e) => e.CanExecute = CanAddMeasure));
         CommandBindings.Add(new CommandBinding(EditMeasureCommand,
-            (_, e) => { if (Context is { } context && Calculated(e) is { } field) EditMeasure(new CalculatedMeasureEditor(context, field.Model, field.Measure)); },
-            (_, e) => e.CanExecute = Context is not null && Calculated(e) is not null));
+            (_, e) => { if (Context is { } context && FieldOf(e) is { IsEditable: true } field) EditMeasure(new CalculatedMeasureEditor(context, field.Model, field.Definition)); },
+            (_, e) => e.CanExecute = Context is not null && FieldOf(e) is { IsEditable: true }));
         CommandBindings.Add(new CommandBinding(DeleteMeasureCommand,
-            (_, e) => { if (Calculated(e) is { Measure: { } measure }) DeleteMeasure(measure); },
-            (_, e) => e.CanExecute = Context is not null && Calculated(e) is not null));
+            (_, e) => { if (FieldOf(e) is { IsReportMeasure: true, Measure: { } measure }) DeleteMeasure(measure); },
+            (_, e) => e.CanExecute = Context is not null && FieldOf(e) is { IsReportMeasure: true }));
+        CommandBindings.Add(new CommandBinding(ResetMeasureCommand,
+            (_, e) => { if (FieldOf(e) is { IsRedefined: true } field) ResetMeasure(field); },
+            (_, e) => e.CanExecute = Context is not null && FieldOf(e) is { IsRedefined: true }));
         // Captions follow the language (weak subscription: the list may be shorter-lived than the shared texts)
         PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, (_, _) => OnContextChanged(), string.Empty);
     }
@@ -159,8 +172,9 @@ public class FieldList : Control
         var search = Search;
         SetValue(DimensionsPropertyKey, model is null ? Array.Empty<ModelField>() : model.Metadata.Dimensions
             .Where(f => TextMatch.Matches(f.Caption, search)).Select(f => new ModelField(model, f)).ToArray());
-        SetValue(MeasuresPropertyKey, model is null ? Array.Empty<ModelField>() : model.Metadata.Measures.Select(f => new ModelField(model, f))
-            .Concat(Context?.Measures.For(model.Metadata.Name).Select(m => new ModelField(model, MeasureContext.ToField(m), m)) ?? [])
+        var measures = Context?.Measures ?? new MeasureContext();
+        SetValue(MeasuresPropertyKey, model is null ? Array.Empty<ModelField>() : measures.MeasuresOf(model.Metadata)
+            .Select(f => new ModelField(model, f, measures.Find(model.Metadata.Name, f.Name)))
             .Where(f => TextMatch.Matches(f.Caption, search))
             .ToArray());
         SetValue(CanAddMeasurePropertyKey, model is not null && Context is not null);
@@ -170,20 +184,25 @@ public class FieldList : Control
 
     private void OnMeasuresChanged(object? sender, EventArgs e) => Refresh();
 
-    // A calculated measure: the command parameter, or the data context of the command source (a button of its item)
-    private static ModelField? Calculated(RoutedEventArgs e)
-    {
-        var field = (e as ExecutedRoutedEventArgs)?.Parameter as ModelField
-            ?? (e as CanExecuteRoutedEventArgs)?.Parameter as ModelField
-            ?? (e.OriginalSource as FrameworkElement)?.DataContext as ModelField;
-        return field is { Measure: not null } ? field : null;
-    }
+    // The command parameter, or the data context of the command source (a button of its item)
+    private static ModelField? FieldOf(RoutedEventArgs e) =>
+        (e as ExecutedRoutedEventArgs)?.Parameter as ModelField
+        ?? (e as CanExecuteRoutedEventArgs)?.Parameter as ModelField
+        ?? (e.OriginalSource as FrameworkElement)?.DataContext as ModelField;
 
     private void DeleteMeasure(CalculatedMeasure measure)
     {
         var answer = MessageBox.Show(Window.GetWindow(this)!, Strings.Format(Strings.DeleteMeasureConfirm, measure.Caption),
             Strings.DeleteMeasure, MessageBoxButton.OKCancel, MessageBoxImage.Question);
-        if (answer == MessageBoxResult.OK) Context?.Measures.Remove(measure.Name);
+        if (answer == MessageBoxResult.OK) Context?.Measures.Remove(measure.Model, measure.Name);
+    }
+
+    private void ResetMeasure(ModelField field)
+    {
+        var declared = field.Model.Metadata.GetField(field.Field.Name);
+        var answer = MessageBox.Show(Window.GetWindow(this)!, Strings.Format(Strings.ResetMeasureConfirm, field.Caption, declared.Caption),
+            Strings.ResetMeasure, MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (answer == MessageBoxResult.OK) Context?.Measures.Remove(field.Model.Metadata.Name, declared.Name);
     }
 
     private void EditMeasure(CalculatedMeasureEditor editor) =>
