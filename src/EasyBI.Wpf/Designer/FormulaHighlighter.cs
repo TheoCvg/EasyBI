@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Threading;
 using EasyBI.Core;
 
 namespace EasyBI.Wpf.Designer;
@@ -28,6 +29,7 @@ internal sealed class FormulaHighlighter : FrameworkElement
 
     private readonly TextBox _box;
     private readonly Func<string, bool> _isDimension;
+    private bool _redrawPending;
 
     /// <param name="box">The text box of the formula, which this element must cover exactly.</param>
     /// <param name="isDimension">Whether a field written in brackets (its caption) is a dimension.</param>
@@ -68,7 +70,15 @@ internal sealed class FormulaHighlighter : FrameworkElement
     protected override void OnRender(DrawingContext context)
     {
         var text = _box.Text;
-        if (text.Length == 0 || !_box.IsArrangeValid) return;
+        if (text.Length == 0) return;
+        var rects = Enumerable.Range(0, text.Length).Select(Position).ToArray();
+        // The text box lays its lines out after this element is drawn when the text wraps onto another line: no
+        // position is known yet, so draw again once the layout is done
+        if (!_box.IsArrangeValid || rects.Any(r => r.IsEmpty))
+        {
+            RedrawAfterLayout();
+            return;
+        }
         context.PushClip(new RectangleGeometry(new Rect(RenderSize)));
 
         // One brush (and weight) per character
@@ -95,7 +105,6 @@ internal sealed class FormulaHighlighter : FrameworkElement
         var typeface = new Typeface(_box.FontFamily, _box.FontStyle, FontWeights.Normal, _box.FontStretch);
         var boldface = new Typeface(_box.FontFamily, _box.FontStyle, FontWeights.SemiBold, _box.FontStretch);
         var dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
-        var rects = Enumerable.Range(0, text.Length).Select(Position).ToArray();
         // Runs of characters on the same line with the same look, drawn where the text box places their first one
         for (var start = 0; start < text.Length;)
         {
@@ -120,8 +129,8 @@ internal sealed class FormulaHighlighter : FrameworkElement
         var end = Math.Clamp(problem.Start + problem.Length, start, text.Length);
         if (start == end)
         {
-            var at = start < text.Length ? rects[start] : Position(text.Length);
-            Wave(context, pen, at.Left, at.Left + 10, at.Bottom);
+            var at = start < text.Length ? rects[start] : Position(text.Length - 1, trailing: true);
+            if (!at.IsEmpty) Wave(context, pen, at.Left, at.Left + 10, at.Bottom);
             return;
         }
         for (var i = start; i < end;)
@@ -136,6 +145,7 @@ internal sealed class FormulaHighlighter : FrameworkElement
 
     private static void Wave(DrawingContext context, Pen pen, double left, double right, double bottom)
     {
+        if (!double.IsFinite(left) || !double.IsFinite(right) || !double.IsFinite(bottom)) return;
         var geometry = new StreamGeometry();
         using (var g = geometry.Open())
         {
@@ -154,9 +164,20 @@ internal sealed class FormulaHighlighter : FrameworkElement
     private Rect Position(int index, bool trailing)
     {
         var rect = _box.GetRectFromCharacterIndex(index, trailing);
-        if (rect.IsEmpty) return new Rect(-1000, -1000, 0, 0);
+        if (rect.IsEmpty) return Rect.Empty;
         var origin = _box.TranslatePoint(rect.TopLeft, this);
         return new Rect(origin, rect.Size);
+    }
+
+    private void RedrawAfterLayout()
+    {
+        if (_redrawPending) return;
+        _redrawPending = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+        {
+            _redrawPending = false;
+            InvalidateVisual();
+        });
     }
 
     // "[Région]" → "Région" ("]]" stands for "]")

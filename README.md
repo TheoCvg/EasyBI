@@ -143,13 +143,15 @@ gives the formula of such a measure.
 
 End users create their own from the field list (**+ Calculated measure**, then ✎ and ✕ on hover): a name, a format
 and a formula over the model's fields, typed with their captions and checked as it is typed, with its total as a
-preview. The editor colors the formula and underlines its problem, suggests functions and fields as they are typed
-(after `[`, or with Ctrl+Space), shows how to write the function the caret is in, and lists on its right the
-functions, measures and dimensions to search and insert, with the values of the selected dimension; every item and
-operator has a help tooltip (a plain content, so tooltips keep the application's style). `FormulaEditing`
-(`Tokenize`, `CallAt`, `CompletionAt`) and `MeasureFormula.Check` (the problem and where it is written) give the same
-help to an application that builds its own editor, and `CalculatedMeasureEditor` exposes it as a view-model
-(`Catalog`, `Search`, `SelectedItem`, `Values`, `Suggest`, `Accept`, `Insert`, `CurrentCall`, `Problem`):
+preview. The editor colors the formula and underlines its problem, shows how to write the function the caret is in,
+offers the operators as a keypad (calculation, comparison, logic) and the functions, measures and dimensions in tabs
+to search and insert. Its suggestions only offer what can be written where the caret is: in the value of `SUM(`, the
+measures and number dimensions; in a condition, the dimensions; after `[Region] =`, the values of Region; after a
+value in a condition, AND and OR. Every item and operator has a help tooltip (a plain content, so tooltips keep the
+application's style). `FormulaEditing` (`Tokenize`, `Calls`, `CallAt`, `CompletionAt`, `ContextAt`) and
+`MeasureFormula.Check` (the problem and where it is written) give the same help to an application that builds its own
+editor, and `CalculatedMeasureEditor` exposes it as a view-model (`Tabs`, `Search`, `OperatorGroups`, `Suggest`,
+`Accept`, `Insert`, `CurrentCall`, `Problem`):
 
 ```
 [Margin] / [Revenue]            ([Revenue] - [Margin]) / [Number of sales]            [Margin] * 100 / [Revenue]

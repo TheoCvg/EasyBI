@@ -315,4 +315,25 @@
   <data name="FormulaDescriptionIF" xml:space="preserve">
     <value>Une valeur ou une autre selon une condition, comme IF([CA] &gt; 1000; [Marge]; 0) ; sans la dernière valeur, vide.</value>
   </data>
+  <data name="FormulaSummarySUM" xml:space="preserve">
+    <value>Somme</value>
+  </data>
+  <data name="FormulaSummaryAVERAGE" xml:space="preserve">
+    <value>Moyenne</value>
+  </data>
+  <data name="FormulaSummaryMIN" xml:space="preserve">
+    <value>Plus petite valeur</value>
+  </data>
+  <data name="FormulaSummaryMAX" xml:space="preserve">
+    <value>Plus grande valeur</value>
+  </data>
+  <data name="FormulaSummaryCOUNT" xml:space="preserve">
+    <value>Nombre de lignes</value>
+  </data>
+  <data name="FormulaSummaryDISTINCTCOUNT" xml:space="preserve">
+    <value>Nombre de valeurs différentes</value>
+  </data>
+  <data name="FormulaSummaryIF" xml:space="preserve">
+    <value>Si … alors … sinon</value>
+  </data>
 </root>

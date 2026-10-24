@@ -33,16 +33,11 @@ public sealed record FormulaItem(FormulaItemKind Kind, string Caption, string Te
         _ => "",
     };
 
-    /// <summary>The group of the lists: functions, measures, dimensions.</summary>
-    public string Group => Kind switch
-    {
-        FormulaItemKind.Function or FormulaItemKind.Keyword => Strings.FormulaFunctionsHeader,
-        FormulaItemKind.Measure => Strings.MeasuresHeader,
-        _ => Strings.DimensionsHeader,
-    };
+    /// <summary>What it does in a few words, shown next to its caption in the lists (functions).</summary>
+    public string? Summary { get; init; }
 
     public static FormulaItem For(FormulaFunction function) =>
-        new(FormulaItemKind.Function, function.Name, function.Name + "()", function.Usage, function.Description);
+        new(FormulaItemKind.Function, function.Name, function.Name + "()", function.Usage, function.Description) { Summary = function.Summary };
 
     public static FormulaItem ForKeyword(string keyword) =>
         new(FormulaItemKind.Keyword, keyword, keyword is "TRUE" or "FALSE" ? keyword : $" {keyword} ",
@@ -77,25 +72,59 @@ public sealed record FormulaItem(FormulaItemKind Kind, string Caption, string Te
         return new(FormulaItemKind.Value, value.ToString() ?? text, text, text);
     }
 
-    /// <summary>The operators of the editor's toolbar.</summary>
-    public static IReadOnlyList<FormulaItem> Operators() =>
+    /// <summary>The operators of the editor's keypad, by group: calculation, comparison, logic.</summary>
+    public static IReadOnlyList<FormulaOperatorGroup> OperatorGroups() =>
     [
-        Operator("+", " + ", "OperatorAdd", null, "[A] + [B]"),
-        Operator("−", " - ", "OperatorSubtract", null, "[A] - [B]"),
-        Operator("×", " * ", "OperatorMultiply", null, "[A] * 1.2"),
-        Operator("÷", " / ", "OperatorDivide", "OperatorDivideHelp", "[A] / [B]"),
-        Operator("( )", "()", "OperatorParentheses", "OperatorParenthesesHelp", "([A] - [B]) / [B]"),
-        Operator("=", " = ", "OperatorEqual", "OperatorComparisonHelp", "[A] = \"x\""),
-        Operator("≠", " <> ", "OperatorNotEqual", "OperatorComparisonHelp", "[A] <> \"x\""),
-        Operator("<", " < ", "OperatorLess", "OperatorComparisonHelp", "[A] < 100"),
-        Operator("≤", " <= ", "OperatorLessOrEqual", "OperatorComparisonHelp", "[A] <= 100"),
-        Operator(">", " > ", "OperatorGreater", "OperatorComparisonHelp", "[A] > \"2024-12-31\""),
-        Operator("≥", " >= ", "OperatorGreaterOrEqual", "OperatorComparisonHelp", "[A] >= 100"),
-        ForKeyword("AND") with { Kind = FormulaItemKind.Operator },
-        ForKeyword("OR") with { Kind = FormulaItemKind.Operator },
-        ForKeyword("NOT") with { Kind = FormulaItemKind.Operator, Text = "NOT " },
+        new(Strings.OperatorsCalculation, 3,
+        [
+            Operator("+", " + ", "OperatorAdd", null, "[A] + [B]"),
+            Operator("−", " - ", "OperatorSubtract", null, "[A] - [B]"),
+            Operator("( )", "()", "OperatorParentheses", "OperatorParenthesesHelp", "([A] - [B]) / [B]"),
+            Operator("×", " * ", "OperatorMultiply", null, "[A] * 1.2"),
+            Operator("÷", " / ", "OperatorDivide", "OperatorDivideHelp", "[A] / [B]"),
+        ]),
+        new(Strings.OperatorsComparison, 3,
+        [
+            Operator("=", " = ", "OperatorEqual", "OperatorComparisonHelp", "[A] = \"x\""),
+            Operator("≠", " <> ", "OperatorNotEqual", "OperatorComparisonHelp", "[A] <> \"x\""),
+            Operator("<", " < ", "OperatorLess", "OperatorComparisonHelp", "[A] < 100"),
+            Operator("≤", " <= ", "OperatorLessOrEqual", "OperatorComparisonHelp", "[A] <= 100"),
+            Operator(">", " > ", "OperatorGreater", "OperatorComparisonHelp", "[A] > \"2024-12-31\""),
+            Operator("≥", " >= ", "OperatorGreaterOrEqual", "OperatorComparisonHelp", "[A] >= 100"),
+        ]),
+        new(Strings.OperatorsLogic, 2,
+        [
+            ForKeyword("AND") with { Kind = FormulaItemKind.Operator },
+            ForKeyword("OR") with { Kind = FormulaItemKind.Operator },
+            ForKeyword("NOT") with { Kind = FormulaItemKind.Operator, Text = "NOT " },
+        ]),
     ];
 
     private static FormulaItem Operator(string caption, string text, string title, string? description, string example) =>
         new(FormulaItemKind.Operator, caption, text, Strings.Named(title), description is null ? null : Strings.Named(description), example);
+}
+
+/// <summary>A group of the operator keypad, laid out on <paramref name="Columns"/> columns.</summary>
+public sealed record FormulaOperatorGroup(string Title, int Columns, IReadOnlyList<FormulaItem> Items);
+
+/// <summary>A tab of the editor's catalog: the functions, the measures or the dimensions matching the search.</summary>
+public sealed class FormulaCatalogTab(FormulaItemKind kind, string header, string glyph, IReadOnlyList<FormulaItem> all) : ObservableObject
+{
+    private readonly IReadOnlyList<FormulaItem> _all = all;
+    private IReadOnlyList<FormulaItem> _items = all;
+
+    public FormulaItemKind Kind => kind;
+
+    public string Header => header;
+
+    public string Glyph => glyph;
+
+    /// <summary>The items matching the search.</summary>
+    public IReadOnlyList<FormulaItem> Items
+    {
+        get => _items;
+        private set => SetProperty(ref _items, value);
+    }
+
+    internal void Filter(string search) => Items = _all.Where(i => TextMatch.Matches(i.Caption, search)).ToArray();
 }

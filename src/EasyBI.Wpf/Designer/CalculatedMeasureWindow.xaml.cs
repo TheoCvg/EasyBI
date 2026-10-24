@@ -3,13 +3,15 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf.Designer;
 
 /// <summary>
 /// Built-in dialog of a <see cref="CalculatedMeasureEditor"/>: the formula on the left (colored, its problem underlined,
-/// suggestions as it is typed, the function at the caret), the functions and fields to search and insert on the right.
+/// suggestions of what can be written as it is typed, the function at the caret) with the operator keypad; the
+/// functions, measures and dimensions to search and insert on the right, each in its tab.
 /// Saves the measure in its context on OK.
 /// </summary>
 internal partial class CalculatedMeasureWindow : Window
@@ -38,8 +40,6 @@ internal partial class CalculatedMeasureWindow : Window
         ResetButton.Visibility = editor.CanReset ? Visibility.Visible : Visibility.Collapsed;
         if (editor.DeclaredFormula is { } declared) RedefinitionHint.Text = Strings.Format(Strings.MeasureRedefinitionHint, declared);
         else RedefinitionBanner.Visibility = Visibility.Collapsed;
-        ShowCatalog();
-        ShowValues();
         ShowStatus();
         Loaded += (_, _) =>
         {
@@ -59,12 +59,6 @@ internal partial class CalculatedMeasureWindow : Window
             case nameof(CalculatedMeasureEditor.Error) or nameof(CalculatedMeasureEditor.Preview):
                 ShowStatus();
                 break;
-            case nameof(CalculatedMeasureEditor.Catalog):
-                ShowCatalog();
-                break;
-            case nameof(CalculatedMeasureEditor.Values):
-                ShowValues();
-                break;
             case nameof(CalculatedMeasureEditor.Suggestions):
                 ShowSuggestions();
                 break;
@@ -79,23 +73,6 @@ internal partial class CalculatedMeasureWindow : Window
         var brush = problem is null ? EasyBITheme.SuccessBrushKey : EasyBITheme.ErrorBrushKey;
         StatusIcon.SetResourceReference(TextBlock.ForegroundProperty, brush);
         Status.SetResourceReference(TextBlock.ForegroundProperty, problem is null ? EasyBITheme.ForegroundBrushKey : EasyBITheme.ErrorBrushKey);
-    }
-
-    // Grouped by functions, measures and dimensions
-    private void ShowCatalog()
-    {
-        var view = new ListCollectionView(_editor.Catalog.ToList());
-        view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(FormulaItem.Group)));
-        CatalogList.ItemsSource = view;
-        CatalogList.SelectedItem = _editor.SelectedItem;
-        NoMatch.Visibility = _editor.Catalog.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-    }
-
-    private void ShowValues()
-    {
-        var visibility = _editor.Values.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        ValuesHeader.Visibility = visibility;
-        ValuesScroller.Visibility = visibility;
     }
 
     // --- Inserting
@@ -120,11 +97,6 @@ internal partial class CalculatedMeasureWindow : Window
         if (sender is FrameworkElement { DataContext: FormulaItem item }) Insert(item);
     }
 
-    private void OnInsertSelected(object sender, RoutedEventArgs e)
-    {
-        if (_editor.SelectedItem is { } item) Insert(item);
-    }
-
     private void OnCatalogDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (e.OriginalSource is FrameworkElement { DataContext: FormulaItem item }) Insert(item);
@@ -137,13 +109,24 @@ internal partial class CalculatedMeasureWindow : Window
         e.Handled = true;
     }
 
-    // Down arrow from the search goes to the results
+    // Down arrow from the search goes to the results of the open tab
     private void OnSearchKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Down || CatalogList.Items.Count == 0) return;
-        CatalogList.SelectedIndex = Math.Max(CatalogList.SelectedIndex, 0);
-        (CatalogList.ItemContainerGenerator.ContainerFromIndex(CatalogList.SelectedIndex) as UIElement)?.Focus();
+        if (e.Key != Key.Down || Descendant<ListBox>(CatalogTabs) is not { Items.Count: > 0 } list) return;
+        list.SelectedIndex = Math.Max(list.SelectedIndex, 0);
+        (list.ItemContainerGenerator.ContainerFromIndex(list.SelectedIndex) as UIElement)?.Focus();
         e.Handled = true;
+    }
+
+    private static T? Descendant<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T found) return found;
+            if (Descendant<T>(child) is { } deeper) return deeper;
+        }
+        return null;
     }
 
     // --- Suggestions

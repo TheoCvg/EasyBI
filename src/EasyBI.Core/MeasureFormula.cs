@@ -703,6 +703,9 @@ public sealed record FormulaFunction(string Name, int MinArguments, int MaxArgum
     /// <summary>How to write it, such as <c>SUM(value; condition)</c>, in the EasyBI language.</summary>
     public string Usage => Strings.Named("FormulaUsage" + Name);
 
+    /// <summary>What it computes in a few words ("Sum"), in the EasyBI language.</summary>
+    public string Summary => Strings.Named("FormulaSummary" + Name);
+
     /// <summary>What it computes, in the EasyBI language.</summary>
     public string Description => Strings.Named("FormulaDescription" + Name);
 }

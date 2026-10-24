@@ -729,14 +729,8 @@
   <data name="FormulaPlaceholder" xml:space="preserve">
     <value>Tapez une formule, comme SUM([CA]; [Région] = "Nord"), ou choisissez des éléments à droite</value>
   </data>
-  <data name="FormulaValuesHeader" xml:space="preserve">
-    <value>VALEURS</value>
-  </data>
-  <data name="FormulaInsert" xml:space="preserve">
-    <value>Insérer</value>
-  </data>
   <data name="FormulaShortcutsHint" xml:space="preserve">
-    <value>Ctrl+Espace : suggestions · Tab ou Entrée : insérer · double-clic dans la liste : insérer</value>
+    <value>Les suggestions apparaissent pendant la saisie (Ctrl+Espace les affiche partout) : ↑↓ pour choisir, Tab ou Entrée pour insérer, Échap pour fermer. Double-cliquez un élément de la liste pour l'insérer.</value>
   </data>
   <data name="FormulaMeasureHelp" xml:space="preserve">
     <value>Mesure du modèle. Seule, elle est agrégée comme dans la liste des champs ; dans une fonction comme SUM, elle est lue ligne par ligne.</value>
@@ -809,5 +803,23 @@
   </data>
   <data name="OperatorComparisonHelp" xml:space="preserve">
     <value>Compare deux valeurs, dans la condition d'une fonction ou de IF. Les textes et les dates s'écrivent entre guillemets.</value>
+  </data>
+  <data name="OperatorsCalculation" xml:space="preserve">
+    <value>CALCUL</value>
+  </data>
+  <data name="OperatorsComparison" xml:space="preserve">
+    <value>COMPARAISON</value>
+  </data>
+  <data name="OperatorsLogic" xml:space="preserve">
+    <value>LOGIQUE</value>
+  </data>
+  <data name="FormulaTabFunctions" xml:space="preserve">
+    <value>Fonctions</value>
+  </data>
+  <data name="FormulaTabMeasures" xml:space="preserve">
+    <value>Mesures</value>
+  </data>
+  <data name="FormulaTabDimensions" xml:space="preserve">
+    <value>Dimensions</value>
   </data>
 </root>

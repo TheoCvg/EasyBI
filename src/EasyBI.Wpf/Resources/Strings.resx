@@ -729,14 +729,8 @@
   <data name="FormulaPlaceholder" xml:space="preserve">
     <value>Type a formula, such as SUM([Revenue]; [Region] = "North"), or pick items on the right</value>
   </data>
-  <data name="FormulaValuesHeader" xml:space="preserve">
-    <value>VALUES</value>
-  </data>
-  <data name="FormulaInsert" xml:space="preserve">
-    <value>Insert</value>
-  </data>
   <data name="FormulaShortcutsHint" xml:space="preserve">
-    <value>Ctrl+Space: suggestions · Tab or Enter: insert · double-click in the list: insert</value>
+    <value>Suggestions appear as you type (Ctrl+Space shows them anywhere): ↑↓ to choose, Tab or Enter to insert, Esc to close. Double-click an item of the list to insert it.</value>
   </data>
   <data name="FormulaMeasureHelp" xml:space="preserve">
     <value>Measure of the model. On its own, it is aggregated as in the field list; inside a function such as SUM, it is read row by row.</value>
@@ -809,5 +803,23 @@
   </data>
   <data name="OperatorComparisonHelp" xml:space="preserve">
     <value>Compares two values, in a condition of a function or of IF. Texts and dates go in double quotes.</value>
+  </data>
+  <data name="OperatorsCalculation" xml:space="preserve">
+    <value>CALCULATION</value>
+  </data>
+  <data name="OperatorsComparison" xml:space="preserve">
+    <value>COMPARISON</value>
+  </data>
+  <data name="OperatorsLogic" xml:space="preserve">
+    <value>LOGIC</value>
+  </data>
+  <data name="FormulaTabFunctions" xml:space="preserve">
+    <value>Functions</value>
+  </data>
+  <data name="FormulaTabMeasures" xml:space="preserve">
+    <value>Measures</value>
+  </data>
+  <data name="FormulaTabDimensions" xml:space="preserve">
+    <value>Dimensions</value>
   </data>
 </root>

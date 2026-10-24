@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:bi="clr-namespace:EasyBI.Wpf"
         xmlns:d="clr-namespace:EasyBI.Wpf.Designer"
-        Title="{bi:Localize CalculatedMeasureTitle}" Width="940" Height="620" MinWidth="720" MinHeight="480"
+        Title="{bi:Localize CalculatedMeasureTitle}" Width="900" Height="560" MinWidth="700" MinHeight="440"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False" ResizeMode="CanResizeWithGrip"
         Background="{DynamicResource {x:Static bi:EasyBITheme.BackgroundBrushKey}}" Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}">
     <Window.Resources>
@@ -25,7 +25,7 @@
             </DataTemplate.Triggers>
         </DataTemplate>
 
-        <!-- An item of the catalog and of the suggestions: its glyph, colored by kind, and its caption -->
+        <!-- An item of the catalog and of the suggestions: its glyph, colored by kind, its caption and its summary -->
         <DataTemplate x:Key="ItemRow" DataType="{x:Type d:FormulaItem}">
             <DockPanel Background="Transparent">
                 <DockPanel.ToolTip>
@@ -33,9 +33,14 @@
                 </DockPanel.ToolTip>
                 <TextBlock x:Name="Glyph" Text="{Binding Glyph}" Width="24" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"
                            Foreground="{DynamicResource {x:Static bi:EasyBITheme.FormulaFunctionBrushKey}}" />
-                <TextBlock Text="{Binding Caption}" Padding="0,3" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <TextBlock x:Name="Caption" Text="{Binding Caption}" Padding="0,3" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Summary}" Margin="10,0,0,0" FontSize="11" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                           HorizontalAlignment="Right" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
             </DockPanel>
             <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Kind}" Value="Function">
+                    <Setter TargetName="Caption" Property="FontFamily" Value="Consolas" />
+                </DataTrigger>
                 <DataTrigger Binding="{Binding Kind}" Value="Measure">
                     <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.MeasureBrushKey}}" />
                 </DataTrigger>
@@ -43,11 +48,15 @@
                     <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.FormulaDimensionBrushKey}}" />
                     <Setter TargetName="Glyph" Property="FontSize" Value="10" />
                 </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Value">
+                    <Setter TargetName="Glyph" Property="Text" Value="&quot;" />
+                    <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.FormulaTextBrushKey}}" />
+                </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
 
         <Style x:Key="SectionHeader" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontSize" Value="10" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
         </Style>
@@ -105,7 +114,7 @@
                 <ColumnDefinition Width="300" />
             </Grid.ColumnDefinitions>
 
-            <!-- Left: the formula, the operators, the function at the caret, the status -->
+            <!-- Left: the formula, the function at the caret, the status, the operators -->
             <Grid Margin="20,0,16,16">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -115,22 +124,22 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <DockPanel Margin="0,0,0,6">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                     <TextBlock Text="{bi:Localize MeasureFormula}" FontWeight="SemiBold" VerticalAlignment="Center" />
                     <Border Width="18" Height="18" CornerRadius="9" Margin="6,0,0,0" VerticalAlignment="Center" Background="Transparent" BorderThickness="1"
                             BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderStrongBrushKey}}">
                         <Border.ToolTip>
                             <ToolTip>
-                                <TextBlock Text="{bi:Localize MeasureFormulaHint}" TextWrapping="Wrap" MaxWidth="380" />
+                                <StackPanel MaxWidth="380">
+                                    <TextBlock Text="{bi:Localize MeasureFormulaHint}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{bi:Localize FormulaShortcutsHint}" Margin="0,8,0,0" TextWrapping="Wrap" Opacity="0.8" />
+                                </StackPanel>
                             </ToolTip>
                         </Border.ToolTip>
                         <TextBlock Text="?" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"
                                    Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
                     </Border>
-                    <TextBlock Text="{bi:Localize FormulaShortcutsHint}" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11"
-                               TextTrimming="CharacterEllipsis" Margin="12,0,0,0"
-                               Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
-                </DockPanel>
+                </StackPanel>
 
                 <!-- The formula: a plain text box, colored by a FormulaHighlighter added over it -->
                 <Grid x:Name="FormulaHost" Grid.Row="1">
@@ -165,26 +174,8 @@
                     </Popup>
                 </Grid>
 
-                <!-- Operators -->
-                <ItemsControl Grid.Row="2" Margin="0,8,0,0" ItemsSource="{Binding Operators}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Button Content="{Binding Caption}" MinWidth="34" Padding="8,2" Margin="0,0,4,4" FontSize="12" Focusable="False" Click="OnInsertClicked">
-                                <Button.ToolTip>
-                                    <ToolTip Content="{Binding}" ContentTemplate="{StaticResource ItemHelp}" />
-                                </Button.ToolTip>
-                            </Button>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
                 <!-- How to write the function at the caret -->
-                <Border Grid.Row="3" Margin="0,6,0,0" Padding="10,6" BorderThickness="1"
+                <Border Grid.Row="2" Margin="0,6,0,0" Padding="10,6" BorderThickness="1"
                         CornerRadius="{DynamicResource {x:Static bi:EasyBITheme.CornerRadiusKey}}"
                         Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceAltBrushKey}}"
                         BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}">
@@ -206,24 +197,51 @@
                 </Border>
 
                 <!-- Why the measure cannot be saved, or the total of a valid formula -->
-                <DockPanel Grid.Row="4" Margin="0,10,0,0">
+                <DockPanel Grid.Row="3" Margin="0,8,0,0">
                     <TextBlock x:Name="StatusIcon" DockPanel.Dock="Left" FontWeight="Bold" Margin="0,0,8,0" VerticalAlignment="Top" />
                     <TextBlock x:Name="Status" TextWrapping="Wrap" MinHeight="18" />
                 </DockPanel>
+
+                <!-- Operators: a keypad per group (calculation, comparison, logic) -->
+                <ItemsControl Grid.Row="4" Margin="0,12,0,0" ItemsSource="{Binding OperatorGroups}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,0,24,0">
+                                <TextBlock Text="{Binding Title}" Style="{StaticResource SectionHeader}" Margin="0,0,0,4" />
+                                <ItemsControl ItemsSource="{Binding Items}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="{Binding Columns}" HorizontalAlignment="Left" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Content="{Binding Caption}" MinWidth="36" Height="28" Padding="6,0" Margin="0,0,4,4" FontSize="13"
+                                                    Focusable="False" Click="OnInsertClicked">
+                                                <Button.ToolTip>
+                                                    <ToolTip Content="{Binding}" ContentTemplate="{StaticResource ItemHelp}" />
+                                                </Button.ToolTip>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </Grid>
 
-            <!-- Right: the catalog of functions and fields, and the details of the selected one -->
+            <!-- Right: functions, measures and dimensions, each in its tab -->
             <Border Grid.Column="1" BorderThickness="1,1,0,0"
                     Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceAltBrushKey}}"
                     BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-
-                    <Grid Margin="12,12,12,8">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top" Margin="12,12,12,8">
                         <TextBox x:Name="SearchBox" Padding="6,4" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" PreviewKeyDown="OnSearchKeyDown" />
                         <TextBlock Text="{bi:Localize FormulaSearchPlaceholder}" Margin="10,0,8,0" VerticalAlignment="Center" FontSize="12">
                             <TextBlock.Style>
@@ -238,61 +256,41 @@
                         </TextBlock>
                     </Grid>
 
-                    <ListBox x:Name="CatalogList" Grid.Row="1" Margin="4,0,4,0" BorderThickness="0" Background="Transparent"
-                             Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}"
-                             ItemTemplate="{StaticResource ItemRow}" SelectedItem="{Binding SelectedItem}"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.IsVirtualizingWhenGrouping="True"
-                             MouseDoubleClick="OnCatalogDoubleClick" KeyDown="OnCatalogKeyDown">
-                        <ListBox.GroupStyle>
-                            <GroupStyle>
-                                <GroupStyle.HeaderTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Name}" Style="{StaticResource SectionHeader}" Margin="6,10,0,4" />
-                                    </DataTemplate>
-                                </GroupStyle.HeaderTemplate>
-                            </GroupStyle>
-                        </ListBox.GroupStyle>
-                    </ListBox>
-                    <TextBlock x:Name="NoMatch" Grid.Row="1" Margin="16,8" Text="{bi:Localize FormulaNoMatch}" TextWrapping="Wrap" FontSize="12"
-                               Visibility="Collapsed" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
-
-                    <!-- Details of the selected item; the values of a dimension -->
-                    <Border x:Name="Details" Grid.Row="2" BorderThickness="0,1,0,0" Padding="12,10,12,12"
-                            BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding SelectedItem}" Value="{x:Null}">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
-                        <StackPanel>
-                            <DockPanel>
-                                <Button DockPanel.Dock="Right" Content="{bi:Localize FormulaInsert}" Padding="10,2" Margin="8,0,0,0" VerticalAlignment="Top"
-                                        Click="OnInsertSelected" />
-                                <ContentPresenter Content="{Binding SelectedItem}" ContentTemplate="{StaticResource ItemHelp}" />
-                            </DockPanel>
-                            <TextBlock x:Name="ValuesHeader" Text="{bi:Localize FormulaValuesHeader}" Style="{StaticResource SectionHeader}" Margin="0,10,0,4" />
-                            <ScrollViewer x:Name="ValuesScroller" MaxHeight="96" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding Values}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <WrapPanel />
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Button Content="{Binding Caption}" Padding="6,1" Margin="0,0,4,4" FontSize="11" Focusable="False"
-                                                    ToolTip="{Binding Text}" Click="OnInsertClicked" />
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </StackPanel>
-                    </Border>
-                </Grid>
+                    <TabControl x:Name="CatalogTabs" Margin="8,0,8,8" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}">
+                        <TabControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Glyph}" FontWeight="Bold" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Header}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </TabControl.ItemTemplate>
+                        <TabControl.ContentTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <ListBox ItemsSource="{Binding Items}" ItemTemplate="{StaticResource ItemRow}" BorderThickness="0" Background="Transparent"
+                                             Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}"
+                                             SelectedItem="{Binding DataContext.SelectedItem, RelativeSource={RelativeSource AncestorType=Window}}"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="False"
+                                             MouseDoubleClick="OnCatalogDoubleClick" KeyDown="OnCatalogKeyDown" />
+                                    <TextBlock Margin="8" Text="{bi:Localize FormulaNoMatch}" TextWrapping="Wrap" FontSize="12"
+                                               Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Items.Count}" Value="0">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+                            </DataTemplate>
+                        </TabControl.ContentTemplate>
+                    </TabControl>
+                </DockPanel>
             </Border>
         </Grid>
     </DockPanel>

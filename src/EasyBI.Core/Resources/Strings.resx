@@ -315,4 +315,25 @@
   <data name="FormulaDescriptionIF" xml:space="preserve">
     <value>One value or another depending on a condition, such as IF([Revenue] &gt; 1000; [Margin]; 0); without the last value, empty.</value>
   </data>
+  <data name="FormulaSummarySUM" xml:space="preserve">
+    <value>Sum</value>
+  </data>
+  <data name="FormulaSummaryAVERAGE" xml:space="preserve">
+    <value>Average</value>
+  </data>
+  <data name="FormulaSummaryMIN" xml:space="preserve">
+    <value>Smallest value</value>
+  </data>
+  <data name="FormulaSummaryMAX" xml:space="preserve">
+    <value>Largest value</value>
+  </data>
+  <data name="FormulaSummaryCOUNT" xml:space="preserve">
+    <value>Number of rows</value>
+  </data>
+  <data name="FormulaSummaryDISTINCTCOUNT" xml:space="preserve">
+    <value>Number of different values</value>
+  </data>
+  <data name="FormulaSummaryIF" xml:space="preserve">
+    <value>If … then … otherwise</value>
+  </data>
 </root>

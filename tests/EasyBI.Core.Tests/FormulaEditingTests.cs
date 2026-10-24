@@ -98,4 +98,49 @@ public class FormulaEditingTests
     {
         Assert.Null(FormulaEditing.CompletionAt(typed.Replace("|", ""), typed.IndexOf('|')));
     }
+
+    [Theory]
+    [InlineData("|", FormulaSlot.Value)]
+    [InlineData("[CA] / |", FormulaSlot.Value)]
+    [InlineData("SUM(|", FormulaSlot.RowValue)]
+    [InlineData("SUM([CA] * |", FormulaSlot.RowValue)]
+    [InlineData("SUM([CA]; |", FormulaSlot.Condition)]
+    [InlineData("SUM([CA]; [Région] = \"Nord\" AND |", FormulaSlot.Condition)]
+    [InlineData("SUM([CA]; ([Prix] > 1 OR |", FormulaSlot.Condition)]
+    [InlineData("COUNT(|", FormulaSlot.Condition)]
+    [InlineData("DISTINCTCOUNT(|", FormulaSlot.DistinctField)]
+    [InlineData("DISTINCTCOUNT([Client]; |", FormulaSlot.Condition)]
+    [InlineData("IF(|", FormulaSlot.Condition)]
+    [InlineData("IF([CA] > 1; |", FormulaSlot.Value)]
+    [InlineData("SUM(IF([Région] = \"Nord\"; |", FormulaSlot.RowValue)]
+    [InlineData("[CA] |", FormulaSlot.AfterOperand)]
+    [InlineData("SUM([CA]; [Région] = \"Nord\" |", FormulaSlot.AfterOperand)]
+    [InlineData("SUM([CA]) |", FormulaSlot.AfterOperand)]
+    public void The_place_of_the_caret_tells_what_can_be_written(string typed, FormulaSlot slot)
+    {
+        Assert.Equal(slot, FormulaEditing.ContextAt(typed.Replace("|", ""), typed.IndexOf('|')).Slot);
+    }
+
+    [Fact]
+    public void After_a_comparison_of_a_field_its_values_are_expected_and_a_typed_value_is_replaced()
+    {
+        var context = FormulaEditing.ContextAt("SUM([CA]; [Région] = ", 21);
+        Assert.Equal((FormulaSlot.ComparedValue, "Région", true, 21, 0, ""), (context.Slot, context.ComparedField, context.InCondition, context.Start, context.Length, context.Prefix));
+
+        context = FormulaEditing.ContextAt("SUM([CA]; [Région] <> \"No", 26);
+        Assert.Equal((FormulaSlot.ComparedValue, 22, 3, "No"), (context.Slot, context.Start, context.Length, context.Prefix));
+
+        context = FormulaEditing.ContextAt("SUM([CA]; [Région] = \"Nord\"", 27);
+        Assert.Equal(FormulaSlot.AfterOperand, context.Slot);
+    }
+
+    [Fact]
+    public void A_word_or_a_field_being_typed_is_what_a_suggestion_replaces()
+    {
+        var context = FormulaEditing.ContextAt("SUM([CA]; [Ré", 13);
+        Assert.Equal((FormulaSlot.Condition, true, 10, 3, "Ré"), (context.Slot, context.IsField, context.Start, context.Length, context.Prefix));
+
+        context = FormulaEditing.ContextAt("SUM([CA]; [Région] = \"Nord\" a", 29);
+        Assert.Equal((FormulaSlot.AfterOperand, true, "a"), (context.Slot, context.InCondition, context.Prefix));
+    }
 }

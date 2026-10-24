@@ -237,14 +237,18 @@ internal static class Strings
 
     public static string FormulaSearchPlaceholder => Get();
     public static string FormulaPlaceholder => Get();
-    public static string FormulaValuesHeader => Get();
-    public static string FormulaInsert => Get();
     public static string FormulaShortcutsHint => Get();
     public static string FormulaMeasureHelp => Get();
     public static string FormulaCalculatedMeasureHelp => Get();
     public static string FormulaDimensionHelp => Get();
     public static string FormulaNoMatch => Get();
     public static string FormulaValid => Get();
+    public static string OperatorsCalculation => Get();
+    public static string OperatorsComparison => Get();
+    public static string OperatorsLogic => Get();
+    public static string FormulaTabFunctions => Get();
+    public static string FormulaTabMeasures => Get();
+    public static string FormulaTabDimensions => Get();
     public static string MeasuresHeader => Get();
     public static string DimensionsHeader => Get();
 
