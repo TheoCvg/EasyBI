@@ -5,8 +5,8 @@ using EasyBI.Wpf.Resources;
 namespace EasyBI.Wpf.Designer;
 
 /// <summary>
-/// Creates or changes one of the report's calculated measures: a name, a formula typed with the measures' captions
-/// (<c>[Marge] / [Chiffre d'affaires]</c>) and a format. The formula is checked as it is typed, and a valid one shows
+/// Creates or changes one of the report's calculated measures: a name, a formula typed with the fields' captions
+/// (<c>[Marge] / [Chiffre d'affaires]</c>, <c>SUM([CA]; [Région] = "Nord")</c>) and a format. The formula is checked as it is typed, and a valid one shows
 /// its total as a preview. One preview query runs at a time and is never cancelled: when it ends, the latest formula
 /// is computed if it changed meanwhile, so typing skips intermediate formulas instead of cancelling a query per key.
 /// </summary>
@@ -43,8 +43,10 @@ public sealed class CalculatedMeasureEditor : ObservableObject
         _format = FormatOptions.FirstOrDefault(o => o.Value == measure?.Format) ?? FormatOptions[0];
         _caption = measure?.Caption ?? "";
         _formula = measure is null ? "" : MeasureFormula.ToDisplay(measure.Formula, model.Metadata);
-        // Formulas combine the model's measures; a calculated measure of the report cannot use another one
-        Insertable = model.Metadata.Measures.Select(f => "[" + f.Caption.Replace("]", "]]") + "]").ToArray();
+        // Formulas use the model's fields; a calculated measure of the report cannot use another one
+        static string Reference(FieldDescriptor field) => "[" + field.Caption.Replace("]", "]]") + "]";
+        Insertable = model.Metadata.Measures.Select(Reference).ToArray();
+        InsertableDimensions = model.Metadata.Dimensions.Select(Reference).ToArray();
         Check();
     }
 
@@ -56,6 +58,12 @@ public sealed class CalculatedMeasureEditor : ObservableObject
 
     /// <summary>The model's measures as they are inserted into the formula.</summary>
     public IReadOnlyList<string> Insertable { get; }
+
+    /// <summary>The model's dimensions as they are inserted into the formula, to be read inside a function.</summary>
+    public IReadOnlyList<string> InsertableDimensions { get; }
+
+    /// <summary>The functions of the formulas, with their usage and description.</summary>
+    public IReadOnlyList<FormulaFunction> Functions => MeasureFormula.Functions;
 
     public string Caption
     {

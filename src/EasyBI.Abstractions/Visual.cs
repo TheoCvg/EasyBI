@@ -102,10 +102,12 @@ public sealed record ReportDefinition
 }
 
 /// <summary>
-/// A measure the end user defines with a formula over the measures of a model, such as <c>[Margin] / [Amount]</c>:
-/// brackets hold field names, the operators are + - * / with parentheses and numbers (with a decimal point). Each
-/// measure is aggregated as the model declares it, then the formula is computed for each group; a division by zero
-/// gives an empty value. Visuals reference it by <see cref="Name"/>, like a field of the model.
+/// A measure the end user defines with a formula over the fields of a model, such as <c>[Margin] / [Amount]</c> or
+/// <c>SUM([Amount]; [Region] = "North")</c>: brackets hold field names, the operators are + - * / with parentheses and
+/// numbers (with a decimal point). A measure on its own is aggregated as the model declares it; aggregation functions
+/// (SUM, AVERAGE, MIN, MAX, COUNT, DISTINCTCOUNT) read measures and dimensions row by row, optionally on the rows
+/// matching a condition. The formula is computed for each group; a division by zero gives an empty value. Visuals
+/// reference it by <see cref="Name"/>, like a field of the model. See EasyBI.Core's <c>MeasureFormula</c>.
 /// </summary>
 public sealed record CalculatedMeasure
 {

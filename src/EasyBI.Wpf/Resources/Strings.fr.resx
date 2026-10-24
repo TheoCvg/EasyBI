@@ -244,7 +244,7 @@
     <value>Formule</value>
   </data>
   <data name="MeasureFormulaHint" xml:space="preserve">
-    <value>Cliquez sur une mesure ou un opérateur pour l&apos;insérer. Chaque mesure est agrégée comme dans la liste des champs.</value>
+    <value>Cliquez sur un élément pour l'insérer ; survolez une fonction pour voir comment l'écrire. Une mesure seule est agrégée comme dans la liste des champs. Dans une fonction, mesures et dimensions sont lues ligne par ligne : SUM([Quantité] * [Prix]), SUM([CA]; [Région] = "Nord"), DISTINCTCOUNT([Client]). Les textes et les dates s'écrivent entre guillemets ("2024-12-31").</value>
   </data>
   <data name="MeasurePreview" xml:space="preserve">
     <value>Formule valide. Total : {0}</value>
@@ -704,5 +704,8 @@
   </data>
   <data name="ValueLabelRemove" xml:space="preserve">
     <value>Retirer ce libellé : la valeur s'affiche à nouveau telle quelle</value>
+  </data>
+  <data name="FormulaFunctionsHeader" xml:space="preserve">
+    <value>FONCTIONS</value>
   </data>
 </root>

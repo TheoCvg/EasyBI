@@ -67,6 +67,24 @@ public class CalculatedMeasureUiTests
     }
 
     [Fact]
+    public async Task The_editor_offers_functions_and_dimensions_read_row_by_row()
+    {
+        var context = EasyBIContext.Create().AddModel(Model());
+        var editor = new CalculatedMeasureEditor(context, context.Models[0]) { Caption = "CA Nord" };
+
+        Assert.Equal(["[Région]"], editor.InsertableDimensions);
+        Assert.Contains(editor.Functions, f => f.Name == "DISTINCTCOUNT");
+        editor.Formula = "SUM([Chiffre d'affaires]; [Région] = \"Nord\")";
+        await editor.PreviewTask;
+
+        Assert.True(editor.CanSave);
+        Assert.Equal("SUM([Amount]; [Region] = \"Nord\")", editor.Result!.Formula);
+        Assert.Equal(ValueFormatter.Format(400d, null), editor.Preview);
+        editor.Formula = "[Région]";
+        Assert.StartsWith("[Région] is a dimension", editor.Error);
+    }
+
+    [Fact]
     public async Task Typing_the_caption_or_changing_the_format_does_not_query_the_model_again()
     {
         var model = new CountingModel(Model());

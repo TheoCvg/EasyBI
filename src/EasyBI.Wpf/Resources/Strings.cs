@@ -170,6 +170,7 @@ internal static class Strings
     public static string MeasureFormat => Get();
     public static string MeasureFormula => Get();
     public static string MeasureFormulaHint => Get();
+    public static string FormulaFunctionsHeader => Get();
     public static string MeasurePreview => Get();
     public static string EditMeasure => Get();
     public static string DeleteMeasure => Get();

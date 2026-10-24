@@ -31,15 +31,16 @@ internal partial class CalculatedMeasureWindow : Window
         Status.SetResourceReference(TextBlock.ForegroundProperty, problem is null ? EasyBITheme.MutedForegroundBrushKey : EasyBITheme.ErrorBrushKey);
     }
 
-    // Inserts at the caret, replacing the selection; parentheses go around it
+    // Inserts at the caret, replacing the selection; parentheses (and a function's) go around it
     private void OnInsert(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: string text }) return;
         var selected = FormulaBox.SelectedText;
         var start = FormulaBox.SelectionStart;
-        var inserted = text == "()" ? $"({selected})" : text;
+        var wraps = text.EndsWith("()", StringComparison.Ordinal);
+        var inserted = wraps ? $"{text[..^1]}{selected})" : text;
         FormulaBox.SelectedText = inserted;
-        FormulaBox.CaretIndex = text == "()" && selected.Length == 0 ? start + 1 : start + inserted.Length;
+        FormulaBox.CaretIndex = wraps && selected.Length == 0 ? start + inserted.Length - 1 : start + inserted.Length;
         FormulaBox.SelectionLength = 0;
         FormulaBox.Focus();
     }

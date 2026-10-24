@@ -102,12 +102,12 @@ public class UserMeasureTests
     [InlineData("", "empty")]
     [InlineData("[Margin] /", "position 11")]
     [InlineData("([Margin] / [Amount]", "parenthesis")]
-    [InlineData("[Margin / [Amount]", "unknown measure")]
+    [InlineData("[Margin / [Amount]", "unknown field")]
     [InlineData("[Margin] / [Amount", "bracket")]
     [InlineData("[Margin] % [Amount]", "%")]
     [InlineData("[Margin] * 0,5", "decimal")]
-    [InlineData("[Revenue] / [Amount]", "unknown measure: “Revenue”")]
-    [InlineData("[Region] / [Amount]", "“Region” is not a measure")]
+    [InlineData("[Revenue] / [Amount]", "unknown field: “Revenue”")]
+    [InlineData("[Region] / [Amount]", "[Region] is a dimension")]
     public void Invalid_formulas_are_explained(string formula, string expected)
     {
         var problem = MeasureFormula.Validate(formula, Model().Metadata);
@@ -141,9 +141,9 @@ public class UserMeasureTests
         var ambiguous = SemanticModel.For(Rows, "m").Measure(r => r.Amount, "CA").Measure(r => r.Margin, "CA", name: "Other").Metadata;
 
         Assert.Null(MeasureFormula.FromDisplay("[CA] * 2", ambiguous, out var error));
-        Assert.Contains("Several measures", error);
+        Assert.Contains("Several fields", error);
         Assert.Null(MeasureFormula.FromDisplay("[Ventes]", Model().Metadata, out error));
-        Assert.Contains("Unknown measure", error);
+        Assert.Contains("Unknown field", error);
     }
 
     [Fact]
@@ -189,7 +189,7 @@ public class UserMeasureTests
 
         Assert.Collection(problems,
             p => Assert.Contains("“V”: field 'calc_2' is not in model 'm'", p), // its measure belongs to another model
-            p => Assert.Contains("Calculated measure “Mesure”: Unknown measure: “Revenue”", p),
+            p => Assert.Contains("Calculated measure “Mesure”: Unknown field: “Revenue”", p),
             p => Assert.Contains("unknown model 'gone'", p));
     }
 

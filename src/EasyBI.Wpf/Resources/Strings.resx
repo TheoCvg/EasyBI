@@ -244,7 +244,7 @@
     <value>Formula</value>
   </data>
   <data name="MeasureFormulaHint" xml:space="preserve">
-    <value>Click a measure or an operator to insert it. Each measure is aggregated as in the field list.</value>
+    <value>Click an item to insert it; hover a function to see how to write it. A measure on its own is aggregated as in the field list. Inside a function, measures and dimensions are read row by row: SUM([Quantity] * [Price]), SUM([Revenue]; [Region] = "North"), DISTINCTCOUNT([Customer]). Texts and dates go in double quotes ("2024-12-31").</value>
   </data>
   <data name="MeasurePreview" xml:space="preserve">
     <value>Valid formula. Total: {0}</value>
@@ -704,5 +704,8 @@
   </data>
   <data name="ValueLabelRemove" xml:space="preserve">
     <value>Remove this label: the value shows as itself again</value>
+  </data>
+  <data name="FormulaFunctionsHeader" xml:space="preserve">
+    <value>FUNCTIONS</value>
   </data>
 </root>
