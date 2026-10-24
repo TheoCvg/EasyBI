@@ -67,6 +67,42 @@ public class CalculatedMeasureUiTests
     }
 
     [Fact]
+    public async Task Typing_the_caption_or_changing_the_format_does_not_query_the_model_again()
+    {
+        var model = new CountingModel(Model());
+        var context = EasyBIContext.Create().AddModel(model);
+        var editor = new CalculatedMeasureEditor(context, model) { Formula = "[Marge] / [Chiffre d'affaires]" };
+        await editor.PreviewTask;
+        Assert.Equal(1, model.Queries);
+
+        foreach (var caption in new[] { "T", "Ta", "Tau", "Taux" }) editor.Caption = caption;
+        editor.Format = editor.FormatOptions.Single(o => o.Value == "P1");
+        await editor.PreviewTask;
+
+        Assert.Equal(1, model.Queries);
+        Assert.Equal((190d / 600d).ToString("P1", EasyBILocalization.FormatCulture), editor.Preview);
+    }
+
+    [Fact]
+    public async Task Typing_a_formula_runs_one_preview_at_a_time_and_never_cancels_it()
+    {
+        var model = new GatedModel(Model());
+        var context = EasyBIContext.Create().AddModel(model);
+        var editor = new CalculatedMeasureEditor(context, model) { Caption = "Taux", Formula = "[Marge]" };
+        var first = editor.PreviewTask;
+
+        foreach (var formula in new[] { "[Marge] *", "[Marge] * 2", "[Marge] * 3" }) editor.Formula = formula;
+        Assert.Equal(1, model.Queries);
+        Assert.Null(editor.Preview);
+        model.Release();
+        await first;
+
+        Assert.Equal(2, model.Queries);
+        Assert.DoesNotContain(model.Tokens, token => token.IsCancellationRequested);
+        Assert.Equal(ValueFormatter.Format(190d * 3, null), editor.Preview);
+    }
+
+    [Fact]
     public void Editing_a_measure_shows_captions_and_replaces_it()
     {
         var context = EasyBIContext.Create().AddModel(Model());
@@ -172,6 +208,30 @@ public class CalculatedMeasureUiTests
         {
             Queries++;
             return inner.ExecuteAsync(query, cancellationToken);
+        }
+
+        public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default) =>
+            inner.GetDistinctValuesAsync(field, cancellationToken);
+    }
+
+    /// <summary>Holds its queries until released, recording their cancellation tokens.</summary>
+    private sealed class GatedModel(ISemanticModel inner) : ISemanticModel
+    {
+        private readonly TaskCompletionSource _gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int Queries => Tokens.Count;
+
+        public List<CancellationToken> Tokens { get; } = [];
+
+        public ModelMetadata Metadata => inner.Metadata;
+
+        public void Release() => _gate.SetResult();
+
+        public async Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default)
+        {
+            Tokens.Add(cancellationToken);
+            await _gate.Task;
+            return await inner.ExecuteAsync(query, cancellationToken);
         }
 
         public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default) =>
