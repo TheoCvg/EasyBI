@@ -3,10 +3,13 @@
 A **self-service BI library for WPF**. The developer declares *what can be analyzed*, end users build their visuals
 by drag-and-drop, and rendering is delegated to interchangeable **connectors** (LiveCharts2, OxyPlot, ...).
 
+```mermaid
+flowchart LR
+  source["Source<br/>IQueryable"] --> model["Semantic model<br/><i>developer</i>"] --> query["AnalyticQuery<br/><i>end user</i>"]
+  query --> result["ResultSet<br/><i>engine</i>"] --> chart["ChartData<br/><i>pivot</i>"] --> renderer["IVisualRenderer<br/><i>connector</i>"]
 ```
- Source (IQueryable) ─▶ Semantic model ─▶ AnalyticQuery ─▶ ResultSet ─▶ ChartData ─▶ IVisualRenderer
-                         (developer)       (end user)       (engine)     (pivot)      (connector)
-```
+
+![A dashboard of the sample: key indicators, combined charts, cross-filtering](images/dashboard.png)
 
 <div class="grid cards" markdown>
 

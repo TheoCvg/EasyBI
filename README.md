@@ -14,6 +14,8 @@ and dashboards by drag-and-drop, and rendering is delegated to interchangeable *
 
 **[Read the documentation](https://theocvg.github.io/EasyBI/)**
 
+![A dashboard of the sample](https://raw.githubusercontent.com/TheoCvg/EasyBI/develop/docs/images/dashboard.png)
+
 ## Features
 
 - **Designer**: fields dragged onto wells, a gallery of visual types (bars, lines, pies, donuts, waterfalls, KPIs,
@@ -23,8 +25,13 @@ and dashboards by drag-and-drop, and rendering is delegated to interchangeable *
   editor that suggests what can be written.
 - **Comparisons over time**, conditional formatting, custom tooltips, legends, value labels.
 - **One query per visual**, pushed down to the provider: with EF Core, grouping, aggregates, sort and top run in SQL.
-- **Themes**: light and dark, following WPF UI or Material Design; English and French, switched at runtime.
+- **Themes**: light and dark, following WPF UI or Material Design ([dark with WPF UI](https://raw.githubusercontent.com/TheoCvg/EasyBI/develop/docs/images/dashboard-dark.png));
+  English and French, switched at runtime.
 - **Open**: lookless controls with slots, your own chart connector, a JSON report format.
+
+| The designer | The formula editor |
+|---|---|
+| ![The designer](https://raw.githubusercontent.com/TheoCvg/EasyBI/develop/docs/images/designer.png) | ![The calculated measure editor](https://raw.githubusercontent.com/TheoCvg/EasyBI/develop/docs/images/measure-editor.png) |
 
 ## Get started
 
