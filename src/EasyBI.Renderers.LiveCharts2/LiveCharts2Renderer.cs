@@ -292,29 +292,6 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
     private static double PlotWidth(CartesianChart view) =>
         view.CoreChart?.DrawMarginSize.Width is > 0 and var width ? width : Math.Max(1, view.ActualWidth - 80);
 
-    /// <summary>
-    /// The labels shown under the categories: each label, measured, where it does not overlap the previous label shown
-    /// (blank otherwise). Short labels of different lengths get as many as fit, not one every n.
-    /// </summary>
-    private static string[] PlaceLabels(CartesianChart view, Axis categoryAxis, IReadOnlyList<string> categories, CategoryLevels levels)
-    {
-        var (min, max) = (categoryAxis.MinLimit ?? -0.5, categoryAxis.MaxLimit ?? categories.Count - 0.5);
-        var pitch = PlotWidth(view) / Math.Max(1, max - min);
-        var shown = new string[categories.Count];
-        var end = double.NegativeInfinity;
-        for (var i = 0; i < categories.Count; i++)
-        {
-            var center = (i - min) * pitch;
-            var half = LabelFont.MeasureText(categories[i]) / 2 + 4;
-            shown[i] = center - half >= end ? categories[i] : "";
-            if (shown[i].Length > 0) end = center + half;
-        }
-        // Fewer than two labels a group (one would repeat the same name): the groups' labels say enough
-        var groups = levels.Groups[0];
-        var needed = Math.Min(2, (double)categories.Count / groups.Count) * groups.Count;
-        return shown.Count(l => l.Length > 0) < needed * 0.9 ? new string[categories.Count].Select(_ => "").ToArray() : shown;
-    }
-
     // The chart as its category axis labels it: by the innermost axis field when the axis has several
     private static ChartData Displayed(ChartData chart) =>
         CategoryLevels.Of(chart) is { } levels ? chart with { Categories = levels.Labels } : chart;
@@ -386,13 +363,11 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         var legend = Position(fit.Legend);
         if (view.LegendPosition != legend) view.LegendPosition = legend;
         ShowLegendPage(view.Series.Take(chart.Series.Count), ChartFitting.LegendEntries(fit, pager));
-        // Short labels under groups stay horizontal, each one shown where it does not overlap the previous one
-        var rotation = levels is null ? fit.LabelRotation : 0;
-        if (categoryAxis.LabelsRotation != rotation) categoryAxis.LabelsRotation = rotation;
+        if (categoryAxis.LabelsRotation != fit.LabelRotation) categoryAxis.LabelsRotation = fit.LabelRotation;
+        // Under groups, fewer than two labels a group would repeat one name: the groups' labels say enough
+        var hidden = levels is not null && (double)chart.Categories.Count / levels.Groups[0].Count / fit.LabelStep < 2;
         // Skipped labels are blanked: LiveCharts2 does not apply a step to an axis made of labels
-        var labels = levels is null
-            ? chart.Categories.Select((c, i) => i % fit.LabelStep == 0 ? c : "").ToArray()
-            : PlaceLabels(view, categoryAxis, chart.Categories, levels);
+        var labels = chart.Categories.Select((c, i) => !hidden && i % fit.LabelStep == 0 ? c : "").ToArray();
         if (!labels.SequenceEqual(categoryAxis.Labels ?? [])) categoryAxis.Labels = labels;
         // The axis title goes below everything: under the outermost group axis
         var title = fit.ShowAxisTitles ? chart.CategoryCaption : null;
