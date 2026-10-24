@@ -68,8 +68,8 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         {
             var mark when mark.IsCircular() => FitPie(model, ChartFitting.Pie(request.Chart, view.ActualWidth, view.ActualHeight, mark == MarkType.Donut, preferred)),
             // A waterfall has no legend: its colors are the direction of the steps
-            MarkType.Waterfall => FitCartesian(model, request.Chart, ChartFitting.Cartesian(request.Chart, view.ActualWidth, view.ActualHeight, ChartLegend.Hidden), null),
-            _ => FitCartesian(model, request.Chart, ChartFitting.Cartesian(request.Chart, view.ActualWidth, view.ActualHeight, preferred, LegendSize), request.LegendPager),
+            MarkType.Waterfall => FitCartesian(model, request.Chart, ChartLegend.Hidden, view.ActualWidth, view.ActualHeight, null),
+            _ => FitCartesian(model, request.Chart, preferred, view.ActualWidth, view.ActualHeight, request.LegendPager),
         };
         // Only redraw when something changed: SizeChanged fires continuously while a dashboard cell is resized
         if (changed) model.InvalidatePlot(false);
@@ -78,14 +78,38 @@ public sealed class OxyPlotRenderer : IVisualRenderer
     /// <summary>The size of OxyPlot's legend entries (its default font), for the pages of a legend.</summary>
     private static readonly LegendMetrics LegendSize = new(EntryHeight: 20, CharWidth: 7, EntryWidth: 40);
 
-    private static bool FitCartesian(PlotModel model, ChartData chart, ChartFit fit, LegendPager? pager)
+    private const double GroupRowHeight = 24;
+
+    private static bool FitCartesian(PlotModel model, ChartData chart, ChartLegend preferred, double width, double height, LegendPager? pager)
     {
+        // Several axis fields: the category labels are the innermost field's, each group axis below takes a row
+        var groupAxes = model.Axes.OfType<GroupAxis>().OrderBy(a => a.PositionTier).ToArray();
+        var levels = groupAxes.Length > 0 ? CategoryLevels.Of(chart) : null;
+        var displayed = levels is null ? chart : chart with { Categories = levels.Labels };
+        var fit = ChartFitting.Cartesian(displayed, width, height - groupAxes.Length * GroupRowHeight, preferred, LegendSize);
+
         var changed = false;
         var axis = (CategoryAxis)model.Axes.First(a => a.Key == CategoryAxisKey);
         if (axis.Angle != fit.LabelRotation) (axis.Angle, changed) = (fit.LabelRotation, true);
         if (axis.MajorStep != fit.LabelStep) (axis.MajorStep, changed) = (fit.LabelStep, true);
+        if (levels is not null)
+        {
+            // Fewer than two labels a group would repeat one name: the groups' labels say enough
+            var hidden = (double)levels.Labels.Count / levels.Groups[0].Count / fit.LabelStep < 2;
+            if ((axis.LabelFormatter is not null) != hidden) (axis.LabelFormatter, changed) = (hidden ? _ => "" : null, true);
+            // Every n-th group label when the groups are too narrow for them
+            var perCategory = Math.Max(1, width - 80) / Math.Max(1, chart.Categories.Count);
+            foreach (var groups in groupAxes)
+                changed |= groups.Fit(perCategory);
+        }
+        // The axis title goes below everything: under the outermost group axis
         var title = fit.ShowAxisTitles ? chart.CategoryCaption : null;
-        if (axis.Title != title) (axis.Title, changed) = (title, true);
+        var titled = groupAxes.LastOrDefault() ?? (Axis)axis;
+        foreach (var bottom in groupAxes.Cast<Axis>().Append(axis))
+        {
+            var name = bottom == titled ? title : null;
+            if (bottom.Title != name) (bottom.Title, changed) = (name, true);
+        }
 
         var visible = fit.Legend != ChartLegend.Hidden;
         if (model.IsLegendVisible != visible) (model.IsLegendVisible, changed) = (visible, true);
@@ -188,8 +212,26 @@ public sealed class OxyPlotRenderer : IVisualRenderer
             AxisTitleDistance = 10,
             Key = CategoryAxisKey,
         };
-        categoryAxis.Labels.AddRange(chart.Categories);
+        // Several axis fields: the innermost one's values under the categories, each outer one once under its groups
+        var levels = CategoryLevels.Of(chart);
+        categoryAxis.Labels.AddRange(levels?.Labels ?? chart.Categories);
         model.Axes.Add(categoryAxis);
+        if (levels is not null)
+        {
+            for (var level = 0; level < levels.Groups.Count; level++)
+                model.Axes.Add(new GroupAxis(levels.Groups[level], chart.Categories.Count) { PositionTier = level + 1, Key = $"groups{level}" });
+            foreach (var group in levels.Groups[^1].Skip(1))
+                model.Annotations.Add(new LineAnnotation
+                {
+                    Type = LineAnnotationType.Vertical,
+                    X = group.First - 0.5,
+                    XAxisKey = CategoryAxisKey,
+                    Color = OxyColor.Parse(request.Theme.GridLine ?? "#D1D5DB"),
+                    LineStyle = LineStyle.Solid,
+                    StrokeThickness = 1,
+                    Layer = AnnotationLayer.BelowSeries,
+                });
+        }
         model.Axes.Add(ValueAxis(chart, secondary: false));
         if (chart.Series.Any(s => s.SecondaryAxis))
             model.Axes.Add(ValueAxis(chart, secondary: true));
@@ -207,6 +249,47 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         // Shown or not by the fit: a visual can ask for the legend of a single series
         model.Legends.Add(new Legend { LegendPosition = LegendPosition.RightTop, LegendPlacement = LegendPlacement.Outside });
         return model;
+    }
+
+    /// <summary>
+    /// An axis below the category axis for an outer axis field: its value once at the center of each group of categories
+    /// sharing it (every n-th group when they are too narrow for their labels), on the category axis' scale.
+    /// </summary>
+    private sealed class GroupAxis : LinearAxis
+    {
+        private readonly IReadOnlyList<CategoryGroup> _groups;
+        private int _step = 1;
+
+        public GroupAxis(IReadOnlyList<CategoryGroup> groups, int categories)
+        {
+            _groups = groups;
+            Position = AxisPosition.Bottom;
+            Minimum = -0.5;
+            Maximum = categories - 0.5;
+            IsZoomEnabled = false;
+            IsPanEnabled = false;
+            TickStyle = TickStyle.None;
+            AxislineStyle = LineStyle.None;
+            LabelFormatter = value => _groups.FirstOrDefault(g => Math.Abs(g.Center - value) < 0.01)?.Label ?? "";
+        }
+
+        /// <summary>Shows every n-th group label so that they do not overlap; true when that changed.</summary>
+        public bool Fit(double perCategory)
+        {
+            var widest = _groups.Max(g => g.Label.Length) * 7.0 + 16;
+            var narrowest = _groups.Average(g => g.Count) * perCategory;
+            var step = Math.Max(1, (int)Math.Ceiling(widest / Math.Max(1, narrowest)));
+            if (step == _step) return false;
+            _step = step;
+            return true;
+        }
+
+        public override void GetTickValues(out IList<double> majorLabelValues, out IList<double> majorTickValues, out IList<double> minorTickValues)
+        {
+            majorLabelValues = [.. _groups.Where((_, i) => i % _step == 0).Select(g => g.Center)];
+            majorTickValues = [];
+            minorTickValues = [];
+        }
     }
 
     /// <summary>A value axis formatted like the first series drawn against it; bars start at zero.</summary>
