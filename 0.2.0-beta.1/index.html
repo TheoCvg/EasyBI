@@ -1,0 +1,1487 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://theocvg.github.io/EasyBI/0.2.0-beta.1/">
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="./assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.72">
+    
+    
+      
+        <title>README - EasyBI 0.2.0-beta.1</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="./assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="./assets/stylesheets/modern/palette.b60ce83d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL(".",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  You are reading the documentation of another version than the latest release.
+  <a href="../."><strong>Go to the latest version.</strong></a>
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="" title="EasyBI 0.2.0-beta.1" class="md-header__button md-logo" aria-label="EasyBI 0.2.0-beta.1" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            EasyBI 0.2.0-beta.1
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              README
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-moon" viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/TheoCvg/EasyBI" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    TheoCvg/EasyBI
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="" title="EasyBI 0.2.0-beta.1" class="md-nav__button md-logo" aria-label="EasyBI 0.2.0-beta.1" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    EasyBI 0.2.0-beta.1
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/TheoCvg/EasyBI" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    TheoCvg/EasyBI
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  README
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  README
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#projects" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Projects
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Installation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#for-the-wpf-developer" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        For the WPF developer
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="For the WPF developer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#combined-charts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Combined charts
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Dashboard
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dashboard">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#drag-and-drop" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Drag and drop
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filtering-global-filters-and-cross-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Filtering: global filters and cross-filtering
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#theming" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Theming
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Theming">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#light-and-dark" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Light and dark
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overriding-a-few-colors" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Overriding a few colors
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#standard-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Standard controls
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#following-a-control-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Following a control library
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#charts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Charts
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#localization" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Localization
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#writing-a-connector" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Writing a connector
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#report-format-easybiv1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Report format (<code>easybi/v1</code>)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Report format (easybi&#x2f;v1)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dashboard-file-easybi-dashboardv1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Dashboard file (<code>easybi-dashboard/v1</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Run
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contributing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Contributing
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-limitations-roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Known limitations / roadmap
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#projects" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Projects
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Installation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#for-the-wpf-developer" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        For the WPF developer
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="For the WPF developer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#combined-charts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Combined charts
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Dashboard
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dashboard">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#drag-and-drop" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Drag and drop
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filtering-global-filters-and-cross-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Filtering: global filters and cross-filtering
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#theming" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Theming
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Theming">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#light-and-dark" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Light and dark
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overriding-a-few-colors" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Overriding a few colors
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#standard-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Standard controls
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#following-a-control-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Following a control library
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#charts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Charts
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#localization" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Localization
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#writing-a-connector" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Writing a connector
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#report-format-easybiv1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Report format (<code>easybi/v1</code>)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Report format (easybi&#x2f;v1)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dashboard-file-easybi-dashboardv1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Dashboard file (<code>easybi-dashboard/v1</code>)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Run
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contributing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Contributing
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-limitations-roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Known limitations / roadmap
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+  
+  
+
+
+<h1 id="easybi">EasyBI<a class="headerlink" href="#easybi" title="Permanent link">&para;</a></h1>
+<p>A <strong>self-service BI library for WPF</strong>. The developer declares <em>what can be analyzed</em>,
+end users build their visuals by drag-and-drop, and rendering is delegated to interchangeable
+<strong>connectors</strong> (LiveCharts2, OxyPlot, ...).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a> Source (IQueryable) ─▶ Semantic model ─▶ AnalyticQuery ─▶ ResultSet ─▶ ChartData ─▶ IVisualRenderer
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>                         (developer)       (end user)       (engine)     (pivot)      (connector)
+</code></pre></div>
+<h2 id="projects">Projects<a class="headerlink" href="#projects" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Project</th>
+<th>Role</th>
+<th>Dependencies</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EasyBI.Abstractions</code></td>
+<td><strong>The contract</strong>: model, query, <code>ResultSet</code>, <code>VisualDefinition</code>, <code>ReportDefinition</code></td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>EasyBI.Core</code></td>
+<td>Model builder, query engine over <code>IQueryable</code> (expression trees), pivot, filtering, JSON</td>
+<td>Abstractions</td>
+</tr>
+<tr>
+<td><code>EasyBI.Wpf</code></td>
+<td><code>IVisualRenderer</code>, <code>EasyBIContext</code>, <code>VisualView</code>, <code>ReportDesigner</code>, <code>FilterBar</code>, dashboard (<code>DashboardPanel</code>, <code>DashboardView</code>, behaviors), built-in KPI, Table, Text and Image renderers</td>
+<td>Core + Microsoft.Xaml.Behaviors.Wpf</td>
+</tr>
+<tr>
+<td><code>EasyBI.Renderers.LiveCharts2</code></td>
+<td>LiveCharts2 connector (bars, stacked bars, lines, areas, points, combined charts, pies)</td>
+<td>Wpf + LiveCharts2</td>
+</tr>
+<tr>
+<td><code>EasyBI.Renderers.OxyPlot</code></td>
+<td>OxyPlot connector (bars, stacked bars, lines, areas, points, combined charts, pies)</td>
+<td>Wpf + OxyPlot</td>
+</tr>
+<tr>
+<td><code>EasyBI.Themes.MaterialDesign</code></td>
+<td>EasyBI follows a Material Design in XAML theme</td>
+<td>Wpf + MaterialDesignThemes</td>
+</tr>
+<tr>
+<td><code>EasyBI.Themes.WpfUi</code></td>
+<td>EasyBI follows a WPF UI (lepoco) theme</td>
+<td>Wpf + WPF-UI</td>
+</tr>
+<tr>
+<td><code>samples/EasyBI.Sample</code></td>
+<td>Demo: dashboard + designer + renderer switch + JSON save/load</td>
+<td></td>
+</tr>
+<tr>
+<td><code>tests/EasyBI.Core.Tests</code></td>
+<td>Engine, filtering and serialization tests</td>
+<td></td>
+</tr>
+<tr>
+<td><code>tests/EasyBI.Wpf.Tests</code></td>
+<td>Designer and dashboard tests</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>dotnet add package EasyBI.Wpf
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>dotnet add package EasyBI.Renderers.LiveCharts2   # and/or EasyBI.Renderers.OxyPlot
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>dotnet add package EasyBI.Themes.WpfUi            # optional: if the application uses WPF UI or Material Design
+</code></pre></div>
+<p><code>EasyBI.Wpf</code> brings <code>EasyBI.Core</code> and <code>EasyBI.Abstractions</code>. Every public WPF type is available
+under a single XAML namespace:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>xmlns:bi="https://github.com/TheoCvg/EasyBI"
+</code></pre></div>
+<h2 id="for-the-wpf-developer">For the WPF developer<a class="headerlink" href="#for-the-wpf-developer" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kt">var</span><span class="w"> </span><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SemanticModel</span><span class="p">.</span><span class="n">For</span><span class="p">(</span><span class="n">dbContext</span><span class="p">.</span><span class="n">Sales</span><span class="p">,</span><span class="w"> </span><span class="s">"sales"</span><span class="p">,</span><span class="w"> </span><span class="s">"Sales"</span><span class="p">)</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span><span class="p">.</span><span class="n">Dimension</span><span class="p">(</span><span class="n">s</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="s">"Date"</span><span class="p">)</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="p">.</span><span class="n">Dimension</span><span class="p">(</span><span class="n">s</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">Region</span><span class="p">,</span><span class="w"> </span><span class="s">"Region"</span><span class="p">)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="p">.</span><span class="n">Dimension</span><span class="p">(</span><span class="n">s</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">Product</span><span class="p">.</span><span class="n">Category</span><span class="p">,</span><span class="w"> </span><span class="s">"Category"</span><span class="p">)</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="p">.</span><span class="n">Measure</span><span class="p">(</span><span class="n">s</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">Amount</span><span class="p">,</span><span class="w"> </span><span class="s">"Revenue"</span><span class="p">,</span><span class="w"> </span><span class="n">format</span><span class="p">:</span><span class="w"> </span><span class="s">"#,##0 €"</span><span class="p">)</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">    </span><span class="p">.</span><span class="n">Count</span><span class="p">(</span><span class="s">"Number of sales"</span><span class="p">);</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="n">Context</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EasyBIContext</span><span class="p">.</span><span class="n">Create</span><span class="p">()</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">    </span><span class="p">.</span><span class="n">AddModel</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">    </span><span class="p">.</span><span class="n">UseRenderer</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">LiveCharts2Renderer</span><span class="p">())</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">    </span><span class="p">.</span><span class="n">UseRenderer</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">OxyPlotRenderer</span><span class="p">());</span>
+</code></pre></div>
+<p>With EF Core, prefer a context factory: each query opens its own <code>DbContext</code>, and the visuals of a
+dashboard run in parallel. On a shared <code>IQueryable</code> (other than LINQ to objects), queries run one
+after another, because a <code>DbContext</code> does not support concurrent operations.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kt">var</span><span class="w"> </span><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SemanticModel</span><span class="p">.</span><span class="n">For</span><span class="p">(()</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">dbFactory</span><span class="p">.</span><span class="n">CreateDbContext</span><span class="p">(),</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">Sales</span><span class="p">,</span><span class="w"> </span><span class="s">"sales"</span><span class="p">,</span><span class="w"> </span><span class="s">"Sales"</span><span class="p">)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="p">.</span><span class="n">Dimension</span><span class="p">(</span><span class="n">s</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">Region</span><span class="p">,</span><span class="w"> </span><span class="s">"Region"</span><span class="p">)</span><span class="w"> </span><span class="cm">/* ... */</span><span class="p">;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">&lt;bi:ReportDesigner</span><span class="w"> </span><span class="na">Context=</span><span class="s">"{Binding Context}"</span><span class="w"> </span><span class="nt">/&gt;</span><span class="w">                             </span><span class="cm">&lt;!-- design --&gt;</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nt">&lt;bi:VisualView</span><span class="w"> </span><span class="na">Context=</span><span class="s">"{Binding Context}"</span><span class="w"> </span><span class="na">Definition=</span><span class="s">"{Binding Visual}"</span><span class="w"> </span><span class="nt">/&gt;</span><span class="w">   </span><span class="cm">&lt;!-- display --&gt;</span>
+</code></pre></div>
+<h3 id="combined-charts">Combined charts<a class="headerlink" href="#combined-charts" title="Permanent link">&para;</a></h3>
+<p>The cartesian chart types (<code>Bar</code>, <code>StackedBar</code>, <code>Line</code>, <code>Area</code>, <code>Scatter</code>) can be mixed in one chart, <strong>one per
+measure</strong>: <code>MeasureRef.Mark</code> overrides the visual's type for that measure's series (with a legend, every series of
+the measure keeps its type), and <code>MeasureRef.SecondaryAxis</code> draws it against a second value axis on the right. In
+the designer, each measure of a chart has a type selector and a "Y2" toggle. These settings only change the drawing:
+the query is the same, so changing them does not query the source again.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">new</span><span class="w"> </span><span class="n">VisualDefinition</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="p">{</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="n">Model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"sales"</span><span class="p">,</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span><span class="n">Mark</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MarkType</span><span class="p">.</span><span class="n">Bar</span><span class="p">,</span><span class="w">                                      </span><span class="c1">// default type of the measures</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">    </span><span class="n">Axis</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="k">new</span><span class="p">(</span><span class="s">"Date"</span><span class="p">,</span><span class="w"> </span><span class="n">DateGrain</span><span class="p">.</span><span class="n">Quarter</span><span class="p">)],</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">    </span><span class="n">Values</span><span class="w"> </span><span class="o">=</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">    </span><span class="na">[</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="na">        new("Amount"),                                        // bars</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="na">        new("Margin") { Mark = MarkType.Line },               // line</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="na">        new("Count") { Mark = MarkType.Scatter, SecondaryAxis = true }, // points, right axis</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="na">    ]</span><span class="p">,</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="p">};</span>
+</code></pre></div>
+<p>Besides charts, KPIs and tables, a visual can be a <strong>text</strong> (<code>MarkType.Text</code>, content in
+<code>VisualDefinition.Text</code>) or an <strong>image</strong> (<code>MarkType.Image</code>, embedded as base64 in <code>VisualDefinition.Image</code>).
+They query no model and are drawn by the built-in <code>TextRenderer</code> and <code>ImageRenderer</code>.</p>
+<h2 id="dashboard">Dashboard<a class="headerlink" href="#dashboard" title="Permanent link">&para;</a></h2>
+<p>Arranging visuals is a WPF concern: the report (<code>easybi/v1</code>) never contains a layout. The dashboard is
+built in three layers, each usable on its own.</p>
+<p><strong>The layout</strong> (<code>DashboardLayoutDefinition</code>) is a stack of bands, each with a mode. Its items are <strong>greedy</strong>:
+without a constraint, they share the room their neighbours leave, so a dashboard never has a gap.</p>
+<ul>
+<li><strong>Fit</strong> bands are a grid of 12 columns that fills the width. A band is a stack of lines; a line is an item, or a
+  container (<code>LayoutNode.Row</code>: side by side, <code>LayoutNode.Column</code>: stacked) of items and containers. Along a
+  container, constrained children keep their size (<code>ColumnSpan</code> in columns, <code>RowSpan</code> in rows) and the others share
+  the rest; across it, every child takes the whole room. An item with a <code>RowSpan</code> sets the height of its line and the
+  items next to it stretch, so items stacked beside a tall item share its height.</li>
+<li><strong>Wrap</strong> bands start their items at <code>DashboardPanel.MinItemWidth</code> (or their fixed <code>Width</code> in pixels), break lines
+  when the next one does not fit, then share what is left on each line. <strong>Scroll</strong> bands do the same on one line,
+  and scroll horizontally when the items do not fit.</li>
+<li>A container whose children are all constrained leaves a <strong>free space</strong>, which the dashboard offers to fill.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">new</span><span class="w"> </span><span class="n">DashboardLayoutDefinition</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="p">{</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span><span class="n">Bands</span><span class="w"> </span><span class="o">=</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span><span class="na">[</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="na">        new BandLayout</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="na">        {</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="na">            Items =</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="na">            [</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="na">                new LayoutNode { VisualId = title.Id, RowSpan = 1 },                                // a whole line</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="na">                LayoutNode.Row(</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="na">                    new LayoutNode { VisualId = map.Id, ColumnSpan = 6, RowSpan = 6 },               // left half, 2 lines high</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="na">                    LayoutNode.Column(LayoutNode.Item(sales.Id), LayoutNode.Item(margin.Id))),       // stacked beside it</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="na">            ]</span><span class="p">,</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="w">        </span><span class="p">},</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">BandLayout</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BandMode</span><span class="p">.</span><span class="n">Scroll</span><span class="p">,</span><span class="w"> </span><span class="n">Items</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="n">LayoutNode</span><span class="p">.</span><span class="n">Item</span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">Id</span><span class="p">),</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">LayoutNode</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">VisualId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">Id</span><span class="p">,</span><span class="w"> </span><span class="n">Width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">360</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="w">    </span><span class="p">],</span>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="p">};</span>
+</code></pre></div>
+<p><strong><code>DashboardPanel</code></strong> shows a layout (<code>Layout</code> property); children are matched to its items by the attached
+<code>DashboardPanel.ItemId</code>. The geometry itself is a pure function (<code>BandArrangement.Arrange</code>), and the panel exposes
+hit tests for interactions (<code>EdgeAt</code>, <code>FlowIndexAt</code>, <code>FreeSpaces</code>, and <code>CaptureGeometry</code> to hit-test the layout from
+before a drag).</p>
+<p><strong><code>DashboardLayout</code></strong> is the static class that changes a panel's layout while keeping it consistent: <code>AddNextTo</code>,
+<code>MoveNextTo</code> (<code>ItemSide.Right</code>, <code>Left</code>, <code>Below</code>, <code>Above</code>), <code>InsertAt</code> / <code>MoveTo</code> (a new line), <code>Resize</code>,
+<code>ResizeWidth</code>, <code>SetAuto</code>, <code>Remove</code>, <code>InsertBand</code>, <code>RemoveBand</code>, <code>SetBandMode</code>, plus <code>Update</code> for custom
+operations, <code>Capture</code> (snapshot to restore) and <code>GetLayout</code> / <code>SetLayout</code> (to save and restore). Next to an item, a
+side along its container joins it (the line's columns are shared when it has no room left), a side across it
+wraps the item and the newcomer in a new container. The rules are pure functions on records in
+<code>DashboardLayoutEngine</code>, usable without any UI.</p>
+<p><strong><code>DashboardView</code></strong> is the ready-made <code>UserControl</code>: <code>DashboardItem</code>s showing visuals in a
+<code>DashboardPanel</code>, with every interaction provided by a <strong>behavior</strong> (Microsoft.Xaml.Behaviors):</p>
+<table>
+<thead>
+<tr>
+<th>Behavior</th>
+<th>Feature</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AddButtonsBehavior</code></td>
+<td>"+" on the right and bottom edges of an item, "+" between lines and between bands</td>
+</tr>
+<tr>
+<td><code>FreeSpaceBehavior</code></td>
+<td>fills free spaces with a placeholder that adds an item there</td>
+</tr>
+<tr>
+<td><code>FieldDropBehavior</code></td>
+<td>makes visuals from fields dragged from a <code>FieldList</code> (see below)</td>
+</tr>
+<tr>
+<td><code>MoveBehavior</code></td>
+<td>grip to drag an item: a picture follows the pointer and a placeholder shows where it lands, the others making room live; near an item's edge it goes next to it (like "+"), between two lines it becomes a line, over a free space it fills it; across bands, auto-scroll near the edges; Escape cancels</td>
+</tr>
+<tr>
+<td><code>ResizeBehavior</code></td>
+<td>corner handle: constrains the item (columns and rows in a grid band, pixels and rows elsewhere)</td>
+</tr>
+<tr>
+<td><code>ItemToolbarBehavior</code></td>
+<td>automatic size (for a resized item), edit, remove; text size, bold, alignment; image fit</td>
+</tr>
+<tr>
+<td><code>BandMenuBehavior</code></td>
+<td>⋮ menu of a band: Fit / Scroll / Wrap, insert, remove (<code>MenuOpening</code> to customize it)</td>
+</tr>
+<tr>
+<td><code>BandScrollBehavior</code></td>
+<td>scroll bar and Shift+wheel for scrolling bands</td>
+</tr>
+<tr>
+<td><code>TextEditBehavior</code></td>
+<td>double-click a text to edit it in place</td>
+</tr>
+<tr>
+<td><code>UndoRedoBehavior</code></td>
+<td>Ctrl+Z / Ctrl+Y (<code>ApplicationCommands.Undo</code> / <code>Redo</code>)</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nt">&lt;bi:DashboardView</span><span class="w"> </span><span class="na">x:Name=</span><span class="s">"Dashboard"</span><span class="w"> </span><span class="na">Context=</span><span class="s">"{Binding Context}"</span><span class="w"> </span><span class="na">Document=</span><span class="s">"{Binding Dashboard}"</span><span class="nt">&gt;</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span><span class="nt">&lt;i:Interaction.Behaviors&gt;</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">        </span><span class="cm">&lt;!-- Declaring a behavior replaces its default; set UseDefaultBehaviors="False" to pick them all --&gt;</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">        </span><span class="nt">&lt;bi:UndoRedoBehavior</span><span class="w"> </span><span class="na">MaxHistory=</span><span class="s">"100"</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">    </span><span class="nt">&lt;/i:Interaction.Behaviors&gt;</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="nt">&lt;/bi:DashboardView&gt;</span>
+</code></pre></div>
+<p>Hooks for applications:</p>
+<ul>
+<li>events <code>EditVisualRequested</code> (replace the built-in designer dialog), <code>ImageRequested</code> (replace the file
+  dialog), <code>TextEditRequested</code>, <code>ItemRemoving</code> (veto), <code>Changed</code> (every change, with the documents before
+  and after), <code>DocumentLoaded</code>;</li>
+<li><code>DashboardCommands</code> (<code>AddVisual</code>, <code>AddText</code>, <code>AddImage</code>, <code>EditItem</code>, <code>RemoveItem</code>, <code>ResetSize</code>,
+  <code>AddRight</code>, <code>AddBelow</code>, <code>InsertBand</code>, <code>RemoveBand</code>...) for custom templates, and public methods
+  (<code>AddNextTo</code>, <code>AddIn</code> a free space, <code>InsertLine</code>, <code>SetAutoSize</code>, <code>SetVisual</code>, <code>InsertBand</code>, <code>BeginEdit</code> to group
+  changes into one undo step...);</li>
+<li>an implicit style for <code>DashboardItem</code> (lookless control) and the <code>DashboardOverlay</code> style keys
+  (<code>PlusButtonStyleKey</code>, <code>IconButtonStyleKey</code>, <code>GripStyleKey</code>, <code>ResizeGripStyleKey</code>, <code>FreeSpaceStyleKey</code>,
+  <code>DropPlaceholderStyleKey</code>, <code>DragGhostStyleKey</code>) to restyle;</li>
+<li><code>DashboardBehavior</code> as a base class for new interactions: it gives access to the view, the panel and the
+  overlay where behaviors draw their controls; <code>DragGesture</code> handles press-drag-release gestures (with
+  auto-scroll: <code>AutoScroll</code>, <code>ScrollsBands</code>).</li>
+</ul>
+<p><code>IsReadOnly="True"</code> hides the editing chrome; clicks keep cross-filtering in every mode.</p>
+<p><strong>Building visuals by dragging fields.</strong> <code>FieldList</code> shows the fields of the context's models (model picker,
+dimensions, measures) and drags them as <code>ModelField</code>s. Placed next to a dashboard, it lets users build it directly:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nt">&lt;DockPanel&gt;</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span><span class="nt">&lt;bi:FieldList</span><span class="w"> </span><span class="na">DockPanel.Dock=</span><span class="s">"Left"</span><span class="w"> </span><span class="na">Width=</span><span class="s">"210"</span><span class="w"> </span><span class="na">Context=</span><span class="s">"{Binding Context}"</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="nt">&lt;bi:DashboardView</span><span class="w"> </span><span class="na">Context=</span><span class="s">"{Binding Context}"</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="nt">&lt;/DockPanel&gt;</span>
+</code></pre></div>
+<ul>
+<li>dropped where an item can go (an edge, between two lines, a free space, a scrolling or wrapping band), a field
+  makes a new visual: a KPI for a measure, the first measure by that dimension for a dimension (a line by month for a
+  date, bars otherwise); the other items make room live around a placeholder;</li>
+<li>dropped on an empty item, it fills it; dropped on a visual, it is added to it (a measure to its values, a dimension
+  to its axis, then its legend; a dimension breaks a KPI down into bars);</li>
+<li>the rules are pure functions in <code>FieldVisuals</code> (<code>Create</code>, <code>AddField</code>); <code>FieldDropBehavior.CreateVisual</code> and
+  <code>AddField</code> replace them. Each drop is one undo step.</li>
+</ul>
+<p>The designer's field panel is the same <code>FieldList</code> (its shelves accept the <code>ModelField</code>s of the selected model).
+<code>DashboardDropTarget.Find</code>, the place an item dropped at a point goes, is shared by moves and field drops.</p>
+<h3 id="drag-and-drop">Drag and drop<a class="headerlink" href="#drag-and-drop" title="Permanent link">&para;</a></h3>
+<p>The designer's drag and drop is built on reusable attached properties (namespace <code>EasyBI.Wpf.DragAndDrop</code>,
+XAML prefix <code>bi:</code>), usable on any <code>ItemsControl</code> of an application. Being attached properties, they can be set
+from a style:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="cm">&lt;!-- Items can be dragged: a preview follows the pointer, a moved item is dimmed --&gt;</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="nt">&lt;ListBox</span><span class="w"> </span><span class="na">ItemsSource=</span><span class="s">"{Binding Fields}"</span><span class="w"> </span><span class="na">bi:DragSource.IsEnabled=</span><span class="s">"True"</span><span class="w"> </span><span class="na">bi:DragSource.AllowedEffects=</span><span class="s">"Copy"</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="cm">&lt;!-- Drops are decided by an IDropHandler (usually the view-model); an insertion line shows where the item goes --&gt;</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="nt">&lt;ItemsControl</span><span class="w"> </span><span class="na">ItemsSource=</span><span class="s">"{Binding Columns}"</span><span class="w"> </span><span class="na">bi:DropTarget.Handler=</span><span class="s">"{Binding}"</span><span class="w"> </span><span class="na">bi:DropTarget.Key=</span><span class="s">"Columns"</span><span class="w"> </span><span class="nt">/&gt;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">public</span><span class="w"> </span><span class="k">sealed</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">MyViewModel</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">IDropHandler</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="p">{</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">DragDropEffects</span><span class="w"> </span><span class="nf">DragOver</span><span class="p">(</span><span class="n">DropInfo</span><span class="w"> </span><span class="n">drop</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">drop</span><span class="p">.</span><span class="n">Item</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">Field</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">DragDropEffects</span><span class="p">.</span><span class="n">Copy</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">DragDropEffects</span><span class="p">.</span><span class="n">None</span><span class="p">;</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">void</span><span class="w"> </span><span class="nf">Drop</span><span class="p">(</span><span class="n">DropInfo</span><span class="w"> </span><span class="n">drop</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">Columns</span><span class="p">.</span><span class="n">Insert</span><span class="p">(</span><span class="n">drop</span><span class="p">.</span><span class="n">Index</span><span class="p">,</span><span class="w"> </span><span class="p">((</span><span class="n">Field</span><span class="p">)</span><span class="n">drop</span><span class="p">.</span><span class="n">Item</span><span class="o">!</span><span class="p">).</span><span class="n">ToColumn</span><span class="p">());</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="p">}</span>
+</code></pre></div>
+<ul>
+<li><code>DropInfo</code> gives the dragged <code>Item</code>, the target's <code>Key</code> (one handler for several targets), the insertion
+  <code>Index</code> among the target's items and the raw <code>Data</code> for drags coming from elsewhere.</li>
+<li><code>DropTarget.IsDragOver</code> is true while an accepted drag is over the target (style triggers);
+  <code>DropTarget.Orientation</code> switches the insertion rules to a vertical stack.</li>
+<li>A scrollable target, or its scroll viewer, scrolls when the pointer nears its edges (<code>AutoScroller</code>, also usable
+  on its own); <code>InsertionIndex</code> holds the pure insertion rules.</li>
+<li>Style keys <code>DragSource.PreviewStyleKey</code> (a <code>ContentControl</code>; <code>DragSource.PreviewTemplate</code> sets the content) and
+  <code>DropTarget.InsertionLineStyleKey</code> (a <code>Border</code>).</li>
+</ul>
+<p>In the designer, fields are dropped between chips, chips are reordered within a shelf, and dimensions move between
+Axis and Legend keeping their granularity.</p>
+<h2 id="filtering-global-filters-and-cross-filtering">Filtering: global filters and cross-filtering<a class="headerlink" href="#filtering-global-filters-and-cross-filtering" title="Permanent link">&para;</a></h2>
+<p>A <code>FilterContext</code> holds the filtering state of a dashboard. Set once on the container (it is an
+inherited property), it is used by the <code>FilterBar</code> and by every <code>VisualView</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nt">&lt;DockPanel</span><span class="w"> </span><span class="na">bi:VisualView.FilterContext=</span><span class="s">"{Binding Filters}"</span><span class="nt">&gt;</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">    </span><span class="nt">&lt;bi:FilterBar</span><span class="w"> </span><span class="na">DockPanel.Dock=</span><span class="s">"Top"</span><span class="w"> </span><span class="na">Context=</span><span class="s">"{Binding Context}"</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">    </span><span class="cm">&lt;!-- ... the dashboard's VisualViews ... --&gt;</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="nt">&lt;/DockPanel&gt;</span>
+</code></pre></div>
+<ul>
+<li><strong>Global filters</strong> (slicers): added from the <code>FilterBar</code>, they apply to every visual of the same
+  model and are saved with the report (<code>ReportDefinition.Filters</code>).</li>
+<li><strong>Cross-filtering</strong>: clicking a bar, a point, a slice or a table row filters the other visuals of
+  the same model on the element's dimensions (axis, plus legend for a bar). Clicking the same element
+  again clears the selection. The source visual is not filtered and shows the current selection.
+  Periods (quarter, month...) filter through <code>FilterSpec.Grain</code>.</li>
+</ul>
+<p>A connector only has to call <code>request.Select?.Invoke(new CategorySelection(category, series))</code> on
+click (or <code>RowSelection</code> for a table): <code>Select</code> is null when interactivity is disabled, for example
+in the designer preview.</p>
+<h2 id="theming">Theming<a class="headerlink" href="#theming" title="Permanent link">&para;</a></h2>
+<p>Every EasyBI control (designer, dashboard, filter bar, field list, KPI and table renderers, chart connectors) draws
+with <strong>resources looked up dynamically</strong>: an application restyles EasyBI by defining them, and switches theme at runtime
+by replacing the dictionary that defines them. Charts follow too, without querying their data again.</p>
+<h3 id="light-and-dark">Light and dark<a class="headerlink" href="#light-and-dark" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nt">&lt;Application.Resources&gt;</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">    </span><span class="nt">&lt;ResourceDictionary&gt;</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">        </span><span class="nt">&lt;ResourceDictionary.MergedDictionaries&gt;</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">            </span><span class="nt">&lt;bi:EasyBIThemeDictionary</span><span class="w"> </span><span class="na">Mode=</span><span class="s">"Dark"</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="w">        </span><span class="nt">&lt;/ResourceDictionary.MergedDictionaries&gt;</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="w">    </span><span class="nt">&lt;/ResourceDictionary&gt;</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="nt">&lt;/Application.Resources&gt;</span>
+</code></pre></div>
+<p>Without it, the light theme applies. To switch at runtime, change <code>Mode</code> (or swap the dictionary):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">theme</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">Application</span><span class="p">.</span><span class="n">Current</span><span class="p">.</span><span class="n">Resources</span><span class="p">.</span><span class="n">MergedDictionaries</span><span class="p">.</span><span class="n">OfType</span><span class="o">&lt;</span><span class="n">EasyBIThemeDictionary</span><span class="o">&gt;</span><span class="p">())</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">    </span><span class="n">theme</span><span class="p">.</span><span class="n">Mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EasyBIThemeMode</span><span class="p">.</span><span class="n">Light</span><span class="p">;</span>
+</code></pre></div>
+<h3 id="overriding-a-few-colors">Overriding a few colors<a class="headerlink" href="#overriding-a-few-colors" title="Permanent link">&para;</a></h3>
+<p>Define the keys you want in your resources, after the theme dictionary; the others keep the theme's values:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nt">&lt;SolidColorBrush</span><span class="w"> </span><span class="na">x:Key=</span><span class="s">"{x:Static bi:EasyBITheme.AccentBrushKey}"</span><span class="w"> </span><span class="na">Color=</span><span class="s">"#7C3AED"</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="nt">&lt;bi:ChartPalette</span><span class="w"> </span><span class="na">x:Key=</span><span class="s">"{x:Static bi:EasyBITheme.ChartPaletteKey}"</span><span class="nt">&gt;</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">    </span><span class="nt">&lt;Color&gt;</span>#7C3AED<span class="nt">&lt;/Color&gt;</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">    </span><span class="nt">&lt;Color&gt;</span>#F59E0B<span class="nt">&lt;/Color&gt;</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">    </span><span class="nt">&lt;Color&gt;</span>#10B981<span class="nt">&lt;/Color&gt;</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="nt">&lt;/bi:ChartPalette&gt;</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="nt">&lt;CornerRadius</span><span class="w"> </span><span class="na">x:Key=</span><span class="s">"{x:Static bi:EasyBITheme.CornerRadiusKey}"</span><span class="nt">&gt;</span>4<span class="nt">&lt;/CornerRadius&gt;</span>
+</code></pre></div>
+<p>The complete list, with their light and dark values, is in
+<a href="https://github.com/TheoCvg/EasyBI/blob/v0.2.0-beta.1/src/EasyBI.Wpf/Themes/Light.xaml"><code>Themes/Light.xaml</code></a> and <a href="https://github.com/TheoCvg/EasyBI/blob/v0.2.0-beta.1/src/EasyBI.Wpf/Themes/Dark.xaml"><code>Themes/Dark.xaml</code></a>:</p>
+<table>
+<thead>
+<tr>
+<th>Key (<code>EasyBITheme.…</code>)</th>
+<th>Used for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BackgroundBrushKey</code></td>
+<td>behind the dashboard, the designer and the visual editor</td>
+</tr>
+<tr>
+<td><code>SurfaceBrushKey</code></td>
+<td>cards (dashboard items, designer preview), popups, toolbars, chart tooltips</td>
+</tr>
+<tr>
+<td><code>SurfaceAltBrushKey</code></td>
+<td>field lists, designer shelves, empty items, alternate table rows</td>
+</tr>
+<tr>
+<td><code>BorderBrushKey</code>, <code>BorderStrongBrushKey</code></td>
+<td>borders and separators; empty items and free spaces</td>
+</tr>
+<tr>
+<td><code>ForegroundBrushKey</code>, <code>MutedForegroundBrushKey</code>, <code>DisabledForegroundBrushKey</code></td>
+<td>text, secondary text (headers, hints, icons, axis labels), unavailable options</td>
+</tr>
+<tr>
+<td><code>AccentBrushKey</code>, <code>AccentHoverBrushKey</code>, <code>AccentForegroundBrushKey</code></td>
+<td>selection, "+" buttons, drop indicators, and the text on them</td>
+</tr>
+<tr>
+<td><code>AccentSoftBrushKey</code>, <code>AccentSoftBorderBrushKey</code></td>
+<td>field chips, selection chip, drop placeholders</td>
+</tr>
+<tr>
+<td><code>SecondarySoftBrushKey</code>, <code>SecondarySoftBorderBrushKey</code></td>
+<td>filter chips</td>
+</tr>
+<tr>
+<td><code>HoverBrushKey</code></td>
+<td>small buttons under the pointer</td>
+</tr>
+<tr>
+<td><code>ErrorBrushKey</code></td>
+<td>error messages</td>
+</tr>
+<tr>
+<td><code>MeasureBrushKey</code></td>
+<td>the Σ of measures in field lists</td>
+</tr>
+<tr>
+<td><code>GridLineBrushKey</code></td>
+<td>grid lines of charts and tables</td>
+</tr>
+<tr>
+<td><code>ChartPaletteKey</code> (<code>ChartPalette</code>)</td>
+<td>colors of chart series, in order</td>
+</tr>
+<tr>
+<td><code>CornerRadiusKey</code> (<code>CornerRadius</code>)</td>
+<td>rounding of cards</td>
+</tr>
+</tbody>
+</table>
+<p>Control-specific parts have their own style keys (<code>DashboardOverlay.PlusButtonStyleKey</code>, <code>FreeSpaceStyleKey</code>,
+<code>DropPlaceholderStyleKey</code>, <code>DragSource.PreviewStyleKey</code>... see <a href="#dashboard">Dashboard</a> and
+<a href="#drag-and-drop">Drag and drop</a>), and <code>DashboardItem</code> has an implicit style.</p>
+<h3 id="standard-controls">Standard controls<a class="headerlink" href="#standard-controls" title="Permanent link">&para;</a></h3>
+<p>Buttons, combo boxes, text boxes and check boxes inside EasyBI have <strong>no explicit style</strong>: they take your application's
+implicit styles, so a control library (WPF UI, Material Design...) styles them too. EasyBI's own light and dark themes
+color EasyBI's surfaces, text and charts, not the standard controls: with the dark theme and no control library, they
+keep the system's light look.</p>
+<h3 id="following-a-control-library">Following a control library<a class="headerlink" href="#following-a-control-library" title="Permanent link">&para;</a></h3>
+<p>With WPF UI or Material Design in XAML, install the matching package and merge its dictionary <strong>after</strong> the library's:
+EasyBI's surfaces, text, accent and charts then take the library's colors, light or dark, and follow its theme switches
+(<code>ApplicationThemeManager.Apply</code>, <code>PaletteHelper.SetTheme</code>). Its classes are in the <code>bi:</code> XAML namespace.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="cm">&lt;!-- dotnet add package EasyBI.Themes.WpfUi --&gt;</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="nt">&lt;ResourceDictionary.MergedDictionaries&gt;</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">    </span><span class="nt">&lt;ui:ThemesDictionary</span><span class="w"> </span><span class="na">Theme=</span><span class="s">"Dark"</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">    </span><span class="nt">&lt;ui:ControlsDictionary</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">    </span><span class="nt">&lt;bi:WpfUiTheme</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="nt">&lt;/ResourceDictionary.MergedDictionaries&gt;</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="cm">&lt;!-- dotnet add package EasyBI.Themes.MaterialDesign --&gt;</span>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="nt">&lt;ResourceDictionary.MergedDictionaries&gt;</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="w">    </span><span class="nt">&lt;md:BundledTheme</span><span class="w"> </span><span class="na">BaseTheme=</span><span class="s">"Dark"</span><span class="w"> </span><span class="na">PrimaryColor=</span><span class="s">"DeepPurple"</span><span class="w"> </span><span class="na">SecondaryColor=</span><span class="s">"Lime"</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="w">    </span><span class="nt">&lt;ResourceDictionary</span><span class="w"> </span><span class="na">Source=</span><span class="s">"pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml"</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="w">    </span><span class="nt">&lt;bi:MaterialDesignTheme</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a><span class="nt">&lt;/ResourceDictionary.MergedDictionaries&gt;</span>
+</code></pre></div>
+<p><code>WpfUiTheme.Map</code> and <code>MaterialDesignTheme.Map</code> list which library resource each EasyBI key takes. For another library
+or an application's own design system, derive from <code>EasyBIThemeMapping</code> and map the keys you need; unmapped keys keep
+EasyBI's light values, and the chart palette follows the mapped background (light or dark palette). If the library
+switches theme by swapping dictionaries without notifying, call <code>Refresh()</code> on the mapping afterwards.</p>
+<p><code>ApplicationThemeManager.Apply</code> sets the main window's <code>Background</code> itself: put an EasyBI background on the window's root
+panel rather than on the window (as the sample does).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="k">public</span><span class="w"> </span><span class="k">sealed</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nf">MyTheme</span><span class="p">()</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">EasyBIThemeMapping</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="n">ComponentResourceKey</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="o">&gt;</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="p">{</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">    </span><span class="na">[EasyBITheme.BackgroundBrushKey]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"MyWindowBrush"</span><span class="p">,</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="w">    </span><span class="na">[EasyBITheme.AccentBrushKey]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"MyPrimaryBrush"</span><span class="p">,</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="p">});</span>
+</code></pre></div>
+<h3 id="charts">Charts<a class="headerlink" href="#charts" title="Permanent link">&para;</a></h3>
+<p><code>VisualView</code> passes the theme to renderers in <code>RenderRequest.Theme</code> (<code>BiTheme</code>): the palette, and the <code>Foreground</code>,
+<code>MutedForeground</code>, <code>GridLine</code> and <code>Background</code> colors (hexadecimal, null when unknown). It is built by
+<code>EasyBITheme.ChartTheme(element)</code> from the resources above. A palette or colors set on <code>EasyBIContext.Theme</code> take
+precedence over the resources.</p>
+<h2 id="localization">Localization<a class="headerlink" href="#localization" title="Permanent link">&para;</a></h2>
+<p>EasyBI's own texts (designer, filter bar, messages, granularity and aggregation names, blank and
+boolean values) ship in <strong>English</strong> and <strong>French</strong>. The language can change at runtime: designer,
+filter bar and visuals update immediately.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">EasyBILocalization</span><span class="p">.</span><span class="n">Culture</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CultureInfo</span><span class="p">.</span><span class="n">GetCultureInfo</span><span class="p">(</span><span class="s">"fr-FR"</span><span class="p">);</span><span class="w"> </span><span class="c1">// null = follow CurrentUICulture</span>
+</code></pre></div>
+<p>The same culture formats numbers and dates. Your semantic model captions can follow the language too:
+call <code>Localize</code> with your own resources, and every caption becomes a resource key (a missing key falls
+back to the caption itself).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kt">var</span><span class="w"> </span><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SemanticModel</span><span class="p">.</span><span class="n">For</span><span class="p">(</span><span class="n">db</span><span class="p">.</span><span class="n">Sales</span><span class="p">,</span><span class="w"> </span><span class="s">"sales"</span><span class="p">,</span><span class="w"> </span><span class="s">"Sales"</span><span class="p">)</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="w">    </span><span class="p">.</span><span class="n">Dimension</span><span class="p">(</span><span class="n">s</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">Region</span><span class="p">,</span><span class="w"> </span><span class="s">"Region"</span><span class="p">)</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">    </span><span class="p">.</span><span class="n">Measure</span><span class="p">(</span><span class="n">s</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">Amount</span><span class="p">,</span><span class="w"> </span><span class="s">"Revenue"</span><span class="p">)</span>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">    </span><span class="p">.</span><span class="n">Localize</span><span class="p">(</span><span class="n">MyStrings</span><span class="p">.</span><span class="n">ResourceManager</span><span class="p">);</span>
+</code></pre></div>
+<p>Your own XAML texts can follow it as well with <code>LocalizedStrings</code> and the <code>Localize</code> markup extension:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="k">public</span><span class="w"> </span><span class="k">static</span><span class="w"> </span><span class="n">LocalizedStrings</span><span class="w"> </span><span class="n">Texts</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">get</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">(</span><span class="n">MyStrings</span><span class="p">.</span><span class="n">ResourceManager</span><span class="p">);</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="nt">&lt;Button</span><span class="w"> </span><span class="na">Content=</span><span class="s">"{bi:Localize Save, Source={x:Static local:App.Texts}}"</span><span class="w"> </span><span class="nt">/&gt;</span>
+</code></pre></div>
+<p>Visual and report titles are user content: they are stored as typed and not translated.</p>
+<h2 id="writing-a-connector">Writing a connector<a class="headerlink" href="#writing-a-connector" title="Permanent link">&para;</a></h2>
+<p>A connector implements a single interface. It receives <strong>already queried and pivoted</strong> data
+(<code>request.Chart</code>: categories + series) and the raw <code>ResultSet</code> if needed:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="k">public</span><span class="w"> </span><span class="k">sealed</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">MyRenderer</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">IVisualRenderer</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="p">{</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s">"MyLib"</span><span class="p">;</span>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">RendererCapabilities</span><span class="w"> </span><span class="n">Capabilities</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">get</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">HashSet</span><span class="o">&lt;</span><span class="n">MarkType</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">MarkType</span><span class="p">.</span><span class="n">Bar</span><span class="w"> </span><span class="p">});</span>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">FrameworkElement</span><span class="w"> </span><span class="nf">Render</span><span class="p">(</span><span class="n">RenderRequest</span><span class="w"> </span><span class="n">request</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* request.Chart.Categories, request.Chart.Series */</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a><span class="p">}</span>
+</code></pre></div>
+<p>Each <code>ChartSeries</code> comes with its resolved <code>Mark</code> and <code>SecondaryAxis</code>: a connector draws every series with its own
+type, so one chart can mix bars, lines, areas and points.</p>
+<p>Colors come from <code>request.Theme</code>: series take <code>ColorAt(index)</code>, text <code>Foreground</code>, axis labels <code>MutedForeground</code>, grid
+lines <code>GridLine</code>, tooltips <code>Background</code> (each one null when the theme does not set it: keep the library's default).
+Draw on a transparent background, so that the chart sits on the theme's surface.</p>
+<p><code>EasyBIContext.ResolveRenderer</code> negotiates capabilities: the active renderer if it supports every type the
+visual uses (the visual's and its measures'), otherwise another plugged-in renderer, otherwise a built-in one. The designer disables
+the types that no renderer can draw.</p>
+<h2 id="report-format-easybiv1">Report format (<code>easybi/v1</code>)<a class="headerlink" href="#report-format-easybiv1" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="p">{</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="w">  </span><span class="nt">"schema"</span><span class="p">:</span><span class="w"> </span><span class="s2">"easybi/v1"</span><span class="p">,</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="w">  </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Dashboard"</span><span class="p">,</span>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="w">  </span><span class="nt">"visuals"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Revenue by region and channel"</span><span class="p">,</span>
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a><span class="w">      </span><span class="nt">"model"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sales"</span><span class="p">,</span>
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a><span class="w">      </span><span class="nt">"mark"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Bar"</span><span class="p">,</span>
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a><span class="w">      </span><span class="nt">"axis"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"field"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Region"</span><span class="p">,</span><span class="w"> </span><span class="nt">"grain"</span><span class="p">:</span><span class="w"> </span><span class="s2">"None"</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">],</span>
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a><span class="w">      </span><span class="nt">"legend"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"field"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Channel"</span><span class="p">,</span><span class="w"> </span><span class="nt">"grain"</span><span class="p">:</span><span class="w"> </span><span class="s2">"None"</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a><span class="w">      </span><span class="nt">"values"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"measure"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Amount"</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"measure"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Count"</span><span class="p">,</span><span class="w"> </span><span class="nt">"mark"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Line"</span><span class="p">,</span><span class="w"> </span><span class="nt">"secondaryAxis"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">],</span>
+<a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a><span class="w">      </span><span class="nt">"filters"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"field"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Product.Category"</span><span class="p">,</span><span class="w"> </span><span class="nt">"operator"</span><span class="p">:</span><span class="w"> </span><span class="s2">"In"</span><span class="p">,</span><span class="w"> </span><span class="nt">"values"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">"Services"</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">]</span>
+<a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-23-14" name="__codelineno-23-14" href="#__codelineno-23-14"></a><span class="w">  </span><span class="p">],</span>
+<a id="__codelineno-23-15" name="__codelineno-23-15" href="#__codelineno-23-15"></a><span class="w">  </span><span class="nt">"filters"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-23-16" name="__codelineno-23-16" href="#__codelineno-23-16"></a><span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">"model"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sales"</span><span class="p">,</span><span class="w"> </span><span class="nt">"filter"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"field"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Region"</span><span class="p">,</span><span class="w"> </span><span class="nt">"operator"</span><span class="p">:</span><span class="w"> </span><span class="s2">"In"</span><span class="p">,</span><span class="w"> </span><span class="nt">"values"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">"North"</span><span class="p">,</span><span class="w"> </span><span class="kc">null</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-23-17" name="__codelineno-23-17" href="#__codelineno-23-17"></a><span class="w">  </span><span class="p">]</span>
+<a id="__codelineno-23-18" name="__codelineno-23-18" href="#__codelineno-23-18"></a><span class="p">}</span>
+</code></pre></div>
+<p><code>null</code> in <code>values</code> means a missing value. <code>EasyBIContext.Validate(report)</code> reports the unknown
+models and fields of a loaded report.</p>
+<p>Text and image visuals carry their content and no model:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">"mark"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Text"</span><span class="p">,</span><span class="w"> </span><span class="nt">"text"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"text"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Sales dashboard"</span><span class="p">,</span><span class="w"> </span><span class="nt">"fontSize"</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span><span class="w"> </span><span class="nt">"isBold"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">"alignment"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Left"</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="p">{</span><span class="w"> </span><span class="nt">"mark"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Image"</span><span class="p">,</span><span class="w"> </span><span class="nt">"image"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"data"</span><span class="p">:</span><span class="w"> </span><span class="s2">"iVBORw0KGgo..."</span><span class="p">,</span><span class="w"> </span><span class="nt">"mediaType"</span><span class="p">:</span><span class="w"> </span><span class="s2">"image/png"</span><span class="p">,</span><span class="w"> </span><span class="nt">"fit"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Contain"</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<h3 id="dashboard-file-easybi-dashboardv1">Dashboard file (<code>easybi-dashboard/v1</code>)<a class="headerlink" href="#dashboard-file-easybi-dashboardv1" title="Permanent link">&para;</a></h3>
+<p><code>DashboardSerializer</code> saves what a <code>DashboardView</code> shows: the unchanged report next to the WPF layout,
+which references visuals by id. Sizes that are not saved are greedy. It also opens a plain <code>easybi/v1</code> report
+(visuals then get a default layout).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="p">{</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="w">  </span><span class="nt">"schema"</span><span class="p">:</span><span class="w"> </span><span class="s2">"easybi-dashboard/v1"</span><span class="p">,</span>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="w">  </span><span class="nt">"report"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"schema"</span><span class="p">:</span><span class="w"> </span><span class="s2">"easybi/v1"</span><span class="p">,</span><span class="w"> </span><span class="nt">"visuals"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">],</span><span class="w"> </span><span class="nt">"filters"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="w">  </span><span class="nt">"layout"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a><span class="w">    </span><span class="nt">"columns"</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span><span class="p">,</span>
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a><span class="w">    </span><span class="nt">"rowHeight"</span><span class="p">:</span><span class="w"> </span><span class="mi">110</span><span class="p">,</span>
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a><span class="w">    </span><span class="nt">"bands"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a><span class="w">      </span><span class="p">{</span>
+<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a><span class="w">        </span><span class="nt">"mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Fit"</span><span class="p">,</span>
+<a id="__codelineno-25-10" name="__codelineno-25-10" href="#__codelineno-25-10"></a><span class="w">        </span><span class="nt">"items"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-25-11" name="__codelineno-25-11" href="#__codelineno-25-11"></a><span class="w">          </span><span class="p">{</span><span class="w"> </span><span class="nt">"visualId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">,</span><span class="w"> </span><span class="nt">"rowSpan"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-25-12" name="__codelineno-25-12" href="#__codelineno-25-12"></a><span class="w">          </span><span class="p">{</span><span class="w"> </span><span class="nt">"split"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Row"</span><span class="p">,</span><span class="w"> </span><span class="nt">"children"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"visualId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">,</span><span class="w"> </span><span class="nt">"columnSpan"</span><span class="p">:</span><span class="w"> </span><span class="mi">6</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"visualId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-25-13" name="__codelineno-25-13" href="#__codelineno-25-13"></a><span class="w">        </span><span class="p">]</span>
+<a id="__codelineno-25-14" name="__codelineno-25-14" href="#__codelineno-25-14"></a><span class="w">      </span><span class="p">},</span>
+<a id="__codelineno-25-15" name="__codelineno-25-15" href="#__codelineno-25-15"></a><span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">"mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Scroll"</span><span class="p">,</span><span class="w"> </span><span class="nt">"items"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"visualId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">,</span><span class="w"> </span><span class="nt">"width"</span><span class="p">:</span><span class="w"> </span><span class="mi">360</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"visualId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-25-16" name="__codelineno-25-16" href="#__codelineno-25-16"></a><span class="w">    </span><span class="p">]</span>
+<a id="__codelineno-25-17" name="__codelineno-25-17" href="#__codelineno-25-17"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-25-18" name="__codelineno-25-18" href="#__codelineno-25-18"></a><span class="p">}</span>
+</code></pre></div>
+<p>The same file renders identically with any connector.</p>
+<h2 id="run">Run<a class="headerlink" href="#run" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>dotnet test
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>dotnet run --project samples/EasyBI.Sample
+</code></pre></div>
+<p>The demo starts in your system language (English or French) and has a language picker in its toolbar.</p>
+<h2 id="contributing">Contributing<a class="headerlink" href="#contributing" title="Permanent link">&para;</a></h2>
+<p>See <a href="https://github.com/TheoCvg/EasyBI/blob/v0.2.0-beta.1/AGENTS.md">AGENTS.md</a> for the code style, language rules and Git workflow.</p>
+<h2 id="known-limitations-roadmap">Known limitations / roadmap<a class="headerlink" href="#known-limitations-roadmap" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Cross-filtering: one selection at a time; the selected element is not yet highlighted in the
+  source chart (a "Sélection : ..." banner shows it).</li>
+<li>Designer and <code>FilterBar</code> filters: "one of" only, on non-date dimensions; no date ranges.</li>
+<li><code>Top</code> applies to aggregated rows, not to categories when a legend is present.</li>
+<li>Grouping, sorting and <code>Top</code> are pushed down to the provider, and execution is asynchronous when the
+  source implements <code>IAsyncEnumerable</code> (EF Core). EF Core's SQL translation (GroupBy on a composite
+  key, sort on an aggregate, projection to <code>object[]</code>) still has to be validated against a real database.</li>
+<li>At most 4 grouping dimensions (axis + legend).</li>
+<li>The built-in light and dark themes do not restyle standard controls (buttons, combo boxes...): use a control
+  library for those (see <a href="#following-a-control-library">Following a control library</a>).</li>
+<li><code>EasyBI.Themes.WpfUi</code> is checked against WPF UI's light and dark themes; its high contrast themes are not verified.</li>
+<li>Dashboard images are embedded in the file (2 MB by default, <code>DashboardView.MaxImageBytes</code>).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":".","features":["content.code.copy","navigation.top","search.highlight","toc.follow"],"redirect":null,"search":"./assets/javascripts/workers/search.c47bb847.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"default":"latest","provider":"mike"}}</script>
+    
+    
+      <script src="./assets/javascripts/bundle.10ee5ab6.min.js"></script>
+      
+    
+  </body>
+</html>
