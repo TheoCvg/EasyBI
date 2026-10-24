@@ -235,6 +235,26 @@ internal static class Strings
     public static string Top => Get();
     public static string TopHint => Get();
 
+    public static string FormulaSearchPlaceholder => Get();
+    public static string FormulaPlaceholder => Get();
+    public static string FormulaShortcutsHint => Get();
+    public static string FormulaMeasureHelp => Get();
+    public static string FormulaCalculatedMeasureHelp => Get();
+    public static string FormulaDimensionHelp => Get();
+    public static string FormulaNoMatch => Get();
+    public static string FormulaValid => Get();
+    public static string OperatorsCalculation => Get();
+    public static string OperatorsComparison => Get();
+    public static string OperatorsLogic => Get();
+    public static string FormulaTabFunctions => Get();
+    public static string FormulaTabMeasures => Get();
+    public static string FormulaTabDimensions => Get();
+    public static string MeasuresHeader => Get();
+    public static string DimensionsHeader => Get();
+
+    /// <summary>A text whose key is built (OperatorAdd, FormulaKeywordAND...).</summary>
+    public static string Named(string key) => Get(key);
+
     public static string Format(string format, params object?[] args) =>
         string.Format(EasyBILocalization.FormatCulture, format, args);
 

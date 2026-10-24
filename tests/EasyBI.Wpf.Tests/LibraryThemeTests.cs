@@ -76,6 +76,6 @@ public class LibraryThemeTests
         library.MergedDictionaries.Add(new ThemesDictionary { Theme = theme });
         library.MergedDictionaries.Add(new ControlsDictionary());
 
-        AssertMapsEveryBrush(WpfUiTheme.Map, library, $"WPF UI {theme}");
+        AssertMapsEveryBrush(WpfUiTheme.Map, library, $"WPF UI {theme}", WpfUiTheme.KeptKeys);
     });
 }
