@@ -7,7 +7,8 @@ namespace EasyBI.Wpf.Designer;
 /// <summary>
 /// Creates or changes one of the report's calculated measures: a name, a formula typed with the measures' captions
 /// (<c>[Marge] / [Chiffre d'affaires]</c>) and a format. The formula is checked as it is typed, and a valid one shows
-/// its total as a preview.
+/// its total as a preview. One preview query runs at a time and is never cancelled: when it ends, the latest formula
+/// is computed if it changed meanwhile, so typing skips intermediate formulas instead of cancelling a query per key.
 /// </summary>
 public sealed class CalculatedMeasureEditor : ObservableObject
 {
@@ -18,7 +19,12 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     private Option<string?> _format;
     private string? _error;
     private string? _preview;
-    private CancellationTokenSource? _previewing;
+    // The formula the preview is about, and the last one computed with its total (or the error of its query)
+    private string? _wanted;
+    private string? _computed;
+    private object? _total;
+    private string? _failure;
+    private bool _previewing;
 
     /// <summary>Edits <c>measure</c>, or a new measure of <c>model</c> when it is null.</summary>
     public CalculatedMeasureEditor(EasyBIContext context, ISemanticModel model, CalculatedMeasure? measure = null)
@@ -101,41 +107,55 @@ public sealed class CalculatedMeasureEditor : ObservableObject
 
     private void Check()
     {
-        _previewing?.Cancel();
         Result = null;
-        Preview = null;
         var caption = Caption.Trim();
         var stored = MeasureFormula.FromDisplay(Formula, Model.Metadata, out var formulaError);
         Error = caption.Length == 0 ? Strings.MeasureCaptionRequired
             : IsTaken(caption) ? Strings.Format(Strings.MeasureCaptionTaken, caption)
             : formulaError;
-        if (stored is null) return;
-
-        var measure = new CalculatedMeasure { Name = _name, Caption = caption, Model = Model.Metadata.Name, Formula = stored, Format = Format.Value };
-        if (Error is null) Result = measure;
-        var cancel = _previewing = new CancellationTokenSource();
-        PreviewTask = ComputePreviewAsync(measure, cancel.Token);
+        _wanted = stored;
+        if (stored is not null && Error is null)
+            Result = new CalculatedMeasure { Name = _name, Caption = caption, Model = Model.Metadata.Name, Formula = stored, Format = Format.Value };
+        // The caption does not change the total, and the format only changes how it reads
+        ShowPreview();
+        if (stored is not null && stored != _computed && !_previewing) PreviewTask = ComputePreviewsAsync();
     }
+
+    private void ShowPreview() =>
+        Preview = _wanted is null || _wanted != _computed ? null
+            : _failure is not null ? Strings.Format(Strings.Error, _failure)
+            : _total is null ? "—"
+            : ValueFormatter.Format(Convert.ToDouble(_total, EasyBILocalization.FormatCulture), Format.Value);
 
     // Another measure of the model already shows this caption: the field list and the formulas could not tell them apart
     private bool IsTaken(string caption) =>
         _context.MeasuresOf(Model).Any(f => f.Name != _name && string.Equals(f.Caption, caption, StringComparison.CurrentCultureIgnoreCase));
 
-    private async Task ComputePreviewAsync(CalculatedMeasure measure, CancellationToken cancellationToken)
+    private async Task ComputePreviewsAsync()
     {
+        _previewing = true;
         try
         {
-            var result = await Model.ExecuteAsync(new([], [new(measure.Name)], Calculations: [measure]), cancellationToken);
-            if (cancellationToken.IsCancellationRequested) return;
-            var value = result.Rows.FirstOrDefault()?[0];
-            Preview = value is null ? "—" : ValueFormatter.Format(Convert.ToDouble(value, EasyBILocalization.FormatCulture), measure.Format);
+            while (_wanted is { } formula && formula != _computed)
+            {
+                var measure = new CalculatedMeasure { Name = _name, Model = Model.Metadata.Name, Formula = formula };
+                (object? total, string? failure) = (null, null);
+                try
+                {
+                    var result = await Model.ExecuteAsync(new([], [new(measure.Name)], Calculations: [measure]));
+                    total = result.Rows.FirstOrDefault()?[0];
+                }
+                catch (Exception ex)
+                {
+                    failure = ex.Message;
+                }
+                (_computed, _total, _failure) = (formula, total, failure);
+                ShowPreview();
+            }
         }
-        catch (OperationCanceledException)
+        finally
         {
-        }
-        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
-        {
-            Preview = Strings.Format(Strings.Error, ex.Message);
+            _previewing = false;
         }
     }
 }
