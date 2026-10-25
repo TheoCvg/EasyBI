@@ -30,8 +30,14 @@ public sealed class FieldDropBehavior : DashboardBehavior
     /// <summary>The visual a field dropped on a free place makes; null refuses the drop. <see cref="FieldVisuals.Create"/> by default.</summary>
     public Func<ModelField, VisualDefinition?> CreateVisual { get; set; } = field => FieldVisuals.Create(field.Model, field.Field);
 
-    /// <summary>A visual with a field dropped on it; null refuses the drop. <see cref="FieldVisuals.AddField"/> by default.</summary>
-    public Func<VisualDefinition, ModelField, VisualDefinition?> AddField { get; set; } = (visual, field) => FieldVisuals.AddField(visual, field.Model, field.Field);
+    public FieldDropBehavior() =>
+        AddField = (visual, field) => FieldVisuals.AddField(visual, field.Model, field.Field, AssociatedObject?.Context?.VisualTypes);
+
+    /// <summary>
+    /// A visual with a field dropped on it; null refuses the drop. <see cref="FieldVisuals.AddField"/> by default, with
+    /// the visual types of the dashboard's context.
+    /// </summary>
+    public Func<VisualDefinition, ModelField, VisualDefinition?> AddField { get; set; }
 
     protected override void OnAttach()
     {

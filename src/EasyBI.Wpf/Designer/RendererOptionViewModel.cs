@@ -25,7 +25,7 @@ public sealed class RendererOptionViewModel : ObservableObject
         PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, OnLanguageChanged, string.Empty);
     }
 
-    /// <summary>Name of the renderer that declares the option.</summary>
+    /// <summary>Where the value is saved: the name of the renderer that declares the option, or the id of the visual type.</summary>
     public string Renderer { get; }
 
     public RendererOption Option { get; }

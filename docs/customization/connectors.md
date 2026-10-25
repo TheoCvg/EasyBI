@@ -12,6 +12,9 @@ public sealed class MyRenderer : IVisualRenderer
 }
 ```
 
+A connector can also draw a type of its own, which it declares in `Capabilities.VisualTypes`: see
+[Custom visual types](visual-types.md).
+
 Each `ChartSeries` comes with its resolved `SeriesType` and `SecondaryAxis`: a connector draws every series with its own
 type, so one chart can mix bars, lines, areas and points.
 

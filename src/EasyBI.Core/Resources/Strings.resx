@@ -396,4 +396,28 @@
   <data name="VisualTypeImage" xml:space="preserve">
     <value>Image</value>
   </data>
+  <data name="WellAxis" xml:space="preserve">
+    <value>Axis</value>
+  </data>
+  <data name="WellLegend" xml:space="preserve">
+    <value>Legend</value>
+  </data>
+  <data name="WellValues" xml:space="preserve">
+    <value>Values</value>
+  </data>
+  <data name="ValidationWellUnused" xml:space="preserve">
+    <value>{0} is not used by this type of visual</value>
+  </data>
+  <data name="ValidationWellMissing" xml:space="preserve">
+    <value>Add a field to {0}</value>
+  </data>
+  <data name="ValidationWellMinimum" xml:space="preserve">
+    <value>{0} needs at least {1} fields</value>
+  </data>
+  <data name="ValidationWellSingle" xml:space="preserve">
+    <value>{0} holds a single field</value>
+  </data>
+  <data name="ValidationWellMaximum" xml:space="preserve">
+    <value>{0} holds at most {1} fields</value>
+  </data>
 </root>

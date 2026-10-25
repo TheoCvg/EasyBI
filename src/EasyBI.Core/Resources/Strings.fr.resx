@@ -396,4 +396,28 @@
   <data name="VisualTypeImage" xml:space="preserve">
     <value>Image</value>
   </data>
+  <data name="WellAxis" xml:space="preserve">
+    <value>Axe</value>
+  </data>
+  <data name="WellLegend" xml:space="preserve">
+    <value>Légende</value>
+  </data>
+  <data name="WellValues" xml:space="preserve">
+    <value>Valeurs</value>
+  </data>
+  <data name="ValidationWellUnused" xml:space="preserve">
+    <value>« {0} » n'est pas utilisé par ce type de visuel</value>
+  </data>
+  <data name="ValidationWellMissing" xml:space="preserve">
+    <value>Ajoutez un champ dans « {0} »</value>
+  </data>
+  <data name="ValidationWellMinimum" xml:space="preserve">
+    <value>« {0} » demande au moins {1} champs</value>
+  </data>
+  <data name="ValidationWellSingle" xml:space="preserve">
+    <value>« {0} » ne contient qu'un champ</value>
+  </data>
+  <data name="ValidationWellMaximum" xml:space="preserve">
+    <value>« {0} » contient au plus {1} champs</value>
+  </data>
 </root>

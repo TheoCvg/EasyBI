@@ -324,8 +324,8 @@
   <data name="DropAlreadyThere" xml:space="preserve">
     <value>{0} est déjà dans {1}</value>
   </data>
-  <data name="DropAxisFull" xml:space="preserve">
-    <value>L'axe contient au plus {0} champs</value>
+  <data name="DropWellFull" xml:space="preserve">
+    <value>« {0} » contient au plus {1} champs</value>
   </data>
   <data name="DropWellSingleField" xml:space="preserve">
     <value>« {0} » ne contient qu'un champ</value>

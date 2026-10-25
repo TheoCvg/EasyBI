@@ -164,7 +164,7 @@ public class ShelfDragDropTests
         var designer = Designer();
         foreach (var name in new[] { "Region", "Channel", "Product" }) designer.Drop(Field(designer, name), Shelf.Axis);
 
-        Assert.Equal("The axis holds at most 3 fields", Refusal(designer, Field(designer, "Store"), Shelf.Axis));
+        Assert.Equal("Axis holds at most 3 fields", Refusal(designer, Field(designer, "Store"), Shelf.Axis));
     }
 
     [Fact]

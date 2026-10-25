@@ -32,7 +32,7 @@ public sealed record VisualWell
 
 /// <summary>
 /// Everything EasyBI needs to know about a <see cref="VisualType"/> besides drawing it (a renderer's job): its name, the
-/// fields it takes and its rules. The icon the designer shows for it is a WPF resource (EasyBI.Wpf's
+/// fields it takes, its settings and its rules. The icon the designer shows for it is a WPF resource (EasyBI.Wpf's
 /// <c>VisualTypeIcons</c>).
 /// </summary>
 public sealed record VisualTypeDefinition(VisualType Type, Func<string> Caption)
@@ -56,7 +56,14 @@ public sealed record VisualTypeDefinition(VisualType Type, Func<string> Caption)
     public FormatTarget Format { get; init; } = FormatTarget.Chart;
 
     /// <summary>
-    /// A rule of the type beyond the measures it needs: a message for the end user, or null when the visual can be drawn.
+    /// Settings of the type, offered by the designer whatever the renderer drawing it, and saved in
+    /// <see cref="VisualDefinition.Extensions"/> under the type's id (EasyBI.Core's <c>GetTypeOption</c> reads them).
+    /// </summary>
+    public IReadOnlyList<RendererOption> Options { get; init; } = [];
+
+    /// <summary>
+    /// A rule of the type: a message for the end user, or null when the visual can be drawn. It is checked before the
+    /// number of fields of each well, so that its message, more precise, comes first.
     /// </summary>
     public Func<VisualDefinition, string?>? Validate { get; init; }
 }

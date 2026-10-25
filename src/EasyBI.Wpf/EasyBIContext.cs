@@ -47,6 +47,12 @@ public sealed class EasyBIContext
     /// </summary>
     public MeasureContext Measures { get; } = new();
 
+    /// <summary>
+    /// The visual types the designer offers and the visuals follow: EasyBI's, and those the application adds
+    /// (<see cref="AddVisualType"/>) or the renderers bring. Change it before showing the designer.
+    /// </summary>
+    public VisualTypeCatalog VisualTypes { get; } = new();
+
     public IReadOnlyList<IVisualRenderer> Renderers => _renderers;
 
     public IVisualRenderer? ActiveRenderer
@@ -76,8 +82,24 @@ public sealed class EasyBIContext
         return this;
     }
 
+    /// <summary>
+    /// Declares a visual type of the application (see <see cref="VisualTypeCatalog.Add"/>); a renderer listing it in
+    /// its <see cref="RendererCapabilities.Types"/> draws it.
+    /// </summary>
+    public EasyBIContext AddVisualType(VisualTypeDefinition definition)
+    {
+        VisualTypes.Add(definition);
+        return this;
+    }
+
+    /// <summary>
+    /// Plugs in a renderer; the first one becomes the <see cref="ActiveRenderer"/>. The visual types it brings
+    /// (<see cref="RendererCapabilities.VisualTypes"/>) are declared, unless they already are.
+    /// </summary>
     public EasyBIContext UseRenderer(IVisualRenderer renderer)
     {
+        foreach (var definition in renderer.Capabilities.VisualTypes.Where(d => !VisualTypes.Contains(d.Type)))
+            VisualTypes.Add(definition);
         _renderers.Add(renderer);
         _activeRenderer ??= renderer;
         return this;

@@ -37,6 +37,7 @@ nav = [
     { "Slots" = "customization/slots.md" },
     { "Localization" = "customization/localization.md" },
     { "Writing a connector" = "customization/connectors.md" },
+    { "Custom visual types" = "customization/visual-types.md" },
   ] },
   { "Reference" = [
     { "Report format" = "reference/report-format.md" },
