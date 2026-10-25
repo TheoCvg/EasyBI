@@ -35,11 +35,14 @@ public partial class MainWindow : Window
         Context = EasyBIContext.Create()
             .AddModel(_sales)
             .UseRenderer(new LiveCharts2Renderer())
-            .UseRenderer(new OxyPlotRenderer());
+            .UseRenderer(new OxyPlotRenderer())
+            // A visual type of the application, with the renderer drawing it
+            .UseRenderer(new RankingRenderer());
 
         InitializeComponent();
         DataContext = this;
-        RendererPicker.ItemsSource = Context.Renderers;
+        // The charting libraries to choose from: not the renderer of the ranking alone
+        RendererPicker.ItemsSource = Context.Renderers.Where(r => r.Capabilities.Types.Contains(VisualType.Bar)).ToArray();
         RendererPicker.SelectedItem = Context.ActiveRenderer;
         LanguagePicker.ItemsSource = App.Languages;
         LanguagePicker.SelectedItem = App.Languages.FirstOrDefault(l => l.Equals(EasyBILocalization.Culture));
@@ -210,6 +213,17 @@ public partial class MainWindow : Window
             Legend = new("Date", DateGrain.Year),
             Values = [new("Amount")],
         };
+        // A visual type of the application (RankingRenderer)
+        VisualDefinition topProducts = new()
+        {
+            Title = Text("TopProducts"),
+            Model = "sales",
+            Type = RankingRenderer.Ranking,
+            Axis = [new("Product.Name")],
+            Values = [new("Amount")],
+            Top = 8,
+            Sort = new("Amount", Descending: true),
+        };
         VisualDefinition note = new()
         {
             Type = VisualType.Text,
@@ -227,7 +241,7 @@ public partial class MainWindow : Window
 
         return new DashboardDocument
         {
-            Report = new ReportDefinition { Title = Text("ReportTitle"), Visuals = [title, kpis, quarters, regions, categories, lastYear, matrix, note] },
+            Report = new ReportDefinition { Title = Text("ReportTitle"), Visuals = [title, kpis, quarters, regions, categories, topProducts, lastYear, matrix, note] },
             Layout = new DashboardLayoutDefinition
             {
                 Bands =
@@ -245,7 +259,7 @@ public partial class MainWindow : Window
                     new BandLayout
                     {
                         Mode = BandMode.Scroll,
-                        Items = [LayoutNode.Item(categories.Id), LayoutNode.Item(lastYear.Id), new LayoutNode { VisualId = note.Id, Width = 360 }],
+                        Items = [LayoutNode.Item(categories.Id), LayoutNode.Item(topProducts.Id), LayoutNode.Item(lastYear.Id), new LayoutNode { VisualId = note.Id, Width = 360 }],
                     },
                 ],
             },
