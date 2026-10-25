@@ -12,9 +12,9 @@ namespace EasyBI.Wpf.Tests;
 /// <summary>The donut, the gauge and the waterfall.</summary>
 public class NewVisualTypesTests
 {
-    private static RenderRequest Circular(MarkType mark)
+    private static RenderRequest Circular(VisualType type)
     {
-        var visual = new VisualDefinition { Mark = mark, Axis = [new("Region")], Values = [new("Amount")] };
+        var visual = new VisualDefinition { Type = type, Axis = [new("Region")], Values = [new("Amount")] };
         var chart = new ChartData("Region", ["A", "B", "C"], [new ChartSeries("Revenue", [10, 20, 30.5], "N1") { MeasureKey = "Amount" }])
         {
             CategoryValues = [["A"], ["B"], ["C"]],
@@ -26,9 +26,9 @@ public class NewVisualTypesTests
     public void A_pie_is_a_full_disc_and_a_donut_shows_its_total_in_its_hole_with_LiveCharts2() => Sta.Run(() =>
     {
         var renderer = new LiveCharts2Renderer();
-        Assert.IsType<PieChart>(renderer.Render(Circular(MarkType.Pie)));
+        Assert.IsType<PieChart>(renderer.Render(Circular(VisualType.Pie)));
 
-        var donut = Assert.IsType<ChartCenterLabel>(renderer.Render(Circular(MarkType.Donut)));
+        var donut = Assert.IsType<ChartCenterLabel>(renderer.Render(Circular(VisualType.Donut)));
 
         Assert.Equal(("60.5", "Revenue"), (donut.Value.Text, donut.Caption.Text));
         Assert.Contains(donut.Children.OfType<PieChart>(), _ => true);
@@ -38,10 +38,10 @@ public class NewVisualTypesTests
     public void A_pie_is_a_full_disc_and_a_donut_has_a_hole_with_OxyPlot() => Sta.Run(() =>
     {
         var renderer = new OxyPlotRenderer();
-        var pie = (PlotView)renderer.Render(Circular(MarkType.Pie));
+        var pie = (PlotView)renderer.Render(Circular(VisualType.Pie));
         Assert.Equal(0, ((global::OxyPlot.Series.PieSeries)pie.Model.Series[0]).InnerDiameter);
 
-        var donut = Assert.IsType<ChartCenterLabel>(renderer.Render(Circular(MarkType.Donut)));
+        var donut = Assert.IsType<ChartCenterLabel>(renderer.Render(Circular(VisualType.Donut)));
 
         var view = donut.Children.OfType<PlotView>().Single();
         Assert.Equal(0.5, ((global::OxyPlot.Series.PieSeries)view.Model.Series[0]).InnerDiameter);
@@ -51,7 +51,7 @@ public class NewVisualTypesTests
     [Fact]
     public void Clicking_a_slice_of_a_donut_selects_its_category()
     {
-        var request = Circular(MarkType.Donut);
+        var request = Circular(VisualType.Donut);
         var filters = new FilterContext();
 
         filters.Select(request, new CategorySelection(1));
@@ -64,17 +64,17 @@ public class NewVisualTypesTests
     {
         var designer = new DesignerViewModel(EasyBIContext.Create().UseRenderer(new LiveCharts2Renderer()));
 
-        designer.SelectedMark = MarkType.Donut;
+        designer.SelectedType = VisualType.Donut;
 
-        Assert.Contains(designer.MarkOptions, o => o.Value == MarkType.Donut);
+        Assert.Contains(designer.TypeOptions, o => o.Value == VisualType.Donut);
         Assert.Equal(("Category", "Value", false), (designer.AxisWell.Label, designer.ValuesWell.Label, designer.LegendWell.IsUsed));
-        Assert.Equal("A pie or a donut needs one category and a single value.", VisualValidator.Validate(new VisualDefinition { Mark = MarkType.Donut, Values = [new("Amount")] }));
-        Assert.Null(VisualValidator.Validate(new VisualDefinition { Mark = MarkType.Donut, Axis = [new("Region")], Values = [new("Amount")] }));
+        Assert.Equal("A pie or a donut needs one category and a single value.", VisualValidator.Validate(new VisualDefinition { Type = VisualType.Donut, Values = [new("Amount")] }));
+        Assert.Null(VisualValidator.Validate(new VisualDefinition { Type = VisualType.Donut, Axis = [new("Region")], Values = [new("Amount")] }));
     }
 
     private static RenderRequest Gauge(double? value, GaugeSettings? settings = null, ValueFormat? format = null)
     {
-        var visual = new VisualDefinition { Mark = MarkType.Gauge, Values = [new("Amount") { Format = format }], Gauge = settings };
+        var visual = new VisualDefinition { Type = VisualType.Gauge, Values = [new("Amount") { Format = format }], Gauge = settings };
         var chart = new ChartData(null, ["Total"], [new ChartSeries("Revenue", [value], "N0") { MeasureKey = "Amount" }]);
         return new RenderRequest(visual, new ResultSet([], []), chart, BiTheme.Default with { Error = "#CC0000" });
     }
@@ -117,7 +117,7 @@ public class NewVisualTypesTests
     {
         var designer = new DesignerViewModel(EasyBIContext.Create().AddModel(
             SemanticModel.For(new[] { new { Region = "Nord", Amount = 1m } }, "sales").Dimension(s => s.Region, "Région").Measure(s => s.Amount, "CA")));
-        designer.Load(new VisualDefinition { Model = "sales", Mark = MarkType.Gauge, Values = [new("Amount")] });
+        designer.Load(new VisualDefinition { Model = "sales", Type = VisualType.Gauge, Values = [new("Amount")] });
         Assert.Equal((false, false), (designer.AxisWell.IsUsed, designer.LegendWell.IsUsed));
         var visual = designer.Properties.Single(s => s.Key == DesignerPropertySections.Visual);
         Assert.True(visual["GaugeTarget"]!.IsAvailable);
@@ -126,23 +126,23 @@ public class NewVisualTypesTests
         designer.GaugeTarget = 1500;
         Assert.Equal((2000d, 1500d), (designer.Visual!.Gauge!.Maximum!.Value, designer.Visual.Gauge.Target!.Value));
 
-        designer.SelectedMark = MarkType.Kpi;
+        designer.SelectedType = VisualType.Kpi;
         Assert.Null(designer.Visual!.Gauge);
         Assert.False(designer.Properties.Single(s => s.Key == DesignerPropertySections.Visual)["GaugeTarget"]!.IsAvailable);
-        designer.SelectedMark = MarkType.Gauge; // kept while the type changes
+        designer.SelectedType = VisualType.Gauge; // kept while the type changes
         Assert.Equal(1500d, designer.Visual!.Gauge!.Target);
     }
 
     [Fact]
     public void A_gauge_is_drawn_by_the_built_in_renderer()
     {
-        Assert.IsType<GaugeRenderer>(EasyBIContext.Create().UseRenderer(new LiveCharts2Renderer()).ResolveRenderer(MarkType.Gauge));
+        Assert.IsType<GaugeRenderer>(EasyBIContext.Create().UseRenderer(new LiveCharts2Renderer()).ResolveRenderer(VisualType.Gauge));
     }
 
     private static RenderRequest WaterfallRequest(params DataSelection[] highlight)
     {
-        var visual = new VisualDefinition { Mark = MarkType.Waterfall, Axis = [new("Month")], Values = [new("Profit")] };
-        var chart = new ChartData("Month", ["Jan", "Feb"], [new ChartSeries("Profit", [100, -30], "N0") { MeasureKey = "Profit", Mark = MarkType.Waterfall }])
+        var visual = new VisualDefinition { Type = VisualType.Waterfall, Axis = [new("Month")], Values = [new("Profit")] };
+        var chart = new ChartData("Month", ["Jan", "Feb"], [new ChartSeries("Profit", [100, -30], "N0") { MeasureKey = "Profit", SeriesType = VisualType.Waterfall }])
         {
             CategoryValues = [["Jan"], ["Feb"]],
         };
@@ -192,9 +192,9 @@ public class NewVisualTypesTests
     {
         var designer = new DesignerViewModel(EasyBIContext.Create().UseRenderer(new LiveCharts2Renderer()));
 
-        designer.SelectedMark = MarkType.Waterfall;
+        designer.SelectedType = VisualType.Waterfall;
 
         Assert.Equal((true, false, "Value"), (designer.AxisWell.IsUsed, designer.LegendWell.IsUsed, designer.ValuesWell.Label));
-        Assert.True(designer.MarkOptions.Single(o => o.Value == MarkType.Waterfall).IsAvailable);
+        Assert.True(designer.TypeOptions.Single(o => o.Value == VisualType.Waterfall).IsAvailable);
     }
 }

@@ -33,7 +33,7 @@ public class WaterfallTests
     [Fact]
     public void A_waterfall_needs_an_axis_and_a_single_value_without_legend()
     {
-        var waterfall = new VisualDefinition { Mark = MarkType.Waterfall, Axis = [new("Month")], Values = [new("Profit")] };
+        var waterfall = new VisualDefinition { Type = VisualType.Waterfall, Axis = [new("Month")], Values = [new("Profit")] };
 
         Assert.Null(VisualValidator.Validate(waterfall));
         Assert.NotNull(VisualValidator.Validate(waterfall with { Axis = [] }));

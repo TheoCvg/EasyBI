@@ -226,7 +226,7 @@ public class VisualView : ContentControl
             return;
         }
 
-        if (visual.Mark.IsContent())
+        if (visual.Type.IsContent())
         {
             // Text and image: nothing to query
             Cancel();
@@ -297,7 +297,7 @@ public class VisualView : ContentControl
         var renderer = context.ResolveRenderer(visual);
         if (renderer is null)
         {
-            Show(visual, Message(Strings.Format(Strings.NoRenderer, visual.Mark)));
+            Show(visual, Message(Strings.Format(Strings.NoRenderer, visual.Type)));
             return;
         }
 
@@ -318,7 +318,7 @@ public class VisualView : ContentControl
         var drawn = request;
         request = request with { Tooltip = (category, series) => context.TooltipFor(drawn, category, series) };
         // A long legend shows its entries by pages, turned by a pager over the chart
-        var pager = visual.Mark.IsCartesian() || visual.Mark.IsCircular() ? new LegendPager() : null;
+        var pager = visual.Type.IsCartesian() || visual.Type.IsCircular() ? new LegendPager() : null;
         request = request with { LegendPager = pager };
 
         try

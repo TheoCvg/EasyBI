@@ -181,7 +181,7 @@ public class UserMeasureTests
     {
         var report = new ReportDefinition
         {
-            Visuals = [new VisualDefinition { Title = "V", Model = "m", Mark = MarkType.Kpi, Values = [new("calc_1"), new("calc_2")] }],
+            Visuals = [new VisualDefinition { Title = "V", Model = "m", Type = VisualType.Kpi, Values = [new("calc_1"), new("calc_2")] }],
             Measures = [Measure("[Margin] / [Revenue]"), Measure("[Amount]") with { Name = "calc_2", Model = "gone" }],
         };
 

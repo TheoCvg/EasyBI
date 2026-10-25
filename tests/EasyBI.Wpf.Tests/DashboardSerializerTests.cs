@@ -6,8 +6,8 @@ namespace EasyBI.Wpf.Tests;
 
 public class DashboardSerializerTests
 {
-    private static readonly VisualDefinition Title = new() { Id = "t", Mark = MarkType.Text, Text = new TextContent { Text = "Sales", IsBold = true } };
-    private static readonly VisualDefinition Logo = new() { Id = "i", Mark = MarkType.Image, Image = new ImageContent { Data = "AQID", MediaType = "image/jpeg" } };
+    private static readonly VisualDefinition Title = new() { Id = "t", Type = VisualType.Text, Text = new TextContent { Text = "Sales", IsBold = true } };
+    private static readonly VisualDefinition Logo = new() { Id = "i", Type = VisualType.Image, Image = new ImageContent { Data = "AQID", MediaType = "image/jpeg" } };
 
     [Fact]
     public void Dashboard_round_trips_with_its_layout_next_to_the_report() => Sta.Run(() =>

@@ -7,7 +7,7 @@ public sealed record ChartSeries(string Name, IReadOnlyList<double?> Values, str
     public object? LegendValue { get; init; }
 
     /// <summary>How to draw the series in a cartesian chart, already resolved from its measure and the visual.</summary>
-    public MarkType Mark { get; init; } = MarkType.Bar;
+    public VisualType SeriesType { get; init; } = VisualType.Bar;
 
     /// <summary>True when the series uses the second value axis, on the right.</summary>
     public bool SecondaryAxis { get; init; }
@@ -79,7 +79,7 @@ public sealed record BiTheme(IReadOnlyList<string> Palette)
 }
 
 /// <summary>What a renderer can draw. The designer uses it to disable unavailable options.</summary>
-public sealed record RendererCapabilities(IReadOnlySet<MarkType> Marks)
+public sealed record RendererCapabilities(IReadOnlySet<VisualType> Types)
 {
     /// <summary>
     /// Settings specific to the renderer, offered to the end user by the designer and saved in
@@ -110,7 +110,7 @@ public sealed record MatrixMember(IReadOnlyList<object?> Values, IReadOnlyList<s
 public sealed record MatrixMeasure(string Key, string Caption, string? Format);
 
 /// <summary>
-/// Pre-pivoted data of a <see cref="MarkType.Matrix"/>: rows (the axis), columns (the legend, none without one) and,
+/// Pre-pivoted data of a <see cref="VisualType.Matrix"/>: rows (the axis), columns (the legend, none without one) and,
 /// for each measure, the value of every cell and the totals. Each total is the measure computed on all the rows it
 /// covers (an average stays an average), not a sum of cells.
 /// </summary>
@@ -150,7 +150,7 @@ public sealed record RenderRequest(VisualDefinition Visual, ResultSet Result, Ch
     /// </summary>
     public IReadOnlyList<DataSelection>? Highlight { get; init; }
 
-    /// <summary>The pivoted data of a <see cref="MarkType.Matrix"/>; null for the other types.</summary>
+    /// <summary>The pivoted data of a <see cref="VisualType.Matrix"/>; null for the other types.</summary>
     public MatrixData? Matrix { get; init; }
 
     /// <summary>

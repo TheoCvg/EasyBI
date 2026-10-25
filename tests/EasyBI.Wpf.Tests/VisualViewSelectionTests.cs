@@ -19,7 +19,7 @@ public class VisualViewSelectionTests
 
         public string Name => "Recording";
 
-        public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType> { MarkType.Bar });
+        public RendererCapabilities Capabilities { get; } = new(new HashSet<VisualType> { VisualType.Bar });
 
         public FrameworkElement Render(RenderRequest request)
         {
@@ -31,7 +31,7 @@ public class VisualViewSelectionTests
     private static readonly VisualDefinition ByRegion = new()
     {
         Model = "sales",
-        Mark = MarkType.Bar,
+        Type = VisualType.Bar,
         Axis = [new("Region")],
         Values = [new("Amount")],
     };

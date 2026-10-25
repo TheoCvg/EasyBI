@@ -12,21 +12,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="MarkBar" xml:space="preserve">
-    <value>Barres</value>
-  </data>
-  <data name="MarkLine" xml:space="preserve">
-    <value>Courbes</value>
-  </data>
-  <data name="MarkPie" xml:space="preserve">
-    <value>Secteurs</value>
-  </data>
-  <data name="MarkKpi" xml:space="preserve">
-    <value>KPI</value>
-  </data>
-  <data name="MarkTable" xml:space="preserve">
-    <value>Table</value>
-  </data>
   <data name="FilterAll" xml:space="preserve">
     <value>(tout)</value>
   </data>
@@ -186,15 +171,6 @@
   <data name="Cancel" xml:space="preserve">
     <value>Annuler</value>
   </data>
-  <data name="MarkArea" xml:space="preserve">
-    <value>Aires</value>
-  </data>
-  <data name="MarkScatter" xml:space="preserve">
-    <value>Points</value>
-  </data>
-  <data name="MarkStackedBar" xml:space="preserve">
-    <value>Empilées</value>
-  </data>
   <data name="SeriesMarkDefault" xml:space="preserve">
     <value>Comme le visuel</value>
   </data>
@@ -351,6 +327,9 @@
   <data name="DropAxisFull" xml:space="preserve">
     <value>L'axe contient au plus {0} champs</value>
   </data>
+  <data name="DropWellSingleField" xml:space="preserve">
+    <value>« {0} » ne contient qu'un champ</value>
+  </data>
   <data name="DropFilterFromList" xml:space="preserve">
     <value>Pour filtrer sur {0}, faites-le glisser depuis la liste des champs</value>
   </data>
@@ -426,15 +405,6 @@
   <data name="VisualTypeHint" xml:space="preserve">
     <value>Changer le type de visuel</value>
   </data>
-  <data name="WellCategory" xml:space="preserve">
-    <value>Catégorie</value>
-  </data>
-  <data name="WellValue" xml:space="preserve">
-    <value>Valeur</value>
-  </data>
-  <data name="WellRows" xml:space="preserve">
-    <value>Lignes</value>
-  </data>
   <data name="WellUnused" xml:space="preserve">
     <value>Non utilisé par ce type de visuel</value>
   </data>
@@ -482,12 +452,6 @@
   </data>
   <data name="ConditionNumber" xml:space="preserve">
     <value>Un nombre</value>
-  </data>
-  <data name="MarkMatrix" xml:space="preserve">
-    <value>Tableau croisé</value>
-  </data>
-  <data name="WellColumns" xml:space="preserve">
-    <value>Colonnes</value>
   </data>
   <data name="MatrixTotal" xml:space="preserve">
     <value>Total</value>
@@ -606,12 +570,6 @@
   <data name="FormatChartHint" xml:space="preserve">
     <value>Sur un graphique, les règles et l&apos;échelle de couleurs colorent les barres, points et parts (barres empilées : un cadre autour de toute la pile).</value>
   </data>
-  <data name="MarkDonut" xml:space="preserve">
-    <value>Anneau</value>
-  </data>
-  <data name="MarkGauge" xml:space="preserve">
-    <value>Jauge</value>
-  </data>
   <data name="GaugeMinimum" xml:space="preserve">
     <value>Minimum</value>
   </data>
@@ -626,9 +584,6 @@
   </data>
   <data name="GaugeTargetLabel" xml:space="preserve">
     <value>Cible : {0}</value>
-  </data>
-  <data name="MarkWaterfall" xml:space="preserve">
-    <value>Cascade</value>
   </data>
   <data name="WellTooltip" xml:space="preserve">
     <value>Infobulle</value>

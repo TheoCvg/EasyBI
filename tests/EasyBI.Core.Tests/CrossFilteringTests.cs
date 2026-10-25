@@ -26,14 +26,14 @@ public class CrossFilteringTests
     private static readonly VisualDefinition ByRegion = new()
     {
         Model = "sales",
-        Mark = MarkType.Bar,
+        Type = VisualType.Bar,
         Axis = [new("Region")],
         Values = [new("Amount")],
     };
 
     private static readonly VisualDefinition ByRegionAndChannel = ByRegion with { Legend = new("Channel") };
 
-    private static readonly VisualDefinition Total = new() { Model = "sales", Mark = MarkType.Kpi, Values = [new("Amount")] };
+    private static readonly VisualDefinition Total = new() { Model = "sales", Type = VisualType.Kpi, Values = [new("Amount")] };
 
     private static async Task<decimal> TotalAsync(FilterContext filters) =>
         (decimal)(await Model().ExecuteAsync(filters.Apply(Total).ToQuery())).Rows[0][0]!;
@@ -227,7 +227,7 @@ public class CrossFilteringTests
     public async Task A_table_emphasizes_the_rows_of_its_selection()
     {
         var filters = new FilterContext();
-        var table = ByRegionAndChannel with { Mark = MarkType.Table };
+        var table = ByRegionAndChannel with { Type = VisualType.Table };
         var request = await VisualPipeline.PrepareAsync(Model(), table);
 
         filters.Select(request, new RowSelection(0));

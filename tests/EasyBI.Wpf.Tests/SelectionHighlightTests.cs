@@ -16,14 +16,14 @@ namespace EasyBI.Wpf.Tests;
 public class SelectionHighlightTests
 {
     // Two categories, two series (legend)
-    private static RenderRequest Request(MarkType mark, params DataSelection[] highlight)
+    private static RenderRequest Request(VisualType type, params DataSelection[] highlight)
     {
         var chart = new ChartData("Region", ["North", "South"],
         [
-            new ChartSeries("Web", [1, 2], null) { Mark = mark },
-            new ChartSeries("Shop", [3, 4], null) { Mark = mark },
+            new ChartSeries("Web", [1, 2], null) { SeriesType = type },
+            new ChartSeries("Shop", [3, 4], null) { SeriesType = type },
         ]);
-        return new RenderRequest(new VisualDefinition { Mark = mark }, new ResultSet([], []), chart, BiTheme.Default)
+        return new RenderRequest(new VisualDefinition { Type = type }, new ResultSet([], []), chart, BiTheme.Default)
         {
             Highlight = highlight,
         };
@@ -35,7 +35,7 @@ public class SelectionHighlightTests
     [Fact]
     public void LiveCharts2_fades_the_lines_without_a_selected_point() => Sta.Run(() =>
     {
-        var view = (CartesianChart)new LiveCharts2Renderer().Render(Request(MarkType.Line, new CategorySelection(1, 0)));
+        var view = (CartesianChart)new LiveCharts2Renderer().Render(Request(VisualType.Line, new CategorySelection(1, 0)));
 
         var series = view.Series.ToList();
         Assert.Equal(255, Alpha(series, 0));
@@ -45,7 +45,7 @@ public class SelectionHighlightTests
     [Fact]
     public void LiveCharts2_fades_the_slices_left_out_of_the_selection() => Sta.Run(() =>
     {
-        var view = (PieChart)new LiveCharts2Renderer().Render(Request(MarkType.Pie, new CategorySelection(0)));
+        var view = (PieChart)new LiveCharts2Renderer().Render(Request(VisualType.Pie, new CategorySelection(0)));
 
         var alphas = view.Series.Cast<PieSeries<double>>().Select(s => ((SolidColorPaint)s.Fill!).Color.Alpha).ToArray();
         Assert.Equal([255, (byte)(255 * SelectionFilters.DimmedOpacity)], alphas);
@@ -54,7 +54,7 @@ public class SelectionHighlightTests
     [Fact]
     public void Without_a_selection_nothing_is_faded() => Sta.Run(() =>
     {
-        var view = (CartesianChart)new LiveCharts2Renderer().Render(Request(MarkType.Line));
+        var view = (CartesianChart)new LiveCharts2Renderer().Render(Request(VisualType.Line));
 
         Assert.All(Enumerable.Range(0, 2), i => Assert.Equal(255, Alpha(view.Series.ToList(), i)));
     });
@@ -63,7 +63,7 @@ public class SelectionHighlightTests
     public void OxyPlot_fades_each_bar_left_out_of_the_selection() => Sta.Run(() =>
     {
         // The whole North category, and South for the Web series only
-        var view = (PlotView)new OxyPlotRenderer().Render(Request(MarkType.Bar, new CategorySelection(0), new CategorySelection(1, 0)));
+        var view = (PlotView)new OxyPlotRenderer().Render(Request(VisualType.Bar, new CategorySelection(0), new CategorySelection(1, 0)));
 
         var bars = view.Model.Series.Cast<global::OxyPlot.Series.BarSeries>().ToArray();
         Assert.True(bars[0].Items.All(item => item.Color.IsAutomatic()));
@@ -74,7 +74,7 @@ public class SelectionHighlightTests
     [Fact]
     public void OxyPlot_reports_ctrl_clicks_too() => Sta.Run(() =>
     {
-        var request = Request(MarkType.Bar) with { Select = _ => { } };
+        var request = Request(VisualType.Bar) with { Select = _ => { } };
 
         var view = (PlotView)new OxyPlotRenderer().Render(request);
 
@@ -90,7 +90,7 @@ public class SelectionHighlightTests
     public void A_table_fades_the_rows_left_out_of_the_selection() => Sta.Run(() =>
     {
         var result = new ResultSet([new ResultColumn("Region", "Region", FieldKind.Dimension, DataType.Text)], [["North"], ["South"], ["East"]]);
-        var request = new RenderRequest(new VisualDefinition { Mark = MarkType.Table }, result, new ChartData(null, [], []), BiTheme.Default)
+        var request = new RenderRequest(new VisualDefinition { Type = VisualType.Table }, result, new ChartData(null, [], []), BiTheme.Default)
         {
             Highlight = [new RowSelection(1)],
         };

@@ -81,7 +81,7 @@ public static class VisualTransfer
         }
 
         return copied.Visuals
-            .Where(v => v.Mark is MarkType.Text or MarkType.Image || hasModel(v.Model))
+            .Where(v => v.Type.IsContent() || hasModel(v.Model))
             .Select(v => new PastedVisual(v.Id, Rename(v, renamed) with { Id = Guid.NewGuid().ToString("N") }))
             .ToArray();
     }

@@ -507,7 +507,7 @@ public class DashboardView : Control
     /// <summary>Turns an item into an empty text and starts editing it.</summary>
     public void AddText(DashboardItem item)
     {
-        SetVisual(item, new VisualDefinition { Mark = MarkType.Text, Text = new TextContent() });
+        SetVisual(item, new VisualDefinition { Type = VisualType.Text, Text = new TextContent() });
         RequestTextEdit(item);
     }
 
@@ -517,9 +517,9 @@ public class DashboardView : Control
     /// <summary>Picks an image for an item: <see cref="ImageRequested"/>, or the built-in file dialog.</summary>
     public void PickImage(DashboardItem item)
     {
-        var args = new ImageRequestedEventArgs(item, image => SetVisual(item, item.Visual is { Mark: MarkType.Image } visual
+        var args = new ImageRequestedEventArgs(item, image => SetVisual(item, item.Visual is { } visual && visual.Type == VisualType.Image
             ? visual with { Image = image }
-            : new VisualDefinition { Mark = MarkType.Image, Image = image }));
+            : new VisualDefinition { Type = VisualType.Image, Image = image }));
         ImageRequested?.Invoke(this, args);
         if (args.Handled) return;
 

@@ -55,7 +55,7 @@ public class DesignerPropertiesTests
         Assert.Equal([DesignerPropertySections.Field, DesignerPropertySections.Formatting, DesignerPropertySections.Visual, DesignerPropertySections.Tooltips], designer.Properties.Select(s => s.Key));
         var field = designer.Properties[0];
         Assert.Equal("Amount", field.Header);
-        Assert.Equal(["Aggregation", "Time", "SeriesMark", "SecondaryAxis", "Sort"], Keys(field));
+        Assert.Equal(["Aggregation", "Time", "SeriesType", "SecondaryAxis", "Sort"], Keys(field));
 
         var aggregation = field["Aggregation"]!;
         aggregation.SelectedChoice = aggregation.Choices.Single(c => Equals(c.Value, Aggregation.Average));
@@ -167,16 +167,16 @@ public class DesignerPropertiesTests
     public void The_type_gallery_groups_the_types_and_chooses_one()
     {
         var designer = Designer();
-        Assert.Equal([MarkGroup.Comparison, MarkGroup.Trend, MarkGroup.Composition, MarkGroup.IndicatorsAndTables], designer.MarkGroups.Select(g => g.Value));
-        Assert.Equal([MarkType.Line, MarkType.Area], designer.MarkGroups[1].Options.Select(o => o.Mark));
+        Assert.Equal([VisualTypeGroup.Comparison, VisualTypeGroup.Trend, VisualTypeGroup.Composition, VisualTypeGroup.IndicatorsAndTables], designer.TypeGroups.Select(g => g.Value));
+        Assert.Equal([VisualType.Line, VisualType.Area], designer.TypeGroups[1].Options.Select(o => o.Type));
 
         // Tables are drawn by EasyBI itself: available without a chart library
         designer.IsTypeGalleryOpen = true;
-        designer.MarkOptions.Single(o => o.Mark == MarkType.Table).ChooseCommand.Execute(null);
+        designer.TypeOptions.Single(o => o.Type == VisualType.Table).ChooseCommand.Execute(null);
 
-        Assert.Equal(MarkType.Table, designer.SelectedMark);
-        Assert.Equal(MarkType.Table, designer.SelectedMarkOption.Mark);
-        Assert.Equal([MarkType.Table], designer.MarkOptions.Where(o => o.IsSelected).Select(o => o.Mark));
+        Assert.Equal(VisualType.Table, designer.SelectedType);
+        Assert.Equal(VisualType.Table, designer.SelectedTypeOption.Type);
+        Assert.Equal([VisualType.Table], designer.TypeOptions.Where(o => o.IsSelected).Select(o => o.Type));
         Assert.False(designer.IsTypeGalleryOpen);
     }
 
@@ -184,34 +184,34 @@ public class DesignerPropertiesTests
     public void A_type_no_renderer_draws_cannot_be_chosen()
     {
         var designer = Designer(); // no renderer in this context
-        var pie = designer.MarkOptions.Single(o => o.Mark == MarkType.Pie);
+        var pie = designer.TypeOptions.Single(o => o.Type == VisualType.Pie);
         Assert.False(pie.IsAvailable);
 
         pie.ChooseCommand.Execute(null);
 
-        Assert.NotEqual(MarkType.Pie, designer.SelectedMark);
+        Assert.NotEqual(VisualType.Pie, designer.SelectedType);
     }
 
     [Fact]
     public void Every_visual_type_has_an_icon_in_the_theme() => Sta.Run(() =>
     {
         var icon = new VisualTypeIcon().Hosted();
-        foreach (var mark in Enum.GetValues<MarkType>().Where(m => !m.IsContent()))
-            Assert.IsAssignableFrom<System.Windows.Media.Geometry>(icon.TryFindResource(VisualTypeIcons.KeyOf(mark)));
+        foreach (var type in VisualType.BuiltIn.Where(t => !t.IsContent()))
+            Assert.IsAssignableFrom<System.Windows.Media.Geometry>(icon.TryFindResource(VisualTypeIcons.KeyOf(type)));
     });
 
     // --- Wells that follow the visual type ---
 
     [Theory]
-    [InlineData(MarkType.Bar, "Axis", "Legend", "Values")]
-    [InlineData(MarkType.Pie, "Category", null, "Value")]
-    [InlineData(MarkType.Table, "Rows", null, "Values")]
-    [InlineData(MarkType.Kpi, null, null, "Values")]
-    public void Wells_take_the_names_and_the_use_of_the_visual_type(MarkType mark, string? axis, string? legend, string values)
+    [InlineData("Bar", "Axis", "Legend", "Values")]
+    [InlineData("Pie", "Category", null, "Value")]
+    [InlineData("Table", "Rows", null, "Values")]
+    [InlineData("Kpi", null, null, "Values")]
+    public void Wells_take_the_names_and_the_use_of_the_visual_type(string type, string? axis, string? legend, string values)
     {
         var designer = Designer();
         designer.Clear();
-        designer.SelectedMark = mark;
+        designer.SelectedType = VisualType.Parse(type);
 
         Assert.Equal((axis, legend, values), (Used(designer.AxisWell), Used(designer.LegendWell), Used(designer.ValuesWell)));
         Assert.True(designer.FiltersWell.IsUsed);
@@ -223,7 +223,7 @@ public class DesignerPropertiesTests
     public void A_well_the_type_does_not_use_refuses_fields_and_stays_shown_while_it_holds_some()
     {
         var designer = Designer(); // Region on the axis
-        designer.SelectedMark = MarkType.Kpi;
+        designer.SelectedType = VisualType.Kpi;
 
         Assert.False(designer.AxisWell.IsUsed);
         Assert.True(designer.AxisWell.IsVisible); // to remove Region
@@ -234,6 +234,19 @@ public class DesignerPropertiesTests
 
         designer.RemoveCommand.Execute(designer.Axis.Single());
         Assert.False(designer.AxisWell.IsVisible);
+    }
+
+    [Fact]
+    public void A_well_takes_no_more_fields_than_the_visual_type_allows()
+    {
+        var designer = Designer(); // Region on the axis
+        var date = designer.Dimensions.Single(d => d.Name == "Date");
+        Assert.True(designer.CanDrop(date, Shelf.Axis));
+
+        designer.SelectedType = VisualType.Pie; // one category
+
+        Assert.False(designer.CanDrop(date, Shelf.Axis));
+        Assert.Equal("Category holds a single field", designer.RefusalReason(date, Shelf.Axis));
     }
 
     [Fact]
@@ -276,7 +289,7 @@ public class DesignerPropertiesTests
         Assert.Equal(("Renamed", Aggregation.Average), (designer.Title, designer.Values.Single().Aggregation));
         Assert.True(designer.CanRedo);
 
-        designer.SelectedMark = MarkType.Table; // a new change drops what could be redone
+        designer.SelectedType = VisualType.Table; // a new change drops what could be redone
         Assert.False(designer.CanRedo);
     }
 

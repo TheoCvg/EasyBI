@@ -13,7 +13,7 @@ public sealed record WaterfallStep(double Start, double End, WaterfallStepKind K
 }
 
 /// <summary>
-/// The bars of a <see cref="MarkType.Waterfall"/>: each category's value (its first series) starts where the running
+/// The bars of a <see cref="VisualType.Waterfall"/>: each category's value (its first series) starts where the running
 /// total stands, up or down, and a last bar shows the total from 0. A missing value is a flat step.
 /// </summary>
 public static class Waterfall

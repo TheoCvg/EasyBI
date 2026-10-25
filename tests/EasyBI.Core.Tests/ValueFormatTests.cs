@@ -138,7 +138,7 @@ public class ValueFormatTests
     public void A_format_is_saved_with_its_measure_and_does_not_change_the_query()
     {
         var format = new ValueFormat { IsBold = true, Rules = [new FormatRule { Operator = FilterOperator.Range, Value = 1, Color = ThemeColors.Error }] };
-        var visual = new VisualDefinition { Model = "m", Mark = MarkType.Table, Values = [new("Amount") { Format = format }] };
+        var visual = new VisualDefinition { Model = "m", Type = VisualType.Table, Values = [new("Amount") { Format = format }] };
 
         var json = ReportSerializer.Serialize(new ReportDefinition { Visuals = [visual] });
         var loaded = ReportSerializer.Deserialize(json).Visuals[0].Values[0].Format!;

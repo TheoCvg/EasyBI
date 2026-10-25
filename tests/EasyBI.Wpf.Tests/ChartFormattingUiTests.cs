@@ -21,17 +21,17 @@ public class ChartFormattingUiTests
         Rules = [new FormatRule { Operator = FilterOperator.GreaterThan, Value = 50, Color = ThemeColors.Success, ShowOnChart = true }],
     };
 
-    private static RenderRequest Request(MarkType mark)
+    private static RenderRequest Request(VisualType type)
     {
-        var visual = new VisualDefinition { Mark = mark, Values = [new("Amount") { Format = Format }] };
-        var chart = new ChartData("Region", ["A", "B", "C"], [new ChartSeries("Amount", [10, 50, 100], null) { MeasureKey = "Amount", Mark = mark }]);
+        var visual = new VisualDefinition { Type = type, Values = [new("Amount") { Format = Format }] };
+        var chart = new ChartData("Region", ["A", "B", "C"], [new ChartSeries("Amount", [10, 50, 100], null) { MeasureKey = "Amount", SeriesType = type }]);
         return new RenderRequest(visual, new ResultSet([], []), chart, Theme);
     }
 
     [Fact]
     public void LiveCharts2_shades_the_zone_of_a_rule() => Sta.Run(() =>
     {
-        var view = (CartesianChart)new LiveCharts2Renderer().Render(Request(MarkType.Bar));
+        var view = (CartesianChart)new LiveCharts2Renderer().Render(Request(VisualType.Bar));
 
         // From 50 up: the open end goes far beyond the data (a null end would start at the bottom of the axis)
         var zone = (RectangularSection)Assert.Single(view.Sections);
@@ -43,7 +43,7 @@ public class ChartFormattingUiTests
     [Fact]
     public void LiveCharts2_colors_the_slices_of_a_pie_with_their_rule() => Sta.Run(() =>
     {
-        var view = (PieChart)new LiveCharts2Renderer().Render(Request(MarkType.Pie));
+        var view = (PieChart)new LiveCharts2Renderer().Render(Request(VisualType.Pie));
 
         var colors = view.Series.Cast<PieSeries<double>>().Select(s => ((SolidColorPaint)s.Fill!).Color.ToString()).ToArray();
         Assert.Equal("#ff00aa00", colors[2]);
@@ -53,7 +53,7 @@ public class ChartFormattingUiTests
     [Fact]
     public void OxyPlot_colors_each_bar_with_its_rule_and_shades_the_zone() => Sta.Run(() =>
     {
-        var view = (PlotView)new OxyPlotRenderer().Render(Request(MarkType.Bar));
+        var view = (PlotView)new OxyPlotRenderer().Render(Request(VisualType.Bar));
 
         var bars = (global::OxyPlot.Series.BarSeries)view.Model.Series[0];
         Assert.True(bars.Items[0].Color.IsAutomatic());
@@ -66,11 +66,11 @@ public class ChartFormattingUiTests
     // Stacked bars (two segments per category): totals 30 and 150, framed above 60
     private static RenderRequest Stacked()
     {
-        var visual = new VisualDefinition { Mark = MarkType.StackedBar, Values = [new("Amount") { Format = Format with { Rules = [Format.Rules[0] with { Value = 60 }] } }] };
+        var visual = new VisualDefinition { Type = VisualType.StackedBar, Values = [new("Amount") { Format = Format with { Rules = [Format.Rules[0] with { Value = 60 }] } }] };
         var chart = new ChartData("Region", ["A", "B"],
         [
-            new ChartSeries("Web", [10, 100], null) { MeasureKey = "Amount", Mark = MarkType.StackedBar },
-            new ChartSeries("Shop", [20, 50], null) { MeasureKey = "Amount", Mark = MarkType.StackedBar },
+            new ChartSeries("Web", [10, 100], null) { MeasureKey = "Amount", SeriesType = VisualType.StackedBar },
+            new ChartSeries("Shop", [20, 50], null) { MeasureKey = "Amount", SeriesType = VisualType.StackedBar },
         ]);
         return new RenderRequest(visual, new ResultSet([], []), chart, Theme);
     }
@@ -103,7 +103,7 @@ public class ChartFormattingUiTests
     {
         var designer = new DesignerViewModel(EasyBIContext.Create().AddModel(
             SemanticModel.For(new[] { new { Region = "Nord", Amount = 1m } }, "sales").Dimension(s => s.Region, "Région").Measure(s => s.Amount, "CA")));
-        designer.Load(new VisualDefinition { Model = "sales", Mark = MarkType.Bar, Axis = [new("Region")], Values = [new("Amount")] });
+        designer.Load(new VisualDefinition { Model = "sales", Type = VisualType.Bar, Axis = [new("Region")], Values = [new("Amount")] });
         var chip = designer.Values.Single();
         designer.SelectedItem = chip;
         var format = chip.Format;
@@ -115,11 +115,11 @@ public class ChartFormattingUiTests
         Assert.Equal((false, false, true, false, false), (format.ShowTextStyle, format.ShowAlignment, format.ShowScale, format.ShowBar, format.ShowIcons));
         Assert.Equal((false, false, true, "Color"), (rule.ShowBackground, rule.ShowBold, rule.ShowZoneOption, rule.ColorLabel));
 
-        designer.SelectedMark = MarkType.Table;
+        designer.SelectedType = VisualType.Table;
         Assert.Equal((true, true, true, true, true), (format.ShowTextStyle, format.ShowAlignment, format.ShowScale, format.ShowBar, format.ShowIcons));
         Assert.Equal((true, true, false, "Text"), (rule.ShowBackground, rule.ShowBold, rule.ShowZoneOption, rule.ColorLabel));
 
-        designer.SelectedMark = MarkType.Kpi;
+        designer.SelectedType = VisualType.Kpi;
         Assert.Equal((true, false, false, false, true), (format.ShowTextStyle, format.ShowAlignment, format.ShowScale, format.ShowBar, format.ShowIcons));
     }
 
@@ -140,8 +140,8 @@ public class ChartFormattingUiTests
     public void OxyPlot_shows_short_labels_under_the_groups_of_an_outer_axis_field() => Sta.Run(() =>
     {
         object?[][] keys = [["2024-01", "Est"], ["2024-01", "Nord"], ["2024-02", "Est"], ["2024-02", "Nord"]];
-        var visual = new VisualDefinition { Mark = MarkType.Bar, Values = [new("Amount")] };
-        var chart = new ChartData("Month / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", [1, 2, 3, 4], null) { Mark = MarkType.Bar }])
+        var visual = new VisualDefinition { Type = VisualType.Bar, Values = [new("Amount")] };
+        var chart = new ChartData("Month / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", [1, 2, 3, 4], null) { SeriesType = VisualType.Bar }])
         {
             CategoryValues = keys,
         };

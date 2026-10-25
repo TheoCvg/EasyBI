@@ -163,30 +163,30 @@ public partial class MainWindow : Window
     {
         VisualDefinition title = new()
         {
-            Mark = MarkType.Text,
+            Type = VisualType.Text,
             Text = new TextContent { Text = Text("DashboardTitle"), FontSize = 24, IsBold = true },
         };
         VisualDefinition kpis = new()
         {
             Title = Text("KeyIndicators"),
             Model = "sales",
-            Mark = MarkType.Kpi,
+            Type = VisualType.Kpi,
             Values = [new("Amount"), new("Margin"), new("MarginRate"), new("Count")],
         };
         VisualDefinition quarters = new()
         {
             Title = Text("RevenueByQuarter"),
             Model = "sales",
-            Mark = MarkType.Bar,
+            Type = VisualType.Bar,
             Axis = [new("Date", DateGrain.Quarter)],
             // A combined chart: revenue in bars, margin as a line, number of sales as points on the right axis
-            Values = [new("Amount"), new("Margin") { Mark = MarkType.Line }, new("Count") { Mark = MarkType.Scatter, SecondaryAxis = true }],
+            Values = [new("Amount"), new("Margin") { SeriesType = VisualType.Line }, new("Count") { SeriesType = VisualType.Scatter, SecondaryAxis = true }],
         };
         VisualDefinition regions = new()
         {
             Title = Text("RevenueByRegionAndChannel"),
             Model = "sales",
-            Mark = MarkType.Bar,
+            Type = VisualType.Bar,
             Axis = [new("Region")],
             Legend = new("Channel"),
             Values = [new("Amount")],
@@ -196,7 +196,7 @@ public partial class MainWindow : Window
         {
             Title = Text("RevenueByCategory"),
             Model = "sales",
-            Mark = MarkType.Pie,
+            Type = VisualType.Pie,
             Axis = [new("Product.Category")],
             Values = [new("Amount")],
         };
@@ -205,14 +205,14 @@ public partial class MainWindow : Window
         {
             Title = Text("RevenueByCategoryAndYear"),
             Model = "sales",
-            Mark = MarkType.Matrix,
+            Type = VisualType.Matrix,
             Axis = [new("Product.Category")],
             Legend = new("Date", DateGrain.Year),
             Values = [new("Amount")],
         };
         VisualDefinition note = new()
         {
-            Mark = MarkType.Text,
+            Type = VisualType.Text,
             Text = new TextContent { Text = Text("DashboardNote"), FontSize = 14 },
         };
         // The demo's sales end in 2025: the last full year, and how it changed since the year before
@@ -220,7 +220,7 @@ public partial class MainWindow : Window
         {
             Title = Text("LastYearComparison"),
             Model = "sales",
-            Mark = MarkType.Kpi,
+            Type = VisualType.Kpi,
             Values = [new("Amount"), new("Amount") { Time = TimeCalculation.PercentChangeFromPreviousYear }],
             Filters = [PeriodFilters.Between("Date", new DateOnly(2025, 1, 1), new DateOnly(2025, 12, 31))],
         };

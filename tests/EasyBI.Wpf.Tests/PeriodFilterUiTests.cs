@@ -80,7 +80,7 @@ public class PeriodFilterUiTests
         designer.Load(new VisualDefinition
         {
             Model = "sales",
-            Mark = MarkType.Kpi,
+            Type = VisualType.Kpi,
             Values = [new("Amount")],
             Filters = [period, new FilterSpec("Date", FilterOperator.In, ["2024"], DateGrain.Year)],
         });

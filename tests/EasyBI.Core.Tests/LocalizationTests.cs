@@ -60,7 +60,7 @@ public class LocalizationTests
             Assert.Equal("Oui", ValueFormatter.Display(true));
             Assert.Equal("1 234,5", ValueFormatter.Format(1234.5, null));
             Assert.Equal("Déposez au moins une mesure dans « Valeurs ».",
-                VisualValidator.Validate(new VisualDefinition { Model = "m", Mark = MarkType.Bar }));
+                VisualValidator.Validate(new VisualDefinition { Model = "m", Type = VisualType.Bar }));
         }
     }
 
@@ -107,7 +107,7 @@ public class LocalizationTests
     {
         var model = LocalizedModel();
         var filters = new FilterContext();
-        var visual = new VisualDefinition { Model = "sales", Mark = MarkType.Line, Axis = [new("Date", DateGrain.Quarter)], Values = [new("Amount")] };
+        var visual = new VisualDefinition { Model = "sales", Type = VisualType.Line, Axis = [new("Date", DateGrain.Quarter)], Values = [new("Amount")] };
         filters.Select(await VisualPipeline.PrepareAsync(model, visual), new CategorySelection(0));
 
         Assert.Equal("Date (Quarter) = 2024 Q1", Assert.Single(filters.Selections).Describe(model.Metadata));

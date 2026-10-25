@@ -52,7 +52,7 @@ public class ValueFormatUiTests
     [Fact]
     public void A_table_draws_the_values_of_a_formatted_measure_with_their_style() => Sta.Run(() =>
     {
-        var visual = new VisualDefinition { Model = "sales", Mark = MarkType.Table, Axis = [new("Region")], Values = [new("Amount") { Format = LowInRed }] };
+        var visual = new VisualDefinition { Model = "sales", Type = VisualType.Table, Axis = [new("Region")], Values = [new("Amount") { Format = LowInRed }] };
         var grid = Shown(new TableRenderer().Render(Request(visual)));
 
         var sud = Formatted(grid, 1, 1); // 50
@@ -68,7 +68,7 @@ public class ValueFormatUiTests
         var visual = new VisualDefinition
         {
             Model = "sales",
-            Mark = MarkType.Matrix,
+            Type = VisualType.Matrix,
             Axis = [new("Region")],
             Legend = new("Channel"),
             Values = [new("Amount") { Format = new ValueFormat { Bar = new DataBar() } }],
@@ -86,7 +86,7 @@ public class ValueFormatUiTests
     public void A_kpi_takes_the_color_and_the_icon_of_its_format() => Sta.Run(() =>
     {
         var format = LowInRed with { Rules = [.. LowInRed.Rules], Icons = new IconSet { Kind = IconKind.Triangles, Low = 100, High = 1000 } };
-        var visual = new VisualDefinition { Model = "sales", Mark = MarkType.Kpi, Values = [new("Amount") { Format = format with { Rules = [new FormatRule { Operator = FilterOperator.LessThan, Value = 1000, Color = ThemeColors.Error }] } }] };
+        var visual = new VisualDefinition { Model = "sales", Type = VisualType.Kpi, Values = [new("Amount") { Format = format with { Rules = [new FormatRule { Operator = FilterOperator.LessThan, Value = 1000, Color = ThemeColors.Error }] } }] };
 
         var card = (Viewbox)new KpiRenderer().Render(Request(visual));
 
@@ -99,7 +99,7 @@ public class ValueFormatUiTests
     public void The_designer_edits_the_format_of_a_measure_and_saves_it_with_the_visual()
     {
         var designer = new DesignerViewModel(EasyBIContext.Create().AddModel(Model()));
-        designer.Load(new VisualDefinition { Model = "sales", Mark = MarkType.Table, Axis = [new("Region")], Values = [new("Amount")] });
+        designer.Load(new VisualDefinition { Model = "sales", Type = VisualType.Table, Axis = [new("Region")], Values = [new("Amount")] });
         var amount = designer.Values.Single();
         designer.SelectedItem = amount;
         Assert.Contains(designer.Properties, s => s.Key == DesignerPropertySections.Formatting);
@@ -146,7 +146,7 @@ public class ValueFormatUiTests
     public void Only_measures_on_the_values_well_have_a_format() => Sta.Run(() =>
     {
         var designer = new DesignerViewModel(EasyBIContext.Create().AddModel(Model()));
-        designer.Load(new VisualDefinition { Model = "sales", Mark = MarkType.Table, Axis = [new("Region")], Values = [new("Amount")] });
+        designer.Load(new VisualDefinition { Model = "sales", Type = VisualType.Table, Axis = [new("Region")], Values = [new("Amount")] });
 
         designer.SelectedItem = designer.Axis.Single();
 

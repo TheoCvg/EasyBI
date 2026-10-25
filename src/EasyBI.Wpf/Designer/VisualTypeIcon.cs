@@ -11,29 +11,29 @@ namespace EasyBI.Wpf.Designer;
 /// </summary>
 public static class VisualTypeIcons
 {
-    public static ComponentResourceKey KeyOf(MarkType mark) => new(typeof(VisualTypeIcons), mark.ToString());
+    public static ComponentResourceKey KeyOf(VisualType type) => new(typeof(VisualTypeIcons), type.Id);
 }
 
 /// <summary>The icon of a visual type (see <see cref="VisualTypeIcons"/>); lookless, its default style is in <c>Themes/ReportDesigner.xaml</c>.</summary>
 public class VisualTypeIcon : Control
 {
-    public static readonly DependencyProperty MarkProperty = DependencyProperty.Register(
-        nameof(Mark), typeof(MarkType), typeof(VisualTypeIcon),
-        new PropertyMetadata(MarkType.Bar, (d, e) => ((VisualTypeIcon)d).SetResourceReference(GeometryProperty, VisualTypeIcons.KeyOf((MarkType)e.NewValue))));
+    public static readonly DependencyProperty TypeProperty = DependencyProperty.Register(
+        nameof(Type), typeof(VisualType), typeof(VisualTypeIcon),
+        new PropertyMetadata(VisualType.Bar, (d, e) => ((VisualTypeIcon)d).SetResourceReference(GeometryProperty, VisualTypeIcons.KeyOf((VisualType)e.NewValue))));
 
-    /// <summary>The geometry of the <see cref="Mark"/>'s icon, taken from the resources (it follows a change of theme).</summary>
+    /// <summary>The geometry of the <see cref="Type"/>'s icon, taken from the resources (it follows a change of theme).</summary>
     public static readonly DependencyProperty GeometryProperty = DependencyProperty.Register(
         nameof(Geometry), typeof(Geometry), typeof(VisualTypeIcon), new PropertyMetadata(null));
 
     static VisualTypeIcon() =>
         DefaultStyleKeyProperty.OverrideMetadata(typeof(VisualTypeIcon), new FrameworkPropertyMetadata(typeof(VisualTypeIcon)));
 
-    public VisualTypeIcon() => SetResourceReference(GeometryProperty, VisualTypeIcons.KeyOf(Mark));
+    public VisualTypeIcon() => SetResourceReference(GeometryProperty, VisualTypeIcons.KeyOf(Type));
 
-    public MarkType Mark
+    public VisualType Type
     {
-        get => (MarkType)GetValue(MarkProperty);
-        set => SetValue(MarkProperty, value);
+        get => (VisualType)GetValue(TypeProperty);
+        set => SetValue(TypeProperty, value);
     }
 
     public Geometry? Geometry

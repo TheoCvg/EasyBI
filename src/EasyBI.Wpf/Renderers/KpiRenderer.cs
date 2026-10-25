@@ -11,7 +11,7 @@ public sealed class KpiRenderer : IVisualRenderer
 {
     public string Name => "EasyBI KPI";
 
-    public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType> { MarkType.Kpi });
+    public RendererCapabilities Capabilities { get; } = new(new HashSet<VisualType> { VisualType.Kpi });
 
     public FrameworkElement Render(RenderRequest request)
     {

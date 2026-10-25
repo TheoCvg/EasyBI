@@ -22,14 +22,11 @@ public sealed class ShelfItemViewModel : ObservableObject
             .ToArray();
 
     /// <summary>Chart types a measure can take in a cartesian chart; null follows the visual's type.</summary>
-    public static IReadOnlyList<Option<MarkType?>> SeriesMarkOptions { get; } =
+    public static IReadOnlyList<Option<VisualType?>> SeriesTypeOptions { get; } =
     [
         new(null, () => Strings.SeriesMarkDefault),
-        new(MarkType.Bar, () => Strings.MarkBar),
-        new(MarkType.StackedBar, () => Strings.MarkStackedBar),
-        new(MarkType.Line, () => Strings.MarkLine),
-        new(MarkType.Area, () => Strings.MarkArea),
-        new(MarkType.Scatter, () => Strings.MarkScatter),
+        .. new[] { VisualType.Bar, VisualType.StackedBar, VisualType.Line, VisualType.Area, VisualType.Scatter }
+            .Select(type => new Option<VisualType?>(type, VisualTypeCatalog.Default.Get(type).Caption)),
     ];
 
     /// <summary>How a measure can be seen through time.</summary>
@@ -59,7 +56,7 @@ public sealed class ShelfItemViewModel : ObservableObject
     private ValueLabelsViewModel? _valueLabels;
     private TimeCalculation _time;
     private Aggregation _aggregation;
-    private MarkType? _seriesMark;
+    private VisualType? _seriesType;
     private bool _secondaryAxis;
     private bool _showSeriesOptions;
 
@@ -110,7 +107,7 @@ public sealed class ShelfItemViewModel : ObservableObject
                 TimeCalculation.PercentChangeFromPreviousYear => Strings.BadgePercentChange,
                 _ => Strings.BadgeYearToDate,
             });
-            if (ShowSeriesOptions && SeriesMark is not null) badges.Add(SeriesMarkOption.Label);
+            if (ShowSeriesOptions && SeriesType is not null) badges.Add(SeriesTypeOption.Label);
             if (ShowSeriesOptions && SecondaryAxis) badges.Add(Strings.SecondaryAxis);
             if (CanSort && SortDirection is not null) badges.Add(SortOption.Symbol);
             return badges;
@@ -185,22 +182,22 @@ public sealed class ShelfItemViewModel : ObservableObject
     }
 
     /// <summary>Chart type of this measure (Values shelf, cartesian chart); null follows the visual's type.</summary>
-    public MarkType? SeriesMark
+    public VisualType? SeriesType
     {
-        get => _seriesMark;
+        get => _seriesType;
         set
         {
-            if (!SetProperty(ref _seriesMark, value)) return;
-            OnPropertyChanged(nameof(SeriesMarkOption));
+            if (!SetProperty(ref _seriesType, value)) return;
+            OnPropertyChanged(nameof(SeriesTypeOption));
             _changed();
         }
     }
 
-    /// <summary><see cref="SeriesMark"/> as a list option (a combo box cannot select a null value).</summary>
-    public Option<MarkType?> SeriesMarkOption
+    /// <summary><see cref="SeriesType"/> as a list option (a combo box cannot select a null value).</summary>
+    public Option<VisualType?> SeriesTypeOption
     {
-        get => SeriesMarkOptions.First(o => o.Value == _seriesMark);
-        set => SeriesMark = value?.Value;
+        get => SeriesTypeOptions.First(o => o.Value == _seriesType);
+        set => SeriesType = value?.Value;
     }
 
     /// <summary>Draws this measure against the second value axis.</summary>
@@ -254,7 +251,7 @@ public sealed class ShelfItemViewModel : ObservableObject
 
     public MeasureRef ToMeasureRef() => new(Field.Name, HasAggregation && Aggregation != Field.DefaultAggregation ? Aggregation : null)
     {
-        Mark = SeriesMark,
+        SeriesType = SeriesType,
         SecondaryAxis = SecondaryAxis,
         Time = Time,
         Format = _format?.ToFormat(),

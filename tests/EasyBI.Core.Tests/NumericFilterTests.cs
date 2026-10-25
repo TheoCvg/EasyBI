@@ -30,7 +30,7 @@ public class NumericFilterTests
     private static readonly VisualDefinition ByRegion = new()
     {
         Model = "sales",
-        Mark = MarkType.Bar,
+        Type = VisualType.Bar,
         Axis = [new("Region")],
         Values = [new("Amount")],
     };

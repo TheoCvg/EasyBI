@@ -44,7 +44,7 @@ public class DesignerLocalizationTests
         var designer = new DesignerViewModel(EasyBIContext.Create().AddModel(model));
         designer.Load(new VisualDefinition { Title = "T", Model = "sales", Axis = [new("Region")], Values = [new("Amount")] });
         var visualId = designer.Visual!.Id;
-        var bars = designer.MarkOptions.Single(o => o.Mark == MarkType.Bar);
+        var bars = designer.TypeOptions.Single(o => o.Type == VisualType.Bar);
         var notified = new List<string?>();
         ((INotifyPropertyChanged)bars).PropertyChanged += (_, e) => notified.Add(e.PropertyName);
 
@@ -54,7 +54,7 @@ public class DesignerLocalizationTests
         using (TestCulture.Use("fr-FR"))
         {
             Assert.Equal("Barres", bars.Label);
-            Assert.Contains(nameof(MarkOptionViewModel.Label), notified);
+            Assert.Contains(nameof(VisualTypeOptionViewModel.Label), notified);
             Assert.Equal("Ventes", designer.Models.Single().Label);
             Assert.Equal("Région", designer.Axis.Single().Caption);
             Assert.Equal("Somme", ShelfItemViewModel.AggregationOptions[0].Label);

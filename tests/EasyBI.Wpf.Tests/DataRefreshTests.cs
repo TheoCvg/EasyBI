@@ -7,7 +7,7 @@ namespace EasyBI.Wpf.Tests;
 public class DataRefreshTests
 {
     private static VisualDefinition Table(string model) =>
-        new() { Model = model, Mark = MarkType.Table, Axis = [new("Region")], Values = [new("Amount")] };
+        new() { Model = model, Type = VisualType.Table, Axis = [new("Region")], Values = [new("Amount")] };
 
     // Loaded, queued refreshes and query continuations run on the dispatcher
     private static void Pump() => Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);

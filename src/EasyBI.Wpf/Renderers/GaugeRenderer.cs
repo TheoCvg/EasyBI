@@ -10,7 +10,7 @@ using EasyBI.Wpf.Resources;
 namespace EasyBI.Wpf.Renderers;
 
 /// <summary>
-/// Built-in renderer of a <see cref="MarkType.Gauge"/>: a half circle from the minimum to the maximum
+/// Built-in renderer of a <see cref="VisualType.Gauge"/>: a half circle from the minimum to the maximum
 /// (<see cref="GaugeScale"/>), filled up to the value, a mark at the target, the value and its measure below. The
 /// measure's format colors the value (a rule's color) and adds its icon.
 /// </summary>
@@ -21,7 +21,7 @@ public sealed class GaugeRenderer : IVisualRenderer
 
     public string Name => "EasyBI Gauge";
 
-    public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType> { MarkType.Gauge });
+    public RendererCapabilities Capabilities { get; } = new(new HashSet<VisualType> { VisualType.Gauge });
 
     public FrameworkElement Render(RenderRequest request)
     {

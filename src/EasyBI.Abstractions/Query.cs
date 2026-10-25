@@ -44,9 +44,9 @@ public sealed record MeasureRef(string Measure, Aggregation? Aggregation = null)
 
     /// <summary>
     /// Chart type of this measure's series in a cartesian chart (bars, stacked bars, line, area, points); null follows
-    /// the visual's <see cref="VisualDefinition.Mark"/>. Display only: it does not change the query.
+    /// the visual's <see cref="VisualDefinition.Type"/>. Display only: it does not change the query.
     /// </summary>
-    public MarkType? Mark { get; init; }
+    public VisualType? SeriesType { get; init; }
 
     /// <summary>Draws this measure's series against a second value axis, on the right. Display only.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] // reports only mention it when it is used

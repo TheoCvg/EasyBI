@@ -17,21 +17,21 @@ public sealed class OxyPlotRenderer : IVisualRenderer
 {
     public string Name => "OxyPlot";
 
-    public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType>
+    public RendererCapabilities Capabilities { get; } = new(new HashSet<VisualType>
     {
-        MarkType.Bar, MarkType.StackedBar, MarkType.Line, MarkType.Area, MarkType.Scatter, MarkType.Pie, MarkType.Donut, MarkType.Waterfall,
+        VisualType.Bar, VisualType.StackedBar, VisualType.Line, VisualType.Area, VisualType.Scatter, VisualType.Pie, VisualType.Donut, VisualType.Waterfall,
     });
 
     public FrameworkElement Render(RenderRequest request)
     {
         // A waterfall is laid out as a chart with a last "Total" category
-        var fitted = request.Visual.Mark == MarkType.Waterfall ? request with { Chart = Waterfall.Of(request.Chart).Chart } : request;
-        var model = request.Visual.Mark switch
+        var fitted = request.Visual.Type == VisualType.Waterfall ? request with { Chart = Waterfall.Of(request.Chart).Chart } : request;
+        var model = request.Visual.Type switch
         {
-            var mark when mark.IsCircular() => BuildPie(request),
-            MarkType.Waterfall => BuildWaterfall(request),
-            var mark when mark.IsCartesian() => BuildCartesian(request),
-            _ => throw new NotSupportedException($"OxyPlotRenderer does not support '{request.Visual.Mark}'."),
+            var type when type.IsCircular() => BuildPie(request),
+            var type when type == VisualType.Waterfall => BuildWaterfall(request),
+            var type when type.IsCartesian() => BuildCartesian(request),
+            _ => throw new NotSupportedException($"OxyPlotRenderer does not support '{request.Visual.Type}'."),
         };
         model.PlotAreaBorderThickness = new OxyThickness(0);
         ApplyTheme(model, request.Theme);
@@ -50,7 +50,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
                 ? request.TooltipFor(hovered.Category, [hovered.Series ?? 0])
                 : null);
         };
-        if (request.Visual.Mark != MarkType.Donut) return view;
+        if (request.Visual.Type != VisualType.Donut) return view;
 
         // A donut shows its total in its hole, the middle of the plot area
         var source = request.Chart.Series[0];
@@ -64,11 +64,11 @@ public sealed class OxyPlotRenderer : IVisualRenderer
     {
         if (view.ActualWidth <= 0) return;
         var preferred = request.Visual.LegendPosition;
-        var changed = request.Visual.Mark switch
+        var changed = request.Visual.Type switch
         {
-            var mark when mark.IsCircular() => FitPie(model, ChartFitting.Pie(request.Chart, view.ActualWidth, view.ActualHeight, mark == MarkType.Donut, preferred)),
+            var type when type.IsCircular() => FitPie(model, ChartFitting.Pie(request.Chart, view.ActualWidth, view.ActualHeight, type == VisualType.Donut, preferred)),
             // A waterfall has no legend: its colors are the direction of the steps
-            MarkType.Waterfall => FitCartesian(model, request.Chart, ChartLegend.Hidden, view.ActualWidth, view.ActualHeight, null),
+            var type when type == VisualType.Waterfall => FitCartesian(model, request.Chart, ChartLegend.Hidden, view.ActualWidth, view.ActualHeight, null),
             _ => FitCartesian(model, request.Chart, preferred, view.ActualWidth, view.ActualHeight, request.LegendPager),
         };
         // Only redraw when something changed: SizeChanged fires continuously while a dashboard cell is resized
@@ -198,7 +198,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
 
     /// <summary>
     /// Bars, stacked bars, lines, areas and points in one chart: each series is drawn with its own
-    /// <see cref="ChartSeries.Mark"/>, against the left axis or, for <see cref="ChartSeries.SecondaryAxis"/>, the right one.
+    /// <see cref="ChartSeries.SeriesType"/>, against the left axis or, for <see cref="ChartSeries.SecondaryAxis"/>, the right one.
     /// </summary>
     private static PlotModel BuildCartesian(RenderRequest request)
     {
@@ -241,8 +241,8 @@ public sealed class OxyPlotRenderer : IVisualRenderer
             model.Series.Add(CreateSeries(request, formatting, i));
         foreach (var band in formatting.Bands)
             model.Annotations.Add(Zone(band, request.Theme));
-        var groups = chart.Series.Where(s => s.Mark is MarkType.Bar or MarkType.StackedBar)
-            .Select(s => s.Mark == MarkType.StackedBar ? (s.SecondaryAxis ? "stack2" : "stack") : s.Name).Distinct().ToList();
+        var groups = chart.Series.Where(s => (s.SeriesType == VisualType.Bar || s.SeriesType == VisualType.StackedBar))
+            .Select(s => s.SeriesType == VisualType.StackedBar ? (s.SecondaryAxis ? "stack2" : "stack") : s.Name).Distinct().ToList();
         foreach (var outline in formatting.StackOutlines)
             model.Annotations.Add(Frame(outline, categoryAxis, groups));
 
@@ -297,7 +297,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
     {
         var series = chart.Series.Where(s => s.SecondaryAxis == secondary).ToList();
         var format = series.FirstOrDefault()?.Format;
-        var onlyBars = series.Count > 0 && series.All(s => s.Mark is MarkType.Bar or MarkType.StackedBar);
+        var onlyBars = series.Count > 0 && series.All(s => (s.SeriesType == VisualType.Bar || s.SeriesType == VisualType.StackedBar));
         return new LinearAxis
         {
             Position = secondary ? AxisPosition.Right : AxisPosition.Left,
@@ -371,10 +371,10 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         var color = request.IsEmphasized(index) ? Color(request.Theme, index) : Dim(Color(request.Theme, index));
         var valueAxis = source.SecondaryAxis ? SecondaryAxisKey : PrimaryAxisKey;
         var valueFormat = "{4:" + (source.Format ?? "#,##0.##") + "}";
-        switch (source.Mark)
+        switch (source.SeriesType)
         {
-            case MarkType.Line or MarkType.Area:
-                var line = source.Mark == MarkType.Area
+            case var type when type == VisualType.Line || type == VisualType.Area:
+                var line = source.SeriesType == VisualType.Area
                     ? new AreaSeries { Fill = OxyColor.FromAColor(0x55, color), Color2 = OxyColors.Transparent, ConstantY2 = 0 }
                     : new LineSeries { MarkerType = MarkerType.Circle, MarkerSize = 4, MarkerFill = color };
                 line.Title = source.Name;
@@ -387,7 +387,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
                 line.Points.AddRange(source.Values.Select((v, x) => v is null ? DataPoint.Undefined : new DataPoint(x, v.Value)));
                 return line;
 
-            case MarkType.Scatter:
+            case var type when type == VisualType.Scatter:
                 var points = new ScatterSeries
                 {
                     Title = source.Name,
@@ -412,7 +412,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
                     FillColor = color,
                     XAxisKey = valueAxis,
                     YAxisKey = CategoryAxisKey,
-                    IsStacked = source.Mark == MarkType.StackedBar,
+                    IsStacked = source.SeriesType == VisualType.StackedBar,
                     // Series on the right axis stack separately from those on the left
                     StackGroup = source.SecondaryAxis ? SecondaryAxisKey : PrimaryAxisKey,
                     TrackerFormatString = "{0}\n{1}: {2:" + (source.Format ?? "#,##0.##") + "}",
@@ -474,7 +474,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         var pie = new PieSeries
         {
             // A donut's hole; a pie is a full disc
-            InnerDiameter = request.Visual.Mark == MarkType.Donut ? 0.5 : 0,
+            InnerDiameter = request.Visual.Type == VisualType.Donut ? 0.5 : 0,
             StrokeThickness = 2,
             Stroke = OxyColors.White,
             InsideLabelPosition = 0.75,

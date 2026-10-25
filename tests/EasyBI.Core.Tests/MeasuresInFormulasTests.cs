@@ -26,7 +26,7 @@ public class MeasuresInFormulasTests
 
     private static async Task<Dictionary<string, double?>> ByRegion(string measure, params CalculatedMeasure[] measures)
     {
-        var visual = new VisualDefinition { Model = "m", Mark = MarkType.Bar, Axis = [new("Region")], Values = [new(measure)] };
+        var visual = new VisualDefinition { Model = "m", Type = VisualType.Bar, Axis = [new("Region")], Values = [new(measure)] };
         var model = Model();
         var result = await model.ExecuteAsync(visual.ToQuery(measures, model.Metadata));
         return result.Rows.ToDictionary(r => (string)r[0]!, r => r[1] is null ? null : (double?)Convert.ToDouble(r[1]));
@@ -137,7 +137,7 @@ public class MeasuresInFormulasTests
     [Fact]
     public void Pasted_measures_follow_those_they_use_when_renamed()
     {
-        var visual = new VisualDefinition { Id = "v", Model = "m", Mark = MarkType.Kpi, Values = [new("calc_rate")] };
+        var visual = new VisualDefinition { Id = "v", Model = "m", Type = VisualType.Kpi, Values = [new("calc_rate")] };
         var source = new MeasureContext();
         source.Load([Cost, CostRate]);
         var json = VisualTransfer.Copy([visual], source);

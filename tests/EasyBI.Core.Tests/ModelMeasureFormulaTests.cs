@@ -138,7 +138,7 @@ public class ModelMeasureFormulaTests
     public void Pasting_a_visual_never_redefines_the_targets_measures()
     {
         var metadata = Model().Metadata;
-        var visual = new VisualDefinition { Id = "v", Model = "m", Mark = MarkType.Kpi, Values = [new("Amount")] };
+        var visual = new VisualDefinition { Id = "v", Model = "m", Type = VisualType.Kpi, Values = [new("Amount")] };
         var source = new MeasureContext();
         source.Set(Redefinition("Amount", "AVERAGE([Amount])"));
         var json = VisualTransfer.Copy([visual], source);

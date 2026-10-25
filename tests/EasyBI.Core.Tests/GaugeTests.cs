@@ -33,7 +33,7 @@ public class GaugeTests
     [Fact]
     public void A_gauge_shows_a_single_value_without_axis_or_legend()
     {
-        var gauge = new VisualDefinition { Mark = MarkType.Gauge, Values = [new("Amount")] };
+        var gauge = new VisualDefinition { Type = VisualType.Gauge, Values = [new("Amount")] };
 
         Assert.Null(VisualValidator.Validate(gauge));
         Assert.NotNull(VisualValidator.Validate(gauge with { Values = [new("Amount"), new("Margin")] }));
@@ -43,12 +43,12 @@ public class GaugeTests
     [Fact]
     public void The_settings_of_a_gauge_are_saved_with_it_and_left_out_otherwise()
     {
-        var gauge = new VisualDefinition { Mark = MarkType.Gauge, Values = [new("Amount")], Gauge = new GaugeSettings { Maximum = 100, Target = 80 } };
+        var gauge = new VisualDefinition { Type = VisualType.Gauge, Values = [new("Amount")], Gauge = new GaugeSettings { Maximum = 100, Target = 80 } };
         string Json(VisualDefinition visual) => ReportSerializer.Serialize(new ReportDefinition { Visuals = [visual] });
 
         var loaded = ReportSerializer.Deserialize(Json(gauge)).Visuals[0];
 
-        Assert.Equal((MarkType.Gauge, (double?)100, (double?)80, (double?)null), (loaded.Mark, loaded.Gauge!.Maximum, loaded.Gauge.Target, loaded.Gauge.Minimum));
+        Assert.Equal((VisualType.Gauge, (double?)100, (double?)80, (double?)null), (loaded.Type, loaded.Gauge!.Maximum, loaded.Gauge.Target, loaded.Gauge.Minimum));
         Assert.DoesNotContain("\"gauge\"", Json(gauge with { Gauge = null }));
     }
 }

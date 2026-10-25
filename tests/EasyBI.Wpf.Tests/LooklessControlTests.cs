@@ -140,7 +140,7 @@ public class LooklessControlTests
                 </DockPanel>
                 """),
         };
-        view.Load(new DashboardDocument { Report = new ReportDefinition { Visuals = [new VisualDefinition { Id = "a", Mark = MarkType.Text, Text = new TextContent { Text = "a" } }] } });
+        view.Load(new DashboardDocument { Report = new ReportDefinition { Visuals = [new VisualDefinition { Id = "a", Type = VisualType.Text, Text = new TextContent { Text = "a" } }] } });
         Layout(view);
 
         Assert.Equal(40, view.Panel.TranslatePoint(new Point(), view).Y);

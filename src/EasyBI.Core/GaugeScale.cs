@@ -2,7 +2,7 @@ using EasyBI.Abstractions;
 
 namespace EasyBI.Core;
 
-/// <summary>The range a <see cref="MarkType.Gauge"/> draws its value on, from its settings and the value.</summary>
+/// <summary>The range a <see cref="VisualType.Gauge"/> draws its value on, from its settings and the value.</summary>
 public static class GaugeScale
 {
     /// <returns>

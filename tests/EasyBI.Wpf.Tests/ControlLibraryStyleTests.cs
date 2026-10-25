@@ -28,7 +28,7 @@ public class ControlLibraryStyleTests
     public void Table_rows_grow_with_the_cell_padding_of_a_control_library() => Sta.Run(() =>
     {
         var result = new ResultSet([new ResultColumn("Region", "Region", FieldKind.Dimension, DataType.Text)], [["North"], ["South"]]);
-        var request = new RenderRequest(new VisualDefinition { Mark = MarkType.Table }, result, new ChartData(null, [], []), new BiTheme([]));
+        var request = new RenderRequest(new VisualDefinition { Type = VisualType.Table }, result, new ChartData(null, [], []), new BiTheme([]));
         var cellStyle = new Style(typeof(DataGridCell));
         cellStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(16)));
         cellStyle.Setters.Add(new Setter(Control.TemplateProperty, CellTemplate()));

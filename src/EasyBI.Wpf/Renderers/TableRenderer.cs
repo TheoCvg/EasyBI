@@ -30,7 +30,7 @@ public sealed class TableRenderer : IVisualRenderer
         return style;
     }
 
-    public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType> { MarkType.Table });
+    public RendererCapabilities Capabilities { get; } = new(new HashSet<VisualType> { VisualType.Table });
 
     public FrameworkElement Render(RenderRequest request)
     {

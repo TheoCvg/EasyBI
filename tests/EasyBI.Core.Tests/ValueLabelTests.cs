@@ -31,7 +31,7 @@ public class ValueLabelTests
     [Fact]
     public async Task Axis_categories_show_the_labels_and_keep_their_values()
     {
-        var request = await PrepareAsync(new VisualDefinition { Model = "sales", Mark = MarkType.Bar, Axis = [Region], Values = [new("Amount")] });
+        var request = await PrepareAsync(new VisualDefinition { Model = "sales", Type = VisualType.Bar, Axis = [Region], Values = [new("Amount")] });
 
         Assert.Equal(["IDF", "Nord"], request.Chart.Categories);
         Assert.Equal("Île-de-France", request.Chart.CategoryValues[0][0]);
@@ -55,7 +55,7 @@ public class ValueLabelTests
         var request = await PrepareAsync(new VisualDefinition
         {
             Model = "sales",
-            Mark = MarkType.Bar,
+            Type = VisualType.Bar,
             Axis = [new("Month"), Region],
             Legend = new FieldRef("Channel").WithLabel("Magasin", "Shop"),
             Values = [new("Amount")],
@@ -72,7 +72,7 @@ public class ValueLabelTests
         var matrix = (await PrepareAsync(new VisualDefinition
         {
             Model = "sales",
-            Mark = MarkType.Matrix,
+            Type = VisualType.Matrix,
             Axis = [Region],
             Legend = new FieldRef("Channel").WithLabel("Web", "Online"),
             Values = [new("Amount")],

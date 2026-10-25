@@ -1,6 +1,6 @@
 # Matrix
 
-A **matrix** (`MarkType.Matrix`) crosses its axis, the **rows** (up to four dimensions), with its legend, the
+A **matrix** (`VisualType.Matrix`) crosses its axis, the **rows** (up to four dimensions), with its legend, the
 **columns**, for each measure in `Values`, and adds the total of each row, of each column and of the whole. Each total
 is the measure computed on all the rows it covers (an average stays an average), not a sum of cells:
 `VisualPipeline.PrepareAsync` runs one query per level (`MatrixBuilder`) and hands the pivoted data to the renderer in
@@ -14,7 +14,7 @@ wells of a matrix are Rows, Columns and Values.
 new VisualDefinition
 {
     Model = "sales",
-    Mark = MarkType.Matrix,
+    Type = VisualType.Matrix,
     Axis = [new("Product.Category")],                         // rows
     Legend = new("Date", DateGrain.Year),                     // columns
     Values = [new("Amount")],

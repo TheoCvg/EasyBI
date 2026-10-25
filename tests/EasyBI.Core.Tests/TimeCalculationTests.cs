@@ -126,7 +126,7 @@ public class TimeCalculationTests
     [Fact]
     public async Task Visuals_draw_time_columns_like_any_measure()
     {
-        var visual = new VisualDefinition { Model = "m", Mark = MarkType.Line, Axis = [new("Date", DateGrain.Year)], Values = [Amount(), Amount(TimeCalculation.PreviousYear)] };
+        var visual = new VisualDefinition { Model = "m", Type = VisualType.Line, Axis = [new("Date", DateGrain.Year)], Values = [Amount(), Amount(TimeCalculation.PreviousYear)] };
 
         var chart = (await VisualPipeline.PrepareAsync(Model(), visual)).Chart;
 

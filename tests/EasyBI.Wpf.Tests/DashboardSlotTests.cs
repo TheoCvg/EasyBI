@@ -11,7 +11,7 @@ namespace EasyBI.Wpf.Tests;
 
 public class DashboardSlotTests
 {
-    private static VisualDefinition Text(string id) => new() { Id = id, Mark = MarkType.Text, Text = new TextContent { Text = id } };
+    private static VisualDefinition Text(string id) => new() { Id = id, Type = VisualType.Text, Text = new TextContent { Text = id } };
 
     private static DataTemplate TagTemplate(string tag) => (DataTemplate)XamlReader.Parse(
         $$"""
