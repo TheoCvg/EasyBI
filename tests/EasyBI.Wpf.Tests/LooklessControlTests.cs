@@ -112,7 +112,7 @@ public class LooklessControlTests
     [Fact]
     public void Designer_template_takes_the_view_model_as_data_context() => Sta.Run(() =>
     {
-        var designer = new ReportDesigner { Context = Context() };
+        var designer = new ReportDesigner { DataContext = new DesignerViewModel(Context()) };
         Slots.AddTemplate(designer, ReportDesignerSlots.Preview, (DataTemplate)XamlReader.Parse(
             """
             <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
@@ -122,7 +122,7 @@ public class LooklessControlTests
         Layout(designer);
 
         var probe = Descendants(designer).OfType<TextBlock>().Single(t => Equals(t.Tag, "probe"));
-        Assert.Same(designer.ViewModel, probe.DataContext);
+        Assert.Same(designer.DataContext, probe.DataContext);
     });
 
     [Fact]

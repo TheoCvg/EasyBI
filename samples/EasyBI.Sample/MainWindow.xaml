@@ -90,8 +90,8 @@
             </TabItem>
 
             <TabItem Header="{bi:Localize DesignerTab, Source={x:Static local:App.Texts}}">
-                <!-- The application's buttons go into a slot of the designer, under the preview -->
-                <bi:ReportDesigner x:Name="Designer" Context="{Binding Context}">
+                <!-- The designer shows the window's DesignerViewModel; the application's buttons go into a slot, under the preview -->
+                <bi:ReportDesigner DataContext="{Binding Designer}">
                     <bi:Slots.Items>
                         <bi:Slot Name="{x:Static bi:ReportDesignerSlots.Preview}">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">

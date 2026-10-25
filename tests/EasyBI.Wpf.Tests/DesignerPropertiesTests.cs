@@ -377,13 +377,13 @@ public class DesignerPropertiesTests
     {
         // The preview queries: its continuations come back to the dispatcher, as in an application
         SynchronizationContext.SetSynchronizationContext(new System.Windows.Threading.DispatcherSynchronizationContext());
-        var control = new ReportDesigner { Context = EasyBIContext.Create().AddModel(
-            SemanticModel.For(new[] { new Sale("Nord", new(2024, 1, 1), 1m) }, "sales").Dimension(s => s.Region, "Region").Measure(s => s.Amount, "Amount")) };
+        var control = new ReportDesigner { DataContext = new DesignerViewModel(EasyBIContext.Create().AddModel(
+            SemanticModel.For(new[] { new Sale("Nord", new(2024, 1, 1), 1m) }, "sales").Dimension(s => s.Region, "Region").Measure(s => s.Amount, "Amount"))) };
         var window = new System.Windows.Window { Content = control, Width = 1200, Height = 800, Left = -10000, Top = -10000, ShowActivated = false, ShowInTaskbar = false };
         window.Show();
         try
         {
-            var designer = control.ViewModel!;
+            var designer = ((DesignerViewModel)control.DataContext);
             designer.Load(new VisualDefinition { Model = "sales", Axis = [new("Region")], Values = [new("Amount")] });
             bool Press(System.Windows.Input.Key key, System.Windows.IInputElement? source = null)
             {
@@ -418,13 +418,13 @@ public class DesignerPropertiesTests
     public void A_click_in_the_open_list_of_a_property_leaves_the_keyboard_to_the_list() => Sta.Run(() =>
     {
         SynchronizationContext.SetSynchronizationContext(new System.Windows.Threading.DispatcherSynchronizationContext());
-        var control = new ReportDesigner { Context = EasyBIContext.Create().AddModel(
-            SemanticModel.For(new[] { new Sale("Nord", new(2024, 1, 1), 1m) }, "sales").Dimension(s => s.Date, "Date").Measure(s => s.Amount, "Amount")) };
+        var control = new ReportDesigner { DataContext = new DesignerViewModel(EasyBIContext.Create().AddModel(
+            SemanticModel.For(new[] { new Sale("Nord", new(2024, 1, 1), 1m) }, "sales").Dimension(s => s.Date, "Date").Measure(s => s.Amount, "Amount"))) };
         var window = new System.Windows.Window { Content = control, Width = 1200, Height = 800, Left = -10000, Top = -10000, ShowActivated = false, ShowInTaskbar = false };
         window.Show();
         try
         {
-            var designer = control.ViewModel!;
+            var designer = ((DesignerViewModel)control.DataContext);
             designer.Load(new VisualDefinition { Model = "sales", Axis = [new("Date", DateGrain.Month)], Values = [new("Amount")] });
             designer.SelectedItem = designer.Axis[0];
             control.UpdateLayout();
@@ -462,9 +462,9 @@ public class DesignerPropertiesTests
     [Fact]
     public void Selecting_a_chip_opens_the_folded_properties_panel() => Sta.Run(() =>
     {
-        var control = new ReportDesigner { Context = EasyBIContext.Create().AddModel(
-            SemanticModel.For(new[] { new Sale("Nord", new(2024, 1, 1), 1m) }, "sales").Dimension(s => s.Region, "Region").Measure(s => s.Amount, "Amount")) };
-        var designer = control.ViewModel!;
+        var control = new ReportDesigner { DataContext = new DesignerViewModel(EasyBIContext.Create().AddModel(
+            SemanticModel.For(new[] { new Sale("Nord", new(2024, 1, 1), 1m) }, "sales").Dimension(s => s.Region, "Region").Measure(s => s.Amount, "Amount"))) };
+        var designer = ((DesignerViewModel)control.DataContext);
         designer.Drop(designer.Measures.Single(), Shelf.Values);
         control.IsPropertiesPanelOpen = false;
 

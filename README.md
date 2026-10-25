@@ -52,11 +52,12 @@ var model = SemanticModel.For(dbContext.Sales, "sales", "Sales")
 Context = EasyBIContext.Create()
     .AddModel(model)
     .UseRenderer(new LiveCharts2Renderer());
+Designer = new DesignerViewModel(Context);
 ```
 
 ```xml
 <Window xmlns:bi="https://github.com/TheoCvg/EasyBI">
-    <bi:ReportDesigner Context="{Binding Context}" />
+    <bi:ReportDesigner DataContext="{Binding Designer}" />
 </Window>
 ```
 
