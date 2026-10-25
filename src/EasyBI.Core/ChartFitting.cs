@@ -131,6 +131,20 @@ public static class ChartFitting
         return pages[pager.Page].Contains;
     }
 
+    /// <summary>
+    /// Where zero holds a value axis (the right one when <paramref name="secondary"/>). Bars are compared by their length
+    /// from zero: an axis drawing bars, alone or with lines, starts at zero when its values are positive and ends at
+    /// zero when they are negative. Null bounds are left to the library: an axis without bars, or with both signs (zero
+    /// is inside then).
+    /// </summary>
+    public static (double? Minimum, double? Maximum) ZeroBounds(ChartData chart, bool secondary)
+    {
+        var series = chart.Series.Where(s => s.SecondaryAxis == secondary).ToList();
+        if (!series.Any(s => s.SeriesType == VisualType.Bar || s.SeriesType == VisualType.StackedBar)) return (null, null);
+        var values = series.SelectMany(s => s.Values).OfType<double>().ToList();
+        return values.All(v => v >= 0) ? (0, null) : values.All(v => v <= 0) ? (null, 0) : (null, null);
+    }
+
     public static ChartFit Cartesian(ChartData chart, double width, double height, ChartLegend preferred = ChartLegend.Auto,
         LegendMetrics? metrics = null)
     {

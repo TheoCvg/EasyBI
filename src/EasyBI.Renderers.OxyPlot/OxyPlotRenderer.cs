@@ -292,12 +292,12 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         }
     }
 
-    /// <summary>A value axis formatted like the first series drawn against it; bars start at zero.</summary>
+    /// <summary>A value axis formatted like the first series drawn against it; an axis with bars holds zero (<see cref="ChartFitting.ZeroBounds"/>).</summary>
     private static LinearAxis ValueAxis(ChartData chart, bool secondary)
     {
         var series = chart.Series.Where(s => s.SecondaryAxis == secondary).ToList();
         var format = series.FirstOrDefault()?.Format;
-        var onlyBars = series.Count > 0 && series.All(s => (s.SeriesType == VisualType.Bar || s.SeriesType == VisualType.StackedBar));
+        var (minimum, maximum) = ChartFitting.ZeroBounds(chart, secondary);
         return new LinearAxis
         {
             Position = secondary ? AxisPosition.Right : AxisPosition.Left,
@@ -306,9 +306,10 @@ public sealed class OxyPlotRenderer : IVisualRenderer
             // Grid lines come from the left axis only, so that the two scales do not draw two grids
             MajorGridlineStyle = secondary ? LineStyle.None : LineStyle.Solid,
             MajorGridlineColor = OxyColor.FromRgb(0xE5, 0xE7, 0xEB),
-            MinimumPadding = onlyBars ? 0 : 0.05,
-            MaximumPadding = 0.08,
-            AbsoluteMinimum = onlyBars ? 0 : double.MinValue,
+            Minimum = minimum ?? double.NaN,
+            Maximum = maximum ?? double.NaN,
+            MinimumPadding = minimum is null ? 0.05 : 0,
+            MaximumPadding = maximum is null ? 0.08 : 0,
         };
     }
 

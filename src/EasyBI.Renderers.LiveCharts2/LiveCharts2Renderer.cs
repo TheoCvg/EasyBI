@@ -419,18 +419,16 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         }
     }
 
-    /// <summary>A value axis formatted like the first series drawn against it.</summary>
+    /// <summary>A value axis formatted like the first series drawn against it; an axis with bars holds zero (<see cref="ChartFitting.ZeroBounds"/>).</summary>
     private static Axis ValueAxis(ChartData chart, BiTheme theme, bool secondary)
     {
         var series = chart.Series.Where(s => s.SecondaryAxis == secondary).ToList();
         var format = series.FirstOrDefault()?.Format;
-        // Bars are compared by their height: an axis showing only bars of positive values starts at zero
-        var barsFromZero = series.Count > 0
-            && series.All(s => (s.SeriesType == VisualType.Bar || s.SeriesType == VisualType.StackedBar))
-            && series.SelectMany(s => s.Values).All(v => v is null or >= 0);
+        var (minimum, maximum) = ChartFitting.ZeroBounds(chart, secondary);
         return Themed(new Axis
         {
-            MinLimit = barsFromZero ? 0 : null,
+            MinLimit = minimum,
+            MaxLimit = maximum,
             Labeler = value => ValueFormatter.Format(value, format),
             TextSize = 12,
             Position = secondary ? AxisPosition.End : AxisPosition.Start,
