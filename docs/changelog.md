@@ -40,6 +40,9 @@ opens older reports, and a report using a newer feature cannot be opened by an o
 
 - LiveCharts2: the labels under groups turn like other category labels instead of being skipped (#51).
 - Designer: the measure preview no longer cancels a query on every keystroke (#52).
+- Comparisons with the previous year: a period under way (this year, the last months, a range ending later, the
+  current year or month clicked) is compared with the same days a year earlier, not with the whole period; a range
+  without an end no longer takes in this year's data (#62).
 
 ### Breaking changes
 
