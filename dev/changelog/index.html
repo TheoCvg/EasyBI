@@ -2071,6 +2071,8 @@ opens older reports, and a report using a newer feature cannot be opened by an o
 <li>Comparisons with the previous year: a period under way (this year, the last months, a range ending later, the
   current year or month clicked) is compared with the same days a year earlier, not with the whole period; a range
   without an end no longer takes in this year's data (#62).</li>
+<li>Charts: an axis drawing bars starts at zero also when a line shares it (a year in bars and the year before as a line),
+  and ends at zero for negative bars; OxyPlot no longer cuts negative bars (#63).</li>
 </ul>
 <h3 id="breaking-changes">Breaking changes<a class="headerlink" href="#breaking-changes" title="Permanent link">&para;</a></h3>
 <ul>
