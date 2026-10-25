@@ -70,7 +70,8 @@ public sealed class TreemapRenderer : IVisualRenderer
 ```
 
 When the renderer lists the definition in `VisualTypes`, `UseRenderer` declares the type, unless the catalog already
-has it: a library of visuals is plugged in with one call. Without a renderer for it, the type is greyed in the gallery,
+has it: a library of visuals is plugged in with one call. The sample application's `RankingRenderer` is a complete
+example: a ranking of a dimension's items by a measure, with a setting, its icon, cross-filtering and tooltips. Without a renderer for it, the type is greyed in the gallery,
 and its visuals say that no renderer draws them.
 
 ## Its icon

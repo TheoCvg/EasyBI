@@ -6,6 +6,9 @@
              StartupUri="MainWindow.xaml">
     <!-- The theme dictionaries (EasyBI's own, WPF UI or Material Design) are merged by App.SetTheme -->
     <Application.Resources>
-        <ResourceDictionary />
+        <ResourceDictionary>
+            <!-- The icon of the application's visual type (RankingRenderer), drawn in a 16×16 box -->
+            <Geometry x:Key="{bi:VisualTypeIconKey sample.ranking}">M1.5,3 L3,3 M1.5,8 L3,8 M1.5,13 L3,13 M5,3 L14.5,3 M5,8 L11,8 M5,13 L8,13</Geometry>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

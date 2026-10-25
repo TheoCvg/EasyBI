@@ -177,4 +177,19 @@
   <data name="WebShare" xml:space="preserve">
     <value>Part du Web</value>
   </data>
+  <data name="Ranking" xml:space="preserve">
+    <value>Classement</value>
+  </data>
+  <data name="RankingItems" xml:space="preserve">
+    <value>Éléments</value>
+  </data>
+  <data name="RankingBy" xml:space="preserve">
+    <value>Classé par</value>
+  </data>
+  <data name="RankingShare" xml:space="preserve">
+    <value>Part du total</value>
+  </data>
+  <data name="TopProducts" xml:space="preserve">
+    <value>Meilleurs produits</value>
+  </data>
 </root>

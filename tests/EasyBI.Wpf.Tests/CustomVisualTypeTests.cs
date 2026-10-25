@@ -142,6 +142,14 @@ public class CustomVisualTypeTests
     });
 
     [Fact]
+    public void The_icon_key_written_in_xaml_is_the_key_of_the_type()
+    {
+        Assert.Equal(VisualTypeIcons.KeyOf(TreemapType), new VisualTypeIconKey("test.treemap"));
+        Assert.Equal(VisualTypeIcons.KeyOf(TreemapType).GetHashCode(), new VisualTypeIconKey("test.treemap").GetHashCode());
+        Assert.Equal(VisualTypeIcons.KeyOf(VisualType.Bar), new VisualTypeIconKey("bar")); // EasyBI's ids whatever the case
+    }
+
+    [Fact]
     public void An_application_gives_an_icon_to_a_type_by_its_key() => Sta.Run(() =>
     {
         var resources = (ResourceDictionary)XamlReader.Parse("""

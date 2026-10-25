@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Markup;
 using System.Windows.Media;
 using EasyBI.Abstractions;
 
@@ -19,15 +18,16 @@ public static class VisualTypeIcons
     public static ComponentResourceKey KeyOf(VisualType type) => new(typeof(VisualTypeIcons), type.Id);
 }
 
-/// <summary>The key of a visual type's icon in XAML: <c>{bi:VisualTypeIconKey company.treemap}</c> (see <see cref="VisualTypeIcons"/>).</summary>
-[MarkupExtensionReturnType(typeof(ComponentResourceKey))]
-public sealed class VisualTypeIconKeyExtension(string type) : MarkupExtension
+/// <summary>
+/// The key of a visual type's icon, written in XAML as <c>x:Key="{bi:VisualTypeIconKey company.treemap}"</c> (see
+/// <see cref="VisualTypeIcons"/>). It equals <see cref="VisualTypeIcons.KeyOf"/>.
+/// </summary>
+public sealed class VisualTypeIconKey : ComponentResourceKey
 {
-    /// <summary>The id of the visual type.</summary>
-    [ConstructorArgument("type")]
-    public string Type { get; set; } = type;
-
-    public override object ProvideValue(IServiceProvider serviceProvider) => VisualTypeIcons.KeyOf(VisualType.Parse(Type));
+    /// <param name="type">The id of the visual type.</param>
+    public VisualTypeIconKey(string type) : base(typeof(VisualTypeIcons), VisualType.Parse(type).Id)
+    {
+    }
 }
 
 /// <summary>The icon of a visual type (see <see cref="VisualTypeIcons"/>); lookless, its default style is in <c>Themes/ReportDesigner.xaml</c>.</summary>
