@@ -94,4 +94,33 @@ public class ChartFittingTests
     {
         Assert.Equal(0, ChartFitting.Pie(Chart(4, 1), 600, 300).InnerRadius);
     }
+
+    // --- Where zero holds a value axis
+
+    private static ChartData Values(params (VisualType Type, double?[] Values, bool Secondary)[] series) => new(
+        "Month", ["Jan", "Feb"], series.Select((s, i) => new ChartSeries($"S{i}", s.Values, null) { SeriesType = s.Type, SecondaryAxis = s.Secondary }).ToArray());
+
+    [Fact]
+    public void An_axis_drawing_bars_starts_at_zero_even_with_a_line()
+    {
+        var chart = Values((VisualType.Bar, [12_000, 14_000], false), (VisualType.Line, [11_000, null], false));
+
+        Assert.Equal(((double?)0, (double?)null), ChartFitting.ZeroBounds(chart, secondary: false));
+    }
+
+    [Fact]
+    public void An_axis_of_negative_bars_ends_at_zero_and_one_with_both_signs_is_left_to_the_library()
+    {
+        Assert.Equal(((double?)null, (double?)0), ChartFitting.ZeroBounds(Values((VisualType.StackedBar, [-5, -2], false)), secondary: false));
+        Assert.Equal(((double?)null, (double?)null), ChartFitting.ZeroBounds(Values((VisualType.Bar, [-5, 8], false)), secondary: false));
+    }
+
+    [Fact]
+    public void An_axis_without_bars_is_left_to_the_library()
+    {
+        var chart = Values((VisualType.Bar, [12_000, 14_000], false), (VisualType.Line, [0.3, 0.4], true));
+
+        Assert.Equal(((double?)null, (double?)null), ChartFitting.ZeroBounds(chart, secondary: true));
+        Assert.Equal(((double?)null, (double?)null), ChartFitting.ZeroBounds(Values((VisualType.Area, [5, 8], false)), secondary: false));
+    }
 }
