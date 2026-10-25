@@ -7,13 +7,19 @@ namespace EasyBI.Core;
 /// <summary>
 /// Measures seen through time (<see cref="MeasureRef.Time"/>), on top of any <see cref="ISemanticModel"/>: the query runs
 /// as usual, and, for a comparison with the previous year, again with its dates shifted back one year (period filters,
-/// filters on periods); rows are matched on their groups, dates moved forward one year. The year-to-date total adds
-/// the values up along the date axis, year by year.
+/// filters on periods); rows are matched on their groups, dates moved forward one year. A period under way (this year,
+/// the last 12 months, the current month clicked in a chart) is compared with the same days a year earlier: up to
+/// today's date, since the data of the current period stops today. The year-to-date total adds the values up along the
+/// date axis, year by year.
 /// </summary>
 public static class TimeCalculations
 {
     /// <summary>Runs a query whose measures may be seen through time.</summary>
-    public static async Task<ResultSet> ExecuteWithTimeAsync(this ISemanticModel model, AnalyticQuery query, CancellationToken cancellationToken = default)
+    public static Task<ResultSet> ExecuteWithTimeAsync(this ISemanticModel model, AnalyticQuery query, CancellationToken cancellationToken = default) =>
+        model.ExecuteWithTimeAsync(query, DateOnly.FromDateTime(DateTime.Today), cancellationToken);
+
+    /// <summary>Runs a query whose measures may be seen through time, on <paramref name="today"/>.</summary>
+    internal static async Task<ResultSet> ExecuteWithTimeAsync(this ISemanticModel model, AnalyticQuery query, DateOnly today, CancellationToken cancellationToken)
     {
         if (query.Measures.All(m => m.Time == TimeCalculation.None))
             return await model.ExecuteAsync(query, cancellationToken).ConfigureAwait(false);
@@ -38,7 +44,7 @@ public static class TimeCalculations
             {
                 Filters = query.Filters?
                     .Where(f => !NumericFilters.IsOnMeasure(f, model.Metadata, query.Calculations))
-                    .Select(f => ShiftFilter(model.Metadata, f))
+                    .Select(f => ShiftFilter(model.Metadata, f, today))
                     .ToArray(),
                 Sort = null,
                 Top = null,
@@ -63,20 +69,44 @@ public static class TimeCalculations
     private static bool IsDate(ModelMetadata metadata, string field) =>
         metadata.Fields.FirstOrDefault(f => f.Name == field)?.DataType == DataType.Date;
 
-    private static FilterSpec ShiftFilter(ModelMetadata metadata, FilterSpec filter)
+    private static FilterSpec ShiftFilter(ModelMetadata metadata, FilterSpec filter, DateOnly today)
     {
         if (filter.Operator == FilterOperator.AnyOf)
-            return filter with { Alternatives = filter.Alternatives?.Select(group => (IReadOnlyList<FilterSpec>)[.. group.Select(f => ShiftFilter(metadata, f))]).ToArray() };
+            return filter with { Alternatives = filter.Alternatives?.Select(group => (IReadOnlyList<FilterSpec>)[.. group.Select(f => ShiftFilter(metadata, f, today))]).ToArray() };
         if (filter.Operator.IsPeriod())
         {
-            var (start, end) = PeriodFilters.Range(filter, DateOnly.FromDateTime(DateTime.Today));
-            return PeriodFilters.Between(filter.Field,
-                start is { } s ? DateOnly.FromDateTime(s.AddYears(-1)) : null,
-                end is { } e ? DateOnly.FromDateTime(e.AddYears(-1).AddDays(-1)) : null);
+            var (start, end) = PeriodFilters.Range(filter, today);
+            return ShiftedRange(filter.Field, start, end, today);
         }
+        // The period under way clicked in a chart (this year, this month...)
+        if (filter is { Operator: FilterOperator.In, Values: [{ } key] } && CurrentPeriod(filter.Grain, today) is var (current, from) && key == current)
+            return ShiftedRange(filter.Field, from, null, today);
         if (filter.Grain == DateGrain.None && !IsDate(metadata, filter.Field)) return filter;
         return filter with { Values = filter.Values.Select(v => ShiftValue(v, filter.Grain)).ToArray() };
     }
+
+    /// <summary>
+    /// The days from <paramref name="start"/> (included) to <paramref name="end"/> (excluded, null for open) a year
+    /// earlier. A range under way stops at today's date a year earlier: its data stops today, comparing it with the whole
+    /// period a year earlier would make it look like a drop.
+    /// </summary>
+    private static FilterSpec ShiftedRange(string field, DateTime? start, DateTime? end, DateOnly today)
+    {
+        var tomorrow = today.AddDays(1).ToDateTime(TimeOnly.MinValue);
+        if ((end is null || end > tomorrow) && (start is null || start < tomorrow)) end = tomorrow;
+        return PeriodFilters.Between(field,
+            start is { } s ? DateOnly.FromDateTime(s.AddYears(-1)) : null,
+            end is { } e ? DateOnly.FromDateTime(e.AddYears(-1).AddDays(-1)) : null);
+    }
+
+    /// <summary>The key of the year, quarter or month under way (2024, 20243, 202405), and its first day; null for other grains.</summary>
+    private static (string Key, DateTime Start)? CurrentPeriod(DateGrain grain, DateOnly today) => grain switch
+    {
+        DateGrain.Year => (today.Year.ToString(CultureInfo.InvariantCulture), new DateTime(today.Year, 1, 1)),
+        DateGrain.Quarter => ((today.Year * 10 + (today.Month + 2) / 3).ToString(CultureInfo.InvariantCulture), new DateTime(today.Year, (today.Month - 1) / 3 * 3 + 1, 1)),
+        DateGrain.Month => ((today.Year * 100 + today.Month).ToString(CultureInfo.InvariantCulture), new DateTime(today.Year, today.Month, 1)),
+        _ => null,
+    };
 
     // A filter value a year earlier: a period key (2024, 20243, 202405) or a date
     private static string? ShiftValue(string? value, DateGrain grain)
