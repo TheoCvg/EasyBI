@@ -1573,7 +1573,7 @@
 
 
 <h1 id="matrix">Matrix<a class="headerlink" href="#matrix" title="Permanent link">&para;</a></h1>
-<p>A <strong>matrix</strong> (<code>MarkType.Matrix</code>) crosses its axis, the <strong>rows</strong> (up to four dimensions), with its legend, the
+<p>A <strong>matrix</strong> (<code>VisualType.Matrix</code>) crosses its axis, the <strong>rows</strong> (up to four dimensions), with its legend, the
 <strong>columns</strong>, for each measure in <code>Values</code>, and adds the total of each row, of each column and of the whole. Each total
 is the measure computed on all the rows it covers (an average stays an average), not a sum of cells:
 <code>VisualPipeline.PrepareAsync</code> runs one query per level (<code>MatrixBuilder</code>) and hands the pivoted data to the renderer in
@@ -1585,7 +1585,7 @@ wells of a matrix are Rows, Columns and Values.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">new</span><span class="w"> </span><span class="n">VisualDefinition</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="p">{</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="n">Model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"sales"</span><span class="p">,</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="n">Mark</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MarkType</span><span class="p">.</span><span class="n">Matrix</span><span class="p">,</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="n">Type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">VisualType</span><span class="p">.</span><span class="n">Matrix</span><span class="p">,</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="n">Axis</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="k">new</span><span class="p">(</span><span class="s">"Product.Category"</span><span class="p">)],</span><span class="w">                         </span><span class="c1">// rows</span>
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="n">Legend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">(</span><span class="s">"Date"</span><span class="p">,</span><span class="w"> </span><span class="n">DateGrain</span><span class="p">.</span><span class="n">Year</span><span class="p">),</span><span class="w">                     </span><span class="c1">// columns</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="n">Values</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="k">new</span><span class="p">(</span><span class="s">"Amount"</span><span class="p">)],</span>

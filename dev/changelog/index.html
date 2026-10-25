@@ -2022,6 +2022,10 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   operator keypad (#55).</li>
 <li><strong>Measures used in other formulas</strong>: a calculated measure can use the report's other measures; loops are refused (#56).</li>
 <li>This documentation site, with a version per release.</li>
+<li><strong>Visual types described by their definition</strong>: <code>VisualTypeDefinition</code> gives a type's name, gallery section, wells
+  (used, number of fields, name), tooltips, format and rules, and <code>VisualTypeCatalog</code> holds EasyBI's; the designer, the
+  validation and the fields added to a visual follow it. The designer refuses a second category on a pie or a donut
+  (#59).</li>
 </ul>
 <h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
 <ul>
@@ -2033,6 +2037,17 @@ opens older reports, and a report using a newer feature cannot be opened by an o
 <li><code>FilterContext.Selection</code> became <code>Selections</code> (one per visual), with <code>SelectionOf</code>, <code>ClearSelection(visualId)</code> and
   <code>DescribeSelections</code>; <code>CrossFilter</code> holds <code>Elements</code> (<code>SelectedElement</code>), its <code>Values</code> and filter-based constructor are
   gone and <code>Filters</code> is computed (#41).</li>
+<li>The <code>MarkType</code> enum became <code>VisualType</code>, a type identified by its <code>Id</code>, so that applications can add their own;
+  EasyBI's are static properties (<code>VisualType.Bar</code>...) listed in <code>VisualType.BuiltIn</code>, and code that switched on them
+  compares them instead (<code>type == VisualType.Bar</code>). Renamed with it: <code>VisualDefinition.Mark</code> → <code>Type</code>,
+  <code>MeasureRef.Mark</code> and <code>ChartSeries.Mark</code> → <code>SeriesType</code>, <code>RendererCapabilities.Marks</code> → <code>Types</code>,
+  <code>VisualPipeline.SeriesMark</code> and <code>MarksOf</code> → <code>SeriesType</code> and <code>TypesOf</code>, and in the designer <code>SelectedMark</code>,
+  <code>MarkOptions</code>, <code>MarkGroups</code>, <code>SelectedMarkOption</code> → <code>SelectedType</code>, <code>TypeOptions</code>, <code>TypeGroups</code>, <code>SelectedTypeOption</code>,
+  <code>MarkOptionViewModel</code> → <code>VisualTypeOptionViewModel</code>, <code>VisualTypeIcon.Mark</code> → <code>Type</code>, the <code>SeriesMark</code> chip property →
+  <code>SeriesType</code>. <code>MarkGroup</code> became <code>VisualTypeGroup</code> and moved with <code>FormatTarget</code> to <code>EasyBI.Abstractions</code> (#59).</li>
+<li><strong>Report JSON</strong>: a visual's <code>mark</code> became <code>type</code> and a measure's <code>mark</code> became <code>seriesType</code>. The schema stays
+  <code>easybi/v1</code> while EasyBI is in beta: in a report saved by an earlier version, rename these properties, otherwise its
+  visuals open as bars (#59).</li>
 <li><code>ChartLegend</code> moved from <code>EasyBI.Core</code> to <code>EasyBI.Abstractions</code> and gained <code>Auto</code>, <code>Top</code> and <code>Left</code>;
   <code>ChartFitting.BottomLegendHeight</code> was removed (#48).</li>
 <li><code>ModelField.IsEditable</code> is true for every measure (the model's ones can be redefined); use <code>IsReportMeasure</code> for the

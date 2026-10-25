@@ -1612,19 +1612,19 @@ of its measure.</p>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="p">},</span>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">};</span>
 </code></pre></div>
-<p>A <strong>pie</strong> (<code>MarkType.Pie</code>) is a full disc; a <strong>donut</strong> (<code>MarkType.Donut</code>) is a ring with the total of its value in its
+<p>A <strong>pie</strong> (<code>VisualType.Pie</code>) is a full disc; a <strong>donut</strong> (<code>VisualType.Donut</code>) is a ring with the total of its value in its
 hole (<code>ChartCenterLabel</code>, which places a text in the middle of a connector's plot area).</p>
-<p>A <strong>gauge</strong> (<code>MarkType.Gauge</code>) shows a single value on a half circle, drawn by the built-in <code>GaugeRenderer</code> whatever
+<p>A <strong>gauge</strong> (<code>VisualType.Gauge</code>) shows a single value on a half circle, drawn by the built-in <code>GaugeRenderer</code> whatever
 the connector. Its scale and target are numbers of the visual (<code>VisualDefinition.Gauge</code>, a <code>GaugeSettings</code>, edited in the
 designer's Visual section): <code>Minimum</code> (empty: 0), <code>Maximum</code> (empty: a round number above 0, the value and the target,
 see <code>GaugeScale</code>) and <code>Target</code>, marked on the arc. The measure's format colors the value and adds its icon.</p>
-<p>A <strong>waterfall</strong> (<code>MarkType.Waterfall</code>) shows how each category's value adds to the running total, up in the theme's
+<p>A <strong>waterfall</strong> (<code>VisualType.Waterfall</code>) shows how each category's value adds to the running total, up in the theme's
 success color, down in its error color, and ends with a bar of the total (<code>Waterfall.Of</code> gives any connector the steps
 and the chart with its "Total" category). It takes an axis and a single value; LiveCharts2 draws it with candles,
 OxyPlot with interval bars. A rule of the measure's format colors the steps it matches; clicking a step cross-filters
 on its category.</p>
-<p>Besides charts, KPIs, tables and matrices, a visual can be a <strong>text</strong> (<code>MarkType.Text</code>, content in
-<code>VisualDefinition.Text</code>) or an <strong>image</strong> (<code>MarkType.Image</code>, embedded as base64 in <code>VisualDefinition.Image</code>).
+<p>Besides charts, KPIs, tables and matrices, a visual can be a <strong>text</strong> (<code>VisualType.Text</code>, content in
+<code>VisualDefinition.Text</code>) or an <strong>image</strong> (<code>VisualType.Image</code>, embedded as base64 in <code>VisualDefinition.Image</code>).
 They query no model and are drawn by the built-in <code>TextRenderer</code> and <code>ImageRenderer</code>.</p>
 
 
