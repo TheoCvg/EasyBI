@@ -47,4 +47,22 @@ public class ThemeMappingTests
         Assert.Same(dark, element.Background);
         Assert.Equal(Color.FromRgb(0x4C, 0x8D, 0xFF), ((ChartPalette)theme[EasyBITheme.ChartPaletteKey])[0]);
     });
+
+    private sealed class BrandTheme(ResourceDictionary brand) : EasyBIThemeMapping(new Dictionary<ComponentResourceKey, object>
+    {
+        [EasyBITheme.BackgroundBrushKey] = "Brand.Background",
+        [EasyBITheme.ChartPaletteKey] = "Brand.ChartColors",
+    })
+    {
+        protected override object? FindResource(object key) => brand.Contains(key) ? brand[key] : null;
+    }
+
+    [Fact]
+    public void A_design_system_with_chart_colors_maps_the_palette_to_them() => Sta.Run(() =>
+    {
+        var colors = new ChartPalette { Color.FromRgb(0x6F, 0x4E, 0x37), Color.FromRgb(0xC8, 0x96, 0x5A) };
+        var theme = new BrandTheme(new ResourceDictionary { ["Brand.Background"] = Brush(0x11, 0x11, 0x11), ["Brand.ChartColors"] = colors });
+
+        Assert.Same(colors, theme[EasyBITheme.ChartPaletteKey]);
+    });
 }
