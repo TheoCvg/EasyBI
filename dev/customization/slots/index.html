@@ -1600,7 +1600,7 @@
 <h1 id="customizing-the-components-slots">Customizing the components: slots<a class="headerlink" href="#customizing-the-components-slots" title="Permanent link">&para;</a></h1>
 <p>The parts of the <code>ReportDesigner</code>, <code>FieldList</code>, <code>FilterBar</code>, <code>FilterEditor</code> and <code>DashboardView</code> are <strong>slots</strong>: named places
 where an application adds its own content (before or after the default content), replaces it, or hides it.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">&lt;bi:ReportDesigner</span><span class="w"> </span><span class="na">Context=</span><span class="s">"{Binding Context}"</span><span class="nt">&gt;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">&lt;bi:ReportDesigner</span><span class="w"> </span><span class="na">DataContext=</span><span class="s">"{Binding Designer}"</span><span class="nt">&gt;</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span><span class="nt">&lt;bi:Slots.Items&gt;</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">        </span><span class="cm">&lt;!-- Under the preview --&gt;</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">        </span><span class="nt">&lt;bi:Slot</span><span class="w"> </span><span class="na">Name=</span><span class="s">"{x:Static bi:ReportDesignerSlots.Preview}"</span><span class="nt">&gt;</span>
@@ -1639,7 +1639,7 @@ where an application adds its own content (before or after the default content),
 <li><strong>Custom templates</strong>: the components are lookless controls. Their default templates (<code>Themes/*.xaml</code> of <code>EasyBI.Wpf</code>)
   are built from <code>SlotHost</code>s (<code>&lt;bi:SlotHost Slot="..." Orientation="Vertical"&gt;</code> with the default content inside), so a
   template of the application keeps the slots it hosts. A template works with the components' read-only properties
-  and commands: <code>ReportDesigner.ViewModel</code> (the template's data context); <code>FieldList.ModelOptions</code>, <code>Dimensions</code>,
+  and commands: the <code>DesignerViewModel</code> of the <code>ReportDesigner</code> (its data context); <code>FieldList.ModelOptions</code>, <code>Dimensions</code>,
   <code>Measures</code>, <code>CanAddMeasure</code> and <code>AddMeasureCommand</code>, <code>EditMeasureCommand</code>, <code>DeleteMeasureCommand</code>,
   <code>ResetMeasureCommand</code> (with <code>ModelField.IsEditable</code>, <code>IsReportMeasure</code> and <code>IsRedefined</code>);
   <code>FilterBar.Slicers</code>, <code>SelectionDescription</code> and <code>AddFilterCommand</code>, <code>RemoveFilterCommand</code> (on the slicer of its
