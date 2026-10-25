@@ -97,7 +97,8 @@ EasyBI's surfaces, text, accent and charts then take the library's colors, light
 `WpfUiTheme.Map` and `MaterialDesignTheme.Map` list which library resource each EasyBI key takes. For another library
 or an application's own design system, derive from `EasyBIThemeMapping` and map the keys you need; unmapped keys keep
 EasyBI's light values, while the keys listed in `Kept` (colors the system has no equivalent for, such as Material
-Design's success and warning) and the chart palette follow the mapped background (EasyBI's light or dark values). If the library
+Design's success and warning) and the chart palette follow the mapped background (EasyBI's light or dark values). A
+design system with its own chart colors maps `ChartPaletteKey` to its `ChartPalette`. If the library
 switches theme by swapping dictionaries without notifying, call `Refresh()` on the mapping afterwards.
 
 `ApplicationThemeManager.Apply` sets the main window's `Background` itself: put an EasyBI background on the window's root

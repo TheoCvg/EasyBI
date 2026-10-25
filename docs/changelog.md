@@ -45,6 +45,8 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   without an end no longer takes in this year's data (#62).
 - Charts: an axis drawing bars starts at zero also when a line shares it (a year in bars and the year before as a line),
   and ends at zero for negative bars; OxyPlot no longer cuts negative bars (#63).
+- Theming: an `EasyBIThemeMapping` that maps `ChartPaletteKey` gives charts the design system's palette instead of
+  EasyBI's (#64).
 
 ### Breaking changes
 

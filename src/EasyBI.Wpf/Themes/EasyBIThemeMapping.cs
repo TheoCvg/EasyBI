@@ -7,8 +7,9 @@ namespace EasyBI.Wpf;
 /// Makes EasyBI follow another design system: each <see cref="EasyBITheme"/> key is mapped to a resource key of that
 /// system (a control library, an application's own theme), resolved in the application's resources each time it is
 /// read. Merge the mapping after the system's dictionaries; call <see cref="Refresh"/> after the system switched to
-/// dictionaries holding other objects (the libraries' theme packages do it for you). Keys left unmapped (colors the
-/// system has no equivalent for) and the chart palette follow the mapped background: EasyBI's light or dark values.
+/// dictionaries holding other objects (the libraries' theme packages do it for you). The chart palette, unless mapped
+/// to the system's own (a <see cref="ChartPalette"/>), and the keys listed in <see cref="Kept"/> follow the mapped
+/// background: EasyBI's light or dark values.
 /// <code>
 /// public sealed class MyTheme : EasyBIThemeMapping
 /// {
@@ -65,9 +66,7 @@ public abstract class EasyBIThemeMapping : ResourceDictionary
         if (value is not Mapped) return;
         // Resolved at each read: the design system may change its resources at any time
         canCache = false;
-        value = Equals(key, EasyBITheme.ChartPaletteKey)
-            ? (IsDark ? Dark : Light).Value[EasyBITheme.ChartPaletteKey]
-            : Resolve(key) ?? (IsDark ? Dark : Light).Value[key];
+        value = Resolve(key) ?? (IsDark ? Dark : Light).Value[key];
     }
 
     private object? Resolve(object key) => _map.TryGetValue((ComponentResourceKey)key, out var source) ? FindResource(source) : null;
