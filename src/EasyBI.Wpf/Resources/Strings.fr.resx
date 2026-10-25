@@ -786,4 +786,13 @@
   <data name="QuotedCaption" xml:space="preserve">
     <value>« {0} »</value>
   </data>
+  <data name="RuleVisualTypeLocked" xml:space="preserve">
+    <value>Le type de ce visuel ne peut pas changer</value>
+  </data>
+  <data name="RuleFieldsLocked" xml:space="preserve">
+    <value>Les champs de ce visuel ne peuvent pas changer</value>
+  </data>
+  <data name="RuleReadOnly" xml:space="preserve">
+    <value>Ce visuel ne peut pas être modifié</value>
+  </data>
 </root>

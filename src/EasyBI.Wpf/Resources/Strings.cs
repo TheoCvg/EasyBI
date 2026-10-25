@@ -9,6 +9,10 @@ internal static class Strings
 {
     public static ResourceManager ResourceManager { get; } = new(typeof(Strings));
 
+    public static string NotSupportedByRenderer => Get();
+    public static string RuleVisualTypeLocked => Get();
+    public static string RuleFieldsLocked => Get();
+    public static string RuleReadOnly => Get();
     public static string GaugeMinimum => Get();
     public static string GaugeMaximum => Get();
     public static string GaugeTarget => Get();

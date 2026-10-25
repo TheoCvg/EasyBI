@@ -9,6 +9,7 @@ using EasyBI.Renderers.LiveCharts2;
 using EasyBI.Renderers.OxyPlot;
 using EasyBI.Wpf;
 using EasyBI.Wpf.Dashboard;
+using EasyBI.Wpf.Designer;
 using Microsoft.Win32;
 
 namespace EasyBI.Sample;
@@ -38,6 +39,8 @@ public partial class MainWindow : Window
             .UseRenderer(new OxyPlotRenderer())
             // A visual type of the application, with the renderer drawing it
             .UseRenderer(new RankingRenderer());
+        // The designer's state: the application keeps it, the ReportDesigner shows it
+        Designer = new DesignerViewModel(Context);
 
         InitializeComponent();
         DataContext = this;
@@ -61,6 +64,8 @@ public partial class MainWindow : Window
     }
 
     public EasyBIContext Context { get; }
+
+    public DesignerViewModel Designer { get; }
 
     /// <summary>Global filters and cross-filtering of the dashboard.</summary>
     public FilterContext Filters { get; } = new();
@@ -111,7 +116,7 @@ public partial class MainWindow : Window
     private void OnPublishVisual(object sender, RoutedEventArgs e)
     {
         if (Designer.Visual is not { } visual) return;
-        if (VisualValidator.Validate(visual) is { } problem)
+        if (VisualValidator.Validate(visual, Context.VisualTypes) is { } problem)
         {
             MessageBox.Show(this, problem, Text("IncompleteVisual"), MessageBoxButton.OK, MessageBoxImage.Information);
             return;

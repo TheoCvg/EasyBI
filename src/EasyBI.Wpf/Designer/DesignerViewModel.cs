@@ -15,6 +15,7 @@ namespace EasyBI.Wpf.Designer;
 public sealed class VisualTypeOptionViewModel : Option<VisualType>
 {
     private bool _isAvailable = true;
+    private string? _unavailableReason;
     private bool _isSelected;
 
     public VisualTypeOptionViewModel(VisualType type, VisualTypeGroup group, Func<string> label) : base(type, label)
@@ -27,11 +28,18 @@ public sealed class VisualTypeOptionViewModel : Option<VisualType>
 
     public VisualTypeGroup Group { get; }
 
-    /// <summary>False when no renderer draws this type: it is shown greyed.</summary>
+    /// <summary>False when no renderer draws this type, or a rule of the designer refuses it: it is shown greyed.</summary>
     public bool IsAvailable
     {
         get => _isAvailable;
         set => SetProperty(ref _isAvailable, value);
+    }
+
+    /// <summary>Why the type cannot be chosen (no renderer, a rule's message); null when it can.</summary>
+    public string? UnavailableReason
+    {
+        get => _unavailableReason;
+        set => SetProperty(ref _unavailableReason, value);
     }
 
     /// <summary>True for the type of the visual being designed.</summary>
@@ -83,6 +91,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     private object? _selectedItem;
     private bool _isTypeGalleryOpen;
     private object? _draggedItem;
+    private string? _refusal;
 
     // History of the visual (undo/redo): the states before and after the current one, recorded at each change
     private readonly List<VisualDefinition> _undo = [];
@@ -112,7 +121,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         };
         SyncSelectedType();
         Models = context.Models.Select(m => new Option<ISemanticModel>(m, () => m.Metadata.Caption)).ToArray();
-        RemoveCommand = new RelayCommand<object>(Remove);
+        RemoveCommand = new RelayCommand<object>(Remove, item => item is not null && RemoveRefusal(item) is null);
         SelectCommand = new RelayCommand<object?>(item => SelectedItem = item);
         UndoCommand = new RelayCommand(Undo, () => CanUndo);
         RedoCommand = new RelayCommand(Redo, () => CanRedo);
@@ -120,13 +129,8 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         {
             if (Unwrap(item) is FieldDescriptor field) AddToDefaultShelf(field);
         });
-        context.Changed += (_, _) =>
-        {
-            RefreshAvailability();
-            RefreshRendererOptions(); // another renderer may draw the visual
-            SyncProperties();
-        };
         // Weak: a designer (a dialog's) may be shorter-lived than the shared context
+        WeakEventManager<EasyBIContext, EventArgs>.AddHandler(context, nameof(EasyBIContext.Changed), OnContextChanged);
         WeakEventManager<MeasureContext, EventArgs>.AddHandler(context.Measures, nameof(MeasureContext.Changed), OnMeasuresChanged);
         PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, OnLanguageChanged, string.Empty);
         foreach (var chips in new[] { Axis, Legend, Values, TooltipValues }) chips.CollectionChanged += OnChipsChanged;
@@ -139,11 +143,36 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         {
             foreach (var filter in e.NewItems?.OfType<FilterItemViewModel>() ?? []) filter.Selecting = item => SelectedItem = item;
         };
+        Rules.CollectionChanged += (_, _) => RefreshAvailability();
         RefreshAvailability();
         SelectedModel = context.Models.FirstOrDefault();
     }
 
+    private void OnContextChanged(object? sender, EventArgs e)
+    {
+        RefreshAvailability();
+        RefreshRendererOptions(); // another renderer may draw the visual
+        SyncProperties();
+    }
+
     public EasyBIContext Context { get; }
+
+    /// <summary>
+    /// The rules every change of the visual must pass, whatever the action of the end user (a type picked, a field
+    /// dropped, a property edited...): each returns null to accept the change, or the message telling why it is refused.
+    /// The first refusal wins: the visual stays as it was and <see cref="Refusal"/> shows the message. What a rule
+    /// would refuse is shown unavailable beforehand (the types of the gallery, the wells while a field is dragged, the
+    /// remove buttons). A rule is called to try changes: it must be quick and have no side effect.
+    /// <see cref="Load"/>, <see cref="Clear"/>, <see cref="Undo"/> and <see cref="Redo"/> do not go through the rules.
+    /// </summary>
+    public ObservableCollection<Func<VisualChange, string?>> Rules { get; } = [];
+
+    /// <summary>The message of the last change a rule refused; null once a change is accepted.</summary>
+    public string? Refusal
+    {
+        get => _refusal;
+        private set => SetProperty(ref _refusal, value);
+    }
 
     public IReadOnlyList<Option<ISemanticModel>> Models { get; }
 
@@ -419,7 +448,10 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         private set => SetProperty(ref _visual, value);
     }
 
-    public bool CanDrop(FieldDescriptor field, Shelf shelf) => ShelfViewModel.IsUsedBy(shelf, SelectedType, Context.VisualTypes) && shelf switch
+    public bool CanDrop(FieldDescriptor field, Shelf shelf) => Accepts(field, shelf) && DropRefusal(field, shelf) is null;
+
+    // What the wells take, before the rules
+    private bool Accepts(FieldDescriptor field, Shelf shelf) => ShelfViewModel.IsUsedBy(shelf, SelectedType, Context.VisualTypes) && shelf switch
     {
         Shelf.Values => field.Kind == FieldKind.Measure && Values.Count < Limit(shelf),
         Shelf.Tooltip => field.Kind == FieldKind.Measure && TooltipValues.All(t => t.Field != field),
@@ -437,15 +469,17 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     /// or a <see cref="ModelField"/> of the selected model, see <see cref="CanDrop(FieldDescriptor, Shelf)"/>), a chip
     /// moved within its shelf, or a dimension moved between Axis and Legend.
     /// </summary>
-    public bool CanDrop(object item, Shelf shelf) => ShelfViewModel.IsUsedBy(shelf, SelectedType, Context.VisualTypes) && Unwrap(item) switch
+    public bool CanDrop(object item, Shelf shelf) => Accepts(item, shelf) && DropRefusal(item, shelf) is null;
+
+    private bool Accepts(object item, Shelf shelf) => ShelfViewModel.IsUsedBy(shelf, SelectedType, Context.VisualTypes) && Unwrap(item) switch
     {
-        FieldDescriptor field => CanDrop(field, shelf),
+        FieldDescriptor field => Accepts(field, shelf),
         // A chip of another designer (or already removed) is not ours to move
         ShelfItemViewModel chip when !Collection(chip.Shelf).Contains(chip) => false,
         ShelfItemViewModel chip when chip.Shelf == shelf => true,
         ShelfItemViewModel chip => (chip.Shelf, shelf) switch
         {
-            (Shelf.Legend, Shelf.Axis) => CanDrop(chip.Field, Shelf.Axis),
+            (Shelf.Legend, Shelf.Axis) => Accepts(chip.Field, Shelf.Axis),
             (Shelf.Axis, Shelf.Legend) => true,
             _ => false,
         },
@@ -502,7 +536,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     /// </summary>
     public string? RefusalReason(object item, Shelf shelf)
     {
-        if (CanDrop(item, shelf)) return null;
+        if (Accepts(item, shelf)) return DropRefusal(item, shelf);
         if (!ShelfViewModel.IsUsedBy(shelf, SelectedType, Context.VisualTypes)) return Strings.Format(Strings.DropNotUsed, WellOf(shelf).Label);
         if (item is ModelField field && field.Model != _selectedModel)
             return Strings.Format(Strings.DropOtherModel, field.Caption, field.Model.Metadata.Caption);
@@ -693,37 +727,105 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         if (_suspended) return;
         // Chart types per measure only exist in cartesian charts; the settings are kept for when the user comes back
         foreach (var value in Values) value.ShowSeriesOptions = SelectedType.IsCartesian();
-        var axis = Axis.Select(a => a.ToFieldRef()).ToArray();
-        var legend = Legend.FirstOrDefault()?.ToFieldRef();
-        var values = Values.Select(v => v.ToMeasureRef()).ToArray();
-        // Saved only when it differs from the default; kept for when the user comes back to a chart
-        var tooltip = _tooltip with { Values = [.. TooltipValues.Select(t => t.ToMeasureRef())] };
-        var hasTooltip = Tooltips.Has(SelectedType, Context.VisualTypes) && (tooltip.Values.Count > 0 || _tooltip is not { IsHidden: false, HideCategory: false, HideSeries: false, ShowPercent: false, Template: null });
-        // The sort follows its chip: it goes with it, and its key follows the chip's aggregation or grain
         var sorted = Axis.Concat(Legend).Concat(Values).FirstOrDefault(c => c.SortDirection is not null);
         SortSummary = sorted is null ? null : Strings.Format(Strings.SortSummary, sorted.Caption,
             sorted.SortDirection == ListSortDirection.Descending ? Strings.SortDescending : Strings.SortAscending);
-        Visual = _selectedModel is null ? null : new VisualDefinition
+        var visual = Build(SelectedType, Axis, Legend, Values, TooltipValues, Filters);
+        // A change a rule refuses: the designer goes back to the visual as it was
+        if (_historyHold == 0 && _current is { } current && visual is not null && RefusalOf(current, visual) is { } refusal)
         {
-            Id = _visualId,
-            Title = Title,
-            Model = _selectedModel.Metadata.Name,
-            Type = SelectedType,
-            Axis = axis,
-            Legend = legend,
-            Values = values,
-            Filters = [.. Filters.Select(f => f.ToFilterSpec()).OfType<FilterSpec>(), .. _hiddenFilters],
-            Sort = sorted is null ? null : new SortSpec(sorted.Key, sorted.SortDirection == ListSortDirection.Descending),
-            Top = _top,
-            Gauge = SelectedType == VisualType.Gauge ? _gauge : null,
-            Tooltip = hasTooltip ? tooltip : null,
-            LegendPosition = HasLegend() ? _legendPosition : ChartLegend.Auto,
-            Extensions = _extensions,
-        };
+            Restore(current);
+            Refusal = refusal;
+            return;
+        }
+        Visual = visual;
         RefreshRendererOptions();
         SyncProperties();
         Record();
     }
+
+    /// <summary>
+    /// The visual the designer shows with these chips and this type: what <see cref="Rebuild"/> makes, and what the
+    /// rules are asked about before the user makes a change.
+    /// </summary>
+    private VisualDefinition? Build(VisualType type, IEnumerable<ShelfItemViewModel> axisChips, IEnumerable<ShelfItemViewModel> legendChips,
+        IEnumerable<ShelfItemViewModel> valueChips, IEnumerable<ShelfItemViewModel> tooltipChips, IEnumerable<FilterItemViewModel> filters)
+    {
+        if (_selectedModel is null) return null;
+        // Saved only when it differs from the default; kept for when the user comes back to a chart
+        var tooltip = _tooltip with { Values = [.. tooltipChips.Select(t => t.ToMeasureRef())] };
+        var hasTooltip = Tooltips.Has(type, Context.VisualTypes) && (tooltip.Values.Count > 0 || _tooltip is not { IsHidden: false, HideCategory: false, HideSeries: false, ShowPercent: false, Template: null });
+        // The sort follows its chip: it goes with it, and its key follows the chip's aggregation or grain
+        var sorted = axisChips.Concat(legendChips).Concat(valueChips).FirstOrDefault(c => c.SortDirection is not null);
+        return new VisualDefinition
+        {
+            Id = _visualId,
+            Title = Title,
+            Model = _selectedModel.Metadata.Name,
+            Type = type,
+            Axis = [.. axisChips.Select(a => a.ToFieldRef())],
+            Legend = legendChips.FirstOrDefault()?.ToFieldRef(),
+            Values = [.. valueChips.Select(v => v.ToMeasureRef())],
+            Filters = [.. filters.Select(f => f.ToFilterSpec()).OfType<FilterSpec>(), .. _hiddenFilters],
+            Sort = sorted is null ? null : new SortSpec(sorted.Key, sorted.SortDirection == ListSortDirection.Descending),
+            Top = _top,
+            Gauge = type == VisualType.Gauge ? _gauge : null,
+            Tooltip = hasTooltip ? tooltip : null,
+            LegendPosition = type.IsCartesian() || type.IsCircular() ? _legendPosition : ChartLegend.Auto,
+            Extensions = _extensions,
+        };
+    }
+
+    // --- Rules ---
+
+    private string? RefusalOf(VisualDefinition before, VisualDefinition after)
+    {
+        if (Rules.Count == 0) return null;
+        var change = new VisualChange(before, after);
+        return Rules.Select(rule => rule(change)).FirstOrDefault(refusal => refusal is not null);
+    }
+
+    // What the rules would say of a visual made from the current one, before the user makes it
+    private string? Try(VisualDefinition? candidate) =>
+        Rules.Count == 0 || Visual is not { } current || candidate is null ? null : RefusalOf(current, candidate);
+
+    /// <summary>What the rules say of a field or a chip dropped on a well (a chip moved within its well is checked once moved).</summary>
+    private string? DropRefusal(object item, Shelf shelf)
+    {
+        if (Rules.Count == 0 || shelf == Shelf.Filters) return null;
+        var lists = Lists();
+        switch (Unwrap(item))
+        {
+            case FieldDescriptor field:
+                lists[shelf].Add(new ShelfItemViewModel(field, shelf, () => { }));
+                break;
+            case ShelfItemViewModel chip when chip.Shelf != shelf:
+                lists[chip.Shelf].Remove(chip);
+                lists[shelf].Add(new ShelfItemViewModel(chip.Field, shelf, () => { }) { Grain = chip.Grain, Labels = chip.Labels });
+                break;
+            default:
+                return null;
+        }
+        return Try(Build(SelectedType, lists[Shelf.Axis], lists[Shelf.Legend], lists[Shelf.Values], lists[Shelf.Tooltip], Filters));
+    }
+
+    /// <summary>What the rules say of a chip or a filter removed.</summary>
+    private string? RemoveRefusal(object item)
+    {
+        if (Rules.Count == 0) return null;
+        var lists = Lists();
+        if (item is ShelfItemViewModel chip) lists[chip.Shelf].Remove(chip);
+        return Try(Build(SelectedType, lists[Shelf.Axis], lists[Shelf.Legend], lists[Shelf.Values], lists[Shelf.Tooltip],
+            item is FilterItemViewModel filter ? Filters.Where(f => f != filter) : Filters));
+    }
+
+    private Dictionary<Shelf, List<ShelfItemViewModel>> Lists() => new()
+    {
+        [Shelf.Axis] = [.. Axis],
+        [Shelf.Legend] = [.. Legend],
+        [Shelf.Values] = [.. Values],
+        [Shelf.Tooltip] = [.. TooltipValues],
+    };
 
     // --- Properties panel ---
 
@@ -1012,11 +1114,13 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         _redo.Clear();
         _current = visual;
         _currentJson = json;
+        Refusal = null;
         OnHistoryChanged();
     }
 
     private void ResetHistory()
     {
+        Refusal = null;
         _undo.Clear();
         _redo.Clear();
         _current = Visual;
@@ -1085,7 +1189,13 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     private void RefreshAvailability()
     {
         foreach (var option in TypeOptions)
-            option.IsAvailable = Context.ResolveRenderer(option.Type) is not null;
+        {
+            option.UnavailableReason = Context.ResolveRenderer(option.Type) is null ? Strings.NotSupportedByRenderer
+                : option.Type == _selectedType ? null
+                : Try(Build(option.Type, Axis, Legend, Values, TooltipValues, Filters));
+            option.IsAvailable = option.UnavailableReason is null;
+        }
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private static string NewId() => Guid.NewGuid().ToString("N");

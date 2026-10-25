@@ -14,25 +14,19 @@ namespace EasyBI.Wpf.Designer;
 /// <see cref="DragAndDrop.DropTarget"/>, the view-model deciding what each shelf accepts.
 /// </summary>
 /// <remarks>
-/// Lookless: the default template (in <c>Themes/ReportDesigner.xaml</c>) takes the <see cref="ViewModel"/> as data
-/// context and declares the <see cref="ReportDesignerSlots"/>.
+/// <para>
+/// Its <c>DataContext</c> is a <see cref="DesignerViewModel"/>, which the application creates and keeps:
+/// <c>&lt;bi:ReportDesigner DataContext="{Binding Designer}" /&gt;</c>. The application loads a visual into it, reads the
+/// visual being designed, and gives it the <see cref="DesignerViewModel.Rules"/> its changes must pass (also declared
+/// as behaviors: <see cref="DesignerRuleBehavior"/>).
+/// </para>
+/// <para>
+/// Lookless: the default template (in <c>Themes/ReportDesigner.xaml</c>) binds to the view-model and declares the
+/// <see cref="ReportDesignerSlots"/>.
+/// </para>
 /// </remarks>
 public class ReportDesigner : Control
 {
-    public static readonly DependencyProperty ContextProperty = DependencyProperty.Register(
-        nameof(Context), typeof(EasyBIContext), typeof(ReportDesigner),
-        new PropertyMetadata(null, (d, e) => ((ReportDesigner)d).OnContextChanged((EasyBIContext?)e.NewValue)));
-
-    private static readonly DependencyPropertyKey VisualPropertyKey = DependencyProperty.RegisterReadOnly(
-        nameof(Visual), typeof(VisualDefinition), typeof(ReportDesigner), new PropertyMetadata(null));
-
-    public static readonly DependencyProperty VisualProperty = VisualPropertyKey.DependencyProperty;
-
-    private static readonly DependencyPropertyKey ViewModelPropertyKey = DependencyProperty.RegisterReadOnly(
-        nameof(ViewModel), typeof(DesignerViewModel), typeof(ReportDesigner), new PropertyMetadata(null));
-
-    public static readonly DependencyProperty ViewModelProperty = ViewModelPropertyKey.DependencyProperty;
-
     /// <summary>Whether the field panel, on the left, is shown (two-way; true by default).</summary>
     public static readonly DependencyProperty IsFieldPanelOpenProperty = DependencyProperty.Register(
         nameof(IsFieldPanelOpen), typeof(bool), typeof(ReportDesigner), new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
@@ -46,6 +40,11 @@ public class ReportDesigner : Control
 
     public ReportDesigner()
     {
+        DataContextChanged += (_, e) =>
+        {
+            if (e.OldValue is DesignerViewModel old) old.PropertyChanged -= OnViewModelPropertyChanged;
+            if (e.NewValue is DesignerViewModel designer) designer.PropertyChanged += OnViewModelPropertyChanged;
+        };
         // Undo and redo the changes of the visual (a text box being edited keeps its own)
         CommandBindings.Add(new CommandBinding(ApplicationCommands.Undo, (_, _) => ViewModel?.Undo(), (_, e) => e.CanExecute = ViewModel?.CanUndo == true));
         CommandBindings.Add(new CommandBinding(ApplicationCommands.Redo, (_, _) => ViewModel?.Redo(), (_, e) => e.CanExecute = ViewModel?.CanRedo == true));
@@ -128,12 +127,6 @@ public class ReportDesigner : Control
         if (ViewModel is { } designer) designer.DraggedItem = null;
     }
 
-    public EasyBIContext? Context
-    {
-        get => (EasyBIContext?)GetValue(ContextProperty);
-        set => SetValue(ContextProperty, value);
-    }
-
     public bool IsFieldPanelOpen
     {
         get => (bool)GetValue(IsFieldPanelOpenProperty);
@@ -146,31 +139,13 @@ public class ReportDesigner : Control
         set => SetValue(IsPropertiesPanelOpenProperty, value);
     }
 
-    /// <summary>The visual being designed (read-only).</summary>
-    public VisualDefinition? Visual => (VisualDefinition?)GetValue(VisualProperty);
-
-    /// <summary>The state of the designer, created for the <see cref="Context"/>: the data context of the template.</summary>
-    public DesignerViewModel? ViewModel => (DesignerViewModel?)GetValue(ViewModelProperty);
-
-    public void Edit(VisualDefinition visual) => ViewModel?.Load(visual);
-
-    public void Clear() => ViewModel?.Clear();
-
-    private void OnContextChanged(EasyBIContext? context)
-    {
-        if (ViewModel is { } old) old.PropertyChanged -= OnViewModelPropertyChanged;
-        var vm = context is null ? null : new DesignerViewModel(context);
-        if (vm is not null) vm.PropertyChanged += OnViewModelPropertyChanged;
-        SetValue(ViewModelPropertyKey, vm);
-        SetValue(VisualPropertyKey, vm?.Visual);
-    }
+    // The view-model the template shows: the data context
+    private DesignerViewModel? ViewModel => DataContext as DesignerViewModel;
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(DesignerViewModel.Visual))
-            SetValue(VisualPropertyKey, ViewModel?.Visual);
         // Selecting a chip shows its settings: the properties panel opens if it was folded
-        else if (e.PropertyName == nameof(DesignerViewModel.SelectedItem) && ViewModel?.SelectedItem is not null)
+        if (e.PropertyName == nameof(DesignerViewModel.SelectedItem) && ViewModel?.SelectedItem is not null)
             SetCurrentValue(IsPropertiesPanelOpenProperty, true);
     }
 }
