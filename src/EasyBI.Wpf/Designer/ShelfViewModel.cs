@@ -40,15 +40,15 @@ public sealed class ShelfViewModel : ObservableObject
     /// <summary>The name of the well for the visual type.</summary>
     public string Label => Kind switch
     {
-        Shelf.Axis => DefinitionOf(Kind, Designer.SelectedType)?.Caption?.Invoke() ?? Strings.Axis,
-        Shelf.Legend => DefinitionOf(Kind, Designer.SelectedType)?.Caption?.Invoke() ?? Strings.Legend,
-        Shelf.Values => DefinitionOf(Kind, Designer.SelectedType)?.Caption?.Invoke() ?? Strings.Values,
+        Shelf.Axis => DefinitionOf(Kind, Designer.SelectedType, Designer.Context.VisualTypes)?.Caption?.Invoke() ?? Strings.Axis,
+        Shelf.Legend => DefinitionOf(Kind, Designer.SelectedType, Designer.Context.VisualTypes)?.Caption?.Invoke() ?? Strings.Legend,
+        Shelf.Values => DefinitionOf(Kind, Designer.SelectedType, Designer.Context.VisualTypes)?.Caption?.Invoke() ?? Strings.Values,
         Shelf.Tooltip => Strings.WellTooltip,
         _ => Strings.Filters,
     };
 
     /// <summary>Whether the visual type uses the well; a well it does not use refuses fields.</summary>
-    public bool IsUsed => IsUsedBy(Kind, Designer.SelectedType);
+    public bool IsUsed => IsUsedBy(Kind, Designer.SelectedType, Designer.Context.VisualTypes);
 
     /// <summary>Shown when the type uses the well, or when it still holds chips (to remove them).</summary>
     public bool IsVisible => IsUsed || HasItems;
@@ -69,14 +69,17 @@ public sealed class ShelfViewModel : ObservableObject
         internal set => SetProperty(ref _isDropAllowed, value);
     }
 
-    /// <summary>The wells each type uses (its <see cref="VisualTypeDefinition"/>); only charts have tooltips.</summary>
-    public static bool IsUsedBy(Shelf shelf, VisualType type) =>
-        shelf == Shelf.Tooltip ? Tooltips.Has(type) : DefinitionOf(shelf, type)?.IsUsed ?? true;
+    /// <summary>
+    /// The wells each type uses (its <see cref="VisualTypeDefinition"/> in <paramref name="types"/>, EasyBI's types when
+    /// null); the tooltip well is for the types with tooltips.
+    /// </summary>
+    public static bool IsUsedBy(Shelf shelf, VisualType type, VisualTypeCatalog? types = null) =>
+        shelf == Shelf.Tooltip ? Tooltips.Has(type, types) : DefinitionOf(shelf, type, types)?.IsUsed ?? true;
 
     /// <summary>What a type takes in a well; null for the wells that do not depend on the type (tooltip, filters).</summary>
-    internal static VisualWell? DefinitionOf(Shelf shelf, VisualType type)
+    internal static VisualWell? DefinitionOf(Shelf shelf, VisualType type, VisualTypeCatalog? types = null)
     {
-        var definition = VisualTypeCatalog.Default.Get(type);
+        var definition = (types ?? VisualTypeCatalog.Default).Get(type);
         return shelf switch
         {
             Shelf.Axis => definition.Axis,

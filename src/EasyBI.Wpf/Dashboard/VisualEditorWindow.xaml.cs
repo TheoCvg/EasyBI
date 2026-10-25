@@ -20,7 +20,7 @@ public partial class VisualEditorWindow : Window
     private void OnOk(object sender, RoutedEventArgs e)
     {
         if (Designer.Visual is not { } visual) return;
-        if (VisualValidator.Validate(visual) is { } problem)
+        if (VisualValidator.Validate(visual, Designer.Context?.VisualTypes) is { } problem)
         {
             Problem.Text = problem;
             return;

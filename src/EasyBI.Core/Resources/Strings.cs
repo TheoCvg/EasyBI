@@ -43,6 +43,14 @@ internal static class Strings
     public static string WellValue => Get();
     public static string VisualTypeText => Get();
     public static string VisualTypeImage => Get();
+    public static string WellAxis => Get();
+    public static string WellLegend => Get();
+    public static string WellValues => Get();
+    public static string ValidationWellUnused => Get();
+    public static string ValidationWellMissing => Get();
+    public static string ValidationWellMinimum => Get();
+    public static string ValidationWellSingle => Get();
+    public static string ValidationWellMaximum => Get();
     public static string ValidationEmptyTable => Get();
     public static string ValidationNoMeasure => Get();
     public static string ValidationKpi => Get();

@@ -240,7 +240,7 @@ public sealed class ValueFormatViewModel : ObservableObject
     }
 
     /// <summary>The target of a visual type: its grid, its KPI cards or its chart.</summary>
-    public static FormatTarget TargetOf(VisualType type) => VisualTypeCatalog.Default.Get(type).Format;
+    public static FormatTarget TargetOf(VisualType type, VisualTypeCatalog? types = null) => (types ?? VisualTypeCatalog.Default).Get(type).Format;
 
     public bool IsChart => Target == FormatTarget.Chart;
 

@@ -219,7 +219,7 @@ public class VisualView : ContentControl
         if (!IsLoaded || !IsActive || Context is not { } context || Definition is not { } visual)
             return;
 
-        if (VisualValidator.Validate(visual) is { } problem)
+        if (VisualValidator.Validate(visual, context.VisualTypes) is { } problem)
         {
             Cancel();
             Show(visual, Message(problem));
@@ -239,7 +239,7 @@ public class VisualView : ContentControl
         var queryKey = JsonSerializer.Serialize(new
         {
             effective.Model,
-            Query = effective.ToQuery(context.Measures.Measures, context.Models.FirstOrDefault(m => m.Metadata.Name == effective.Model)?.Metadata),
+            Query = effective.ToQuery(context.Measures.Measures, context.Models.FirstOrDefault(m => m.Metadata.Name == effective.Model)?.Metadata, context.VisualTypes),
             Culture = EasyBILocalization.UICulture.Name,
             Format = EasyBILocalization.FormatCulture.Name,
         }, ReportSerializer.Options);
@@ -256,7 +256,7 @@ public class VisualView : ContentControl
         try
         {
             var model = context.GetModel(visual.Model);
-            var request = await VisualPipeline.PrepareAsync(model, effective, ChartTheme(context), context.Measures.Measures, cts.Token);
+            var request = await VisualPipeline.PrepareAsync(model, effective, ChartTheme(context), context.Measures.Measures, context.VisualTypes, cts.Token);
             if (cts.IsCancellationRequested) return;
             _last = request;
             _pending = null;

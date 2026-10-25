@@ -206,7 +206,7 @@ internal static class Strings
     public static string DropMeasuresOnly => Get();
     public static string DropDimensionsOnly => Get();
     public static string DropAlreadyThere => Get();
-    public static string DropAxisFull => Get();
+    public static string DropWellFull => Get();
     public static string DropWellSingleField => Get();
     public static string DropFilterFromList => Get();
     public static string DropFilterStays => Get();

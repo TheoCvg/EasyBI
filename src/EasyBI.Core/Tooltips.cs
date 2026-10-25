@@ -9,8 +9,11 @@ namespace EasyBI.Core;
 /// </summary>
 public static partial class Tooltips
 {
-    /// <summary>The visual types with tooltips (<see cref="VisualTypeDefinition.HasTooltips"/>): the charts.</summary>
-    public static bool Has(VisualType type) => VisualTypeCatalog.Default.Get(type).HasTooltips;
+    /// <summary>
+    /// The visual types with tooltips (<see cref="VisualTypeDefinition.HasTooltips"/> in <paramref name="types"/>,
+    /// EasyBI's types when null): EasyBI's charts.
+    /// </summary>
+    public static bool Has(VisualType type, VisualTypeCatalog? types = null) => (types ?? VisualTypeCatalog.Default).Get(type).HasTooltips;
 
     /// <summary>
     /// The content to show for a category and the hovered series: the host's (<see cref="RenderRequest.Tooltip"/>,

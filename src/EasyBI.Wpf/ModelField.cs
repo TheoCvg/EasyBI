@@ -61,13 +61,14 @@ public static class FieldVisuals
 
     /// <summary>
     /// The visual with a field added, or null when it does not take it (a text or an image, another model, a field it
-    /// already shows, no room left). A measure joins the values; a dimension goes on the axis, then in the legend,
-    /// then on the axis again (up to three fields). A dimension dropped on a KPI breaks it down: it becomes bars.
+    /// already shows, no room left in the wells of its type in <paramref name="types"/>, EasyBI's types when null). A
+    /// measure joins the values; a dimension goes on the axis, then in the legend, then on the axis again. A dimension
+    /// dropped on a KPI breaks it down: it becomes bars.
     /// </summary>
-    public static VisualDefinition? AddField(VisualDefinition visual, ISemanticModel model, FieldDescriptor field)
+    public static VisualDefinition? AddField(VisualDefinition visual, ISemanticModel model, FieldDescriptor field, VisualTypeCatalog? types = null)
     {
         if (visual.Type.IsContent() || visual.Model != model.Metadata.Name) return null;
-        var definition = VisualTypeCatalog.Default.Get(visual.Type);
+        var definition = (types ?? VisualTypeCatalog.Default).Get(visual.Type);
         if (field.Kind == FieldKind.Measure)
         {
             if (!HasRoom(definition.Values, visual.Values.Count) || visual.Values.Any(v => v.Measure == field.Name)) return null;

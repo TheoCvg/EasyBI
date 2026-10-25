@@ -29,6 +29,12 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   (used, number of fields, name), tooltips, format and rules, and `VisualTypeCatalog` holds EasyBI's; the designer, the
   validation and the fields added to a visual follow it. The designer refuses a second category on a pie or a donut
   (#59).
+- **Custom visual types**: an application declares its own types (`EasyBIContext.AddVisualType`, or a renderer's
+  `RendererCapabilities.VisualTypes`), with their wells, settings (`VisualTypeDefinition.Options`, read with
+  `GetTypeOption`) and rules, and an icon by key (`{bi:VisualTypeIconKey company.type}`, a default one otherwise); it
+  hides or changes EasyBI's types in `EasyBIContext.VisualTypes`. The designer refuses a measure beyond what a type takes
+  (a second value on a pie), a visual tells which well misses or has too many fields, and a matrix takes four row
+  fields as documented (#60).
 
 ### Fixed
 

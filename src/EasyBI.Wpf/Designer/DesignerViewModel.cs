@@ -100,7 +100,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     public DesignerViewModel(EasyBIContext context)
     {
         Context = context;
-        TypeOptions = VisualTypeCatalog.Default.Definitions
+        TypeOptions = context.VisualTypes.Definitions
             .Where(d => d.Group is not null)
             .Select(d => new VisualTypeOptionViewModel(d.Type, d.Group!.Value, d.Caption))
             .ToArray();
@@ -419,11 +419,11 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         private set => SetProperty(ref _visual, value);
     }
 
-    public bool CanDrop(FieldDescriptor field, Shelf shelf) => ShelfViewModel.IsUsedBy(shelf, SelectedType) && shelf switch
+    public bool CanDrop(FieldDescriptor field, Shelf shelf) => ShelfViewModel.IsUsedBy(shelf, SelectedType, Context.VisualTypes) && shelf switch
     {
-        Shelf.Values => field.Kind == FieldKind.Measure,
+        Shelf.Values => field.Kind == FieldKind.Measure && Values.Count < Limit(shelf),
         Shelf.Tooltip => field.Kind == FieldKind.Measure && TooltipValues.All(t => t.Field != field),
-        Shelf.Axis => field.Kind == FieldKind.Dimension && Axis.Count < AxisLimit && Axis.All(a => a.Field != field),
+        Shelf.Axis => field.Kind == FieldKind.Dimension && Axis.Count < Limit(shelf) && Axis.All(a => a.Field != field),
         Shelf.Legend => field.Kind == FieldKind.Dimension,
         // A measure filters the visual's groups by comparing its value
         Shelf.Filters => Filters.All(f => f.Field != field),
@@ -437,7 +437,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     /// or a <see cref="ModelField"/> of the selected model, see <see cref="CanDrop(FieldDescriptor, Shelf)"/>), a chip
     /// moved within its shelf, or a dimension moved between Axis and Legend.
     /// </summary>
-    public bool CanDrop(object item, Shelf shelf) => ShelfViewModel.IsUsedBy(shelf, SelectedType) && Unwrap(item) switch
+    public bool CanDrop(object item, Shelf shelf) => ShelfViewModel.IsUsedBy(shelf, SelectedType, Context.VisualTypes) && Unwrap(item) switch
     {
         FieldDescriptor field => CanDrop(field, shelf),
         // A chip of another designer (or already removed) is not ours to move
@@ -503,7 +503,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     public string? RefusalReason(object item, Shelf shelf)
     {
         if (CanDrop(item, shelf)) return null;
-        if (!ShelfViewModel.IsUsedBy(shelf, SelectedType)) return Strings.Format(Strings.DropNotUsed, WellOf(shelf).Label);
+        if (!ShelfViewModel.IsUsedBy(shelf, SelectedType, Context.VisualTypes)) return Strings.Format(Strings.DropNotUsed, WellOf(shelf).Label);
         if (item is ModelField field && field.Model != _selectedModel)
             return Strings.Format(Strings.DropOtherModel, field.Caption, field.Model.Metadata.Caption);
         return Unwrap(item) switch
@@ -521,21 +521,24 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         if (shelf is Shelf.Values or Shelf.Tooltip)
             return field.Kind != FieldKind.Measure ? Strings.DropMeasuresOnly
                 : shelf == Shelf.Tooltip && TooltipValues.Any(t => t.Field == field) ? Strings.Format(Strings.DropAlreadyThere, field.Caption, ShelfName(shelf))
+                : shelf == Shelf.Values && Values.Count >= Limit(shelf) ? WellFull(shelf)
                 : null;
         if (field.Kind != FieldKind.Dimension && shelf != Shelf.Filters) return Strings.Format(Strings.DropDimensionsOnly, ShelfName(shelf));
         return shelf switch
         {
             Shelf.Axis when Axis.Any(a => a.Field == field) => Strings.Format(Strings.DropAlreadyThere, field.Caption, ShelfName(shelf)),
-            Shelf.Axis when Axis.Count >= AxisLimit => AxisLimit == 1
-                ? Strings.Format(Strings.DropWellSingleField, ShelfName(shelf))
-                : Strings.Format(Strings.DropAxisFull, AxisLimit),
+            Shelf.Axis when Axis.Count >= Limit(shelf) => WellFull(shelf),
             Shelf.Filters when Filters.Any(f => f.Field == field) => Strings.Format(Strings.DropAlreadyThere, field.Caption, ShelfName(shelf)),
             _ => null,
         };
     }
 
-    // The dimensions the visual type takes on its axis
-    private int AxisLimit => ShelfViewModel.DefinitionOf(Shelf.Axis, SelectedType)?.MaxFields ?? int.MaxValue;
+    // The fields the visual type takes in a well
+    private int Limit(Shelf shelf) => ShelfViewModel.DefinitionOf(shelf, SelectedType, Context.VisualTypes)?.MaxFields ?? int.MaxValue;
+
+    private string WellFull(Shelf shelf) => Limit(shelf) == 1
+        ? Strings.Format(Strings.DropWellSingleField, ShelfName(shelf))
+        : Strings.Format(Strings.DropWellFull, ShelfName(shelf), Limit(shelf));
 
     // The name the well shows for the visual type
     private string ShelfName(Shelf shelf) => WellOf(shelf).Label;
@@ -695,7 +698,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         var values = Values.Select(v => v.ToMeasureRef()).ToArray();
         // Saved only when it differs from the default; kept for when the user comes back to a chart
         var tooltip = _tooltip with { Values = [.. TooltipValues.Select(t => t.ToMeasureRef())] };
-        var hasTooltip = Tooltips.Has(SelectedType) && (tooltip.Values.Count > 0 || _tooltip is not { IsHidden: false, HideCategory: false, HideSeries: false, ShowPercent: false, Template: null });
+        var hasTooltip = Tooltips.Has(SelectedType, Context.VisualTypes) && (tooltip.Values.Count > 0 || _tooltip is not { IsHidden: false, HideCategory: false, HideSeries: false, ShowPercent: false, Template: null });
         // The sort follows its chip: it goes with it, and its key follows the chip's aggregation or grain
         var sorted = Axis.Concat(Legend).Concat(Values).FirstOrDefault(c => c.SortDirection is not null);
         SortSummary = sorted is null ? null : Strings.Format(Strings.SortSummary, sorted.Caption,
@@ -750,7 +753,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             return;
         }
         // Only charts have a tooltips section
-        var shape = (_selectedItem, Options: RendererOptions.ToArray(), Tooltips: Tooltips.Has(SelectedType));
+        var shape = (_selectedItem, Options: RendererOptions.ToArray(), Tooltips: Tooltips.Has(SelectedType, Context.VisualTypes));
         if (_propertiesShape is ValueTuple<object?, RendererOptionViewModel[], bool> previous
             && Equals(previous.Item1, shape._selectedItem) && previous.Item2.SequenceEqual(shape.Options) && previous.Item3 == shape.Tooltips)
         {
@@ -796,7 +799,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
                         [DesignerProperty.Custom("Labels", () => Strings.PropertiesValueLabels, chip.ValueLabels(model))]));
                 if (chip.IsValue)
                 {
-                    chip.Format.Target = ValueFormatViewModel.TargetOf(SelectedType);
+                    chip.Format.Target = ValueFormatViewModel.TargetOf(SelectedType, Context.VisualTypes);
                     sections.Add(new DesignerPropertySection(DesignerPropertySections.Formatting, () => Strings.PropertiesFormatting,
                         [DesignerProperty.Custom("Format", () => Strings.PropertiesFormatting, chip.Format)]));
                 }
@@ -817,7 +820,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             DesignerProperty.Number("GaugeMaximum", () => Strings.GaugeMaximum, () => GaugeMaximum, v => GaugeMaximum = v, IsGauge),
             DesignerProperty.Number("GaugeTarget", () => Strings.GaugeTarget, () => GaugeTarget, v => GaugeTarget = v, IsGauge),
         ]));
-        if (Tooltips.Has(SelectedType))
+        if (Tooltips.Has(SelectedType, Context.VisualTypes))
             sections.Add(new DesignerPropertySection(DesignerPropertySections.Tooltips, () => Strings.PropertiesTooltips,
             [
                 DesignerProperty.Toggle("ShowTooltips", () => Strings.TooltipShow, () => ShowTooltips, v => ShowTooltips = v),
@@ -865,22 +868,28 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     }
 
     /// <summary>
-    /// Shows the options of the renderer resolved for the visual. The option view-models are kept while the same
-    /// options apply, so that editing one (typing a number) is not interrupted by the visual it updates.
+    /// Shows the options of the visual's type (saved under its id), then those of the renderer resolved for it (saved
+    /// under its name). The option view-models are kept while the same options apply, so that editing one (typing a
+    /// number) is not interrupted by the visual it updates.
     /// </summary>
     private void RefreshRendererOptions()
     {
         var visual = Visual;
         var renderer = visual is null ? null : Context.ResolveRenderer(visual);
-        var options = renderer is null ? [] : renderer.Capabilities.Options.Where(o => o.AppliesTo?.Invoke(visual!) ?? true).ToList();
-        if (RendererOptions.Select(o => (o.Renderer, o.Option)).SequenceEqual(options.Select(o => (renderer!.Name, o))))
+        IEnumerable<(string Owner, RendererOption Option)> declared = visual is null ? [] :
+        [
+            .. Context.VisualTypes.Get(visual.Type).Options.Select(o => (visual.Type.Id, o)),
+            .. renderer?.Capabilities.Options.Select(o => (renderer.Name, o)) ?? [],
+        ];
+        var options = declared.Where(o => o.Option.AppliesTo?.Invoke(visual!) ?? true).ToList();
+        if (RendererOptions.Select(o => (o.Renderer, o.Option)).SequenceEqual(options))
         {
             foreach (var option in RendererOptions) option.Sync(visual!.GetRendererOption(option.Renderer, option.Option));
             return;
         }
         RendererOptions.Clear();
-        foreach (var option in options)
-            RendererOptions.Add(new(renderer!.Name, option, visual!.GetRendererOption(renderer.Name, option), OnRendererOptionChanged));
+        foreach (var (owner, option) in options)
+            RendererOptions.Add(new(owner, option, visual!.GetRendererOption(owner, option), OnRendererOptionChanged));
         OnPropertyChanged(nameof(HasRendererOptions));
     }
 
@@ -1070,7 +1079,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         if (AxisWell is null) return;
         foreach (var well in Wells) well.Refresh();
         // The format editors show what the new type uses
-        foreach (var chip in Values) chip.Format.Target = ValueFormatViewModel.TargetOf(_selectedType);
+        foreach (var chip in Values) chip.Format.Target = ValueFormatViewModel.TargetOf(_selectedType, Context.VisualTypes);
     }
 
     private void RefreshAvailability()

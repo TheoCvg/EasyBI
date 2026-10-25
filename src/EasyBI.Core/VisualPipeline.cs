@@ -33,13 +33,15 @@ public static class VisualPipeline
 
     /// <summary>
     /// The query of a visual; those of the end user's calculated <c>measures</c> it shows go with it, with those they use
-    /// (and, with the model's <c>metadata</c>, those its formula measures use).
+    /// (and, with the model's <c>metadata</c>, those its formula measures use). The visual <paramref name="types"/> tell
+    /// whether it has tooltips, whose measures are queried with it (EasyBI's types when null).
     /// </summary>
-    public static AnalyticQuery ToQuery(this VisualDefinition visual, IEnumerable<CalculatedMeasure>? measures = null, ModelMetadata? metadata = null)
+    public static AnalyticQuery ToQuery(this VisualDefinition visual, IEnumerable<CalculatedMeasure>? measures = null, ModelMetadata? metadata = null,
+        VisualTypeCatalog? types = null)
     {
         var groupBy = visual.Legend is null ? visual.Axis : [.. visual.Axis, visual.Legend];
         // A chart's tooltips may show other measures: they are queried with it, not drawn
-        IEnumerable<MeasureRef> tooltip = Tooltips.Has(visual.Type) ? visual.Tooltip?.Values ?? [] : [];
+        IEnumerable<MeasureRef> tooltip = Tooltips.Has(visual.Type, types) ? visual.Tooltip?.Values ?? [] : [];
         // Shown, in a tooltip, or filtered on, and what they use
         var names = visual.Values.Concat(tooltip).Select(v => v.Measure)
             .Concat(visual.Filters.Where(f => f.Operator.IsComparison()).Select(f => f.Field));
@@ -70,6 +72,7 @@ public static class VisualPipeline
         VisualDefinition visual,
         BiTheme? theme = null,
         IEnumerable<CalculatedMeasure>? measures = null,
+        VisualTypeCatalog? types = null,
         CancellationToken cancellationToken = default)
     {
         if (visual.Type == VisualType.Matrix)
@@ -77,7 +80,7 @@ public static class VisualPipeline
             var (cells, matrix) = await MatrixBuilder.ExecuteAsync(model, visual, measures, cancellationToken).ConfigureAwait(false);
             return new RenderRequest(visual, cells, ChartDataBuilder.Build(visual, cells), theme ?? BiTheme.Default) { Matrix = matrix };
         }
-        var result = await model.ExecuteWithTimeAsync(visual.ToQuery(measures, model.Metadata), cancellationToken).ConfigureAwait(false);
+        var result = await model.ExecuteWithTimeAsync(visual.ToQuery(measures, model.Metadata, types), cancellationToken).ConfigureAwait(false);
         return new RenderRequest(visual, result, ChartDataBuilder.Build(visual, result), theme ?? BiTheme.Default);
     }
 }

@@ -33,6 +33,10 @@ public static class RendererSettings
         _ => visual.GetRendererOption(renderer, option.Key, option.Default as string),
     };
 
+    /// <summary>The value of a setting of the visual's type (<see cref="VisualTypeDefinition.Options"/>), saved under its id.</summary>
+    public static T? GetTypeOption<T>(this VisualDefinition visual, string key, T? @default = default) =>
+        visual.GetRendererOption(visual.Type.Id, key, @default);
+
     /// <summary>The visual with the option set; a null value removes it, and with it the renderer's entry once empty.</summary>
     public static VisualDefinition WithRendererOption(this VisualDefinition visual, string renderer, string key, object? value) =>
         visual with { Extensions = WithRendererOption(visual.Extensions, renderer, key, value) };

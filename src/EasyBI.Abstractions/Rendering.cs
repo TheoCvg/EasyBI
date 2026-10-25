@@ -86,6 +86,12 @@ public sealed record RendererCapabilities(IReadOnlySet<VisualType> Types)
     /// <see cref="VisualDefinition.Extensions"/> under the renderer's name.
     /// </summary>
     public IReadOnlyList<RendererOption> Options { get; init; } = [];
+
+    /// <summary>
+    /// The visual types the renderer brings, which EasyBI does not know: registered with it (EasyBI.Wpf's
+    /// <c>EasyBIContext.UseRenderer</c>). <see cref="Types"/> lists them too.
+    /// </summary>
+    public IReadOnlyList<VisualTypeDefinition> VisualTypes { get; init; } = [];
 }
 
 /// <summary>Element picked by the user in a visual (click), source of a cross-filter.</summary>
