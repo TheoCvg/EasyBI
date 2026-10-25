@@ -1611,7 +1611,10 @@ the year along the date axis.</p>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">Filters</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="n">PeriodFilters</span><span class="p">.</span><span class="n">Relative</span><span class="p">(</span><span class="s">"Date"</span><span class="p">,</span><span class="w"> </span><span class="n">FilterOperator</span><span class="p">.</span><span class="n">Current</span><span class="p">,</span><span class="w"> </span><span class="n">DateGrain</span><span class="p">.</span><span class="n">Year</span><span class="p">)],</span><span class="w">   </span><span class="c1">// this year vs last year</span>
 </code></pre></div>
 <p>The previous year is the same query with its dates shifted back one year (period filters, clicked periods), run once
-more and matched on the groups (each month with the same month a year earlier, per series). It needs a date on the axis
+more and matched on the groups (each month with the same month a year earlier, per series). A period under way (this
+year, the last 12 months, a range ending later, the current year or month clicked in a chart) is compared with the
+same days a year earlier: on 15 February, this year is compared with 1 January to 15 February of last year, and the
+month under way with the same days of its month, since there is no data after today. It needs a date on the axis
 or a date filter, and is empty otherwise. The year-to-date total adds the values up along the date axis and starts
 again each year. A KPI shows a change with ▲ / ▼ in the measures' or the error color. This runs in
 <code>VisualPipeline.PrepareAsync</code> (<code>ISemanticModel.ExecuteWithTimeAsync</code>) on top of any model.</p>
