@@ -17,7 +17,7 @@
         <link rel="prev" href="../localization/">
       
       
-        <link rel="next" href="../../reference/report-format/">
+        <link rel="next" href="../visual-types/">
       
       
         
@@ -360,6 +360,8 @@
   
     
       
+      
+        
       
         
       
@@ -1105,6 +1107,8 @@
       
         
       
+        
+      
     
     
     
@@ -1313,6 +1317,33 @@
   
 </nav>
       
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../visual-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Custom visual types
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1600,6 +1631,8 @@
       
         
       
+        
+      
     
     
     
@@ -1646,6 +1679,8 @@
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">FrameworkElement</span><span class="w"> </span><span class="nf">Render</span><span class="p">(</span><span class="n">RenderRequest</span><span class="w"> </span><span class="n">request</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* request.Chart.Categories, request.Chart.Series */</span><span class="w"> </span><span class="p">}</span>
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">}</span>
 </code></pre></div>
+<p>A connector can also draw a type of its own, which it declares in <code>Capabilities.VisualTypes</code>: see
+<a href="../visual-types/">Custom visual types</a>.</p>
 <p>Each <code>ChartSeries</code> comes with its resolved <code>SeriesType</code> and <code>SecondaryAxis</code>: a connector draws every series with its own
 type, so one chart can mix bars, lines, areas and points.</p>
 <p>Colors come from <code>request.Theme</code>: series take <code>ColorAt(index)</code>, text <code>Foreground</code>, axis labels <code>MutedForeground</code>, grid
@@ -1756,13 +1791,13 @@ a check box, a list or a number box, and saves their values with the visual.</p>
         
         
           
-          <a href="../../reference/report-format/" class="md-footer__link md-footer__link--next" aria-label="Next: Report format">
+          <a href="../visual-types/" class="md-footer__link md-footer__link--next" aria-label="Next: Custom visual types">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Report format
+                Custom visual types
               </div>
             </div>
             <div class="md-footer__button md-icon">

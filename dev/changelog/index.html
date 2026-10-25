@@ -367,6 +367,8 @@
       
         
       
+        
+      
     
     
     
@@ -1103,6 +1105,8 @@
       
         
       
+        
+      
     
     
     
@@ -1243,6 +1247,33 @@
     
   
   Writing a connector
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../customization/visual-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Custom visual types
 
     
   </span>
@@ -2026,6 +2057,12 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   (used, number of fields, name), tooltips, format and rules, and <code>VisualTypeCatalog</code> holds EasyBI's; the designer, the
   validation and the fields added to a visual follow it. The designer refuses a second category on a pie or a donut
   (#59).</li>
+<li><strong>Custom visual types</strong>: an application declares its own types (<code>EasyBIContext.AddVisualType</code>, or a renderer's
+  <code>RendererCapabilities.VisualTypes</code>), with their wells, settings (<code>VisualTypeDefinition.Options</code>, read with
+  <code>GetTypeOption</code>) and rules, and an icon by key (<code>{bi:VisualTypeIconKey company.type}</code>, a default one otherwise); it
+  hides or changes EasyBI's types in <code>EasyBIContext.VisualTypes</code>. The designer refuses a measure beyond what a type takes
+  (a second value on a pie), a visual tells which well misses or has too many fields, and a matrix takes four row
+  fields as documented (#60).</li>
 </ul>
 <h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
 <ul>
