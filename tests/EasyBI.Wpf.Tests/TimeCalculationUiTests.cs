@@ -36,7 +36,7 @@ public class TimeCalculationUiTests
 
     private static string KpiText(TimeCalculation time, double value)
     {
-        var visual = new VisualDefinition { Mark = MarkType.Kpi, Values = [new("Amount") { Time = time }] };
+        var visual = new VisualDefinition { Type = VisualType.Kpi, Values = [new("Amount") { Time = time }] };
         var request = new RenderRequest(visual, new ResultSet([], []), new ChartData(null, ["Total"], [new ChartSeries("CA", [value], "P1")]), BiTheme.Default);
         var panel = (WrapPanel)((Viewbox)new KpiRenderer().Render(request)).Child;
         return ((TextBlock)((StackPanel)panel.Children[0]).Children[0]).Text;

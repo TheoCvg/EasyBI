@@ -10,7 +10,7 @@ public class DashboardViewTests
 {
     private static VisualDefinition Chart(string id) => new() { Id = id, Title = id, Model = "sales", Values = [new("Amount")] };
 
-    private static VisualDefinition Text(string id, string text = "") => new() { Id = id, Mark = MarkType.Text, Text = new TextContent { Text = text } };
+    private static VisualDefinition Text(string id, string text = "") => new() { Id = id, Type = VisualType.Text, Text = new TextContent { Text = text } };
 
     private static DashboardView View(params VisualDefinition[] visuals)
     {

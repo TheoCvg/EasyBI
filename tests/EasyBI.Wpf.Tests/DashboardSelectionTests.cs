@@ -7,7 +7,7 @@ namespace EasyBI.Wpf.Tests;
 
 public class DashboardSelectionTests
 {
-    private static VisualDefinition Text(string id) => new() { Id = id, Mark = MarkType.Text, Text = new TextContent { Text = id } };
+    private static VisualDefinition Text(string id) => new() { Id = id, Type = VisualType.Text, Text = new TextContent { Text = id } };
 
     private static DashboardView View(params string[] ids)
     {
@@ -103,7 +103,7 @@ public class DashboardSelectionTests
         var filters = new EasyBI.Core.FilterContext();
         VisualView.SetFilterContext(view, filters);
         RenderRequest Clicked(string id) => new(
-            new VisualDefinition { Id = id, Model = "sales", Mark = MarkType.Bar, Axis = [new("Region")] },
+            new VisualDefinition { Id = id, Model = "sales", Type = VisualType.Bar, Axis = [new("Region")] },
             new ResultSet([], []),
             new ChartData(null, ["North"], []) { CategoryValues = [["North"]] },
             BiTheme.Default);

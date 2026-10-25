@@ -338,7 +338,7 @@ public class CalculatedMeasureUiTests
         var model = new CountingModel(Model());
         var context = EasyBIContext.Create().AddModel(model);
         context.Measures.Set(Rate());
-        var view = new VisualView { Context = context, Definition = new() { Model = "sales", Mark = MarkType.Kpi, Values = [new("calc_rate")] } };
+        var view = new VisualView { Context = context, Definition = new() { Model = "sales", Type = VisualType.Kpi, Values = [new("calc_rate")] } };
         var window = new Window { Content = view, Width = 300, Height = 200, Left = -10000, Top = -10000, ShowActivated = false, ShowInTaskbar = false };
         window.Show();
         Pump();
@@ -415,7 +415,7 @@ public class CalculatedMeasureUiTests
         var context = EasyBIContext.Create().AddModel(model);
         context.Measures.Set(Cost());
         context.Measures.Set(Rate("[calc_cost] / [Amount]"));
-        var view = new VisualView { Context = context, Definition = new() { Model = "sales", Mark = MarkType.Kpi, Values = [new("calc_rate")] } };
+        var view = new VisualView { Context = context, Definition = new() { Model = "sales", Type = VisualType.Kpi, Values = [new("calc_rate")] } };
         var window = new Window { Content = view, Width = 300, Height = 200, Left = -10000, Top = -10000, ShowActivated = false, ShowInTaskbar = false };
         window.Show();
         Pump();

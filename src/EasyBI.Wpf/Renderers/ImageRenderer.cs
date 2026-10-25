@@ -7,12 +7,12 @@ using EasyBI.Abstractions;
 
 namespace EasyBI.Wpf.Renderers;
 
-/// <summary>Built-in renderer of <see cref="MarkType.Image"/> visuals.</summary>
+/// <summary>Built-in renderer of <see cref="VisualType.Image"/> visuals.</summary>
 public sealed class ImageRenderer : IVisualRenderer
 {
     public string Name => "EasyBI Image";
 
-    public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType> { MarkType.Image });
+    public RendererCapabilities Capabilities { get; } = new(new HashSet<VisualType> { VisualType.Image });
 
     public FrameworkElement Render(RenderRequest request)
     {

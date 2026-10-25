@@ -9,8 +9,8 @@ namespace EasyBI.Core;
 /// </summary>
 public static partial class Tooltips
 {
-    /// <summary>The visual types with tooltips: the charts.</summary>
-    public static bool Has(MarkType mark) => mark.IsCartesian() || mark.IsCircular() || mark == MarkType.Waterfall;
+    /// <summary>The visual types with tooltips (<see cref="VisualTypeDefinition.HasTooltips"/>): the charts.</summary>
+    public static bool Has(VisualType type) => VisualTypeCatalog.Default.Get(type).HasTooltips;
 
     /// <summary>
     /// The content to show for a category and the hovered series: the host's (<see cref="RenderRequest.Tooltip"/>,
@@ -28,8 +28,7 @@ public static partial class Tooltips
     {
         var settings = request.Visual.Tooltip ?? new TooltipSettings();
         if (settings.IsHidden) return null;
-        var mark = request.Visual.Mark;
-        var chart = mark == MarkType.Waterfall ? Waterfall.Of(request.Chart).Chart : request.Chart;
+        var chart = request.Visual.Type == VisualType.Waterfall ? Waterfall.Of(request.Chart).Chart : request.Chart;
         if (category < 0 || category >= chart.Categories.Count) return null;
 
         var formatting = ChartFormatting.For(request);
@@ -45,7 +44,7 @@ public static partial class Tooltips
                 : "";
             if (settings.ShowPercent && percent.Length > 0) text += $" ({percent})";
             var color = category < request.Chart.Categories.Count ? formatting.PointColor(index, category) : null;
-            color ??= mark.IsCircular() ? request.Theme.ColorAt(category) : request.Theme.ColorAt(index);
+            color ??= request.Visual.Type.IsCircular() ? request.Theme.ColorAt(category) : request.Theme.ColorAt(index);
             items.Add(new TooltipItem(settings.HideSeries ? "" : source.Name, text, color));
             fields.TryAdd("series", source.Name);
             fields.TryAdd("value", value is { } shown ? ValueFormatter.Format(shown, source.Format) : "");

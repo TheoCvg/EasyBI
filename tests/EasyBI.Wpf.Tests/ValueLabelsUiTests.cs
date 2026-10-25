@@ -95,7 +95,7 @@ public class ValueLabelsUiTests
     public void A_table_shows_the_labels_of_its_dimensions() => Sta.Run(() =>
     {
         var field = new FieldRef("Region").WithLabel("Île-de-France", "IDF");
-        var visual = new VisualDefinition { Mark = MarkType.Table, Axis = [field], Values = [new("Amount")] };
+        var visual = new VisualDefinition { Type = VisualType.Table, Axis = [field], Values = [new("Amount")] };
         var result = new ResultSet(
             [new ResultColumn("Region", "Région", FieldKind.Dimension, DataType.Text), new ResultColumn("Amount", "CA", FieldKind.Measure, DataType.Number)],
             [["Île-de-France", 1m], ["Nord", 2m]]);

@@ -107,21 +107,21 @@ public sealed class EasyBIContext
         ReportValidator.Validate(report, _models.Select(m => m.Metadata));
 
     /// <summary>
-    /// Capability negotiation: the active renderer if it can draw the mark, otherwise another
+    /// Capability negotiation: the active renderer if it can draw the type, otherwise another
     /// plugged-in renderer, otherwise a built-in one (KPI, table, text, image).
     /// </summary>
-    public IVisualRenderer? ResolveRenderer(MarkType mark) => Resolve(new HashSet<MarkType> { mark });
+    public IVisualRenderer? ResolveRenderer(VisualType type) => Resolve(new HashSet<VisualType> { type });
 
     /// <summary>
-    /// Same negotiation for a whole visual: the renderer must support every mark it uses, including the chart types
+    /// Same negotiation for a whole visual: the renderer must support every type it uses, including the chart types
     /// of its measures (a chart mixing bars and a line needs both).
     /// </summary>
-    public IVisualRenderer? ResolveRenderer(VisualDefinition visual) => Resolve(VisualPipeline.MarksOf(visual));
+    public IVisualRenderer? ResolveRenderer(VisualDefinition visual) => Resolve(VisualPipeline.TypesOf(visual));
 
-    private IVisualRenderer? Resolve(IReadOnlySet<MarkType> marks)
+    private IVisualRenderer? Resolve(IReadOnlySet<VisualType> types)
     {
-        if (_activeRenderer is not null && marks.IsSubsetOf(_activeRenderer.Capabilities.Marks)) return _activeRenderer;
-        return _renderers.Concat(BuiltInRenderers).FirstOrDefault(r => marks.IsSubsetOf(r.Capabilities.Marks));
+        if (_activeRenderer is not null && types.IsSubsetOf(_activeRenderer.Capabilities.Types)) return _activeRenderer;
+        return _renderers.Concat(BuiltInRenderers).FirstOrDefault(r => types.IsSubsetOf(r.Capabilities.Types));
     }
 }
 

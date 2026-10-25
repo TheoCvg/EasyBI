@@ -16,10 +16,10 @@ public static class ReportValidator
         var problems = new List<string>();
 
         // Text and image visuals carry their content and reference no model
-        foreach (var visual in report.Visuals.Where(v => !v.Mark.IsContent()))
+        foreach (var visual in report.Visuals.Where(v => !v.Type.IsContent()))
         {
             var where = string.IsNullOrWhiteSpace(visual.Title)
-                ? Strings.Format(Strings.ReportUntitledVisual, visual.Mark)
+                ? Strings.Format(Strings.ReportUntitledVisual, visual.Type)
                 : Strings.Format(Strings.ReportTitledVisual, visual.Title);
             if (!byName.TryGetValue(visual.Model, out var model))
             {

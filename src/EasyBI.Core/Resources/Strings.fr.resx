@@ -342,4 +342,58 @@
   <data name="FormulaThisMeasure" xml:space="preserve">
     <value>cette mesure</value>
   </data>
+  <data name="VisualTypeBar" xml:space="preserve">
+    <value>Barres</value>
+  </data>
+  <data name="VisualTypeStackedBar" xml:space="preserve">
+    <value>Empilées</value>
+  </data>
+  <data name="VisualTypeScatter" xml:space="preserve">
+    <value>Points</value>
+  </data>
+  <data name="VisualTypeLine" xml:space="preserve">
+    <value>Courbes</value>
+  </data>
+  <data name="VisualTypeArea" xml:space="preserve">
+    <value>Aires</value>
+  </data>
+  <data name="VisualTypePie" xml:space="preserve">
+    <value>Secteurs</value>
+  </data>
+  <data name="VisualTypeDonut" xml:space="preserve">
+    <value>Anneau</value>
+  </data>
+  <data name="VisualTypeWaterfall" xml:space="preserve">
+    <value>Cascade</value>
+  </data>
+  <data name="VisualTypeKpi" xml:space="preserve">
+    <value>KPI</value>
+  </data>
+  <data name="VisualTypeGauge" xml:space="preserve">
+    <value>Jauge</value>
+  </data>
+  <data name="VisualTypeTable" xml:space="preserve">
+    <value>Table</value>
+  </data>
+  <data name="VisualTypeMatrix" xml:space="preserve">
+    <value>Tableau croisé</value>
+  </data>
+  <data name="WellCategory" xml:space="preserve">
+    <value>Catégorie</value>
+  </data>
+  <data name="WellRows" xml:space="preserve">
+    <value>Lignes</value>
+  </data>
+  <data name="WellColumns" xml:space="preserve">
+    <value>Colonnes</value>
+  </data>
+  <data name="WellValue" xml:space="preserve">
+    <value>Valeur</value>
+  </data>
+  <data name="VisualTypeText" xml:space="preserve">
+    <value>Texte</value>
+  </data>
+  <data name="VisualTypeImage" xml:space="preserve">
+    <value>Image</value>
+  </data>
 </root>

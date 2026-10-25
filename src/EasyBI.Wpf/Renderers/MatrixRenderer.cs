@@ -9,7 +9,7 @@ using EasyBI.Wpf.Resources;
 namespace EasyBI.Wpf.Renderers;
 
 /// <summary>
-/// Built-in renderer of a <see cref="MarkType.Matrix"/>: the headers of its rows, a column per column and measure, a
+/// Built-in renderer of a <see cref="VisualType.Matrix"/>: the headers of its rows, a column per column and measure, a
 /// total column per measure and a total row, in a grid styled like the table.
 /// </summary>
 public sealed class MatrixRenderer : IVisualRenderer
@@ -28,7 +28,7 @@ public sealed class MatrixRenderer : IVisualRenderer
         return style;
     }
 
-    public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType> { MarkType.Matrix });
+    public RendererCapabilities Capabilities { get; } = new(new HashSet<VisualType> { VisualType.Matrix });
 
     /// <summary>A line of the grid: a row of the matrix, or its total (no row).</summary>
     public sealed record Line(int? Row, object?[] Cells, double[] Opacities, ValueStyle?[] Styles);

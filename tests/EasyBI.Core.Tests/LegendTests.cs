@@ -113,7 +113,7 @@ public class LegendTests
     [Fact]
     public void The_legend_position_is_saved_with_the_visual_and_omitted_when_automatic()
     {
-        var visual = new VisualDefinition { Mark = MarkType.Bar, LegendPosition = ChartLegend.Bottom };
+        var visual = new VisualDefinition { Type = VisualType.Bar, LegendPosition = ChartLegend.Bottom };
 
         var json = JsonSerializer.Serialize(visual, ReportSerializer.Options);
 

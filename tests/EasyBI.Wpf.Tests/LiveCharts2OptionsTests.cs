@@ -20,7 +20,7 @@ public class LiveCharts2OptionsTests
         return new RenderRequest(visual, new ResultSet([], []), chart, BiTheme.Default);
     }
 
-    private static readonly VisualDefinition Bars = new() { Mark = MarkType.Bar };
+    private static readonly VisualDefinition Bars = new() { Type = VisualType.Bar };
 
     [Fact]
     public void Scrollable_option_is_offered_for_cartesian_charts_only()
@@ -29,7 +29,7 @@ public class LiveCharts2OptionsTests
 
         Assert.Equal(RendererOptionKind.Toggle, option.Kind);
         Assert.True(option.AppliesTo!(Bars));
-        Assert.False(option.AppliesTo!(new VisualDefinition { Mark = MarkType.Pie }));
+        Assert.False(option.AppliesTo!(new VisualDefinition { Type = VisualType.Pie }));
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public class LiveCharts2OptionsTests
     private static RenderRequest TwoLevels()
     {
         object?[][] keys = [["2024-01", "Est"], ["2024-01", "Nord"], ["2024-01", "Sud"], ["2024-02", "Est"], ["2024-02", "Nord"], ["2024-02", "Sud"]];
-        var chart = new ChartData("Month / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", [1, 2, 3, 4, 5, 6], null) { Mark = MarkType.Bar }])
+        var chart = new ChartData("Month / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", [1, 2, 3, 4, 5, 6], null) { SeriesType = VisualType.Bar }])
         {
             CategoryValues = keys,
         };
@@ -103,7 +103,7 @@ public class LiveCharts2OptionsTests
     {
         string[] regions = ["Est", "Île-de-France", "Nord", "Ouest", "Sud"];
         object?[][] keys = [.. new[] { "Équipement", "Services", "Vélos" }.SelectMany(c => regions.Select(r => new object?[] { c, r }))];
-        var chart = new ChartData("Category / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", new double?[keys.Length], null) { Mark = MarkType.Bar }])
+        var chart = new ChartData("Category / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", new double?[keys.Length], null) { SeriesType = VisualType.Bar }])
         {
             CategoryValues = keys,
         };
@@ -130,7 +130,7 @@ public class LiveCharts2OptionsTests
         // 36 months of 5 regions, 20 bars at a time: too short to turn the labels
         string[] regions = ["Est", "Île-de-France", "Nord", "Ouest", "Sud"];
         object?[][] keys = [.. Enumerable.Range(1, 36).SelectMany(m => regions.Select(r => new object?[] { $"M{m:00}", r }))];
-        var chart = new ChartData("Month / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", new double?[keys.Length], null) { Mark = MarkType.Bar }])
+        var chart = new ChartData("Month / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", new double?[keys.Length], null) { SeriesType = VisualType.Bar }])
         {
             CategoryValues = keys,
         };

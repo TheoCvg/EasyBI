@@ -39,7 +39,7 @@ public sealed record RendererOption(string Key, RendererOptionKind Kind, Func<st
 
     public double? Maximum { get; init; }
 
-    /// <summary>Visuals the option applies to (by mark type...); null for every visual the renderer draws.</summary>
+    /// <summary>Visuals the option applies to (by visual type...); null for every visual the renderer draws.</summary>
     public Func<VisualDefinition, bool>? AppliesTo { get; init; }
 
     public static RendererOption Toggle(string key, Func<string> label, bool @default = false, Func<VisualDefinition, bool>? appliesTo = null) =>

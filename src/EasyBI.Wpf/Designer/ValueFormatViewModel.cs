@@ -7,12 +7,6 @@ using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf.Designer;
 
-/// <summary>
-/// What a format is edited for: the cells of a table or a matrix, the value of a KPI, or the points of a chart. The
-/// editor only shows what applies; what it hides is kept, for a change of the visual's type.
-/// </summary>
-public enum FormatTarget { Grid, Kpi, Chart }
-
 /// <summary>A color of a format: one of the theme's (<see cref="ThemeColors"/>), a custom #RRGGBB, or none when allowed.</summary>
 public sealed class ColorChoiceViewModel : ObservableObject
 {
@@ -246,12 +240,7 @@ public sealed class ValueFormatViewModel : ObservableObject
     }
 
     /// <summary>The target of a visual type: its grid, its KPI cards or its chart.</summary>
-    public static FormatTarget TargetOf(MarkType mark) => mark switch
-    {
-        MarkType.Table or MarkType.Matrix => FormatTarget.Grid,
-        MarkType.Kpi or MarkType.Gauge => FormatTarget.Kpi,
-        _ => FormatTarget.Chart,
-    };
+    public static FormatTarget TargetOf(VisualType type) => VisualTypeCatalog.Default.Get(type).Format;
 
     public bool IsChart => Target == FormatTarget.Chart;
 

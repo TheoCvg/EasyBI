@@ -21,9 +21,9 @@ public class LegendUiTests
     // 20 series: too many for the legend of a 500 x 300 chart
     private static RenderRequest Request(LegendPager pager, ChartLegend position = ChartLegend.Right)
     {
-        var visual = new VisualDefinition { Mark = MarkType.Bar, LegendPosition = position, Values = [new("Amount")] };
+        var visual = new VisualDefinition { Type = VisualType.Bar, LegendPosition = position, Values = [new("Amount")] };
         var chart = new ChartData("Region", ["A", "B"],
-            [.. Enumerable.Range(0, 20).Select(i => new ChartSeries($"Product {i}", [i, i + 1], null) { MeasureKey = "Amount", Mark = MarkType.Bar })]);
+            [.. Enumerable.Range(0, 20).Select(i => new ChartSeries($"Product {i}", [i, i + 1], null) { MeasureKey = "Amount", SeriesType = VisualType.Bar })]);
         return new RenderRequest(visual, new ResultSet([], []), chart, BiTheme.Default) { LegendPager = pager };
     }
 
@@ -118,7 +118,7 @@ public class LegendUiTests
         var view = new VisualView
         {
             Context = context,
-            Definition = new VisualDefinition { Model = "sales", Mark = MarkType.Bar, Axis = [new("Region")], Values = [new("Amount")] },
+            Definition = new VisualDefinition { Model = "sales", Type = VisualType.Bar, Axis = [new("Region")], Values = [new("Amount")] },
         };
         Shown(view, () =>
         {
@@ -163,7 +163,7 @@ public class LegendUiTests
         Assert.Equal(ChartLegend.Bottom, designer.LegendPosition);
 
         // A KPI has no legend: the choice is hidden and not saved
-        designer.SelectedMark = MarkType.Kpi;
+        designer.SelectedType = VisualType.Kpi;
         Assert.False(property.IsAvailable);
         Assert.Equal(ChartLegend.Auto, designer.Visual!.LegendPosition);
     }

@@ -9,15 +9,6 @@ internal static class Strings
 {
     public static ResourceManager ResourceManager { get; } = new(typeof(Strings));
 
-    public static string MarkBar => Get();
-    public static string MarkLine => Get();
-    public static string MarkPie => Get();
-    public static string MarkKpi => Get();
-    public static string MarkTable => Get();
-    public static string MarkMatrix => Get();
-    public static string MarkDonut => Get();
-    public static string MarkGauge => Get();
-    public static string MarkWaterfall => Get();
     public static string GaugeMinimum => Get();
     public static string GaugeMaximum => Get();
     public static string GaugeTarget => Get();
@@ -87,9 +78,6 @@ internal static class Strings
     public static string ColorMuted => Get();
     public static string ColorCustom => Get();
     public static string MatrixTotal => Get();
-    public static string MarkArea => Get();
-    public static string MarkScatter => Get();
-    public static string MarkStackedBar => Get();
     public static string SeriesMarkDefault => Get();
     public static string SeriesMarkHint => Get();
     public static string SecondaryAxis => Get();
@@ -180,10 +168,6 @@ internal static class Strings
     public static string EditMeasure => Get();
     public static string DeleteMeasure => Get();
     public static string DeleteMeasureConfirm => Get();
-    public static string WellCategory => Get();
-    public static string WellValue => Get();
-    public static string WellRows => Get();
-    public static string WellColumns => Get();
     public static string WellUnused => Get();
     public static string WellHintDimension => Get();
     public static string WellHintMeasure => Get();
@@ -223,6 +207,7 @@ internal static class Strings
     public static string DropDimensionsOnly => Get();
     public static string DropAlreadyThere => Get();
     public static string DropAxisFull => Get();
+    public static string DropWellSingleField => Get();
     public static string DropFilterFromList => Get();
     public static string DropFilterStays => Get();
     public static string Sort => Get();

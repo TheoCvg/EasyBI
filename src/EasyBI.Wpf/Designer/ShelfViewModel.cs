@@ -38,21 +38,17 @@ public sealed class ShelfViewModel : ObservableObject
     public bool HasItems => Items.Cast<object>().Any();
 
     /// <summary>The name of the well for the visual type.</summary>
-    public string Label => (Kind, Designer.SelectedMark) switch
+    public string Label => Kind switch
     {
-        (Shelf.Axis, MarkType.Pie or MarkType.Donut) => Strings.WellCategory,
-        (Shelf.Axis, MarkType.Table or MarkType.Matrix) => Strings.WellRows,
-        (Shelf.Axis, _) => Strings.Axis,
-        (Shelf.Legend, MarkType.Matrix) => Strings.WellColumns,
-        (Shelf.Legend, _) => Strings.Legend,
-        (Shelf.Values, MarkType.Pie or MarkType.Donut or MarkType.Gauge or MarkType.Waterfall) => Strings.WellValue,
-        (Shelf.Values, _) => Strings.Values,
-        (Shelf.Tooltip, _) => Strings.WellTooltip,
+        Shelf.Axis => DefinitionOf(Kind, Designer.SelectedType)?.Caption?.Invoke() ?? Strings.Axis,
+        Shelf.Legend => DefinitionOf(Kind, Designer.SelectedType)?.Caption?.Invoke() ?? Strings.Legend,
+        Shelf.Values => DefinitionOf(Kind, Designer.SelectedType)?.Caption?.Invoke() ?? Strings.Values,
+        Shelf.Tooltip => Strings.WellTooltip,
         _ => Strings.Filters,
     };
 
     /// <summary>Whether the visual type uses the well; a well it does not use refuses fields.</summary>
-    public bool IsUsed => IsUsedBy(Kind, Designer.SelectedMark);
+    public bool IsUsed => IsUsedBy(Kind, Designer.SelectedType);
 
     /// <summary>Shown when the type uses the well, or when it still holds chips (to remove them).</summary>
     public bool IsVisible => IsUsed || HasItems;
@@ -73,14 +69,22 @@ public sealed class ShelfViewModel : ObservableObject
         internal set => SetProperty(ref _isDropAllowed, value);
     }
 
-    /// <summary>The wells each type uses: a KPI only shows values, a pie and a table have no legend, only charts have tooltips.</summary>
-    public static bool IsUsedBy(Shelf shelf, MarkType mark) => (shelf, mark) switch
+    /// <summary>The wells each type uses (its <see cref="VisualTypeDefinition"/>); only charts have tooltips.</summary>
+    public static bool IsUsedBy(Shelf shelf, VisualType type) =>
+        shelf == Shelf.Tooltip ? Tooltips.Has(type) : DefinitionOf(shelf, type)?.IsUsed ?? true;
+
+    /// <summary>What a type takes in a well; null for the wells that do not depend on the type (tooltip, filters).</summary>
+    internal static VisualWell? DefinitionOf(Shelf shelf, VisualType type)
     {
-        (Shelf.Tooltip, _) => Tooltips.Has(mark),
-        (Shelf.Axis, MarkType.Kpi or MarkType.Gauge) => false,
-        (Shelf.Legend, MarkType.Kpi or MarkType.Gauge or MarkType.Pie or MarkType.Donut or MarkType.Waterfall or MarkType.Table) => false,
-        _ => true,
-    };
+        var definition = VisualTypeCatalog.Default.Get(type);
+        return shelf switch
+        {
+            Shelf.Axis => definition.Axis,
+            Shelf.Legend => definition.Legend,
+            Shelf.Values => definition.Values,
+            _ => null,
+        };
+    }
 
     internal void Refresh() => OnPropertyChanged(string.Empty);
 }

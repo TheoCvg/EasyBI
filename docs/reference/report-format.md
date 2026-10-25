@@ -8,11 +8,11 @@
     {
       "title": "Revenue by region and channel",
       "model": "sales",
-      "mark": "Bar",
+      "type": "Bar",
       "axis": [ { "field": "Region", "grain": "None", "labels": { "Île-de-France": "IDF" } } ],
       "legend": { "field": "Channel", "grain": "None" },
       "legendPosition": "Bottom",
-      "values": [ { "measure": "Amount" }, { "measure": "Count", "mark": "Line", "secondaryAxis": true } ],
+      "values": [ { "measure": "Amount" }, { "measure": "Count", "seriesType": "Line", "secondaryAxis": true } ],
       "tooltip": { "showPercent": true, "values": [ { "measure": "Quantity" } ], "template": "{category}: {value}" },
       "filters": [
         { "field": "Product.Category", "operator": "In", "values": [ "Services" ] },
@@ -25,6 +25,10 @@
   ]
 }
 ```
+
+A visual's `type` is the id of its visual type: one of EasyBI's (`Bar`, `StackedBar`, `Line`, `Area`, `Scatter`, `Pie`,
+`Donut`, `Waterfall`, `Kpi`, `Gauge`, `Table`, `Matrix`, `Text`, `Image`, read whatever their case) or one an application
+declares. A measure's `seriesType` draws its series with another cartesian type than the visual's.
 
 `null` in `values` means a missing value. Besides `In` and `NotIn`, a date filter's `operator` can be `Between`
 (values: from and to as `yyyy-MM-dd`, inclusive, `null` for an open end), `Current`, `Last` or `Previous` (value: the
@@ -52,8 +56,8 @@ model's.
 Text and image visuals carry their content and no model:
 
 ```json
-{ "mark": "Text", "text": { "text": "Sales dashboard", "fontSize": 24, "isBold": true, "alignment": "Left" } }
-{ "mark": "Image", "image": { "data": "iVBORw0KGgo...", "mediaType": "image/png", "fit": "Contain" } }
+{ "type": "Text", "text": { "text": "Sales dashboard", "fontSize": 24, "isBold": true, "alignment": "Left" } }
+{ "type": "Image", "image": { "data": "iVBORw0KGgo...", "mediaType": "image/png", "fit": "Contain" } }
 ```
 
 ## Dashboard file (`easybi-dashboard/v1`)

@@ -64,12 +64,12 @@ public class VisualTransferTests
     [Fact]
     public void Visuals_of_a_model_the_target_does_not_know_are_left_out_but_texts_are_kept()
     {
-        var text = new VisualDefinition { Id = "t", Mark = MarkType.Text, Text = new TextContent { Text = "Hello" } };
+        var text = new VisualDefinition { Id = "t", Type = VisualType.Text, Text = new TextContent { Text = "Hello" } };
         var json = VisualTransfer.Copy([Chart("a", model: "stock"), text], Measures());
 
         var pasted = VisualTransfer.Paste(json, Measures(), Sales);
 
-        Assert.Equal([MarkType.Text], pasted.Select(p => p.Visual.Mark));
+        Assert.Equal([VisualType.Text], pasted.Select(p => p.Visual.Type));
     }
 
     [Theory]

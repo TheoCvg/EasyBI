@@ -31,7 +31,7 @@ public class MatrixTests
     {
         Id = "matrix",
         Model = "sales",
-        Mark = MarkType.Matrix,
+        Type = VisualType.Matrix,
         Axis = [new("Region")],
         Legend = new("Channel"),
         Values = [new("Amount")],
@@ -150,7 +150,7 @@ public class MatrixTests
     {
         var request = await PrepareAsync(ByRegionAndChannel);
         var matrix = request.Matrix!;
-        var total = new VisualDefinition { Model = "sales", Mark = MarkType.Kpi, Values = [new("Amount")] };
+        var total = new VisualDefinition { Model = "sales", Type = VisualType.Kpi, Values = [new("Amount")] };
         async Task<decimal> TotalAsync(FilterContext filters) => (decimal)(await Model().ExecuteAsync(filters.Apply(total).ToQuery())).Rows[0][0]!;
 
         var filters = new FilterContext();

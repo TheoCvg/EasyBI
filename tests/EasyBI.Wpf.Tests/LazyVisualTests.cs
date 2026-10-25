@@ -11,7 +11,7 @@ namespace EasyBI.Wpf.Tests;
 public class LazyVisualTests
 {
     private static VisualDefinition Table(string id) =>
-        new() { Id = id, Model = "sales", Mark = MarkType.Table, Axis = [new("Region")], Values = [new("Amount")] };
+        new() { Id = id, Model = "sales", Type = VisualType.Table, Axis = [new("Region")], Values = [new("Amount")] };
 
     // Loaded, queued refreshes, viewport updates and query continuations run on the dispatcher
     private static void Pump() => Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);

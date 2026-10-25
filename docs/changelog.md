@@ -25,6 +25,10 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   operator keypad (#55).
 - **Measures used in other formulas**: a calculated measure can use the report's other measures; loops are refused (#56).
 - This documentation site, with a version per release.
+- **Visual types described by their definition**: `VisualTypeDefinition` gives a type's name, gallery section, wells
+  (used, number of fields, name), tooltips, format and rules, and `VisualTypeCatalog` holds EasyBI's; the designer, the
+  validation and the fields added to a visual follow it. The designer refuses a second category on a pie or a donut
+  (#59).
 
 ### Fixed
 
@@ -36,6 +40,17 @@ opens older reports, and a report using a newer feature cannot be opened by an o
 - `FilterContext.Selection` became `Selections` (one per visual), with `SelectionOf`, `ClearSelection(visualId)` and
   `DescribeSelections`; `CrossFilter` holds `Elements` (`SelectedElement`), its `Values` and filter-based constructor are
   gone and `Filters` is computed (#41).
+- The `MarkType` enum became `VisualType`, a type identified by its `Id`, so that applications can add their own;
+  EasyBI's are static properties (`VisualType.Bar`...) listed in `VisualType.BuiltIn`, and code that switched on them
+  compares them instead (`type == VisualType.Bar`). Renamed with it: `VisualDefinition.Mark` → `Type`,
+  `MeasureRef.Mark` and `ChartSeries.Mark` → `SeriesType`, `RendererCapabilities.Marks` → `Types`,
+  `VisualPipeline.SeriesMark` and `MarksOf` → `SeriesType` and `TypesOf`, and in the designer `SelectedMark`,
+  `MarkOptions`, `MarkGroups`, `SelectedMarkOption` → `SelectedType`, `TypeOptions`, `TypeGroups`, `SelectedTypeOption`,
+  `MarkOptionViewModel` → `VisualTypeOptionViewModel`, `VisualTypeIcon.Mark` → `Type`, the `SeriesMark` chip property →
+  `SeriesType`. `MarkGroup` became `VisualTypeGroup` and moved with `FormatTarget` to `EasyBI.Abstractions` (#59).
+- **Report JSON**: a visual's `mark` became `type` and a measure's `mark` became `seriesType`. The schema stays
+  `easybi/v1` while EasyBI is in beta: in a report saved by an earlier version, rename these properties, otherwise its
+  visuals open as bars (#59).
 - `ChartLegend` moved from `EasyBI.Core` to `EasyBI.Abstractions` and gained `Auto`, `Top` and `Left`;
   `ChartFitting.BottomLegendHeight` was removed (#48).
 - `ModelField.IsEditable` is true for every measure (the model's ones can be redefined); use `IsReportMeasure` for the

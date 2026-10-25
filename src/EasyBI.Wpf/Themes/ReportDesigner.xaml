@@ -375,8 +375,8 @@
                                                           IsChecked="{Binding IsTypeGalleryOpen, Mode=TwoWay}"
                                                           IsHitTestVisible="{Binding IsOpen, ElementName=TypeGallery, Converter={x:Static local:InverseBooleanConverter.Instance}}">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <local:VisualTypeIcon Mark="{Binding SelectedMarkOption.Mark}" Margin="0,0,6,0" />
-                                                    <TextBlock Text="{Binding SelectedMarkOption.Label}" VerticalAlignment="Center" />
+                                                    <local:VisualTypeIcon Type="{Binding SelectedTypeOption.Type}" Margin="0,0,6,0" />
+                                                    <TextBlock Text="{Binding SelectedTypeOption.Label}" VerticalAlignment="Center" />
                                                     <TextBlock Text="▾" Margin="8,0,0,0" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </ToggleButton>
@@ -384,18 +384,18 @@
                                                    AllowsTransparency="True" IsOpen="{Binding IsTypeGalleryOpen, Mode=TwoWay}">
                                                 <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}"
                                                         BorderThickness="1" CornerRadius="6" Padding="10,4,10,10" Margin="0,4,0,0">
-                                                    <ItemsControl ItemsSource="{Binding MarkGroups}" Focusable="False">
+                                                    <ItemsControl ItemsSource="{Binding TypeGroups}" Focusable="False">
                                                         <ItemsControl.ItemTemplate>
-                                                            <DataTemplate DataType="{x:Type local:MarkGroupViewModel}">
+                                                            <DataTemplate DataType="{x:Type local:VisualTypeGroupViewModel}">
                                                                 <StackPanel>
                                                                     <TextBlock Text="{Binding Label}" Style="{StaticResource SectionHeader}" Margin="2,8,0,4" />
                                                                     <ItemsControl ItemsSource="{Binding Options}" ItemsPanel="{StaticResource WrapItems}" Focusable="False">
                                                                         <ItemsControl.ItemTemplate>
-                                                                            <DataTemplate DataType="{x:Type local:MarkOptionViewModel}">
+                                                                            <DataTemplate DataType="{x:Type local:VisualTypeOptionViewModel}">
                                                                                 <Button x:Name="Type" Command="{Binding ChooseCommand}" IsEnabled="{Binding IsAvailable}"
                                                                                         Width="84" Margin="2" Padding="4,6" Cursor="Hand" ToolTipService.ShowOnDisabled="True">
                                                                                     <StackPanel>
-                                                                                        <local:VisualTypeIcon Mark="{Binding Mark}" Width="26" Height="26" />
+                                                                                        <local:VisualTypeIcon Type="{Binding Type}" Width="26" Height="26" />
                                                                                         <TextBlock x:Name="Caption" Text="{Binding Label}" FontSize="11" Margin="0,4,0,0" HorizontalAlignment="Center" />
                                                                                     </StackPanel>
                                                                                 </Button>

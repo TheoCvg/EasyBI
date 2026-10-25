@@ -27,7 +27,7 @@ public class TooltipTests
     private static readonly VisualDefinition ByRegionAndChannel = new()
     {
         Model = "sales",
-        Mark = MarkType.Bar,
+        Type = VisualType.Bar,
         Axis = [new("Region")],
         Legend = new("Channel"),
         Values = [new("Amount")],
@@ -138,7 +138,7 @@ public class TooltipTests
         var tooltip = new TooltipSettings { Values = [new("Quantity")] };
 
         Assert.DoesNotContain(ByRegionAndChannel.ToQuery().Measures, m => m.Measure == "Quantity");
-        Assert.DoesNotContain((ByRegionAndChannel with { Mark = MarkType.Table, Tooltip = tooltip }).ToQuery().Measures, m => m.Measure == "Quantity");
+        Assert.DoesNotContain((ByRegionAndChannel with { Type = VisualType.Table, Tooltip = tooltip }).ToQuery().Measures, m => m.Measure == "Quantity");
         Assert.Contains((ByRegionAndChannel with { Tooltip = tooltip }).ToQuery().Measures, m => m.Measure == "Quantity");
     }
 
@@ -164,7 +164,7 @@ public class TooltipTests
     [Fact]
     public async Task The_total_of_a_waterfall_has_a_tooltip()
     {
-        var request = await PrepareAsync(new VisualDefinition { Model = "sales", Mark = MarkType.Waterfall, Axis = [new("Region")], Values = [new("Amount")] });
+        var request = await PrepareAsync(new VisualDefinition { Model = "sales", Type = VisualType.Waterfall, Axis = [new("Region")], Values = [new("Amount")] });
 
         var total = Tooltips.Build(request, request.Chart.Categories.Count, [0]);
 

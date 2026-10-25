@@ -37,8 +37,6 @@ public sealed record ModelField(ISemanticModel Model, FieldDescriptor Field, Cal
 /// </summary>
 public static class FieldVisuals
 {
-    private const int MaxAxisFields = 3;
-
     /// <summary>
     /// A visual showing a field: a KPI for a measure; for a dimension, the model's first measure by that dimension
     /// (a line by month for a date, bars otherwise), or a table of its values when the model has no measure.
@@ -47,15 +45,15 @@ public static class FieldVisuals
     {
         var visual = new VisualDefinition { Model = model.Metadata.Name };
         if (field.Kind == FieldKind.Measure)
-            return visual with { Title = field.Caption, Mark = MarkType.Kpi, Values = [new MeasureRef(field.Name)] };
+            return visual with { Title = field.Caption, Type = VisualType.Kpi, Values = [new MeasureRef(field.Name)] };
 
         var axis = AxisOf(field);
         if (model.Metadata.Measures.FirstOrDefault() is not { } measure)
-            return visual with { Title = field.Caption, Mark = MarkType.Table, Axis = [axis] };
+            return visual with { Title = field.Caption, Type = VisualType.Table, Axis = [axis] };
         return visual with
         {
             Title = Strings.Format(Strings.VisualTitleBy, measure.Caption, field.Caption),
-            Mark = field.DataType == DataType.Date ? MarkType.Line : MarkType.Bar,
+            Type = field.DataType == DataType.Date ? VisualType.Line : VisualType.Bar,
             Axis = [axis],
             Values = [new MeasureRef(measure.Name)],
         };
@@ -68,27 +66,23 @@ public static class FieldVisuals
     /// </summary>
     public static VisualDefinition? AddField(VisualDefinition visual, ISemanticModel model, FieldDescriptor field)
     {
-        if (visual.Mark is MarkType.Text or MarkType.Image || visual.Model != model.Metadata.Name) return null;
+        if (visual.Type.IsContent() || visual.Model != model.Metadata.Name) return null;
+        var definition = VisualTypeCatalog.Default.Get(visual.Type);
         if (field.Kind == FieldKind.Measure)
         {
-            if (visual.Values.Any(v => v.Measure == field.Name) || ((visual.Mark.IsCircular() || visual.Mark is MarkType.Gauge or MarkType.Waterfall) && visual.Values.Count > 0)) return null;
+            if (!HasRoom(definition.Values, visual.Values.Count) || visual.Values.Any(v => v.Measure == field.Name)) return null;
             return visual with { Values = [.. visual.Values, new MeasureRef(field.Name)] };
         }
 
         if (visual.Axis.Any(a => a.Field == field.Name) || visual.Legend?.Field == field.Name) return null;
         var axis = AxisOf(field);
-        return visual.Mark switch
-        {
-            MarkType.Kpi or MarkType.Gauge => visual with { Mark = MarkType.Bar, Axis = [axis], Gauge = null },
-            MarkType.Pie or MarkType.Donut => visual.Axis.Count == 0 ? visual with { Axis = [axis] } : null,
-            MarkType.Waterfall => visual.Axis.Count < MaxAxisFields ? visual with { Axis = [.. visual.Axis, axis] } : null,
-            MarkType.Table => visual.Axis.Count < MaxAxisFields ? visual with { Axis = [.. visual.Axis, axis] } : null,
-            _ when visual.Axis.Count == 0 => visual with { Axis = [axis] },
-            _ when visual.Legend is null => visual with { Legend = axis },
-            _ when visual.Axis.Count < MaxAxisFields => visual with { Axis = [.. visual.Axis, axis] },
-            _ => null,
-        };
+        if (visual.Type == VisualType.Kpi || visual.Type == VisualType.Gauge) return visual with { Type = VisualType.Bar, Axis = [axis], Gauge = null };
+        if (definition.Axis.IsUsed && visual.Axis.Count == 0) return visual with { Axis = [axis] };
+        if (definition.Legend.IsUsed && visual.Legend is null) return visual with { Legend = axis };
+        return HasRoom(definition.Axis, visual.Axis.Count) ? visual with { Axis = [.. visual.Axis, axis] } : null;
     }
+
+    private static bool HasRoom(VisualWell well, int count) => well.IsUsed && count < (well.MaxFields ?? int.MaxValue);
 
     // Dates are read by month unless the user picks another granularity
     private static FieldRef AxisOf(FieldDescriptor field) => new(field.Name, field.DataType == DataType.Date ? DateGrain.Month : DateGrain.None);

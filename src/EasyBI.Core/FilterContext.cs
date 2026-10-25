@@ -266,7 +266,7 @@ public static class SelectionFilters
                 highlight.AddRange(MatrixHighlight(visual, matrix, element));
                 continue;
             }
-            if (visual.Mark == MarkType.Table)
+            if (visual.Type == VisualType.Table)
             {
                 var columns = element.Fields.Select(f => request.Result.IndexOf(f.Key)).ToArray();
                 if (columns.Any(c => c < 0)) continue;

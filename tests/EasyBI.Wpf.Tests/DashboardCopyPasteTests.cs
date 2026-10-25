@@ -16,7 +16,7 @@ public class DashboardCopyPasteTests
     private static EasyBIContext Context() => EasyBIContext.Create().AddModel(
         SemanticModel.For(new[] { new Sale("Nord", 2m, 1m) }, "sales").Dimension(s => s.Region, "Region").Measure(s => s.Amount, "Amount").Measure(s => s.Margin, "Margin"));
 
-    private static VisualDefinition Text(string id) => new() { Id = id, Title = id, Mark = MarkType.Text, Text = new TextContent { Text = id } };
+    private static VisualDefinition Text(string id) => new() { Id = id, Title = id, Type = VisualType.Text, Text = new TextContent { Text = id } };
 
     private static VisualDefinition Chart(string id, string measure = "Amount") => new() { Id = id, Title = id, Model = "sales", Axis = [new("Region")], Values = [new(measure)] };
 

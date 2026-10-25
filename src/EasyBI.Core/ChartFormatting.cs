@@ -37,7 +37,7 @@ public sealed class ChartFormatting
         _request = request;
         var series = request.Chart.Series;
         _formats = [.. series.Select(s => request.Visual.Values.FirstOrDefault(v => v.Key == s.MeasureKey)?.Format)];
-        _stacks = [.. series.Select(s => s.Mark == MarkType.StackedBar ? (s.SecondaryAxis ? 1 : 0) : (int?)null)];
+        _stacks = [.. series.Select(s => s.SeriesType == VisualType.StackedBar ? (s.SecondaryAxis ? 1 : 0) : (int?)null)];
         foreach (var stack in _stacks.OfType<int>().Distinct())
         {
             _totals[stack] = [.. Enumerable.Range(0, request.Chart.Categories.Count).Select(c =>
@@ -129,7 +129,7 @@ public sealed class ChartFormatting
         var format = _request.Chart.Series.FirstOrDefault(s => s.MeasureKey == measure.Key)?.Format;
         var label = NumericFilters.Describe(new FilterSpec("", rule.Operator,
             [Invariant(rule.Value), rule.Operator == FilterOperator.Range ? Invariant(rule.Maximum) : null]), format);
-        return new ChartBand(from, to, color, _request.Visual.Mark.IsCartesian() && measure.SecondaryAxis, label);
+        return new ChartBand(from, to, color, _request.Visual.Type.IsCartesian() && measure.SecondaryAxis, label);
     }
 
     private static string? Invariant(double? value) => value is { } v ? InvariantValue.Format(v) : null;

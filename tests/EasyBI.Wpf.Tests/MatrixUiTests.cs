@@ -22,7 +22,7 @@ public class MatrixUiTests
     private static readonly VisualDefinition Matrix = new()
     {
         Model = "sales",
-        Mark = MarkType.Matrix,
+        Type = VisualType.Matrix,
         Axis = [new("Region")],
         Legend = new("Channel"),
         Values = [new("Amount")],
@@ -102,11 +102,11 @@ public class MatrixUiTests
     {
         var designer = new DesignerViewModel(EasyBIContext.Create().AddModel(Model()));
 
-        designer.SelectedMark = MarkType.Matrix;
+        designer.SelectedType = VisualType.Matrix;
 
-        Assert.Contains(designer.MarkOptions, o => o.Value == MarkType.Matrix);
+        Assert.Contains(designer.TypeOptions, o => o.Value == VisualType.Matrix);
         Assert.Equal(("Rows", "Columns"), (designer.AxisWell.Label, designer.LegendWell.Label));
         Assert.True(designer.LegendWell.IsUsed);
-        Assert.IsType<MatrixRenderer>(EasyBIContext.Create().ResolveRenderer(MarkType.Matrix));
+        Assert.IsType<MatrixRenderer>(EasyBIContext.Create().ResolveRenderer(VisualType.Matrix));
     }
 }

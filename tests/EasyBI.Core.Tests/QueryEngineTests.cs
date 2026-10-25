@@ -131,7 +131,7 @@ public class QueryEngineTests
                 new VisualDefinition
                 {
                     Model = "sales",
-                    Mark = MarkType.Line,
+                    Type = VisualType.Line,
                     Axis = [new("Date", DateGrain.Month)],
                     Values = [new("Amount", Aggregation.Average)],
                     Filters = [new("Region", FilterOperator.In, ["Nord"])],
@@ -142,7 +142,7 @@ public class QueryEngineTests
         var json = ReportSerializer.Serialize(report);
         var back = ReportSerializer.Deserialize(json);
 
-        Assert.Contains("\"mark\": \"Line\"", json);
+        Assert.Contains("\"type\": \"Line\"", json);
         var visual = Assert.Single(back.Visuals);
         Assert.Equal(report.Visuals[0].Axis, visual.Axis);
         Assert.Equal(report.Visuals[0].Values, visual.Values);

@@ -7,12 +7,12 @@ A connector implements a single interface. It receives **already queried and piv
 public sealed class MyRenderer : IVisualRenderer
 {
     public string Name => "MyLib";
-    public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType> { MarkType.Bar });
+    public RendererCapabilities Capabilities { get; } = new(new HashSet<VisualType> { VisualType.Bar });
     public FrameworkElement Render(RenderRequest request) { /* request.Chart.Categories, request.Chart.Series */ }
 }
 ```
 
-Each `ChartSeries` comes with its resolved `Mark` and `SecondaryAxis`: a connector draws every series with its own
+Each `ChartSeries` comes with its resolved `SeriesType` and `SecondaryAxis`: a connector draws every series with its own
 type, so one chart can mix bars, lines, areas and points.
 
 Colors come from `request.Theme`: series take `ColorAt(index)`, text `Foreground`, axis labels `MutedForeground`, grid
@@ -59,7 +59,7 @@ public RendererCapabilities Capabilities { get; } = new(marks)
 {
     Options =
     [
-        RendererOption.Toggle("scrollable", () => Strings.Scrollable, appliesTo: v => v.Mark.IsCartesian()),
+        RendererOption.Toggle("scrollable", () => Strings.Scrollable, appliesTo: v => v.Type.IsCartesian()),
         RendererOption.Choice("curve", () => Strings.Curve, [new("straight", () => Strings.Straight), new("smooth", () => Strings.Smooth)]),
         RendererOption.Number("barWidth", () => Strings.BarWidth, 48, minimum: 4, maximum: 120),
     ],

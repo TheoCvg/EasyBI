@@ -13,7 +13,7 @@ public class ChartFormattingTests
     {
         var visual = new VisualDefinition
         {
-            Mark = MarkType.Bar,
+            Type = VisualType.Bar,
             Values = [new("Amount") { Format = amount }, new("Count") { Format = count, SecondaryAxis = secondary }],
         };
         var chart = new ChartData("Region", ["A", "B", "C"],
@@ -61,11 +61,11 @@ public class ChartFormattingTests
             Rules = [new FormatRule { Operator = FilterOperator.GreaterThan, Value = 60, Color = ThemeColors.Success }],
             Scale = new ColorScale { Minimum = "#000000", Maximum = "#FFFFFF" },
         };
-        var visual = new VisualDefinition { Mark = MarkType.StackedBar, Values = [new("Amount") { Format = format }] };
+        var visual = new VisualDefinition { Type = VisualType.StackedBar, Values = [new("Amount") { Format = format }] };
         var chart = new ChartData("Region", ["A", "B", "C"],
         [
-            new ChartSeries("Web", [10, 50, 100], null) { MeasureKey = "Amount", Mark = MarkType.StackedBar },
-            new ChartSeries("Shop", [20, 20, 50], null) { MeasureKey = "Amount", Mark = MarkType.StackedBar },
+            new ChartSeries("Web", [10, 50, 100], null) { MeasureKey = "Amount", SeriesType = VisualType.StackedBar },
+            new ChartSeries("Shop", [20, 20, 50], null) { MeasureKey = "Amount", SeriesType = VisualType.StackedBar },
         ]);
 
         var formatting = ChartFormatting.For(new RenderRequest(visual, new ResultSet([], []), chart, Theme));
@@ -83,7 +83,7 @@ public class ChartFormattingTests
     {
         var visual = new VisualDefinition
         {
-            Mark = MarkType.StackedBar,
+            Type = VisualType.StackedBar,
             Values =
             [
                 new("Amount"),
@@ -92,8 +92,8 @@ public class ChartFormattingTests
         };
         var chart = new ChartData("Region", ["A", "B"],
         [
-            new ChartSeries("Amount", [80, 10], null) { MeasureKey = "Amount", Mark = MarkType.StackedBar },
-            new ChartSeries("Margin", [40, 10], null) { MeasureKey = "Margin", Mark = MarkType.StackedBar },
+            new ChartSeries("Amount", [80, 10], null) { MeasureKey = "Amount", SeriesType = VisualType.StackedBar },
+            new ChartSeries("Margin", [40, 10], null) { MeasureKey = "Margin", SeriesType = VisualType.StackedBar },
         ]);
 
         var formatting = ChartFormatting.For(new RenderRequest(visual, new ResultSet([], []), chart, Theme));

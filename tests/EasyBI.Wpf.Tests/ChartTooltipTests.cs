@@ -21,10 +21,10 @@ public class ChartTooltipTests
 
     private static readonly TooltipContent Content = new("Nord", [new TooltipItem("Web", "100", "#FF0000")]);
 
-    private static RenderRequest Request(MarkType mark)
+    private static RenderRequest Request(VisualType type)
     {
-        var visual = new VisualDefinition { Mark = mark, Values = [new("Amount")] };
-        var chart = new ChartData("Region", ["A", "B"], [new ChartSeries("Amount", [10, 50], null) { MeasureKey = "Amount", Mark = mark }]);
+        var visual = new VisualDefinition { Type = type, Values = [new("Amount")] };
+        var chart = new ChartData("Region", ["A", "B"], [new ChartSeries("Amount", [10, 50], null) { MeasureKey = "Amount", SeriesType = type }]);
         return new RenderRequest(visual, new ResultSet([], []), chart, BiTheme.Default);
     }
 
@@ -88,9 +88,9 @@ public class ChartTooltipTests
     [Fact]
     public void LiveCharts2_shows_EasyBI_tooltips() => Sta.Run(() =>
     {
-        foreach (var mark in new[] { MarkType.Bar, MarkType.Pie, MarkType.Waterfall })
+        foreach (var type in new[] { VisualType.Bar, VisualType.Pie, VisualType.Waterfall })
         {
-            var view = new LiveCharts2Renderer().Render(Request(mark));
+            var view = new LiveCharts2Renderer().Render(Request(type));
 
             Assert.IsNotType<LiveChartsCore.SkiaSharpView.SKCharts.SKDefaultTooltip>(Assert.IsAssignableFrom<IChartView>(view).Tooltip);
             Assert.IsType<ToolTip>(view.ToolTip);
@@ -100,7 +100,7 @@ public class ChartTooltipTests
     [Fact]
     public void OxyPlot_shows_EasyBI_tooltips_instead_of_its_tracker() => Sta.Run(() =>
     {
-        var view = (PlotView)new OxyPlotRenderer().Render(Request(MarkType.Bar) with { Select = _ => { } });
+        var view = (PlotView)new OxyPlotRenderer().Render(Request(VisualType.Bar) with { Select = _ => { } });
 
         Assert.IsType<ToolTip>(view.ToolTip);
         var leftClicks = ((PlotController)view.Controller!).InputCommandBindings
@@ -132,7 +132,7 @@ public class ChartTooltipTests
         var view = new VisualView
         {
             Context = context,
-            Definition = new VisualDefinition { Model = "sales", Mark = MarkType.Bar, Axis = [new("Region")], Values = [new("Amount")] },
+            Definition = new VisualDefinition { Model = "sales", Type = VisualType.Bar, Axis = [new("Region")], Values = [new("Amount")] },
         };
         Shown(view, () =>
         {
@@ -157,7 +157,7 @@ public class ChartTooltipTests
 
         public string Name => "Recording";
 
-        public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType> { MarkType.Bar });
+        public RendererCapabilities Capabilities { get; } = new(new HashSet<VisualType> { VisualType.Bar });
 
         public FrameworkElement Render(RenderRequest request)
         {
@@ -197,11 +197,11 @@ public class ChartTooltipTests
         Assert.DoesNotContain(designer.Visual.Values, v => v.Measure == "Quantity");
 
         // A table has no tooltips: the well holds its chip for when the user comes back to a chart
-        designer.SelectedMark = MarkType.Table;
+        designer.SelectedType = VisualType.Table;
         Assert.False(designer.TooltipWell.IsUsed);
         Assert.True(designer.TooltipWell.IsVisible);
         Assert.Null(designer.Visual!.Tooltip);
-        designer.SelectedMark = MarkType.Line;
+        designer.SelectedType = VisualType.Line;
         Assert.Single(designer.Visual!.Tooltip!.Values);
     }
 
@@ -229,7 +229,7 @@ public class ChartTooltipTests
         designer.Load(saved);
         Assert.False(designer.ShowTooltips);
         Assert.Equal("{category}: {value}", designer.TooltipTemplate);
-        designer.SelectedMark = MarkType.Kpi;
+        designer.SelectedType = VisualType.Kpi;
         Assert.DoesNotContain(designer.Properties, s => s.Key == DesignerPropertySections.Tooltips);
     }
 

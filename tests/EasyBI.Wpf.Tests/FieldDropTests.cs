@@ -32,7 +32,7 @@ public class FieldDropTests
     {
         var visual = FieldVisuals.Create(Model, Field("Amount"));
 
-        Assert.Equal((MarkType.Kpi, "sales", "Revenue"), (visual.Mark, visual.Model, visual.Title));
+        Assert.Equal((VisualType.Kpi, "sales", "Revenue"), (visual.Type, visual.Model, visual.Title));
         Assert.Equal("Amount", Assert.Single(visual.Values).Measure);
     }
 
@@ -42,10 +42,10 @@ public class FieldDropTests
         var bars = FieldVisuals.Create(Model, Field("Region"));
         var line = FieldVisuals.Create(Model, Field("Date"));
 
-        Assert.Equal((MarkType.Bar, "Revenue by Region"), (bars.Mark, bars.Title));
+        Assert.Equal((VisualType.Bar, "Revenue by Region"), (bars.Type, bars.Title));
         Assert.Equal(new FieldRef("Region"), Assert.Single(bars.Axis));
         Assert.Equal("Amount", Assert.Single(bars.Values).Measure);
-        Assert.Equal(MarkType.Line, line.Mark);
+        Assert.Equal(VisualType.Line, line.Type);
         Assert.Equal(new FieldRef("Date", DateGrain.Month), Assert.Single(line.Axis));
     }
 
@@ -56,7 +56,7 @@ public class FieldDropTests
 
         var visual = FieldVisuals.Create(model, model.Metadata.GetField("Region"));
 
-        Assert.Equal(MarkType.Table, visual.Mark);
+        Assert.Equal(VisualType.Table, visual.Type);
         Assert.Empty(visual.Values);
     }
 
@@ -84,7 +84,7 @@ public class FieldDropTests
 
         Assert.Equal(["Amount", "Quantity"], both.Values.Select(v => v.Measure));
         Assert.Null(FieldVisuals.AddField(both, Model, Field("Amount")));
-        Assert.Null(FieldVisuals.AddField(kpi with { Mark = MarkType.Pie }, Model, Field("Quantity"))); // a pie shows one measure
+        Assert.Null(FieldVisuals.AddField(kpi with { Type = VisualType.Pie }, Model, Field("Quantity"))); // a pie shows one measure
     }
 
     [Fact]
@@ -92,14 +92,14 @@ public class FieldDropTests
     {
         var visual = FieldVisuals.AddField(FieldVisuals.Create(Model, Field("Amount")), Model, Field("Region"))!;
 
-        Assert.Equal(MarkType.Bar, visual.Mark);
+        Assert.Equal(VisualType.Bar, visual.Type);
         Assert.Equal("Region", Assert.Single(visual.Axis).Field);
     }
 
     [Fact]
     public void Texts_images_and_visuals_of_another_model_refuse_fields()
     {
-        var text = new VisualDefinition { Mark = MarkType.Text, Text = new TextContent() };
+        var text = new VisualDefinition { Type = VisualType.Text, Text = new TextContent() };
         var other = FieldVisuals.Create(Sales("other"), Field("Amount"));
 
         Assert.Null(FieldVisuals.AddField(text, Model, Field("Region")));

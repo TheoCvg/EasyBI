@@ -29,26 +29,26 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
 
     public string Name => "LiveCharts2";
 
-    public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType>
+    public RendererCapabilities Capabilities { get; } = new(new HashSet<VisualType>
     {
-        MarkType.Bar, MarkType.StackedBar, MarkType.Line, MarkType.Area, MarkType.Scatter, MarkType.Pie, MarkType.Donut, MarkType.Waterfall,
+        VisualType.Bar, VisualType.StackedBar, VisualType.Line, VisualType.Area, VisualType.Scatter, VisualType.Pie, VisualType.Donut, VisualType.Waterfall,
     })
     {
         Options =
         [
-            RendererOption.Toggle(ScrollableOption, () => Strings.Scrollable, appliesTo: v => v.Mark.IsCartesian())
+            RendererOption.Toggle(ScrollableOption, () => Strings.Scrollable, appliesTo: v => v.Type.IsCartesian())
                 with { Description = () => Strings.ScrollableHint },
         ],
     };
 
-    public FrameworkElement Render(RenderRequest request) => request.Visual.Mark switch
+    public FrameworkElement Render(RenderRequest request) => request.Visual.Type switch
     {
-        var mark when mark.IsCircular() => RenderPie(request),
-        MarkType.Waterfall => RenderWaterfall(request),
-        var mark when mark.IsCartesian() => request.Visual.GetRendererOption<bool>(Name, ScrollableOption)
+        var type when type.IsCircular() => RenderPie(request),
+        var type when type == VisualType.Waterfall => RenderWaterfall(request),
+        var type when type.IsCartesian() => request.Visual.GetRendererOption<bool>(Name, ScrollableOption)
             ? RenderScrollable(request)
             : RenderCartesian(request),
-        _ => throw new NotSupportedException($"LiveCharts2Renderer does not support '{request.Visual.Mark}'."),
+        _ => throw new NotSupportedException($"LiveCharts2Renderer does not support '{request.Visual.Type}'."),
     };
 
     /// <summary>
@@ -141,7 +141,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
 
     /// <summary>
     /// Bars, stacked bars, lines, areas and points in one chart: each series is drawn with its own
-    /// <see cref="ChartSeries.Mark"/>, against the left axis or, for <see cref="ChartSeries.SecondaryAxis"/>, the right one.
+    /// <see cref="ChartSeries.SeriesType"/>, against the left axis or, for <see cref="ChartSeries.SecondaryAxis"/>, the right one.
     /// </summary>
     private static CartesianChart RenderCartesian(RenderRequest request)
     {
@@ -199,7 +199,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
 
         // Only bars: the bar under the pointer (category + legend series).
         // With lines, areas or points: the points closest to the pointer's X position.
-        view.FindingStrategy = chart.Series.All(s => s.Mark is MarkType.Bar or MarkType.StackedBar)
+        view.FindingStrategy = chart.Series.All(s => (s.SeriesType == VisualType.Bar || s.SeriesType == VisualType.StackedBar))
             ? FindingStrategy.ExactMatch
             : FindingStrategy.CompareOnlyXTakeClosest;
         view.Tooltip = new EasyBITooltip(view, request, points =>
@@ -426,7 +426,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         var format = series.FirstOrDefault()?.Format;
         // Bars are compared by their height: an axis showing only bars of positive values starts at zero
         var barsFromZero = series.Count > 0
-            && series.All(s => s.Mark is MarkType.Bar or MarkType.StackedBar)
+            && series.All(s => (s.SeriesType == VisualType.Bar || s.SeriesType == VisualType.StackedBar))
             && series.SelectMany(s => s.Values).All(v => v is null or >= 0);
         return Themed(new Axis
         {
@@ -533,26 +533,26 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                     ? paints.TryGetValue(hex, out var known) ? known : paints[hex] = new SolidColorPaint(SKColor.Parse(hex))
                     : null;
                 geometry.Fill = paint;
-                if (source.Mark is MarkType.Line or MarkType.Scatter) geometry.Stroke = paint;
+                if ((source.SeriesType == VisualType.Line || source.SeriesType == VisualType.Scatter)) geometry.Stroke = paint;
             }
         }
 
-        return source.Mark switch
+        return source.SeriesType switch
         {
-            MarkType.Line or MarkType.Area => new LineSeries<ObservableValue>
+            var type when type == VisualType.Line || type == VisualType.Area => new LineSeries<ObservableValue>
             {
                 Name = source.Name,
                 Values = values,
                 Stroke = new SolidColorPaint(lineColor, 3),
-                Fill = source.Mark == MarkType.Area ? new SolidColorPaint(color.WithAlpha((byte)(lineColor.Alpha * 0x55 / 0xFF))) : null,
-                GeometrySize = source.Mark == MarkType.Area ? 0 : 8,
+                Fill = source.SeriesType == VisualType.Area ? new SolidColorPaint(color.WithAlpha((byte)(lineColor.Alpha * 0x55 / 0xFF))) : null,
+                GeometrySize = source.SeriesType == VisualType.Area ? 0 : 8,
                 GeometryStroke = new SolidColorPaint(color, 3),
                 LineSmoothness = 0.3,
                 ScalesYAt = axis,
                 YToolTipLabelFormatter = p => Tooltip(p.Coordinate.PrimaryValue),
             }.OnPointMeasured(p => Fade(p.Visual, p.Index)),
             // Points sit on the categories, without a line between them
-            MarkType.Scatter => new LineSeries<ObservableValue>
+            var type when type == VisualType.Scatter => new LineSeries<ObservableValue>
             {
                 Name = source.Name,
                 Values = values,
@@ -564,7 +564,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                 ScalesYAt = axis,
                 YToolTipLabelFormatter = p => Tooltip(p.Coordinate.PrimaryValue),
             }.OnPointMeasured(p => Fade(p.Visual, p.Index)),
-            MarkType.StackedBar => new StackedColumnSeries<ObservableValue>
+            var type when type == VisualType.StackedBar => new StackedColumnSeries<ObservableValue>
             {
                 Name = source.Name,
                 Values = values,
@@ -599,7 +599,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
     /// <summary>A pie (a full disc), or a donut with the total in its hole.</summary>
     private static FrameworkElement RenderPie(RenderRequest request)
     {
-        var donut = request.Visual.Mark == MarkType.Donut;
+        var donut = request.Visual.Type == VisualType.Donut;
         var chart = request.Chart;
         var source = chart.Series[0];
         var formatting = ChartFormatting.For(request);

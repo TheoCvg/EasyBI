@@ -12,21 +12,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="MarkBar" xml:space="preserve">
-    <value>Bars</value>
-  </data>
-  <data name="MarkLine" xml:space="preserve">
-    <value>Lines</value>
-  </data>
-  <data name="MarkPie" xml:space="preserve">
-    <value>Pie</value>
-  </data>
-  <data name="MarkKpi" xml:space="preserve">
-    <value>KPI</value>
-  </data>
-  <data name="MarkTable" xml:space="preserve">
-    <value>Table</value>
-  </data>
   <data name="FilterAll" xml:space="preserve">
     <value>(all)</value>
   </data>
@@ -186,15 +171,6 @@
   <data name="Cancel" xml:space="preserve">
     <value>Cancel</value>
   </data>
-  <data name="MarkArea" xml:space="preserve">
-    <value>Areas</value>
-  </data>
-  <data name="MarkScatter" xml:space="preserve">
-    <value>Points</value>
-  </data>
-  <data name="MarkStackedBar" xml:space="preserve">
-    <value>Stacked</value>
-  </data>
   <data name="SeriesMarkDefault" xml:space="preserve">
     <value>As the visual</value>
   </data>
@@ -351,6 +327,9 @@
   <data name="DropAxisFull" xml:space="preserve">
     <value>The axis holds at most {0} fields</value>
   </data>
+  <data name="DropWellSingleField" xml:space="preserve">
+    <value>{0} holds a single field</value>
+  </data>
   <data name="DropFilterFromList" xml:space="preserve">
     <value>To filter on {0}, drag it from the field list</value>
   </data>
@@ -426,15 +405,6 @@
   <data name="VisualTypeHint" xml:space="preserve">
     <value>Change the type of visual</value>
   </data>
-  <data name="WellCategory" xml:space="preserve">
-    <value>Category</value>
-  </data>
-  <data name="WellValue" xml:space="preserve">
-    <value>Value</value>
-  </data>
-  <data name="WellRows" xml:space="preserve">
-    <value>Rows</value>
-  </data>
   <data name="WellUnused" xml:space="preserve">
     <value>Not used by this type of visual</value>
   </data>
@@ -482,12 +452,6 @@
   </data>
   <data name="ConditionNumber" xml:space="preserve">
     <value>A number</value>
-  </data>
-  <data name="MarkMatrix" xml:space="preserve">
-    <value>Matrix</value>
-  </data>
-  <data name="WellColumns" xml:space="preserve">
-    <value>Columns</value>
   </data>
   <data name="MatrixTotal" xml:space="preserve">
     <value>Total</value>
@@ -606,12 +570,6 @@
   <data name="FormatChartHint" xml:space="preserve">
     <value>On a chart, the rules and the color scale color the bars, points and slices (stacked bars: a frame around the whole stack).</value>
   </data>
-  <data name="MarkDonut" xml:space="preserve">
-    <value>Donut</value>
-  </data>
-  <data name="MarkGauge" xml:space="preserve">
-    <value>Gauge</value>
-  </data>
   <data name="GaugeMinimum" xml:space="preserve">
     <value>Minimum</value>
   </data>
@@ -626,9 +584,6 @@
   </data>
   <data name="GaugeTargetLabel" xml:space="preserve">
     <value>Target: {0}</value>
-  </data>
-  <data name="MarkWaterfall" xml:space="preserve">
-    <value>Waterfall</value>
   </data>
   <data name="WellTooltip" xml:space="preserve">
     <value>Tooltip</value>

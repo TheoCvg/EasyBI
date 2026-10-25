@@ -3,7 +3,7 @@ using EasyBI.Abstractions;
 namespace EasyBI.Core;
 
 /// <summary>
-/// Queries and pivots a <see cref="MarkType.Matrix"/>: its rows (the axis) with their totals, its cells (axis and
+/// Queries and pivots a <see cref="VisualType.Matrix"/>: its rows (the axis) with their totals, its cells (axis and
 /// legend), the totals of its columns (the legend) and the grand total. Each level is queried, so a total is the
 /// measure over all its rows, not a sum of cells.
 /// </summary>
