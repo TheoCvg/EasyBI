@@ -39,17 +39,57 @@ public sealed record ModelMetadata(string Name, string Caption, IReadOnlyList<Fi
 }
 
 /// <summary>
-/// Entry point supplied by a developer: metadata + the ability to execute an analytic query.
-/// An implementation may target IQueryable, raw SQL, a REST API, an OLAP cube...
+/// A data source of visuals, supplied by the developer: what can be analyzed (<see cref="Metadata"/>) and, for a
+/// visual, its data. Where the data comes from and how it travels is the implementation's business: an
+/// <c>IQueryable</c> or EF Core in the application (EasyBI.Core's <c>QueryableSemanticModel</c>), a server answering
+/// with the visual's result, an OLAP cube... EasyBI.Core's <c>QuerySemanticModel</c> computes a visual's data from
+/// <c>AnalyticQuery</c> results, for sources that only run queries.
 /// </summary>
 public interface ISemanticModel
 {
     ModelMetadata Metadata { get; }
 
-    Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default);
+    /// <summary>The data of a visual: its result and, for a matrix, its pivoted cells and totals.</summary>
+    Task<VisualData> GetDataAsync(VisualDataRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>Distinct values of a dimension, used by filters.</summary>
     Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// What a visual asks its <see cref="ISemanticModel"/> for. It only holds data that serializes, so that it can travel
+/// to a server: the visual with the filters of its page applied, and what its result depends on beside it.
+/// </summary>
+/// <param name="Visual">The visual, with the filters of its page and the selections of other visuals applied.</param>
+public sealed record VisualDataRequest(VisualDefinition Visual)
+{
+    /// <summary>The end user's calculated measures the visual uses, with those they use.</summary>
+    public IReadOnlyList<CalculatedMeasure> Measures { get; init; } = [];
+
+    /// <summary>
+    /// Whether the visual's type shows tooltips, whose measures are then queried with it. Its type may be one of the
+    /// application's, which the source does not know.
+    /// </summary>
+    public bool HasTooltips { get; init; }
+
+    /// <summary>
+    /// The user's date of today, for relative periods (this year, last 12 months) and comparisons with a year earlier:
+    /// only its date counts (a <see cref="DateTime"/> keeps this package free of a <c>DateOnly</c> polyfill).
+    /// </summary>
+    public DateTime Today { get; init; } = DateTime.Today;
+
+    /// <summary>Name of the culture of the captions in the result ("fr-FR"); null for the source's own.</summary>
+    public string? UICulture { get; init; }
+
+    /// <summary>Name of the culture of the texts of values in the result (a matrix's members); null for the source's own.</summary>
+    public string? FormatCulture { get; init; }
+}
+
+/// <summary>The data of a visual: its <see cref="ResultSet"/>, and the pivoted <see cref="MatrixData"/> of a matrix.</summary>
+public sealed record VisualData(ResultSet Result)
+{
+    /// <summary>The pivoted data of a <see cref="VisualType.Matrix"/>; null for the other types.</summary>
+    public MatrixData? Matrix { get; init; }
 }
 
 /// <summary>

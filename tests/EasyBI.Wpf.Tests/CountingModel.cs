@@ -13,12 +13,12 @@ internal sealed class CountingModel(string name) : ISemanticModel
         new FieldDescriptor("Amount", "Amount", FieldKind.Measure, DataType.Number, Aggregation.Sum),
     ]);
 
-    public Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default)
+    public Task<VisualData> GetDataAsync(VisualDataRequest request, CancellationToken cancellationToken = default)
     {
         Queries++;
-        return Task.FromResult(new ResultSet(
+        return Task.FromResult(new VisualData(new ResultSet(
             [new ResultColumn("Region", "Region", FieldKind.Dimension, DataType.Text), new ResultColumn("Amount", "Amount", FieldKind.Measure, DataType.Number)],
-            [["North", (object?)(double)Queries]]));
+            [["North", (object?)(double)Queries]])));
     }
 
     public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default) =>

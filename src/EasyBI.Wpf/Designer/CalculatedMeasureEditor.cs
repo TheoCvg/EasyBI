@@ -430,10 +430,10 @@ public sealed class CalculatedMeasureEditor : ObservableObject
                 (object? total, string? failure) = (null, null);
                 try
                 {
-                    // With the measures it uses
-                    var calculations = MeasureContext.Needed([measure.Name], [.. _others, measure], Model.Metadata);
-                    var result = await Model.ExecuteAsync(new([], [new(measure.Name)], Calculations: calculations));
-                    total = result.Rows.FirstOrDefault()?[0];
+                    // Its total, as a KPI would show it, with the measures it uses
+                    var kpi = new VisualDefinition { Model = Model.Metadata.Name, Type = VisualType.Kpi, Values = [new(measure.Name)] };
+                    var data = await Model.GetDataAsync(kpi.ToDataRequest(Model.Metadata, [.. _others, measure]));
+                    total = data.Result.Rows.FirstOrDefault()?[0];
                 }
                 catch (Exception ex)
                 {

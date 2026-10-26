@@ -5,7 +5,7 @@ using EasyBI.Core.Resources;
 namespace EasyBI.Core;
 
 /// <summary>
-/// Measures seen through time (<see cref="MeasureRef.Time"/>), on top of any <see cref="ISemanticModel"/>: the query runs
+/// Measures seen through time (<see cref="MeasureRef.Time"/>), on top of any <see cref="QuerySemanticModel"/>: the query runs
 /// as usual, and, for a comparison with the previous year, again with its dates shifted back one year (period filters,
 /// filters on periods); rows are matched on their groups, dates moved forward one year. A period under way (this year,
 /// the last 12 months, the current month clicked in a chart) is compared with the same days a year earlier: up to
@@ -15,12 +15,16 @@ namespace EasyBI.Core;
 public static class TimeCalculations
 {
     /// <summary>Runs a query whose measures may be seen through time.</summary>
-    public static Task<ResultSet> ExecuteWithTimeAsync(this ISemanticModel model, AnalyticQuery query, CancellationToken cancellationToken = default) =>
+    public static Task<ResultSet> ExecuteWithTimeAsync(this QuerySemanticModel model, AnalyticQuery query, CancellationToken cancellationToken = default) =>
         model.ExecuteWithTimeAsync(query, DateOnly.FromDateTime(DateTime.Today), cancellationToken);
 
-    /// <summary>Runs a query whose measures may be seen through time, on <paramref name="today"/>.</summary>
-    internal static async Task<ResultSet> ExecuteWithTimeAsync(this ISemanticModel model, AnalyticQuery query, DateOnly today, CancellationToken cancellationToken)
+    /// <summary>
+    /// Runs a query whose measures may be seen through time, on <paramref name="today"/>: its periods relative to today
+    /// are the days they keep on that date.
+    /// </summary>
+    public static async Task<ResultSet> ExecuteWithTimeAsync(this QuerySemanticModel model, AnalyticQuery query, DateOnly today, CancellationToken cancellationToken)
     {
+        query = query with { Filters = PeriodFilters.OnDay(query.Filters, today) };
         if (query.Measures.All(m => m.Time == TimeCalculation.None))
             return await model.ExecuteAsync(query, cancellationToken).ConfigureAwait(false);
 

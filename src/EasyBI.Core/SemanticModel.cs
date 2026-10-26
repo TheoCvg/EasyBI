@@ -44,7 +44,7 @@ internal readonly record struct SourceLease<T>(IQueryable<T> Source, IDisposable
 /// Semantic model declared in code by the developer: it exposes dimensions and measures
 /// as expressions, which the engine then composes into GroupBy/Select.
 /// </summary>
-public sealed class QueryableSemanticModel<T> : ISemanticModel
+public sealed class QueryableSemanticModel<T> : QuerySemanticModel
 {
     private readonly Func<SourceLease<T>> _acquire;
     private readonly SemaphoreSlim? _gate;
@@ -64,7 +64,7 @@ public sealed class QueryableSemanticModel<T> : ISemanticModel
     }
 
     /// <summary>Metadata in the current EasyBI language (captions are translated when <see cref="Localize"/> was called).</summary>
-    public ModelMetadata Metadata
+    public override ModelMetadata Metadata
     {
         get
         {
@@ -163,10 +163,10 @@ public sealed class QueryableSemanticModel<T> : ISemanticModel
         Add(new FieldDescriptor(name, caption, FieldKind.Measure, DataType.Number, Aggregation.Count, "N0"),
             (Expression<Func<T, int>>)(_ => 1));
 
-    public Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default) =>
+    public override Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default) =>
         RunAsync(source => QueryEngine<T>.ExecuteAsync(source, Metadata, _selectors, query, cancellationToken), cancellationToken);
 
-    public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default) =>
+    public override Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default) =>
         RunAsync(source => QueryEngine<T>.DistinctValuesAsync(source, _selectors[Metadata.GetField(field).Name], cancellationToken), cancellationToken);
 
     private Task<TResult> RunAsync<TResult>(Func<IQueryable<T>, Task<TResult>> run, CancellationToken cancellationToken) =>
