@@ -17,6 +17,7 @@ public sealed class MyViewModel : IDropHandler
 {
     public DragDropEffects DragOver(DropInfo drop) => drop.Item is Field ? DragDropEffects.Copy : DragDropEffects.None;
     public void Drop(DropInfo drop) => Columns.Insert(drop.Index, ((Field)drop.Item!).ToColumn());
+    public string? RefusalReason(DropInfo drop) => null;
 }
 ```
 
@@ -24,8 +25,8 @@ public sealed class MyViewModel : IDropHandler
   `Index` among the target's items and the raw `Data` for drags coming from elsewhere.
 - `DropTarget.IsDragOver` is true while an accepted drag is over the target (style triggers);
   `DropTarget.Orientation` switches the insertion rules to a vertical stack.
-- A handler may explain a refusal (`IDropHandler.RefusalReason`, optional): the reason is shown under the target and
-  set on it as `DropTarget.Refusal` while the drag is over it.
+- A handler may explain a refusal (`IDropHandler.RefusalReason`, null to say nothing): the reason is shown under the
+  target and set on it as `DropTarget.Refusal` while the drag is over it.
 - A scrollable target, or its scroll viewer, scrolls when the pointer nears its edges (`AutoScroller`, also usable
   on its own); `InsertionIndex` holds the pure insertion rules.
 - Style keys `DragSource.PreviewStyleKey` (a `ContentControl`; `DragSource.PreviewTemplate` sets the content),

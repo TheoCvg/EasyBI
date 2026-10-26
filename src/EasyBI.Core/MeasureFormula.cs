@@ -711,11 +711,11 @@ public static class MeasureFormula
                 i++;
                 continue;
             }
-            if (char.IsAsciiDigit(c) || (c == '.' && i + 1 < formula.Length && char.IsAsciiDigit(formula[i + 1])))
+            if (Compat.IsAsciiDigit(c) || (c == '.' && i + 1 < formula.Length && Compat.IsAsciiDigit(formula[i + 1])))
             {
-                while (i < formula.Length && (char.IsAsciiDigit(formula[i]) || formula[i] == '.')) i++;
+                while (i < formula.Length && (Compat.IsAsciiDigit(formula[i]) || formula[i] == '.')) i++;
                 // "0,5" is a decimal comma rather than two arguments
-                if (i + 1 < formula.Length && formula[i] == ',' && char.IsAsciiDigit(formula[i + 1]))
+                if (i + 1 < formula.Length && formula[i] == ',' && Compat.IsAsciiDigit(formula[i + 1]))
                     throw new FormulaException(Strings.FormulaDecimalComma, start, i + 2);
                 var number = formula[start..i];
                 if (number.Count(ch => ch == '.') > 1) throw new FormulaException(Strings.Format(Strings.FormulaUnexpected, number, start + 1), start, i);
@@ -745,9 +745,9 @@ public static class MeasureFormula
                 }
                 tokens.Add(c == '[' ? new Token(TokenKind.Field, text.ToString().Trim(), start, i) : new Token(TokenKind.Text, text.ToString(), start, i));
             }
-            else if (char.IsAsciiLetter(c))
+            else if (Compat.IsAsciiLetter(c))
             {
-                while (i < formula.Length && (char.IsAsciiLetterOrDigit(formula[i]) || formula[i] == '_')) i++;
+                while (i < formula.Length && (Compat.IsAsciiLetterOrDigit(formula[i]) || formula[i] == '_')) i++;
                 tokens.Add(new Token(TokenKind.Word, formula[start..i], start, i));
             }
             else if (c is '<' or '>' or '=')

@@ -154,10 +154,11 @@ public sealed class EasyBIContext
     /// </summary>
     public IVisualRenderer? ResolveRenderer(VisualDefinition visual) => Resolve(VisualPipeline.TypesOf(visual));
 
-    private IVisualRenderer? Resolve(IReadOnlySet<VisualType> types)
+    private IVisualRenderer? Resolve(IReadOnlyCollection<VisualType> types)
     {
-        if (_activeRenderer is not null && types.IsSubsetOf(_activeRenderer.Capabilities.Types)) return _activeRenderer;
-        return _renderers.Concat(BuiltInRenderers).FirstOrDefault(r => types.IsSubsetOf(r.Capabilities.Types));
+        bool Draws(IVisualRenderer renderer) => types.All(renderer.Capabilities.Types.Contains);
+        if (_activeRenderer is not null && Draws(_activeRenderer)) return _activeRenderer;
+        return _renderers.Concat(BuiltInRenderers).FirstOrDefault(Draws);
     }
 }
 

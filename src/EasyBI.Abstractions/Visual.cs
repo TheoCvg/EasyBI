@@ -19,7 +19,8 @@ public sealed record VisualType
 {
     public VisualType(string id)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        if (string.IsNullOrWhiteSpace(id))
+            throw new ArgumentException("A visual type needs an identifier.", nameof(id));
         Id = id;
     }
 

@@ -4,7 +4,7 @@ Guidelines for anyone (human or AI agent) contributing to EasyBI.
 
 ## Project at a glance
 
-EasyBI is a self-service BI library for WPF (.NET 8). Developers declare a semantic model
+EasyBI is a self-service BI library for WPF (.NET 8 and .NET Framework 4.6.2+). Developers declare a semantic model
 (dimensions and measures over an `IQueryable`), end users build visuals by drag-and-drop, and
 rendering is delegated to interchangeable connectors (LiveCharts2, OxyPlot, ...).
 
@@ -20,13 +20,16 @@ Source (IQueryable) ─▶ Semantic model ─▶ AnalyticQuery ─▶ ResultSet 
 | `src/EasyBI.Renderers.*` | One connector per charting library | Wpf + that library |
 | `src/EasyBI.Themes.*` | One theme mapping per control library (`EasyBIThemeMapping`) | Wpf + that library |
 | `samples/EasyBI.Sample` | Demo application | everything |
-| `tests/EasyBI.Core.Tests` | Engine, filtering, serialization tests (`net8.0`) | Core |
-| `tests/EasyBI.Wpf.Tests` | Designer view-model tests (`net8.0-windows`) | Wpf |
+| `tests/EasyBI.Core.Tests` | Engine, filtering, serialization tests (`net8.0`, `net48`) | Core |
+| `tests/EasyBI.Wpf.Tests` | Designer view-model tests (`net8.0-windows`, `net48`) | Wpf |
 
 Architecture rules:
 
-- `Abstractions` has **no dependencies** and no WPF types. `Core` has no WPF types either: anything
-  that can be tested without a UI belongs in `Core`.
+- Target frameworks: `Abstractions` and `Core` target `netstandard2.0` and `net8.0`, the WPF projects `net462` and
+  `net8.0-windows`. Write code that compiles for all of them: see "Target frameworks" in `docs/contributing.md`
+  (`Compat` for missing static methods, no `IReadOnlySet<T>` or default interface implementation in the public API).
+- `Abstractions` has **no dependencies** on .NET 8 (only Microsoft's packages bringing newer APIs on older targets) and
+  no WPF types. `Core` has no WPF types either: anything that can be tested without a UI belongs in `Core`.
 - Renderers only draw. They receive already queried and pivoted data (`RenderRequest`), never query
   a model themselves, and report clicks through `request.Select`.
 - The report JSON format (`easybi/v1`) is a public contract: additions must stay backward compatible

@@ -77,7 +77,7 @@ public sealed class RendererOptionViewModel : ObservableObject
                 OnPropertyChanged();
                 return;
             }
-            Value = Math.Clamp(number, Option.Minimum ?? double.MinValue, Option.Maximum ?? double.MaxValue);
+            Value = Compat.Clamp(number, Option.Minimum ?? double.MinValue, Option.Maximum ?? double.MaxValue);
             OnPropertyChanged(); // shows the clamped value
         }
     }

@@ -39,7 +39,7 @@ public sealed class LegendPager
     /// <summary>Shows a page (kept within the pages).</summary>
     public void GoTo(int page)
     {
-        page = Math.Clamp(page, 0, PageCount - 1);
+        page = Compat.Clamp(page, 0, PageCount - 1);
         if (page == Page) return;
         Page = page;
         Changed?.Invoke(this, EventArgs.Empty);

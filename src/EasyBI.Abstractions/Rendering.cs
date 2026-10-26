@@ -79,7 +79,7 @@ public sealed record BiTheme(IReadOnlyList<string> Palette)
 }
 
 /// <summary>What a renderer can draw. The designer uses it to disable unavailable options.</summary>
-public sealed record RendererCapabilities(IReadOnlySet<VisualType> Types)
+public sealed record RendererCapabilities(IReadOnlyCollection<VisualType> Types)
 {
     /// <summary>
     /// Settings specific to the renderer, offered to the end user by the designer and saved in

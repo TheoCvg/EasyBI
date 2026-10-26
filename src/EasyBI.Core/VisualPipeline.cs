@@ -7,7 +7,7 @@ namespace EasyBI.Core;
 /// <summary>Chains: visual definition → query → execution → pivoted data.</summary>
 public static class VisualPipeline
 {
-    private static readonly IReadOnlySet<VisualType> Cartesian =
+    private static readonly HashSet<VisualType> Cartesian =
         new HashSet<VisualType> { VisualType.Bar, VisualType.StackedBar, VisualType.Line, VisualType.Area, VisualType.Scatter };
 
     /// <summary>True for the types that show their own content (text, image) instead of querying a model.</summary>
@@ -24,7 +24,7 @@ public static class VisualPipeline
         visual.Type.IsCartesian() && measure.SeriesType is { } type && type.IsCartesian() ? type : visual.Type;
 
     /// <summary>Every type a renderer must support to draw the visual: its own and those of its measures.</summary>
-    public static IReadOnlySet<VisualType> TypesOf(VisualDefinition visual) =>
+    public static IReadOnlyCollection<VisualType> TypesOf(VisualDefinition visual) =>
         visual.Values.Select(visual.SeriesType).Append(visual.Type).ToHashSet();
 
     /// <summary>Render request of a text or image visual: no query, empty data.</summary>

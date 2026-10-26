@@ -21,7 +21,8 @@ In ten minutes: a WPF window that shows a chart of your data, then a designer wh
     <PackageReference Include="EasyBI.Renderers.LiveCharts2" Version="*" />
     ```
 
-`EasyBI.Wpf` brings `EasyBI.Core` and `EasyBI.Abstractions`. Pick the charting library you prefer: `EasyBI.Renderers.OxyPlot`
+EasyBI runs on .NET 8 and on .NET Framework 4.6.2 or later. `EasyBI.Wpf` brings `EasyBI.Core` and
+`EasyBI.Abstractions`. Pick the charting library you prefer: `EasyBI.Renderers.OxyPlot`
 draws the same charts with OxyPlot.
 
 !!! tip "Your application uses WPF UI or Material Design?"

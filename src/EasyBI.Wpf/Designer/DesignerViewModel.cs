@@ -593,17 +593,17 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     {
         // Legend shows one field: a new one replaces it
         if (items == Legend) items.Clear();
-        items.Insert(Math.Clamp(index, 0, items.Count), item);
+        items.Insert(Compat.Clamp(index, 0, items.Count), item);
     }
 
     private static void Insert(ObservableCollection<FilterItemViewModel> items, int index, FilterItemViewModel item) =>
-        items.Insert(Math.Clamp(index, 0, items.Count), item);
+        items.Insert(Compat.Clamp(index, 0, items.Count), item);
 
     // The index is a position among the items before the move, the moved one included
     private static void Move<T>(ObservableCollection<T> items, T item, int index)
     {
         var from = items.IndexOf(item);
-        var to = Math.Clamp(index > from ? index - 1 : index, 0, items.Count - 1);
+        var to = Compat.Clamp(index > from ? index - 1 : index, 0, items.Count - 1);
         if (from != to) items.Move(from, to);
     }
 
@@ -1047,7 +1047,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         var chips = Chips;
         if (chips.Count == 0) return;
         var index = _selectedItem is null ? -1 : chips.ToList().IndexOf(_selectedItem);
-        SelectedItem = index < 0 ? chips[forward ? 0 : ^1] : chips[Math.Clamp(index + (forward ? 1 : -1), 0, chips.Count - 1)];
+        SelectedItem = index < 0 ? chips[forward ? 0 : ^1] : chips[Compat.Clamp(index + (forward ? 1 : -1), 0, chips.Count - 1)];
     }
 
     /// <summary>Selects a chip of the next well holding some (the previous one when <paramref name="down"/> is false), at the same place if it can.</summary>
@@ -1060,7 +1060,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         }
         var shelf = ShelfOf(_selectedItem);
         var index = Items(shelf).IndexOf(_selectedItem);
-        var wells = down ? Enum.GetValues<Shelf>().Where(s => s > shelf) : Enum.GetValues<Shelf>().Where(s => s < shelf).Reverse();
+        var wells = down ? Compat.GetValues<Shelf>().Where(s => s > shelf) : Compat.GetValues<Shelf>().Where(s => s < shelf).Reverse();
         if (wells.Select(Items).FirstOrDefault(items => items.Count > 0) is { } next)
             SelectedItem = next[Math.Min(index, next.Count - 1)];
     }

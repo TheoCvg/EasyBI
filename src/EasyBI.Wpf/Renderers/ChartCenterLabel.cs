@@ -45,7 +45,7 @@ public sealed class ChartCenterLabel : Grid
             return;
         }
         // About a third of a donut's hole, which is half of the pie
-        var fontSize = Math.Clamp(Math.Min(area.Width, area.Height) / 13, 11, 26);
+        var fontSize = Compat.Clamp(Math.Min(area.Width, area.Height) / 13, 11, 26);
         if (Value.FontSize != fontSize) Value.FontSize = fontSize;
         _label.Visibility = Visibility.Visible;
         _label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));

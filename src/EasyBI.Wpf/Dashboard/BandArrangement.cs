@@ -141,7 +141,7 @@ public sealed class BandArrangement
                 if (y > 0) y += s.Gap;
                 var height = line.RowSpan is { } rows ? Math.Max(s.HeightOf(rows), Min(line)) : Preferred(line);
                 // An item alone on its line may be narrowed: the rest of the line is free
-                var span = line.IsItem && line.ColumnSpan is { } fixedSpan ? Math.Clamp(fixedSpan, 1, s.Columns) : s.Columns;
+                var span = line.IsItem && line.ColumnSpan is { } fixedSpan ? Compat.Clamp(fixedSpan, 1, s.Columns) : s.Columns;
                 Place(line, 0, span, y, height);
                 if (span < s.Columns)
                     _free.Add(new FreeSpace(new Rect(s.X(span), y, s.WidthOf(s.Columns - span), height), line.Id, ItemSide.Right));
@@ -247,7 +247,7 @@ public sealed class BandArrangement
             var fits = total <= width + 0.5;
             var rest = fits ? width - total : 0;
             var free = line.Count(i => i.Width is null);
-            var x = fits ? 0 : -Math.Clamp(s.HorizontalOffset, 0, total - width);
+            var x = fits ? 0 : -Compat.Clamp(s.HorizontalOffset, 0, total - width);
             foreach (var item in line)
             {
                 var itemWidth = Basis(item) + (item.Width is null && free > 0 ? rest / free : 0);

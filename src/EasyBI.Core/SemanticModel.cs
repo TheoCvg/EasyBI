@@ -211,6 +211,6 @@ public sealed class QueryableSemanticModel<T> : ISemanticModel
         }
         if (current is not ParameterExpression || parts.Count == 0)
             throw new ArgumentException("Cannot infer the field name: specify the 'name' parameter.", nameof(selector));
-        return string.Join('.', parts);
+        return string.Join(".", parts);
     }
 }

@@ -4,6 +4,26 @@ Every version, with its breaking changes. EasyBI follows [Semantic Versioning](h
 breaking changes bump the minor version. The report format (`easybi/v1`) stays backward compatible: a newer version
 opens older reports, and a report using a newer feature cannot be opened by an older version.
 
+## Unreleased
+
+### Added
+
+- **.NET Framework and .NET Standard**: the WPF packages (`EasyBI.Wpf`, renderers, themes) also target .NET Framework
+  4.6.2, and `EasyBI.Abstractions` and `EasyBI.Core` target .NET Standard 2.0, besides .NET 8. On these older targets,
+  they depend on Microsoft's packages that bring the newer APIs (`System.Text.Json`, `Microsoft.Bcl.AsyncInterfaces`,
+  `Microsoft.Bcl.HashCode`, `System.ValueTuple`) and on `Portable.System.DateTimeOnly` for `DateOnly`; on .NET 8 they
+  have no new dependency. EF Core 8 needs .NET 8: on .NET Framework, a model runs over another `IQueryable` (in memory,
+  EF Core 3.1...).
+
+### Breaking changes
+
+- Sets of the public API are `IReadOnlyCollection<T>` instead of `IReadOnlySet<T>`, which .NET Standard 2.0 and .NET
+  Framework lack: `RendererCapabilities.Types`, `VisualPipeline.TypesOf`, `DashboardLayoutEngine.Extract`,
+  `MaterialDesignTheme.KeptKeys` and `WpfUiTheme.KeptKeys`. Code passing a `HashSet<T>` compiles as before; code
+  calling set methods (`IsSubsetOf`...) on them uses LINQ instead.
+- `IDropHandler.RefusalReason` has no default implementation anymore (.NET Framework does not support them): a handler
+  that does not explain its refusals returns `null`.
+
 ## 0.5.0-beta.1 — 2026-10-26
 
 ### Added

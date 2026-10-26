@@ -84,7 +84,7 @@ internal sealed class FormulaHighlighter : FrameworkElement
         // One brush (and weight) per character
         var brushes = new Brush?[text.Length];
         var bold = new bool[text.Length];
-        Array.Fill(brushes, Foreground);
+        Compat.Fill(brushes, Foreground);
         foreach (var token in FormulaEditing.Tokenize(text))
         {
             var brush = token.Kind switch
@@ -125,8 +125,8 @@ internal sealed class FormulaHighlighter : FrameworkElement
     {
         var pen = new Pen(brush, 1.2);
         pen.Freeze();
-        var start = Math.Clamp(problem.Start, 0, text.Length);
-        var end = Math.Clamp(problem.Start + problem.Length, start, text.Length);
+        var start = Compat.Clamp(problem.Start, 0, text.Length);
+        var end = Compat.Clamp(problem.Start + problem.Length, start, text.Length);
         if (start == end)
         {
             var at = start < text.Length ? rects[start] : Position(text.Length - 1, trailing: true);
@@ -145,7 +145,7 @@ internal sealed class FormulaHighlighter : FrameworkElement
 
     private static void Wave(DrawingContext context, Pen pen, double left, double right, double bottom)
     {
-        if (!double.IsFinite(left) || !double.IsFinite(right) || !double.IsFinite(bottom)) return;
+        if (!Compat.IsFinite(left) || !Compat.IsFinite(right) || !Compat.IsFinite(bottom)) return;
         var geometry = new StreamGeometry();
         using (var g = geometry.Open())
         {

@@ -131,7 +131,7 @@ public sealed class DragGesture
         if (offset.X != 0 && ScrollsBands && band < panel.Bands.Count && panel.Bands[band] is { CanScroll: true } definition)
         {
             var before = definition.HorizontalOffset;
-            definition.HorizontalOffset = Math.Clamp(before + offset.X, 0, definition.ExtentWidth - definition.ViewportWidth);
+            definition.HorizontalOffset = Compat.Clamp(before + offset.X, 0, definition.ExtentWidth - definition.ViewportWidth);
             panel.UpdateLayout();
             scrolled |= definition.HorizontalOffset != before;
         }
