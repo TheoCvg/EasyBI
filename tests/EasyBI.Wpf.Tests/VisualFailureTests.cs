@@ -28,11 +28,11 @@ public class VisualFailureTests
             new FieldDescriptor("Amount", "Amount", FieldKind.Measure, DataType.Number, Aggregation.Sum),
         ]);
 
-        public Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default) =>
+        public Task<VisualData> GetDataAsync(VisualDataRequest request, CancellationToken cancellationToken = default) =>
             ++Queries <= failures
-                ? Task.FromException<ResultSet>(new InvalidOperationException("The LINQ expression could not be translated.",
+                ? Task.FromException<VisualData>(new InvalidOperationException("The LINQ expression could not be translated.",
                     new NotSupportedException("GetValueOrDefault")))
-                : Task.FromResult(new ResultSet(Columns, [["North", (object?)1d]]));
+                : Task.FromResult(new VisualData(new ResultSet(Columns, [["North", (object?)1d]])));
 
         public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<object?>>([]);

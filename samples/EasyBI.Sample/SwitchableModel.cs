@@ -3,12 +3,12 @@ using EasyBI.Abstractions;
 
 namespace EasyBI.Sample;
 
-/// <summary>Queries that ran together (a dashboard refresh): how many, how long in all, the slowest one.</summary>
+/// <summary>Visuals queried together (a dashboard refresh): how many, how long in all, the slowest one.</summary>
 public sealed record QueryBatch(int Queries, TimeSpan Duration, TimeSpan Slowest);
 
 /// <summary>
-/// The demo's model: forwards every query to the data source currently chosen (in memory or a database) and times
-/// it. The sources declare the same fields under the same name, so visuals keep working after a switch.
+/// The demo's model: forwards the data requests of visuals to the data source currently chosen (in memory or a
+/// database) and times them. The sources declare the same fields under the same name, so visuals keep working after a switch.
 /// </summary>
 public sealed class SwitchableModel(ISemanticModel source) : ISemanticModel
 {
@@ -20,15 +20,15 @@ public sealed class SwitchableModel(ISemanticModel source) : ISemanticModel
 
     public ISemanticModel Source { get; set; } = source;
 
-    /// <summary>Raised, on any thread, when a query starts or ends, with the number of queries running.</summary>
+    /// <summary>Raised, on any thread, when a visual's request starts or ends, with the number of requests running.</summary>
     public event EventHandler<int>? RunningChanged;
 
-    /// <summary>Raised, on any thread, when the last running query ends.</summary>
+    /// <summary>Raised, on any thread, when the last running request ends.</summary>
     public event EventHandler<QueryBatch>? BatchCompleted;
 
     public ModelMetadata Metadata => Source.Metadata;
 
-    public async Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default)
+    public async Task<VisualData> GetDataAsync(VisualDataRequest request, CancellationToken cancellationToken = default)
     {
         int running;
         lock (_lock)
@@ -46,7 +46,7 @@ public sealed class SwitchableModel(ISemanticModel source) : ISemanticModel
         var watch = Stopwatch.StartNew();
         try
         {
-            return await Source.ExecuteAsync(query, cancellationToken);
+            return await Source.GetDataAsync(request, cancellationToken);
         }
         finally
         {

@@ -14,9 +14,19 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   `Microsoft.Bcl.HashCode`, `System.ValueTuple`) and on `Portable.System.DateTimeOnly` for `DateOnly`; on .NET 8 they
   have no new dependency. EF Core 8 needs .NET 8: on .NET Framework, a model runs over another `IQueryable` (in memory,
   EF Core 3.1...).
+- **Data sources at the level of the visual**: a visual asks its model for its data (`ISemanticModel.GetDataAsync`, a
+  `VisualDataRequest` in, a `VisualData` out) rather than running queries, so that a model can answer it from anywhere
+  (a server, a cache...). `QuerySemanticModel` is the base of models that run `AnalyticQuery`s, from which EasyBI
+  composes comparisons with a year earlier, year-to-date totals and matrices; `QueryableSemanticModel<T>` derives from
+  it. `VisualPipeline.Prepare` draws data obtained otherwise.
 
 ### Breaking changes
 
+- `ISemanticModel.ExecuteAsync(AnalyticQuery)` is replaced by `GetDataAsync(VisualDataRequest)`. A model that runs
+  queries derives from `QuerySemanticModel` and overrides `ExecuteAsync` as before (with `override`); code that queried
+  a model directly calls `ExecuteAsync` on a `QuerySemanticModel` (`QueryableSemanticModel<T>` is one), or
+  `GetDataAsync`. `TimeCalculations.ExecuteWithTimeAsync` and `MatrixBuilder.ExecuteAsync` take a
+  `QuerySemanticModel`.
 - Sets of the public API are `IReadOnlyCollection<T>` instead of `IReadOnlySet<T>`, which .NET Standard 2.0 and .NET
   Framework lack: `RendererCapabilities.Types`, `VisualPipeline.TypesOf`, `DashboardLayoutEngine.Extract`,
   `MaterialDesignTheme.KeptKeys` and `WpfUiTheme.KeptKeys`. Code passing a `HashSet<T>` compiles as before; code

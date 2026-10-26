@@ -10,7 +10,7 @@ public sealed class UnavailableModel(ModelMetadata metadata) : ISemanticModel
 {
     public ModelMetadata Metadata { get; } = metadata;
 
-    public async Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default)
+    public async Task<VisualData> GetDataAsync(VisualDataRequest request, CancellationToken cancellationToken = default)
     {
         await Task.Delay(300, cancellationToken);
         throw new TimeoutException("The sales database did not answer within 30 seconds.",
