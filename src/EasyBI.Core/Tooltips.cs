@@ -7,7 +7,7 @@ namespace EasyBI.Core;
 /// The tooltips of charts: their default content (<see cref="Build"/>), following the visual's
 /// <see cref="TooltipSettings"/>, and what a connector calls to get the content to show (<see cref="TooltipFor"/>).
 /// </summary>
-public static partial class Tooltips
+public static class Tooltips
 {
     /// <summary>
     /// The visual types with tooltips (<see cref="VisualTypeDefinition.HasTooltips"/> in <paramref name="types"/>,
@@ -97,8 +97,7 @@ public static partial class Tooltips
 
     // {field} is replaced by its value; an unknown field stays as typed
     private static string Fill(string template, IReadOnlyDictionary<string, string> fields) =>
-        FieldPattern().Replace(template, match => fields.TryGetValue(match.Groups[1].Value.Trim(), out var value) ? value : match.Value);
+        FieldPattern.Replace(template, match => fields.TryGetValue(match.Groups[1].Value.Trim(), out var value) ? value : match.Value);
 
-    [GeneratedRegex(@"\{([^{}]+)\}")]
-    private static partial Regex FieldPattern();
+    private static readonly Regex FieldPattern = new(@"\{([^{}]+)\}", RegexOptions.Compiled);
 }

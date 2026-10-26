@@ -143,7 +143,7 @@ public class FixesTests
         var model = SemanticModel.For(source, "m").Dimension(r => r.Region, "Région").Dimension(r => r.Category, "Catégorie").Measure(r => r.Amount, "CA");
         FieldRef[] groupBy = [new("Region"), new("Category")];
 
-        var result = await model.ExecuteAsync(new(groupBy[..fields], [new("Amount")]));
+        var result = await model.ExecuteAsync(new(groupBy.Take(fields).ToArray(), [new("Amount")]));
 
         Assert.Equal(fields == 1 ? 2 : 3, result.Rows.Count);
         var expression = Assert.Single(source.Log.Executed);

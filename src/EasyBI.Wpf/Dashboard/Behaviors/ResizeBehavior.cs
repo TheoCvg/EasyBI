@@ -70,7 +70,7 @@ public sealed class ResizeBehavior : DashboardBehavior
         {
             // Columns are counted as shown (fewer in a column tier) and saved in the layout's
             var columns = (int)Math.Round(delta.X / Math.Max(1, Panel.ColumnPitch));
-            int? columnSpan = columns == 0 ? null : Panel.ToLayoutSpan(Math.Clamp(_initial.ColumnSpan + columns, 1, Panel.ActiveColumns));
+            int? columnSpan = columns == 0 ? null : Panel.ToLayoutSpan(Compat.Clamp(_initial.ColumnSpan + columns, 1, Panel.ActiveColumns));
             target = $"{columnSpan}x{rowSpan}";
             resize = () => DashboardLayout.Resize(item, columnSpan, rowSpan);
         }

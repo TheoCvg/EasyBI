@@ -9,7 +9,7 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFrameworks>net462;net8.0-windows</TargetFrameworks>
     <UseWPF>true</UseWPF>
     <Description>Self-service BI for WPF: drag-and-drop report designer, visual view, filter bar with cross-filtering, built-in KPI and table renderers, pluggable chart connectors.</Description>
   </PropertyGroup>

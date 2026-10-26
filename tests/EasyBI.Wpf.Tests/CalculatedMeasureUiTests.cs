@@ -311,7 +311,7 @@ public class CalculatedMeasureUiTests
     /// <summary>Holds its queries until released, recording their cancellation tokens.</summary>
     private sealed class GatedModel(ISemanticModel inner) : ISemanticModel
     {
-        private readonly TaskCompletionSource _gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<bool> _gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public int Queries => Tokens.Count;
 
@@ -319,7 +319,7 @@ public class CalculatedMeasureUiTests
 
         public ModelMetadata Metadata => inner.Metadata;
 
-        public void Release() => _gate.SetResult();
+        public void Release() => _gate.SetResult(true);
 
         public async Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default)
         {

@@ -14,7 +14,7 @@ public enum Shelf { Axis, Legend, Values, Tooltip, Filters }
 public sealed class ShelfItemViewModel : ObservableObject
 {
     public static IReadOnlyList<Option<DateGrain>> GrainOptions { get; } =
-        Enum.GetValues<DateGrain>().Select(g => new Option<DateGrain>(g, () => DateGrains.Caption(g))).ToArray();
+        Compat.GetValues<DateGrain>().Select(g => new Option<DateGrain>(g, () => DateGrains.Caption(g))).ToArray();
 
     public static IReadOnlyList<Option<Aggregation>> AggregationOptions { get; } =
         new[] { Aggregation.Sum, Aggregation.Average, Aggregation.Min, Aggregation.Max, Aggregation.Count }

@@ -46,7 +46,7 @@ public static class InsertionIndex
         var shown = items.Where(r => !r.IsEmpty).ToList();
         if (shown.Count == 0) return Rect.Empty;
         // Index among the displayed items
-        var at = Math.Clamp(items.Take(Math.Clamp(index, 0, items.Count)).Count(r => !r.IsEmpty), 0, shown.Count);
+        var at = Compat.Clamp(items.Take(Compat.Clamp(index, 0, items.Count)).Count(r => !r.IsEmpty), 0, shown.Count);
         var previous = at > 0 ? shown[at - 1] : (Rect?)null;
         var next = at < shown.Count ? shown[at] : (Rect?)null;
 

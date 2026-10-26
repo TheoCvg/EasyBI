@@ -29,7 +29,7 @@ public static class Slots
     /// <summary>The slots declared on <paramref name="element"/>, created on first access.</summary>
     public static SlotCollection GetItems(DependencyObject element)
     {
-        ArgumentNullException.ThrowIfNull(element);
+        if (element is null) throw new ArgumentNullException(nameof(element));
         // An inherited collection belongs to an ancestor: the element gets its own
         if (element.ReadLocalValue(ItemsProperty) is not SlotCollection items)
             element.SetValue(ItemsProperty, items = []);

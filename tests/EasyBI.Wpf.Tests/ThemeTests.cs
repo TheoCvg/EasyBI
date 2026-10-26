@@ -18,7 +18,7 @@ public class ThemeTests
     [Fact]
     public void Light_and_dark_themes_define_every_key() => Sta.Run(() =>
     {
-        foreach (var mode in Enum.GetValues<EasyBIThemeMode>())
+        foreach (var mode in Compat.GetValues<EasyBIThemeMode>())
         {
             var theme = new EasyBIThemeDictionary { Mode = mode };
             var missing = Keys().Where(k => !theme.Contains(k)).Select(k => k.ResourceId).ToArray();

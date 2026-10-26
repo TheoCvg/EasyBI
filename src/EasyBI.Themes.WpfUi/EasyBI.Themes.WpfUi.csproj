@@ -9,7 +9,7 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFrameworks>net462;net8.0-windows</TargetFrameworks>
     <UseWPF>true</UseWPF>
     <Description>WPF UI (lepoco) theme for EasyBI.Wpf: EasyBI's colors follow the WPF UI theme, light or dark, and its controls take WPF UI's styles.</Description>
     <PackageTags>$(PackageTags);wpfui;fluent;theme</PackageTags>

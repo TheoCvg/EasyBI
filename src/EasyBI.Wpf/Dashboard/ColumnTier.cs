@@ -23,7 +23,7 @@ public sealed class ColumnTier
     /// <summary>The columns grid bands show at a width: those of the narrowest tier the width is below, the layout's otherwise.</summary>
     public static int ColumnsFor(IEnumerable<ColumnTier> tiers, double width, int layoutColumns) =>
         tiers.Where(t => width < t.BelowWidth).OrderBy(t => t.BelowWidth)
-            .Select(t => Math.Clamp(t.Columns, 1, layoutColumns)).DefaultIfEmpty(layoutColumns).First();
+            .Select(t => Compat.Clamp(t.Columns, 1, layoutColumns)).DefaultIfEmpty(layoutColumns).First();
 
     /// <summary>The lines a line of a grid band shows as in a column tier (<see cref="ArrangeSettings.IsTier"/>).</summary>
     internal static IEnumerable<LayoutNode> AdaptLine(LayoutNode line, ArrangeSettings settings) => Adapt(line, settings.Columns, settings);
@@ -77,7 +77,7 @@ public sealed class ColumnTier
 
     private static int? Scale(int? span, ArrangeSettings settings) =>
         span is { } value && settings.LayoutColumns is { } layout
-            ? Math.Clamp((int)Math.Round(value * (double)settings.Columns / layout), 1, settings.Columns)
+            ? Compat.Clamp((int)Math.Round(value * (double)settings.Columns / layout), 1, settings.Columns)
             : span;
 
     /// <summary>Splits <paramref name="total"/> columns in proportion to <paramref name="weights"/>, at least one each (largest remainders first).</summary>

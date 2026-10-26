@@ -45,7 +45,7 @@ public sealed class AutoScroller
         if (offset.X != 0) viewer.ScrollToHorizontalOffset(h + offset.X);
         if (offset.Y != 0) viewer.ScrollToVerticalOffset(v + offset.Y);
         // Offsets are clamped by the viewer: nothing moves at the ends
-        return Math.Clamp(h + offset.X, 0, viewer.ScrollableWidth) != h || Math.Clamp(v + offset.Y, 0, viewer.ScrollableHeight) != v;
+        return Compat.Clamp(h + offset.X, 0, viewer.ScrollableWidth) != h || Compat.Clamp(v + offset.Y, 0, viewer.ScrollableHeight) != v;
     });
 
     /// <summary>The visible part of a <see cref="ScrollViewer"/>'s content, in the coordinates of <paramref name="element"/>.</summary>

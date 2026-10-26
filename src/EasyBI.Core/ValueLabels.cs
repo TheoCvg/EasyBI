@@ -16,7 +16,7 @@ public static class ValueLabels
     /// <summary>The field with a label for a value (a blank text removes it); null labels when none is left.</summary>
     public static FieldRef WithLabel(this FieldRef field, object? value, string? text)
     {
-        var labels = new Dictionary<string, string>(field.Labels ?? new Dictionary<string, string>());
+        var labels = field.Labels?.ToDictionary(l => l.Key, l => l.Value) ?? [];
         var key = InvariantValue.Format(value) ?? "";
         if (string.IsNullOrWhiteSpace(text)) labels.Remove(key);
         else labels[key] = text.Trim();

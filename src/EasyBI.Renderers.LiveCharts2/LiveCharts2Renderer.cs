@@ -113,7 +113,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         {
             var center = scrollbar.ScalePixelsToData(new LvcPointD(position.X, position.Y)).X;
             var range = (axis.MaxLimit ?? last) - (axis.MinLimit ?? first);
-            var start = Math.Clamp(center - range / 2, first, Math.Max(first, last - range));
+            var start = Compat.Clamp(center - range / 2, first, Math.Max(first, last - range));
             axis.MinLimit = start;
             axis.MaxLimit = start + range;
         }

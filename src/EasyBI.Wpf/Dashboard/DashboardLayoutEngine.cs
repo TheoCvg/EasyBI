@@ -75,7 +75,7 @@ public static class DashboardLayoutEngine
     /// The part of a layout showing some visuals (copied items): each band keeps only their items, with their sizes and
     /// their arrangement (containers left with one child are simplified), and bands left empty are dropped.
     /// </summary>
-    public static DashboardLayoutDefinition Extract(DashboardLayoutDefinition layout, IReadOnlySet<string> visualIds)
+    public static DashboardLayoutDefinition Extract(DashboardLayoutDefinition layout, IReadOnlyCollection<string> visualIds)
     {
         LayoutNode? Prune(LayoutNode node) => node.IsItem
             ? node.VisualId is { } id && visualIds.Contains(id) ? node : null
@@ -102,7 +102,7 @@ public static class DashboardLayoutEngine
         var scale = (double)columns / Math.Max(1, copied.Columns);
         LayoutNode Scale(LayoutNode node) => node with
         {
-            ColumnSpan = node.ColumnSpan is { } span ? Math.Clamp((int)Math.Round(span * scale), 1, columns) : null,
+            ColumnSpan = node.ColumnSpan is { } span ? Compat.Clamp((int)Math.Round(span * scale), 1, columns) : null,
             Children = node.Children.Select(Scale).ToArray(),
         };
 
@@ -173,7 +173,7 @@ public static class DashboardLayoutEngine
             return InsertBand(layout, layout.Bands.Count, BandMode.Fit, [item]);
         var band = layout.Bands[bandIndex];
         var items = band.Items.ToList();
-        items.Insert(Math.Clamp(index, 0, items.Count), Greedy(item));
+        items.Insert(Compat.Clamp(index, 0, items.Count), Greedy(item));
         return Normalize(WithBand(layout, band with { Items = items }));
     }
 
@@ -222,7 +222,7 @@ public static class DashboardLayoutEngine
         var temporary = Guid.NewGuid().ToString("N");
         var band = layout.Bands[bandIndex];
         var items = band.Mode == BandMode.Fit ? band.Items.ToList() : band.Items.SelectMany(i => i.Items()).ToList();
-        items.Insert(Math.Clamp(index, 0, items.Count), Greedy(item) with { Id = temporary });
+        items.Insert(Compat.Clamp(index, 0, items.Count), Greedy(item) with { Id = temporary });
         var inserted = Detach(WithBand(layout, band with { Items = items }), itemId);
         var moved = Normalize(Rename(inserted, temporary, itemId));
         return DropEmptiedBands(layout, moved);
@@ -335,7 +335,7 @@ public static class DashboardLayoutEngine
             var room = parent is null
                 ? layout.Columns
                 : columns[parent.Id].Span - parent.Children.Where(c => c.Id != node.Id).Sum(c => c.ColumnSpan ?? 1);
-            layout = Update(layout, node.Id, n => n with { ColumnSpan = Math.Clamp(span, 1, Math.Max(1, room)) });
+            layout = Update(layout, node.Id, n => n with { ColumnSpan = Compat.Clamp(span, 1, Math.Max(1, room)) });
         }
         return Normalize(layout);
     }
@@ -371,7 +371,7 @@ public static class DashboardLayoutEngine
         layout = Normalize(layout);
         var band = new BandLayout { Id = bandId ?? Guid.NewGuid().ToString("N"), Mode = mode, Items = items.Select(Greedy).ToArray() };
         var bands = layout.Bands.ToList();
-        bands.Insert(Math.Clamp(index, 0, bands.Count), band);
+        bands.Insert(Compat.Clamp(index, 0, bands.Count), band);
         return Normalize(layout with { Bands = bands });
     }
 
@@ -410,7 +410,7 @@ public static class DashboardLayoutEngine
             items = band.Items.GroupBy(i => wrapped.Items[i.Id].Top).Select(line => Line(line.Select(i => i with
             {
                 Width = null,
-                ColumnSpan = i.Width is { } w ? Math.Clamp((int)Math.Round((w + gap) / Math.Max(1, settings.ColumnWidth + gap)), 1, layout.Columns) : null,
+                ColumnSpan = i.Width is { } w ? Compat.Clamp((int)Math.Round((w + gap) / Math.Max(1, settings.ColumnWidth + gap)), 1, layout.Columns) : null,
             }).ToArray())).ToArray();
         }
         else
@@ -538,7 +538,7 @@ public static class DashboardLayoutEngine
 
     private static LayoutNode Clamp(LayoutNode node, int columns) => node with
     {
-        ColumnSpan = node.ColumnSpan is { } span ? Math.Clamp(span, 1, columns) : null,
+        ColumnSpan = node.ColumnSpan is { } span ? Compat.Clamp(span, 1, columns) : null,
         RowSpan = node.RowSpan is { } rows ? Math.Max(1, rows) : null,
         Width = node.Width is { } width ? Math.Max(MinWidth, width) : null,
     };

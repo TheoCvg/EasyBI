@@ -1,8 +1,14 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Description>Contract of EasyBI, a self-service BI library: semantic model metadata, analytic queries, result sets, visual and report definitions. No dependencies.</Description>
+    <TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
+    <Description>Contract of EasyBI, a self-service BI library: semantic model metadata, analytic queries, result sets, visual and report definitions. No dependencies on .NET 8.</Description>
   </PropertyGroup>
+
+  <!-- .NET Standard 2.0 lacks these APIs: Microsoft's own packages bring them (in the box on .NET 8) -->
+  <ItemGroup Condition="'$(IsLegacyTarget)' == 'true'">
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <PackageReference Include="Microsoft.Bcl.HashCode" Version="6.0.0" />
+  </ItemGroup>
 
 </Project>

@@ -207,8 +207,8 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     /// <returns>Where the caret goes: after the item, or between its parentheses when nothing was selected.</returns>
     public int Insert(FormulaItem item, int start, int length)
     {
-        start = Math.Clamp(start, 0, Formula.Length);
-        length = Math.Clamp(length, 0, Formula.Length - start);
+        start = Compat.Clamp(start, 0, Formula.Length);
+        length = Compat.Clamp(length, 0, Formula.Length - start);
         var selected = Formula.Substring(start, length);
         var wraps = item.Text.EndsWith("()", StringComparison.Ordinal);
         var inserted = wraps ? item.Text[..^1] + selected + ")" : item.Text;
@@ -230,7 +230,7 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     /// </summary>
     public void Suggest(int caretIndex, bool all = false)
     {
-        caretIndex = Math.Clamp(caretIndex, 0, Formula.Length);
+        caretIndex = Compat.Clamp(caretIndex, 0, Formula.Length);
         var context = FormulaEditing.ContextAt(Formula, caretIndex);
         var opened = Formula[..context.Start].TrimEnd() is { Length: > 0 } before && before[^1] is '(' or ';' or ',';
         if (!all && !context.IsField && context.Prefix.Length == 0 && context.Slot != FormulaSlot.ComparedValue && !opened)
