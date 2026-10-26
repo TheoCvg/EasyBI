@@ -2386,6 +2386,9 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   and ends at zero for negative bars; OxyPlot no longer cuts negative bars (#63).</li>
 <li>Theming: an <code>EasyBIThemeMapping</code> that maps <code>ChartPaletteKey</code> gives charts the design system's palette instead of
   EasyBI's (#64).</li>
+<li>Nullable dates (<code>DateTime?</code>, <code>DateOnly?</code>, <code>DateTimeOffset?</code>) by year, quarter, month or day: EF Core can translate
+  the query again (it failed with SQL Server, SQLite...), and missing dates form an empty period instead of the year 1;
+  a missing date has no previous year.</li>
 </ul>
 <h3 id="breaking-changes">Breaking changes<a class="headerlink" href="#breaking-changes" title="Permanent link">&para;</a></h3>
 <ul>
