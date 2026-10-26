@@ -1479,6 +1479,23 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Slots
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="././" class="md-nav__link md-nav__link--active">
         
   
@@ -1494,6 +1511,92 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Modes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#names" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Names
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Data context
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repeated-slots-take-a-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Repeated slots take a template
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inheritance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Inheritance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#your-own-templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Your own templates
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1804,6 +1907,11 @@
                       
                     
                     
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
                   
                   <div class="md-sidebar__inner">
                     
@@ -1815,6 +1923,80 @@
   
     
   
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Modes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#names" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Names
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Data context
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repeated-slots-take-a-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Repeated slots take a template
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inheritance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Inheritance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#your-own-templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Your own templates
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -1909,6 +2091,7 @@
 <h1 id="customizing-the-components-slots">Customizing the components: slots<a class="headerlink" href="#customizing-the-components-slots" title="Permanent link">&para;</a></h1>
 <p>The parts of the <code>ReportDesigner</code>, <code>FieldList</code>, <code>FilterBar</code>, <code>FilterEditor</code> and <code>DashboardView</code> are <strong>slots</strong>: named places
 where an application adds its own content (before or after the default content), replaces it, or hides it.</p>
+<p><img alt="The slots of the designer: 1 FieldPanel, 2 Title, 3 VisualTypes, 4 Shelves, 5 Preview, 6 Properties" src="../../images/customization/designer-slots.png" /></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">&lt;bi:ReportDesigner</span><span class="w"> </span><span class="na">Context=</span><span class="s">"{Binding Context}"</span><span class="nt">&gt;</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span><span class="nt">&lt;bi:Slots.Items&gt;</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">        </span><span class="cm">&lt;!-- Under the preview --&gt;</span>
@@ -1925,35 +2108,138 @@ where an application adds its own content (before or after the default content),
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">Slots</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">filterBar</span><span class="p">,</span><span class="w"> </span><span class="n">FilterBarSlots</span><span class="p">.</span><span class="n">AddButton</span><span class="p">,</span><span class="w"> </span><span class="n">myAddButton</span><span class="p">,</span><span class="w"> </span><span class="n">SlotMode</span><span class="p">.</span><span class="n">Replace</span><span class="p">);</span>
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">Slots</span><span class="p">.</span><span class="n">Hide</span><span class="p">(</span><span class="n">designer</span><span class="p">,</span><span class="w"> </span><span class="n">ReportDesignerSlots</span><span class="p">.</span><span class="n">FieldPanel</span><span class="p">);</span>
 </code></pre></div>
-<ul>
-<li><strong>Names</strong>: <code>ReportDesignerSlots</code> (<code>FieldPanel</code>, <code>Fields</code>, <code>Header</code>, <code>Title</code>, <code>VisualTypes</code>, <code>Shelves</code>, <code>AxisShelf</code>,
-  <code>LegendShelf</code>, <code>ValuesShelf</code>, <code>FiltersShelf</code>, <code>Preview</code>, <code>Properties</code>), <code>FieldListSlots</code> (<code>Model</code>, <code>Search</code>, <code>Dimensions</code>,
-  <code>Measures</code>, <code>AddMeasureButton</code>), <code>FilterBarSlots</code> (<code>Filters</code>, <code>Label</code>, <code>Slicer</code>, <code>AddButton</code>, <code>Selection</code>),
-  <code>FilterEditorSlots</code> (<code>Values</code>, <code>Period</code>) and <code>DashboardSlots</code> (<code>Body</code>, <code>ItemContent</code>, <code>EmptyItemChoices</code>, <code>ItemToolbar</code>). Slots can be
-  nested: <code>Header</code> contains <code>Title</code> and <code>VisualTypes</code>. The band menu of a dashboard is customized through
-  <code>BandMenuBehavior.MenuOpening</code>.</li>
-<li><strong>Modes</strong>: <code>After</code> (default), <code>Before</code>, <code>Replace</code>, <code>Hide</code>. Before and after are left and right of the default content,
-  or above and below it in a vertical slot (<code>Fields</code>, <code>Shelves</code>, <code>Preview</code>); several slots with the same name are shown
-  in declaration order, and the last <code>Replace</code> or <code>Hide</code> wins.</li>
-<li><strong>Data context</strong>: the content takes the data context of the place it is shown in: the <code>DesignerViewModel</code> in the
-  designer, the application's in the filter bar and the field list, the <code>SlicerViewModel</code> in <code>FilterBarSlots.Slicer</code>, the
-  <code>FilterItemViewModel</code> in the filter editor (shown once per filter, so its slots take a template), the <code>DashboardItem</code>
-  in the dashboard item slots (commands such as <code>DashboardCommands.RemoveItem</code> act on the item containing them).</li>
-<li><strong>Repeated slots</strong>: an element can only be shown once. A slot shown several times (<code>FilterBarSlots.Slicer</code>, once per
-  global filter, the dashboard item slots, once per item, or slots declared for several components) takes a <code>ContentTemplate</code> (<code>Slots.AddTemplate(...)</code> in
-  code), applied to the data context of each place.</li>
-<li><strong>Inheritance</strong>: <code>Slots.Items</code> is inherited, so slots declared on a window or a panel apply to every component in it;
-  the nearest declaration replaces the others. The designer opened to edit a dashboard visual takes the slots of the
-  dashboard.</li>
-<li><strong>Custom templates</strong>: the components are lookless controls. Their default templates (<code>Themes/*.xaml</code> of <code>EasyBI.Wpf</code>)
-  are built from <code>SlotHost</code>s (<code>&lt;bi:SlotHost Slot="..." Orientation="Vertical"&gt;</code> with the default content inside), so a
-  template of the application keeps the slots it hosts. A template works with the components' read-only properties
-  and commands: the <code>DesignerViewModel</code> of the <code>ReportDesigner</code> (its <code>ViewModel</code>, the template's data context); <code>FieldList.ModelOptions</code>, <code>Dimensions</code>,
-  <code>Measures</code>, <code>CanAddMeasure</code> and <code>AddMeasureCommand</code>, <code>EditMeasureCommand</code>, <code>DeleteMeasureCommand</code>,
-  <code>ResetMeasureCommand</code> (with <code>ModelField.IsEditable</code>, <code>IsReportMeasure</code> and <code>IsRedefined</code>);
-  <code>FilterBar.Slicers</code>, <code>SelectionDescription</code> and <code>AddFilterCommand</code>, <code>RemoveFilterCommand</code> (on the slicer of its
-  data context), <code>ClearSelectionCommand</code>; <code>DashboardView.Panel</code> and <code>DashboardCommands</code>.</li>
-</ul>
+<h2 id="modes">Modes<a class="headerlink" href="#modes" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th><code>SlotMode</code></th>
+<th>Your content goes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>After</code> (default)</td>
+<td>After the default content: on its right, or below it in a vertical slot (<code>Fields</code>, <code>Shelves</code>, <code>Preview</code>)</td>
+</tr>
+<tr>
+<td><code>Before</code></td>
+<td>Before it: on its left, or above it</td>
+</tr>
+<tr>
+<td><code>Replace</code></td>
+<td>Instead of it</td>
+</tr>
+<tr>
+<td><code>Hide</code></td>
+<td>Nowhere: the part disappears</td>
+</tr>
+</tbody>
+</table>
+<p>Several slots with the same name show in declaration order; the last <code>Replace</code> or <code>Hide</code> wins.</p>
+<h2 id="names">Names<a class="headerlink" href="#names" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th><code>...Slots</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ReportDesigner</code></td>
+<td><code>FieldPanel</code>, <code>Fields</code>, <code>Header</code> (with <code>Title</code>, <code>VisualTypes</code>), <code>Shelves</code> (with <code>AxisShelf</code>, <code>LegendShelf</code>, <code>ValuesShelf</code>, <code>TooltipShelf</code>, <code>FiltersShelf</code>), <code>Preview</code>, <code>Properties</code></td>
+</tr>
+<tr>
+<td><code>FieldList</code></td>
+<td><code>Model</code>, <code>Search</code>, <code>Dimensions</code>, <code>Measures</code>, <code>AddMeasureButton</code></td>
+</tr>
+<tr>
+<td><code>FilterBar</code></td>
+<td><code>Filters</code>, <code>Label</code>, <code>Slicer</code>, <code>AddButton</code>, <code>Selection</code></td>
+</tr>
+<tr>
+<td><code>FilterEditor</code></td>
+<td><code>Values</code>, <code>Period</code></td>
+</tr>
+<tr>
+<td><code>DashboardView</code></td>
+<td><code>Body</code>, <code>ItemContent</code>, <code>EmptyItemChoices</code>, <code>ItemToolbar</code></td>
+</tr>
+</tbody>
+</table>
+<p>The band menu of a dashboard is a menu, not a slot: change it in <code>BandMenuBehavior.MenuOpening</code>.</p>
+<h2 id="data-context">Data context<a class="headerlink" href="#data-context" title="Permanent link">&para;</a></h2>
+<p>Your content takes the data context of the place it shows in:</p>
+<table>
+<thead>
+<tr>
+<th>Where</th>
+<th>Data context</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The designer</td>
+<td>Its <code>DesignerViewModel</code> (<code>{Binding Visual.Title}</code>...)</td>
+</tr>
+<tr>
+<td>The filter bar, the field list</td>
+<td>The application's</td>
+</tr>
+<tr>
+<td><code>FilterBarSlots.Slicer</code></td>
+<td>The <code>SlicerViewModel</code> of a global filter</td>
+</tr>
+<tr>
+<td>The filter editor</td>
+<td>The <code>FilterItemViewModel</code></td>
+</tr>
+<tr>
+<td>The dashboard item slots</td>
+<td>The <code>DashboardItem</code> (<code>DashboardCommands</code> act on it)</td>
+</tr>
+</tbody>
+</table>
+<p>To reach your window's view-model from the designer: <code>{Binding DataContext.MyCommand, RelativeSource={RelativeSource AncestorType=Window}}</code>.</p>
+<h2 id="repeated-slots-take-a-template">Repeated slots take a template<a class="headerlink" href="#repeated-slots-take-a-template" title="Permanent link">&para;</a></h2>
+<p>An element can only be shown once. A slot shown several times (<code>FilterBarSlots.Slicer</code> once per global filter, the
+dashboard item slots once per item, slots declared for several components) takes a <code>ContentTemplate</code>, applied to the
+data context of each place:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">Slots</span><span class="p">.</span><span class="n">AddTemplate</span><span class="p">(</span><span class="n">dashboard</span><span class="p">,</span><span class="w"> </span><span class="n">DashboardSlots</span><span class="p">.</span><span class="n">ItemToolbar</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">DataTemplate</span><span class="p">)</span><span class="n">FindResource</span><span class="p">(</span><span class="s">"ExportButton"</span><span class="p">));</span>
+</code></pre></div>
+<h2 id="inheritance">Inheritance<a class="headerlink" href="#inheritance" title="Permanent link">&para;</a></h2>
+<p><code>Slots.Items</code> is inherited: slots declared on a window or a panel apply to every component in it, and the nearest
+declaration replaces the others. The designer opened to edit a dashboard visual takes the slots of the dashboard.</p>
+<h2 id="your-own-templates">Your own templates<a class="headerlink" href="#your-own-templates" title="Permanent link">&para;</a></h2>
+<p>The components are lookless controls. Their default templates (<code>Themes/*.xaml</code> of <code>EasyBI.Wpf</code>) are built from
+<code>SlotHost</code>s (<code>&lt;bi:SlotHost Slot="..." Orientation="Vertical"&gt;</code> with the default content inside), so a template of
+yours keeps the slots it hosts. A template works with the components' read-only properties and commands:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>For templates</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ReportDesigner</code></td>
+<td>Its <code>ViewModel</code> (<code>DesignerViewModel</code>), the template's data context</td>
+</tr>
+<tr>
+<td><code>FieldList</code></td>
+<td><code>ModelOptions</code>, <code>Dimensions</code>, <code>Measures</code>, <code>CanAddMeasure</code>, <code>AddMeasureCommand</code>, <code>EditMeasureCommand</code>, <code>DeleteMeasureCommand</code>, <code>ResetMeasureCommand</code> (with <code>ModelField.IsEditable</code>, <code>IsReportMeasure</code>, <code>IsRedefined</code>)</td>
+</tr>
+<tr>
+<td><code>FilterBar</code></td>
+<td><code>Slicers</code>, <code>SelectionDescription</code>, <code>AddFilterCommand</code>, <code>RemoveFilterCommand</code> (on the slicer of its data context), <code>ClearSelectionCommand</code></td>
+</tr>
+<tr>
+<td><code>DashboardView</code></td>
+<td><code>Panel</code>, <code>DashboardCommands</code></td>
+</tr>
+</tbody>
+</table>
 
 
 

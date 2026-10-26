@@ -1979,6 +1979,38 @@
 
 
 <h1 id="writing-a-connector">Writing a connector<a class="headerlink" href="#writing-a-connector" title="Permanent link">&para;</a></h1>
+<p>A connector draws EasyBI's visuals with a charting library. EasyBI comes with two, which draw the same visual their own
+way:</p>
+<div class="grid">
+<p><img alt="Revenue by region and channel drawn by LiveCharts2" src="../../images/customization/renderer-livecharts2.png" /></p>
+<p><img alt="Revenue by region and channel drawn by OxyPlot" src="../../images/customization/renderer-oxyplot.png" /></p>
+</div>
+<table>
+<thead>
+<tr>
+<th>EasyBI does</th>
+<th>The connector does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Queries, pivots, sorts, applies filters and time calculations</td>
+<td>Draws <code>request.Chart</code> with its library</td>
+</tr>
+<tr>
+<td>Picks the renderer for each visual</td>
+<td>Declares the types it draws</td>
+</tr>
+<tr>
+<td>Builds tooltips, legends' pages, colors of conditional formats</td>
+<td>Shows them, from <code>request</code></td>
+</tr>
+<tr>
+<td>Turns clicks into cross-filtering</td>
+<td>Reports clicks with <code>request.Select</code></td>
+</tr>
+</tbody>
+</table>
 <p>A connector implements a single interface. It receives <strong>already queried and pivoted</strong> data
 (<code>request.Chart</code>: categories + series) and the raw <code>ResultSet</code> if needed:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">public</span><span class="w"> </span><span class="k">sealed</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">MyRenderer</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">IVisualRenderer</span>
