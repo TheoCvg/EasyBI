@@ -53,7 +53,7 @@ rows reach the application, whatever the number of rows in the table.
 <bi:VisualView Context="{Binding Context}" Definition="{Binding Visual}" />    <!-- display -->
 ```
 
-The [designer](guide/designer.md) lets end users build a visual by dragging fields; a `VisualView` shows a saved
+The [designer](guide/designer/index.md) lets end users build a visual by dragging fields; a `VisualView` shows a saved
 visual. To let them arrange several visuals, use a [dashboard](dashboard/index.md).
 
 ## Refreshing the data

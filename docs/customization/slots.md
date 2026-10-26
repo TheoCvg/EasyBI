@@ -45,7 +45,7 @@ Slots.Hide(designer, ReportDesignerSlots.FieldPanel);
 - **Custom templates**: the components are lookless controls. Their default templates (`Themes/*.xaml` of `EasyBI.Wpf`)
   are built from `SlotHost`s (`<bi:SlotHost Slot="..." Orientation="Vertical">` with the default content inside), so a
   template of the application keeps the slots it hosts. A template works with the components' read-only properties
-  and commands: the `DesignerViewModel` of the `ReportDesigner` (its data context); `FieldList.ModelOptions`, `Dimensions`,
+  and commands: the `DesignerViewModel` of the `ReportDesigner` (its `ViewModel`, the template's data context); `FieldList.ModelOptions`, `Dimensions`,
   `Measures`, `CanAddMeasure` and `AddMeasureCommand`, `EditMeasureCommand`, `DeleteMeasureCommand`,
   `ResetMeasureCommand` (with `ModelField.IsEditable`, `IsReportMeasure` and `IsRedefined`);
   `FilterBar.Slicers`, `SelectionDescription` and `AddFilterCommand`, `RemoveFilterCommand` (on the slicer of its

@@ -14,7 +14,12 @@ nav = [
   { "Home" = "index.md" },
   { "Getting started" = "getting-started.md" },
   { "Guide" = [
-    { "The designer" = "guide/designer.md" },
+    { "The designer" = [
+      "guide/designer/index.md",
+      { "Building a visual" = "guide/designer/building-a-visual.md" },
+      { "Rules" = "guide/designer/rules.md" },
+      { "Customizing" = "guide/designer/customizing.md" },
+    ] },
     { "Calculated measures" = "guide/calculated-measures.md" },
     { "Filtering and cross-filtering" = "guide/filtering.md" },
   ] },
@@ -53,7 +58,9 @@ language = "en"
 custom_dir = "overrides"
 features = [
   "content.action.edit",
+  "content.code.annotate",
   "content.code.copy",
+  "content.tabs.link",
   "navigation.footer",
   "navigation.indexes",
   "navigation.instant",
@@ -96,6 +103,7 @@ toc.permalink = true
 pymdownx.details = {}
 pymdownx.highlight.anchor_linenums = true
 pymdownx.inlinehilite = {}
+pymdownx.keys = {}
 pymdownx.superfences.custom_fences = [
   { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
 ]

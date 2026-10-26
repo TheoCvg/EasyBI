@@ -17,7 +17,7 @@ flowchart LR
 
     Install the packages, declare a model and show your first designer.
 
-- **[Guide](guide/designer.md)**
+- **[Guide](guide/designer/index.md)**
 
     The designer, calculated measures, filters and cross-filtering.
 
