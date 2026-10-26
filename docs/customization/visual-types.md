@@ -1,5 +1,7 @@
 # Custom visual types
 
+![The sample's own visual type: the top products ranked by revenue, each with a bar relative to the leader](../images/customization/ranking.png){ width="460" }
+
 A visual type is a `VisualType` (an id) and its `VisualTypeDefinition`: its name, its section of the designer's gallery,
 the fields each well takes, its tooltips, its settings and its rules. EasyBI's own types (`VisualType.Bar`,
 `VisualType.Pie`...) are defined the same way, in the context's catalog (`EasyBIContext.VisualTypes`), so a type of the
@@ -98,6 +100,19 @@ var types = context.VisualTypes;
 types.Hide(VisualType.Waterfall);                                     // out of the gallery; its visuals still show
 types.Replace(types.Get(VisualType.Bar) with { Caption = () => Texts.Columns });
 ```
+
+??? example "Keep only a few types"
+    Hide every other type of the gallery, after the renderers are plugged in (a renderer may bring types of its own):
+
+    ```csharp
+    VisualType[] kept = [VisualType.Bar, VisualType.Line, VisualType.Pie];
+    foreach (var type in context.VisualTypes.Definitions
+                 .Where(d => d.Group is not null && !kept.Contains(d.Type))
+                 .Select(d => d.Type).ToList())   // Hide changes the catalog being read
+        context.VisualTypes.Hide(type);
+    ```
+
+    For a single designer, a [rule](../guide/designer/rules.md) greys the other types instead.
 
 A report written by another application can hold a type this one does not declare: it opens, and the visual says
 that no renderer draws it.

@@ -4,6 +4,32 @@ Every EasyBI control (designer, dashboard, filter bar, field list, KPI and table
 with **resources looked up dynamically**: an application restyles EasyBI by defining them, and switches theme at runtime
 by replacing the dictionary that defines them. Charts follow too, without querying their data again.
 
+=== "EasyBI, light"
+
+    ![The designer in EasyBI's light theme](../images/customization/theme-easybi-light.png)
+
+=== "EasyBI, dark"
+
+    ![The designer in EasyBI's dark theme](../images/customization/theme-easybi-dark.png)
+
+=== "WPF UI"
+
+    ![The designer following WPF UI, light](../images/customization/theme-wpfui-light.png)
+
+    ![The designer following WPF UI, dark](../images/customization/theme-wpfui-dark.png)
+
+=== "Material Design"
+
+    ![The designer following Material Design, light](../images/customization/theme-material-light.png)
+
+    ![The designer following Material Design, dark](../images/customization/theme-material-dark.png)
+
+=== "Your colors"
+
+    ![The designer with a purple accent and a palette of three colors](../images/customization/theme-custom.png)
+
+    The accent, the chart palette and the corner radius overridden: see [below](#overriding-a-few-colors).
+
 ## Light and dark
 
 ```xml
@@ -71,8 +97,6 @@ color EasyBI's surfaces, text and charts, not the standard controls: with the da
 keep the system's light look.
 
 ## Following a control library
-
-![The sample following WPF UI in its dark theme](../images/dashboard-dark.png)
 
 With WPF UI or Material Design in XAML, install the matching package and merge its dictionary **after** the library's:
 EasyBI's surfaces, text, accent and charts then take the library's colors, light or dark, and follow its theme switches
