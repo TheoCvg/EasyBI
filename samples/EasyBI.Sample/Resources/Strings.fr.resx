@@ -192,4 +192,13 @@
   <data name="TopProducts" xml:space="preserve">
     <value>Meilleurs produits</value>
   </data>
+  <data name="XamlOnlyTab" xml:space="preserve">
+    <value>  XAML seul  </value>
+  </data>
+  <data name="XamlOnlyTip" xml:space="preserve">
+    <value>Ce designer n'a ni view-model ni code-behind : son contexte est lié, un behavior garde le visuel en barres, les boutons annulent et rétablissent par des commandes, et le visuel de droite est lié au Visual du designer.</value>
+  </data>
+  <data name="BoundVisual" xml:space="preserve">
+    <value>Lié au Visual du designer</value>
+  </data>
 </root>

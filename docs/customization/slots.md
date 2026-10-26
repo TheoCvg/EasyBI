@@ -4,7 +4,7 @@ The parts of the `ReportDesigner`, `FieldList`, `FilterBar`, `FilterEditor` and 
 where an application adds its own content (before or after the default content), replaces it, or hides it.
 
 ```xml
-<bi:ReportDesigner DataContext="{Binding Designer}">
+<bi:ReportDesigner Context="{Binding Context}">
     <bi:Slots.Items>
         <!-- Under the preview -->
         <bi:Slot Name="{x:Static bi:ReportDesignerSlots.Preview}">

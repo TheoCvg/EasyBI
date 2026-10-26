@@ -1,18 +1,21 @@
 # The designer
 
-The `ReportDesigner` shows a `DesignerViewModel`, its data context, which the application creates and keeps: it loads a
-visual into it, reads the visual being designed, and gives it its rules.
+Like the dashboard, the `ReportDesigner` takes a `Context` and the `Visual` being designed: two-way, it receives every
+change of the end user. No view-model is needed: bind them in XAML, or set them in code.
 
 ```xml
-<bi:ReportDesigner DataContext="{Binding Designer}" />
+<bi:ReportDesigner Context="{Binding Context}" Visual="{Binding EditedVisual}" />
 ```
 
 ```csharp
-public DesignerViewModel Designer { get; } = new(context);
-
-Designer.Load(visual);              // edit a visual (Clear() starts a new one)
-var designed = Designer.Visual;     // the visual being designed
+designer.Context = context;
+designer.Visual = visual;           // edit a visual (a new history of changes; null starts a new one)
+var designed = designer.Visual;     // the visual being designed
 ```
+
+The designer's state, a `DesignerViewModel` created for the context, is its `ViewModel` (read-only): the data context
+of its template and slots, for what the control does not expose itself (undo and redo, selection, properties panel).
+The `Undo` and `Redo` commands work on the control: `<Button Command="Undo" CommandTarget="{Binding ElementName=Designer}" />`.
 
 The designer has three zones: the fields on the left, the wells and the preview in the middle, the
 **properties** on the right (both side panels fold: `IsFieldPanelOpen`, `IsPropertiesPanelOpen`).
@@ -41,7 +44,7 @@ each kind of editor is a `DataTemplate` under a `DesignerPropertyTemplates` key;
 under `VisualTypeIcons` keys.
 
 ```csharp
-Designer.PropertiesBuilding += (_, e) =>
+designer.ViewModel!.PropertiesBuilding += (_, e) =>
 {
     if (e.Selection is ShelfItemViewModel { IsValue: true } chip)
         e.Sections.Add(new DesignerPropertySection("Notes", () => "Notes",
@@ -54,12 +57,13 @@ Designer.PropertiesBuilding += (_, e) =>
 Every change of the visual, whatever the action (a type picked, a field dropped or moved, a chip removed, a property
 edited), passes the designer's **rules**. A rule looks at the change, `VisualChange` (the visual `Before` and
 `After`), and returns null to accept it, or the message telling why it is refused: the visual stays as it was and the
-message shows above the wells (`DesignerViewModel.Refusal`). The first refusal wins.
+message shows above the wells (`DesignerViewModel.Refusal`). The first refusal wins. The rules are the control's
+`Rules`, kept when its context changes.
 
 ```csharp
-Designer.Rules.Add(change => change.Changes(v => v.Type) ? "The type of this visual is fixed" : null);
-Designer.Rules.Add(change => change.FieldsChanged ? "The fields of this visual are fixed" : null);   // their settings can change
-Designer.Rules.Add(change => change.After.Values.Count > 3 ? "Three measures at most" : null);
+designer.Rules.Add(change => change.Changes(v => v.Type) ? "The type of this visual is fixed" : null);
+designer.Rules.Add(change => change.FieldsChanged ? "The fields of this visual are fixed" : null);   // their settings can change
+designer.Rules.Add(change => change.After.Values.Count > 3 ? "Three measures at most" : null);
 ```
 
 `Changes(v => ...)` compares a part of the visual by value; `FieldsChanged` tells whether a field was added, removed or
@@ -77,7 +81,7 @@ Rules are also declared in XAML, as behaviors of the `ReportDesigner`: EasyBI gi
 by deriving from `DesignerRuleBehavior`.
 
 ```xml
-<bi:ReportDesigner DataContext="{Binding Designer}">
+<bi:ReportDesigner Context="{Binding Context}">
     <i:Interaction.Behaviors>
         <bi:LockVisualTypeBehavior />
         <local:ThreeMeasuresAtMost />

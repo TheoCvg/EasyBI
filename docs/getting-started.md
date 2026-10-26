@@ -49,12 +49,8 @@ rows reach the application, whatever the number of rows in the table.
 ## Showing the designer and a visual
 
 ```xml
-<bi:ReportDesigner DataContext="{Binding Designer}" />                        <!-- design -->
-<bi:VisualView Context="{Binding Context}" Definition="{Binding Visual}" />   <!-- display -->
-```
-
-```csharp
-public DesignerViewModel Designer { get; } = new(Context);   // the designer's state, kept by the application
+<bi:ReportDesigner Context="{Binding Context}" Visual="{Binding Visual}" />   <!-- design -->
+<bi:VisualView Context="{Binding Context}" Definition="{Binding Visual}" />    <!-- display -->
 ```
 
 The [designer](guide/designer.md) lets end users build a visual by dragging fields; a `VisualView` shows a saved

@@ -155,15 +155,15 @@ public class RendererOptionsDesignerTests
     {
         var designer = new ReportDesigner
         {
-            DataContext = new DesignerViewModel(EasyBIContext.Create()
+            Context = EasyBIContext.Create()
                 .AddModel(SemanticModel.For(new[] { new Sale("Nord", 1m) }, "sales").Dimension(s => s.Region, "Region").Measure(s => s.Amount, "Amount"))
-                .UseRenderer(new OptionsRenderer())),
+                .UseRenderer(new OptionsRenderer()),
         };
         designer.Hosted().Measure(new Size(1200, 800));
         designer.Arrange(new Rect(0, 0, 1200, 800));
         Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle); // bindings
 
-        var options = Assert.Single(((DesignerViewModel)designer.DataContext).Properties, s => s.Key == DesignerPropertySections.Options);
+        var options = Assert.Single(designer.ViewModel!.Properties, s => s.Key == DesignerPropertySections.Options);
         Assert.Equal(["scrollable", "style", "size"], options.Properties.Select(p => p.Key));
         // One editor per kind of option: a check box, a list, a number box
         var panel = (FrameworkElement)designer.Template.FindName("PropertiesPanel", designer);

@@ -66,7 +66,7 @@
         </Setter>
     </Style>
 
-    <!-- The designer's data context is its view-model (DesignerViewModel): the template and its slots bind to it -->
+    <!-- The template takes the designer's view-model (DesignerViewModel) as data context, and so do its slots -->
     <Style TargetType="local:ReportDesigner">
         <Style.Resources>
             <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
@@ -185,7 +185,7 @@
                 <Setter Property="Margin" Value="4,0,0,0" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
-                <Setter Property="Command" Value="{Binding DataContext.RemoveCommand, RelativeSource={RelativeSource AncestorType=local:ReportDesigner}}" />
+                <Setter Property="Command" Value="{Binding ViewModel.RemoveCommand, RelativeSource={RelativeSource AncestorType=local:ReportDesigner}}" />
                 <Setter Property="CommandParameter" Value="{Binding}" />
                 <Setter Property="Template">
                     <Setter.Value>
@@ -338,7 +338,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="local:ReportDesigner">
                     <!-- Three zones: the fields, the visual being built (wells and preview), its properties -->
-                    <Grid Background="{TemplateBinding Background}">
+                    <Grid DataContext="{Binding ViewModel, RelativeSource={RelativeSource TemplatedParent}}" Background="{TemplateBinding Background}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -502,7 +502,7 @@
                         <Trigger Property="IsPropertiesPanelOpen" Value="False">
                             <Setter TargetName="PropertiesPanel" Property="Visibility" Value="Collapsed" />
                         </Trigger>
-                        <DataTrigger Binding="{Binding DataContext.SelectedItem, RelativeSource={RelativeSource Self}}" Value="{x:Null}">
+                        <DataTrigger Binding="{Binding ViewModel.SelectedItem, RelativeSource={RelativeSource Self}}" Value="{x:Null}">
                             <Setter TargetName="SelectHint" Property="Visibility" Value="Visible" />
                         </DataTrigger>
                     </ControlTemplate.Triggers>

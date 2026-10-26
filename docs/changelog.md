@@ -25,7 +25,7 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   operator keypad (#55).
 - **Measures used in other formulas**: a calculated measure can use the report's other measures; loops are refused (#56).
 - This documentation site, with a version per release.
-- **Designer rules**: every change of the visual being designed passes `DesignerViewModel.Rules`, which look at the
+- **Designer rules**: every change of the visual being designed passes the designer's `Rules`, which look at the
   change (`VisualChange`: `Changes(v => ...)`, `FieldsChanged`) and refuse it with a message; what they would refuse
   is shown unavailable beforehand. Also declared as behaviors: `LockVisualTypeBehavior`, `LockFieldsBehavior`,
   `ReadOnlyDesignerBehavior`, or one of the application's derived from `DesignerRuleBehavior` (#65).
@@ -54,9 +54,8 @@ opens older reports, and a report using a newer feature cannot be opened by an o
 
 ### Breaking changes
 
-- The `ReportDesigner` shows the `DesignerViewModel` of its data context, which the application creates and keeps
-  (`<bi:ReportDesigner DataContext="{Binding Designer}" />`): its `Context`, `ViewModel`, `Visual`, `Edit` and `Clear`
-  members are gone, the view-model has them (#65).
+- `ReportDesigner.Visual` is two-way, like `DashboardView.Document`: setting it loads a visual (null starts a new one)
+  and it receives every change of the end user; `Edit` and `Clear` are gone (#65).
 - `FilterContext.Selection` became `Selections` (one per visual), with `SelectionOf`, `ClearSelection(visualId)` and
   `DescribeSelections`; `CrossFilter` holds `Elements` (`SelectedElement`), its `Values` and filter-based constructor are
   gone and `Filters` is computed (#41).

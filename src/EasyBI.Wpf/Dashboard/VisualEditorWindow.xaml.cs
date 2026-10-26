@@ -1,20 +1,20 @@
 using System.Windows;
 using EasyBI.Abstractions;
 using EasyBI.Core;
-using EasyBI.Wpf.Designer;
 
 namespace EasyBI.Wpf.Dashboard;
 
 /// <summary>Built-in editor of a dashboard visual: the report designer in a dialog.</summary>
 public partial class VisualEditorWindow : Window
 {
-    private readonly DesignerViewModel _designer;
+    private readonly EasyBIContext _context;
 
     public VisualEditorWindow(EasyBIContext context, VisualDefinition? visual)
     {
         InitializeComponent();
-        Designer.DataContext = _designer = new DesignerViewModel(context);
-        if (visual is not null) _designer.Load(visual);
+        _context = context;
+        Designer.Context = context;
+        Designer.Visual = visual;
     }
 
     /// <summary>The visual confirmed with OK.</summary>
@@ -22,8 +22,8 @@ public partial class VisualEditorWindow : Window
 
     private void OnOk(object sender, RoutedEventArgs e)
     {
-        if (_designer.Visual is not { } visual) return;
-        if (VisualValidator.Validate(visual, _designer.Context.VisualTypes) is { } problem)
+        if (Designer.Visual is not { } visual) return;
+        if (VisualValidator.Validate(visual, _context.VisualTypes) is { } problem)
         {
             Problem.Text = problem;
             return;

@@ -1,4 +1,3 @@
-using System.Windows;
 using EasyBI.Core;
 using EasyBI.Wpf.Resources;
 using Microsoft.Xaml.Behaviors;
@@ -6,8 +5,8 @@ using Microsoft.Xaml.Behaviors;
 namespace EasyBI.Wpf.Designer;
 
 /// <summary>
-/// A rule of a <see cref="ReportDesigner"/>, declared in XAML: while attached, it is one of the
-/// <see cref="DesignerViewModel.Rules"/> of the designer's view-model (its data context). Derive from it to write a rule
+/// A rule of a <see cref="ReportDesigner"/>, declared in XAML: while attached, it is one of the designer's
+/// <see cref="ReportDesigner.Rules"/>. Derive from it to write a rule
 /// of the application:
 /// <code>
 /// public sealed class ThreeMeasuresAtMost : DesignerRuleBehavior
@@ -18,8 +17,6 @@ namespace EasyBI.Wpf.Designer;
 /// </summary>
 public abstract class DesignerRuleBehavior : Behavior<ReportDesigner>
 {
-    private DesignerViewModel? _designer;
-
     /// <summary>The message shown when the rule refuses a change; null for the rule's own.</summary>
     public string? Message { get; set; }
 
@@ -29,24 +26,13 @@ public abstract class DesignerRuleBehavior : Behavior<ReportDesigner>
     protected override void OnAttached()
     {
         base.OnAttached();
-        AssociatedObject.DataContextChanged += OnDataContextChanged;
-        Use(AssociatedObject.DataContext as DesignerViewModel);
+        AssociatedObject.Rules.Add(Check);
     }
 
     protected override void OnDetaching()
     {
-        AssociatedObject.DataContextChanged -= OnDataContextChanged;
-        Use(null);
+        AssociatedObject.Rules.Remove(Check);
         base.OnDetaching();
-    }
-
-    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e) => Use(e.NewValue as DesignerViewModel);
-
-    private void Use(DesignerViewModel? designer)
-    {
-        _designer?.Rules.Remove(Check);
-        _designer = designer;
-        _designer?.Rules.Add(Check);
     }
 }
 
