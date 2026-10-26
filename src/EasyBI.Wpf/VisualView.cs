@@ -271,7 +271,7 @@ public class VisualView : ContentControl
             {
                 _last = null;
                 _lastQueryKey = null;
-                Show(visual, Message(Strings.Format(Strings.Error, ex.Message), EasyBITheme.ErrorBrushKey));
+                ShowFailure(context, visual, ex, VisualFailureStage.Query, null);
             }
         }
         finally
@@ -329,12 +329,63 @@ public class VisualView : ContentControl
         }
         catch (Exception ex)
         {
-            Show(visual, Message(Strings.Format(Strings.Error, ex.Message), EasyBITheme.ErrorBrushKey));
+            ShowFailure(context, visual, ex, VisualFailureStage.Render, renderer.Name);
         }
+    }
+
+    /// <summary>The failure the visual shows in place of its content; null while it shows its content or a message.</summary>
+    internal VisualFailedEventArgs? Failure { get; private set; }
+
+    /// <summary>
+    /// A short message instead of the exception, with Retry (the query runs again) and, unless the application hides
+    /// them, the details for a bug report.
+    /// </summary>
+    private void ShowFailure(EasyBIContext context, VisualDefinition visual, Exception exception, VisualFailureStage stage, string? renderer)
+    {
+        var failure = context.FailureFor(visual, exception, stage, renderer);
+        var icon = new System.Windows.Shapes.Path
+        {
+            // A circle with an exclamation mark, cut out (even-odd)
+            Data = Geometry.Parse("F0 M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 Z M11,6.5 L13,6.5 L13,13.5 L11,13.5 Z M11,15.5 L13,15.5 L13,17.5 L11,17.5 Z"),
+            Width = 28,
+            Height = 28,
+            Stretch = Stretch.Uniform,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 8),
+        };
+        icon.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, EasyBITheme.ErrorBrushKey);
+
+        var message = Message(failure.Message);
+        message.Margin = new Thickness(0, 0, 0, 10);
+        message.VerticalAlignment = VerticalAlignment.Top;
+
+        var retry = new Button { Content = Strings.VisualFailedRetry, Padding = new Thickness(12, 3, 12, 3), Margin = new Thickness(4) };
+        retry.Click += (_, _) =>
+        {
+            _lastQueryKey = null;
+            Refresh();
+        };
+        var actions = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Center };
+        actions.Children.Add(retry);
+        if (failure.ShowDetails)
+        {
+            var details = new Button { Content = Strings.VisualFailedDetails, Padding = new Thickness(12, 3, 12, 3), Margin = new Thickness(4) };
+            details.Click += (_, _) => new VisualFailureWindow(failure) { Owner = Window.GetWindow(this) }.ShowDialog();
+            actions.Children.Add(details);
+        }
+
+        var panel = new StackPanel { MaxWidth = 360, Margin = new Thickness(16) };
+        panel.Children.Add(icon);
+        panel.Children.Add(message);
+        panel.Children.Add(actions);
+        // A small dashboard tile shrinks the whole message rather than cutting its buttons
+        Show(visual, new Viewbox { Child = panel, StretchDirection = StretchDirection.DownOnly });
+        Failure = failure;
     }
 
     private void Show(VisualDefinition visual, UIElement body)
     {
+        Failure = null;
         var root = new DockPanel { LastChildFill = true };
         if (ShowTitle && !string.IsNullOrWhiteSpace(visual.Title))
         {

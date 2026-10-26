@@ -795,4 +795,34 @@
   <data name="RuleReadOnly" xml:space="preserve">
     <value>Ce visuel ne peut pas être modifié</value>
   </data>
+  <data name="VisualFailed" xml:space="preserve">
+    <value>Ce visuel n'a pas pu être affiché.</value>
+  </data>
+  <data name="VisualFailedRetry" xml:space="preserve">
+    <value>Réessayer</value>
+  </data>
+  <data name="VisualFailedDetails" xml:space="preserve">
+    <value>Voir ce qui s'est passé</value>
+  </data>
+  <data name="VisualFailureTitle" xml:space="preserve">
+    <value>Ce qui s'est passé</value>
+  </data>
+  <data name="VisualFailureQuery" xml:space="preserve">
+    <value>La source de données n'a pas pu exécuter la requête de ce visuel.</value>
+  </data>
+  <data name="VisualFailureRender" xml:space="preserve">
+    <value>Le renderer {0} n'a pas pu dessiner ce visuel.</value>
+  </data>
+  <data name="VisualFailureTechnicalDetails" xml:space="preserve">
+    <value>Détails techniques, à transmettre au développeur de l'application :</value>
+  </data>
+  <data name="VisualFailureCopy" xml:space="preserve">
+    <value>Copier</value>
+  </data>
+  <data name="VisualFailureCopied" xml:space="preserve">
+    <value>Copié</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
 </root>

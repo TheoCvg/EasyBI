@@ -201,4 +201,10 @@
   <data name="BoundVisual" xml:space="preserve">
     <value>Bound to the designer's Visual</value>
   </data>
+  <data name="DataSourceUnavailableDemo" xml:space="preserve">
+    <value>Unavailable source (failures)</value>
+  </data>
+  <data name="SalesDatabaseNotAnswering" xml:space="preserve">
+    <value>The sales database is not answering. Try again in a moment.</value>
+  </data>
 </root>

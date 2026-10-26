@@ -39,6 +39,14 @@ public partial class MainWindow : Window
             // A visual type of the application, with the renderer drawing it
             .UseRenderer(new RankingRenderer());
 
+        // A visual whose query or renderer throws shows a short message, Retry and the details: log the failure, and
+        // say what happened in the user's words when the application knows
+        Context.VisualFailed += (_, e) =>
+        {
+            System.Diagnostics.Trace.TraceError($"Visual '{e.Visual.Title}' failed ({e.Stage}): {e.Exception}");
+            if (e.Exception is TimeoutException) e.Message = Text("SalesDatabaseNotAnswering");
+        };
+
         InitializeComponent();
         DataContext = this;
         // The charting libraries to choose from: not the renderer of the ranking alone
@@ -84,7 +92,12 @@ public partial class MainWindow : Window
                 // SQLite runs synchronously even through the async API: keep the UI responsive
                 await Task.Run(() => SalesDatabase.EnsureCreatedAsync(rows));
             }
-            _sales.Source = rows == 0 ? _memorySales : SalesDatabase.CreateModel(rows, App.TextResources);
+            _sales.Source = rows switch
+            {
+                0 => _memorySales,
+                < 0 => new UnavailableModel(_memorySales.Metadata),
+                _ => SalesDatabase.CreateModel(rows, App.TextResources),
+            };
             // Same queries, other data: the dashboard and the designer's preview query again
             Context.RefreshData(_sales.Metadata.Name);
         }

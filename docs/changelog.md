@@ -39,6 +39,9 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   hides or changes EasyBI's types in `EasyBIContext.VisualTypes`. The designer refuses a measure beyond what a type takes
   (a second value on a pie), a visual tells which well misses or has too many fields, and a matrix takes four row
   fields as documented (#60).
+- **Failed visuals explained**: a visual whose query or renderer throws says it could not be displayed, with Retry and
+  the details of what happened (to copy into a bug report) instead of the exception's message;
+  `EasyBIContext.VisualFailed` lets the application log the failure, change the message or hide the details.
 
 ### Fixed
 

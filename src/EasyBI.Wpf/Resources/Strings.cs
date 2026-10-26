@@ -91,6 +91,16 @@ internal static class Strings
     public static string Selection => Get();
     public static string ClearSelection => Get();
     public static string Error => Get();
+    public static string VisualFailed => Get();
+    public static string VisualFailedRetry => Get();
+    public static string VisualFailedDetails => Get();
+    public static string VisualFailureTitle => Get();
+    public static string VisualFailureQuery => Get();
+    public static string VisualFailureRender => Get();
+    public static string VisualFailureTechnicalDetails => Get();
+    public static string VisualFailureCopy => Get();
+    public static string VisualFailureCopied => Get();
+    public static string Close => Get();
     public static string NoRenderer => Get();
     public static string NoDimensionAvailable => Get();
     public static string AddVisual => Get();
