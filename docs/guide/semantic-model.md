@@ -164,6 +164,36 @@ context.RefreshData("sales");   // the visuals of this model
 context.RefreshData();          // every visual
 ```
 
+## When a query fails
+
+A visual whose query throws (a database out of reach, an expression EF Core cannot translate) or whose renderer throws
+does not show the exception: it says it could not be displayed, with **Retry**, which runs the query again, and **See
+what happened**.
+
+![A dashboard visual that could not be displayed: an error icon, the message, Retry and See what happened](../images/semantic-model/visual-failure.png#only-light)
+![A dashboard visual that could not be displayed: an error icon, the message, Retry and See what happened](../images/semantic-model/visual-failure-dark.png#only-dark)
+
+The details tell what failed (the query or the renderer) and give the visual, the version of EasyBI and the exception
+with its stack trace, ready to copy into a bug report.
+
+![The details of the failure: what failed, the exception's message and the technical details, with Copy and Close](../images/semantic-model/visual-failure-details.png#only-light)
+![The details of the failure: what failed, the exception's message and the technical details, with Copy and Close](../images/semantic-model/visual-failure-details-dark.png#only-dark)
+
+`EasyBIContext.VisualFailed` tells the application first: log the failure, say what happened in the user's words, or
+keep the details from the user.
+
+```csharp
+context.VisualFailed += (_, e) =>
+{
+    logger.LogError(e.Exception, "Visual {Title} failed ({Stage})", e.Visual.Title, e.Stage);
+    if (e.Exception is TimeoutException) e.Message = "The sales database is not answering. Try again in a moment.";
+    e.ShowDetails = false;   // no technical details in production
+};
+```
+
+`e.Stage` is `Query` or `Render` (with `e.Renderer`), and `e.Details` is the text the details show. The sample shows it
+with its *Unavailable source* data source.
+
 ## Your own model
 
 `SemanticModel.For` covers any `IQueryable`. For another kind of source (a web API, an OLAP cube...), implement

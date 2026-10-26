@@ -44,6 +44,8 @@
                         <ComboBoxItem Tag="0" Content="{bi:Localize DataSourceMemory, Source={x:Static local:App.Texts}}" IsSelected="True" />
                         <ComboBoxItem Tag="1000000" Content="{bi:Localize DataSourceSqlite1M, Source={x:Static local:App.Texts}}" />
                         <ComboBoxItem Tag="5000000" Content="{bi:Localize DataSourceSqlite5M, Source={x:Static local:App.Texts}}" />
+                        <!-- Every query fails: how visuals show a failure (see VisualFailed in MainWindow.xaml.cs) -->
+                        <ComboBoxItem Tag="-1" Content="{bi:Localize DataSourceUnavailableDemo, Source={x:Static local:App.Texts}}" />
                     </ComboBox>
                     <TextBlock x:Name="QueryStatus" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
                 </WrapPanel>

@@ -31,7 +31,21 @@ public sealed class EasyBIContext
     /// </summary>
     public event EventHandler<TooltipOpeningEventArgs>? TooltipOpening;
 
+    /// <summary>
+    /// Raised when a visual cannot be shown because its query or its renderer threw, before it shows the failure: log
+    /// it, change the message, or hide the details from the end user (see <see cref="VisualFailedEventArgs"/>).
+    /// </summary>
+    public event EventHandler<VisualFailedEventArgs>? VisualFailed;
+
     public IReadOnlyList<ISemanticModel> Models => _models;
+
+    /// <summary>How a failed visual shows its failure: EasyBI's message, then the application's changes (<see cref="VisualFailed"/>).</summary>
+    internal VisualFailedEventArgs FailureFor(VisualDefinition visual, Exception exception, VisualFailureStage stage, string? renderer)
+    {
+        var args = new VisualFailedEventArgs(visual, exception, stage, renderer);
+        VisualFailed?.Invoke(this, args);
+        return args;
+    }
 
     /// <summary>The content of a chart's tooltip: EasyBI's, then the application's changes (<see cref="TooltipOpening"/>).</summary>
     internal TooltipContent? TooltipFor(RenderRequest request, int category, IReadOnlyList<int> series)
