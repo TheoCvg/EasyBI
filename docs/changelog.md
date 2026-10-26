@@ -4,7 +4,7 @@ Every version, with its breaking changes. EasyBI follows [Semantic Versioning](h
 breaking changes bump the minor version. The report format (`easybi/v1`) stays backward compatible: a newer version
 opens older reports, and a report using a newer feature cannot be opened by an older version.
 
-## Unreleased
+## 0.5.0-beta.1 — 2026-10-26
 
 ### Added
 
@@ -41,7 +41,7 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   fields as documented (#60).
 - **Failed visuals explained**: a visual whose query or renderer throws says it could not be displayed, with Retry and
   the details of what happened (to copy into a bug report) instead of the exception's message;
-  `EasyBIContext.VisualFailed` lets the application log the failure, change the message or hide the details.
+  `EasyBIContext.VisualFailed` lets the application log the failure, change the message or hide the details (#73).
 
 ### Fixed
 
