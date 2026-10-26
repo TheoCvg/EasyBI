@@ -775,6 +775,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#when-a-query-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When a query fails
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#your-own-model" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2045,6 +2056,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#when-a-query-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When a query fails
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#your-own-model" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2337,6 +2359,27 @@ another data source), tell them, from any thread:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">context</span><span class="p">.</span><span class="n">RefreshData</span><span class="p">(</span><span class="s">"sales"</span><span class="p">);</span><span class="w">   </span><span class="c1">// the visuals of this model</span>
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">context</span><span class="p">.</span><span class="n">RefreshData</span><span class="p">();</span><span class="w">          </span><span class="c1">// every visual</span>
 </code></pre></div>
+<h2 id="when-a-query-fails">When a query fails<a class="headerlink" href="#when-a-query-fails" title="Permanent link">&para;</a></h2>
+<p>A visual whose query throws (a database out of reach, an expression EF Core cannot translate) or whose renderer throws
+does not show the exception: it says it could not be displayed, with <strong>Retry</strong>, which runs the query again, and <strong>See
+what happened</strong>.</p>
+<p><img alt="A dashboard visual that could not be displayed: an error icon, the message, Retry and See what happened" src="../../images/semantic-model/visual-failure.png#only-light" />
+<img alt="A dashboard visual that could not be displayed: an error icon, the message, Retry and See what happened" src="../../images/semantic-model/visual-failure-dark.png#only-dark" /></p>
+<p>The details tell what failed (the query or the renderer) and give the visual, the version of EasyBI and the exception
+with its stack trace, ready to copy into a bug report.</p>
+<p><img alt="The details of the failure: what failed, the exception's message and the technical details, with Copy and Close" src="../../images/semantic-model/visual-failure-details.png#only-light" />
+<img alt="The details of the failure: what failed, the exception's message and the technical details, with Copy and Close" src="../../images/semantic-model/visual-failure-details-dark.png#only-dark" /></p>
+<p><code>EasyBIContext.VisualFailed</code> tells the application first: log the failure, say what happened in the user's words, or
+keep the details from the user.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">context</span><span class="p">.</span><span class="n">VisualFailed</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="p">(</span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="p">{</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="n">logger</span><span class="p">.</span><span class="n">LogError</span><span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">Exception</span><span class="p">,</span><span class="w"> </span><span class="s">"Visual {Title} failed ({Stage})"</span><span class="p">,</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">Visual</span><span class="p">.</span><span class="n">Title</span><span class="p">,</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">Stage</span><span class="p">);</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">Exception</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">TimeoutException</span><span class="p">)</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">Message</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"The sales database is not answering. Try again in a moment."</span><span class="p">;</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">    </span><span class="n">e</span><span class="p">.</span><span class="n">ShowDetails</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">;</span><span class="w">   </span><span class="c1">// no technical details in production</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="p">};</span>
+</code></pre></div>
+<p><code>e.Stage</code> is <code>Query</code> or <code>Render</code> (with <code>e.Renderer</code>), and <code>e.Details</code> is the text the details show. The sample shows it
+with its <em>Unavailable source</em> data source.</p>
 <h2 id="your-own-model">Your own model<a class="headerlink" href="#your-own-model" title="Permanent link">&para;</a></h2>
 <p><code>SemanticModel.For</code> covers any <code>IQueryable</code>. For another kind of source (a web API, an OLAP cube...), implement
 <code>ISemanticModel</code>: its <code>Metadata</code> (the fields), <code>ExecuteAsync</code> (an <code>AnalyticQuery</code> in, a <code>ResultSet</code> out) and
