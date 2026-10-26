@@ -192,4 +192,13 @@
   <data name="TopProducts" xml:space="preserve">
     <value>Top products</value>
   </data>
+  <data name="XamlOnlyTab" xml:space="preserve">
+    <value>  XAML only  </value>
+  </data>
+  <data name="XamlOnlyTip" xml:space="preserve">
+    <value>This designer has no view-model and no code-behind: its context is bound, a behavior keeps the visual a bar chart, the buttons undo and redo with commands, and the visual on the right is bound to the designer's Visual.</value>
+  </data>
+  <data name="BoundVisual" xml:space="preserve">
+    <value>Bound to the designer's Visual</value>
+  </data>
 </root>

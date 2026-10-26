@@ -24,6 +24,12 @@ public class DesignerRuleTests
         return designer;
     }
 
+    private static ReportDesigner Control() => new()
+    {
+        Context = Designer().Context,
+        Visual = new VisualDefinition { Model = "sales", Title = "Sales", Axis = [new("Region")], Values = [new("Amount")] },
+    };
+
     private static string? FixedType(VisualChange change) => change.Changes(v => v.Type) ? "Fixed type" : null;
 
     private static string? FixedFields(VisualChange change) => change.FieldsChanged ? "Fixed fields" : null;
@@ -113,28 +119,37 @@ public class DesignerRuleTests
     [Fact]
     public void A_rule_behavior_is_a_rule_of_the_designer_it_is_attached_to() => Sta.Run(() =>
     {
-        var first = Designer();
-        var second = Designer();
-        var control = new ReportDesigner { DataContext = first };
+        var control = Control();
         var behavior = new LockVisualTypeBehavior { Message = "Kept" };
 
         Interaction.GetBehaviors(control).Add(behavior);
-        first.SelectedType = VisualType.Line;
-        Assert.Equal(("Kept", VisualType.Bar), (first.Refusal, first.Visual!.Type));
+        control.ViewModel!.SelectedType = VisualType.Line;
+        Assert.Equal(("Kept", VisualType.Bar), (control.ViewModel.Refusal, control.Visual!.Type));
 
-        // It follows the data context, and leaves when detached
-        control.DataContext = second;
-        Assert.Empty(first.Rules);
-        Assert.Single(second.Rules);
+        // It leaves when detached
         Interaction.GetBehaviors(control).Remove(behavior);
-        Assert.Empty(second.Rules);
+        Assert.Empty(control.Rules);
+        Assert.Empty(control.ViewModel.Rules);
+    });
+
+    [Fact]
+    public void The_rules_of_the_control_stay_when_its_context_changes() => Sta.Run(() =>
+    {
+        var control = Control();
+        control.Rules.Add(FixedType);
+        var first = control.ViewModel!;
+
+        control.Context = Designer().Context;
+
+        Assert.NotSame(first, control.ViewModel);
+        Assert.Equal([FixedType], control.ViewModel!.Rules);
     });
 
     [Fact]
     public void The_rules_given_by_easybi_say_why_in_the_users_language() => Sta.Run(() =>
     {
-        var designer = Designer();
-        var control = new ReportDesigner { DataContext = designer };
+        var control = Control();
+        var designer = control.ViewModel!;
         Interaction.GetBehaviors(control).Add(new LockFieldsBehavior());
         Interaction.GetBehaviors(control).Add(new ReadOnlyDesignerBehavior());
 
