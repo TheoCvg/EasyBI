@@ -1,5 +1,23 @@
 # Writing a connector
 
+A connector draws EasyBI's visuals with a charting library. EasyBI comes with two, which draw the same visual their own
+way:
+
+<div class="grid" markdown>
+
+![Revenue by region and channel drawn by LiveCharts2](../images/customization/renderer-livecharts2.png)
+
+![Revenue by region and channel drawn by OxyPlot](../images/customization/renderer-oxyplot.png)
+
+</div>
+
+| EasyBI does | The connector does |
+|---|---|
+| Queries, pivots, sorts, applies filters and time calculations | Draws `request.Chart` with its library |
+| Picks the renderer for each visual | Declares the types it draws |
+| Builds tooltips, legends' pages, colors of conditional formats | Shows them, from `request` |
+| Turns clicks into cross-filtering | Reports clicks with `request.Select` |
+
 A connector implements a single interface. It receives **already queried and pivoted** data
 (`request.Chart`: categories + series) and the raw `ResultSet` if needed:
 

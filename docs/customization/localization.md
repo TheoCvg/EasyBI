@@ -4,6 +4,8 @@ EasyBI's own texts (designer, filter bar, messages, granularity and aggregation 
 boolean values) ship in **English** and **French**. The language can change at runtime: designer,
 filter bar and visuals update immediately.
 
+![The designer in French: Modèle, Axe, Légende, Valeurs, Propriétés, and the model's captions translated](../images/customization/designer-fr.png)
+
 ```csharp
 EasyBILocalization.Culture = CultureInfo.GetCultureInfo("fr-FR"); // null = follow CurrentUICulture
 ```
