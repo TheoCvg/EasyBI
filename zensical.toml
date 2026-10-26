@@ -14,6 +14,7 @@ nav = [
   { "Home" = "index.md" },
   { "Getting started" = "getting-started.md" },
   { "Guide" = [
+    { "Semantic model" = "guide/semantic-model.md" },
     { "The designer" = [
       "guide/designer/index.md",
       { "Building a visual" = "guide/designer/building-a-visual.md" },
@@ -104,6 +105,7 @@ pymdownx.details = {}
 pymdownx.highlight.anchor_linenums = true
 pymdownx.inlinehilite = {}
 pymdownx.keys = {}
+pymdownx.emoji = { emoji_index = "zensical.extensions.emoji.twemoji", emoji_generator = "zensical.extensions.emoji.to_svg" }
 pymdownx.superfences.custom_fences = [
   { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
 ]
