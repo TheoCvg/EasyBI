@@ -37,6 +37,9 @@
         <loc>https://theocvg.github.io/EasyBI/dev/guide/calculated-measures/</loc>
       </url>
       <url>
+        <loc>https://theocvg.github.io/EasyBI/dev/guide/cross-filtering/</loc>
+      </url>
+      <url>
         <loc>https://theocvg.github.io/EasyBI/dev/guide/designer/</loc>
       </url>
       <url>
@@ -59,6 +62,9 @@
       </url>
       <url>
         <loc>https://theocvg.github.io/EasyBI/dev/reference/report-format/</loc>
+      </url>
+      <url>
+        <loc>https://theocvg.github.io/EasyBI/dev/visuals/</loc>
       </url>
       <url>
         <loc>https://theocvg.github.io/EasyBI/dev/visuals/axis-fields/</loc>

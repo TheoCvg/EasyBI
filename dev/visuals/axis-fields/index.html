@@ -14,10 +14,10 @@
       
       
       
-        <link rel="prev" href="../legends/">
+        <link rel="prev" href="../combined-charts/">
       
       
-        <link rel="next" href="../value-labels/">
+        <link rel="next" href="../matrix/">
       
       
         
@@ -267,6 +267,8 @@
       
         
       
+        
+      
     
     
     
@@ -294,6 +296,10 @@
       
       
         
+          
+        
+      
+        
       
         
       
@@ -314,7 +320,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../time-comparisons/" class="md-tabs__link">
+        <a href="../" class="md-tabs__link">
           
   
   Visuals
@@ -554,6 +560,8 @@
   
     
     
+      
+        
       
         
       
@@ -837,7 +845,34 @@
   <span class="md-ellipsis">
     
   
-  Filtering and cross-filtering
+  Filters
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/cross-filtering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Cross-filtering
 
     
   </span>
@@ -868,6 +903,10 @@
   
     
     
+      
+        
+          
+        
       
         
       
@@ -904,8 +943,9 @@
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
-            
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
   
   
   <span class="md-ellipsis">
@@ -918,8 +958,14 @@
   
   
 
-            <span class="md-nav__icon md-icon"></span>
-          </label>
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
         
         
           <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
@@ -932,31 +978,6 @@
             </label>
             <ul class="md-nav__list" data-md-scrollfix>
               
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../time-comparisons/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Comparisons over time
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
                 
               
                 
@@ -990,6 +1011,43 @@
                   
   
   
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Several axis fields
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
   
   
     <li class="md-nav__item">
@@ -1001,6 +1059,33 @@
     
   
   Matrix
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../time-comparisons/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Comparisons over time
 
     
   </span>
@@ -1089,43 +1174,6 @@
   
 
       </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      
-      
-        
-      
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Several axis fields
-
-    
-  </span>
-  
-  
-
-      </a>
-      
     </li>
   
 
@@ -1718,6 +1766,10 @@
     
       
         
+          
+        
+      
+        
       
         
       
@@ -1738,7 +1790,7 @@
     
     
       <li class="md-path__item">
-        <a href="../time-comparisons/" class="md-path__link">
+        <a href="../" class="md-path__link">
           
   
   <span class="md-ellipsis">
@@ -1770,14 +1822,26 @@
 
 
 <h1 id="several-axis-fields">Several axis fields<a class="headerlink" href="#several-axis-fields" title="Permanent link">&para;</a></h1>
-<p>An axis with several fields (Month, then Region) is drawn as a hierarchy: each bar labelled by the innermost field
-("North"), each outer value once, centered under its group of bars ("2024-01"), with a line between the groups. When
-the bars are too narrow for their labels, every n-th group label shows, and the innermost labels give way to the groups'
-when fewer than two a group would fit. Categories not ordered by their outer fields (sorted on a measure) keep joined
-labels ("2024-01 / North"). Tooltips keep the whole category.</p>
-<p><code>CategoryLevels.Of(request.Chart)</code> (EasyBI.Core) gives a connector the short labels and the groups of each outer field
-(<code>CategoryGroup</code>: label, first category, count, center); LiveCharts2 draws the groups on extra X axes, OxyPlot on axes of
-the next tiers.</p>
+<p>An axis takes up to three fields: <em>year, then region</em>. The chart draws them as a hierarchy, each outer value once,
+under its group of bars.</p>
+<p><img alt="Revenue by year then region: each year once, under its five regions" src="../../images/visuals/axis-fields.png#only-light" />
+<img alt="Revenue by year then region: each year once, under its five regions" src="../../images/visuals/axis-fields-dark.png#only-dark" /></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">Axis</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="k">new</span><span class="p">(</span><span class="s">"Date"</span><span class="p">,</span><span class="w"> </span><span class="n">DateGrain</span><span class="p">.</span><span class="n">Year</span><span class="p">),</span><span class="w"> </span><span class="k">new</span><span class="p">(</span><span class="s">"Region"</span><span class="p">)],</span>
+</code></pre></div>
+<p>How the labels adapt:</p>
+<ul>
+<li>Each bar is labelled by the innermost field (<em>Nord</em>), each group by the outer one (<em>2024</em>), with a line between the
+  groups.</li>
+<li>When the bars are too narrow, every n-th group label shows, and the innermost labels give way to the groups'.</li>
+<li>Sorted on a measure, the categories are no longer grouped: they keep joined labels (<em>2024 / Nord</em>).</li>
+<li>Tooltips always show the whole category.</li>
+</ul>
+<details class="info">
+<summary>For connector authors</summary>
+<p><code>CategoryLevels.Of(request.Chart)</code> (EasyBI.Core) gives the short labels and the groups of each outer field
+(<code>CategoryGroup</code>: label, first category, count, center). LiveCharts2 draws the groups on extra X axes, OxyPlot on
+axes of the next tiers.</p>
+</details>
 
 
 
@@ -1817,7 +1881,7 @@ the next tiers.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../legends/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Legends">
+          <a href="../combined-charts/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Combined charts">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1827,20 +1891,20 @@ the next tiers.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Legends
+                Combined charts
               </div>
             </div>
           </a>
         
         
           
-          <a href="../value-labels/" class="md-footer__link md-footer__link--next" aria-label="Next: Value labels">
+          <a href="../matrix/" class="md-footer__link md-footer__link--next" aria-label="Next: Matrix">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Value labels
+                Matrix
               </div>
             </div>
             <div class="md-footer__button md-icon">
