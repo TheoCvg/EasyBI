@@ -786,10 +786,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#your-own-model" class="md-nav__link">
+  <a href="#your-own-data-source" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Your own model
+        Your own data source
       </span>
     </span>
   </a>
@@ -2067,10 +2067,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#your-own-model" class="md-nav__link">
+  <a href="#your-own-data-source" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Your own model
+        Your own data source
       </span>
     </span>
   </a>
@@ -2380,10 +2380,80 @@ keep the details from the user.</p>
 </code></pre></div>
 <p><code>e.Stage</code> is <code>Query</code> or <code>Render</code> (with <code>e.Renderer</code>), and <code>e.Details</code> is the text the details show. The sample shows it
 with its <em>Unavailable source</em> data source.</p>
-<h2 id="your-own-model">Your own model<a class="headerlink" href="#your-own-model" title="Permanent link">&para;</a></h2>
-<p><code>SemanticModel.For</code> covers any <code>IQueryable</code>. For another kind of source (a web API, an OLAP cube...), implement
-<code>ISemanticModel</code>: its <code>Metadata</code> (the fields), <code>ExecuteAsync</code> (an <code>AnalyticQuery</code> in, a <code>ResultSet</code> out) and
-<code>GetDistinctValuesAsync</code> (the values filters offer).</p>
+<h2 id="your-own-data-source">Your own data source<a class="headerlink" href="#your-own-data-source" title="Permanent link">&para;</a></h2>
+<p>A visual asks its model for <strong>its data</strong>, not for queries: <code>ISemanticModel.GetDataAsync</code> receives a
+<code>VisualDataRequest</code> and answers with a <code>VisualData</code>. Where the data comes from, and how the request travels, is up to
+the model: <code>SemanticModel.For</code> runs it in the application over an <code>IQueryable</code>; another model can send it to a server,
+which answers with the visual's result.</p>
+<table>
+<thead>
+<tr>
+<th><code>VisualDataRequest</code></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Visual</code></td>
+<td>The visual, with the filters of its page and the selections of other visuals applied</td>
+</tr>
+<tr>
+<td><code>Measures</code></td>
+<td>The end user's calculated measures it uses, with those they use</td>
+</tr>
+<tr>
+<td><code>HasTooltips</code></td>
+<td>Whether its type shows tooltips, whose measures are queried with it</td>
+</tr>
+<tr>
+<td><code>Today</code></td>
+<td>The user's date: relative periods (this year, last 12 months) and comparisons with a year earlier</td>
+</tr>
+<tr>
+<td><code>UICulture</code>, <code>FormatCulture</code></td>
+<td>The cultures of the captions and of the texts of values in the result (null for the model's own)</td>
+</tr>
+</tbody>
+</table>
+<p><code>VisualData</code> holds the visual's <code>ResultSet</code> and, for a matrix, its pivoted <code>MatrixData</code>. The request only holds data
+that serializes; the drawing (chart data, theme, renderer) always stays in the application.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">A source that runs queries</label><label for="__tabbed_2_2">A source that answers visuals</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="k">public</span><span class="w"> </span><span class="k">sealed</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">SqlSalesModel</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">QuerySemanticModel</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="p">{</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">override</span><span class="w"> </span><span class="n">ModelMetadata</span><span class="w"> </span><span class="n">Metadata</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">get</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">...;</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">override</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">ResultSet</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ExecuteAsync</span><span class="p">(</span><span class="n">AnalyticQuery</span><span class="w"> </span><span class="n">query</span><span class="p">,</span><span class="w"> </span><span class="n">CancellationToken</span><span class="w"> </span><span class="n">cancellationToken</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">default</span><span class="p">)</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w">        </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">...;</span><span class="w"> </span><span class="c1">// filters, groups, aggregates, sort, Top and calculated measures</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">override</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">IReadOnlyList</span><span class="o">&lt;</span><span class="kt">object?</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">GetDistinctValuesAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">field</span><span class="p">,</span><span class="w"> </span><span class="n">CancellationToken</span><span class="w"> </span><span class="n">cancellationToken</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">default</span><span class="p">)</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="w">        </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">...;</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="p">}</span>
+</code></pre></div>
+<p><code>QuerySemanticModel</code> turns the request into <code>AnalyticQuery</code>s and composes their results: comparisons with a year
+earlier, year-to-date totals, the levels and totals of a matrix. Periods relative to today reach <code>ExecuteAsync</code> as
+date ranges, on the request's date.</p>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">public</span><span class="w"> </span><span class="k">sealed</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nf">RemoteSalesModel</span><span class="p">(</span><span class="n">ModelMetadata</span><span class="w"> </span><span class="n">metadata</span><span class="p">,</span><span class="w"> </span><span class="n">ISalesApi</span><span class="w"> </span><span class="n">api</span><span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">ISemanticModel</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="p">{</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">ModelMetadata</span><span class="w"> </span><span class="n">Metadata</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">get</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">metadata</span><span class="p">;</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">VisualData</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetDataAsync</span><span class="p">(</span><span class="n">VisualDataRequest</span><span class="w"> </span><span class="n">request</span><span class="p">,</span><span class="w"> </span><span class="n">CancellationToken</span><span class="w"> </span><span class="n">cancellationToken</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">default</span><span class="p">)</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">        </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">api</span><span class="p">.</span><span class="n">GetVisualDataAsync</span><span class="p">(</span><span class="n">request</span><span class="p">,</span><span class="w"> </span><span class="n">cancellationToken</span><span class="p">);</span><span class="w">   </span><span class="c1">// the server answers, with a QuerySemanticModel</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">IReadOnlyList</span><span class="o">&lt;</span><span class="kt">object?</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">GetDistinctValuesAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">field</span><span class="p">,</span><span class="w"> </span><span class="n">CancellationToken</span><span class="w"> </span><span class="n">cancellationToken</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">default</span><span class="p">)</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="w">        </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">api</span><span class="p">.</span><span class="n">GetDistinctValuesAsync</span><span class="p">(</span><span class="n">field</span><span class="p">,</span><span class="w"> </span><span class="n">cancellationToken</span><span class="p">);</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="p">}</span>
+</code></pre></div>
+<p>The model decides everything about the transport (HTTP, gRPC, a message bus...) and its security. On the server,
+a <code>QuerySemanticModel</code> (<code>SemanticModel.For</code> over EF Core, for one) answers the request with <code>GetDataAsync</code>.</p>
+</div>
+</div>
+</div>
+<p><code>VisualPipeline.PrepareAsync</code> asks a model for a visual's data and builds what renderers draw; <code>VisualPipeline.Prepare</code>
+does it with data obtained otherwise.</p>
 
 
 
