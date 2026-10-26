@@ -1,6 +1,6 @@
-# Drag and drop
+# Drag and drop in your controls
 
-The designer's drag and drop is built on reusable attached properties (namespace `EasyBI.Wpf.DragAndDrop`,
+The drag and drop of the designer and the field list is built on reusable attached properties (namespace `EasyBI.Wpf.DragAndDrop`,
 XAML prefix `bi:`), usable on any `ItemsControl` of an application. Being attached properties, they can be set
 from a style:
 

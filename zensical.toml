@@ -37,8 +37,10 @@ nav = [
     { "Value labels" = "visuals/value-labels.md" },
   ] },
   { "Dashboard" = [
-    { "Dashboard" = "dashboard/index.md" },
-    { "Drag and drop" = "dashboard/drag-and-drop.md" },
+    "dashboard/index.md",
+    { "What users do" = "dashboard/using.md" },
+    { "Layout" = "dashboard/layout.md" },
+    { "Customizing" = "dashboard/customizing.md" },
   ] },
   { "Customization" = [
     { "Theming" = "customization/theming.md" },
@@ -46,6 +48,7 @@ nav = [
     { "Localization" = "customization/localization.md" },
     { "Writing a connector" = "customization/connectors.md" },
     { "Custom visual types" = "customization/visual-types.md" },
+    { "Drag and drop in your controls" = "dashboard/drag-and-drop.md" },
   ] },
   { "Reference" = [
     { "Report format" = "reference/report-format.md" },
