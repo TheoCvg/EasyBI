@@ -1821,6 +1821,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#target-frameworks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Target frameworks
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#writing-this-documentation" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1891,6 +1902,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#target-frameworks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Target frameworks
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#writing-this-documentation" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1942,6 +1964,49 @@ workflow.</p>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>dotnet test
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>dotnet run --project samples/EasyBI.Sample
 </code></pre></div>
+<h2 id="target-frameworks">Target frameworks<a class="headerlink" href="#target-frameworks" title="Permanent link">&para;</a></h2>
+<p>The libraries run on .NET 8 and on older .NET:</p>
+<table>
+<thead>
+<tr>
+<th>Projects</th>
+<th>Targets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EasyBI.Abstractions</code>, <code>EasyBI.Core</code></td>
+<td><code>netstandard2.0</code>, <code>net8.0</code></td>
+</tr>
+<tr>
+<td><code>EasyBI.Wpf</code>, <code>EasyBI.Renderers.*</code>, <code>EasyBI.Themes.*</code></td>
+<td><code>net462</code>, <code>net8.0-windows</code></td>
+</tr>
+<tr>
+<td>Tests</td>
+<td><code>net8.0</code> (<code>net8.0-windows</code>) and <code>net48</code>, which runs the older builds</td>
+</tr>
+</tbody>
+</table>
+<p>The code is written once, in the C# of the repository, for every target:</p>
+<ul>
+<li><strong>Compiler features</strong> (records, <code>init</code>, <code>required</code>, nullable attributes, ranges) are generated for the older targets
+  by <a href="https://github.com/Sergio0694/PolySharp">PolySharp</a>, a source generator: it adds no dependency to the packages.</li>
+<li><strong>Missing instance and LINQ methods</strong> (<code>ToHashSet</code>, <code>DistinctBy</code>, <code>GetValueOrDefault</code>, <code>Chunk</code>...) are added for the
+  older targets only by <code>src/Shared/Legacy</code>, under the framework's names, so the code calls them as on .NET 8.</li>
+<li><strong>Missing static methods</strong> (<code>Math.Clamp</code>, <code>char.IsAsciiDigit</code>, <code>Enum.GetValues&lt;T&gt;</code>...) cannot be added that way:
+  call <code>Compat</code> (<code>src/Shared/Compat.cs</code>) instead, on every target.</li>
+<li><strong>Missing types</strong> come from packages referenced for the older targets only: Microsoft's own (<code>System.Text.Json</code>,
+  <code>Microsoft.Bcl.AsyncInterfaces</code>, <code>Microsoft.Bcl.HashCode</code>, <code>System.ValueTuple</code>) and
+  <a href="https://github.com/OlegRa/System.DateTimeOnly">Portable.System.DateTimeOnly</a> for <code>DateOnly</code>. <code>DateOnly</code> stays in
+  the public API rather than becoming a <code>DateTime</code>: a date without time says what it is, and the .NET 8 build does
+  not change.</li>
+<li>The public API avoids types older targets lack (<code>IReadOnlySet&lt;T&gt;</code>: use <code>IReadOnlyCollection&lt;T&gt;</code>) and default
+  interface implementations.</li>
+<li>Nullable warnings come from the .NET 8 build only: older frameworks are not annotated, their warnings would be false
+  positives.</li>
+</ul>
+<p><code>dotnet build</code> builds every target; <code>dotnet test</code> runs the tests on .NET 8 and on .NET Framework 4.8 (Windows).</p>
 <h2 id="writing-this-documentation">Writing this documentation<a class="headerlink" href="#writing-this-documentation" title="Permanent link">&para;</a></h2>
 <p>This site is built from the Markdown files of the <a href="https://github.com/TheoCvg/EasyBI/tree/develop/docs"><code>docs</code></a> folder
 with <a href="https://zensical.org">Zensical</a>, and published on GitHub Pages:</p>
