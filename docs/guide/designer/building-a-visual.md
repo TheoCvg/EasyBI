@@ -3,8 +3,7 @@
 What the end user does in the designer, step by step. Everything here works out of the box: this page is also a base for
 your application's user help.
 
-<!-- GIF to record: designer/build.gif — from an empty designer, drag Region to Axis, Revenue to Values, Channel to
-     Legend, then pick "Lines" in the gallery (about 10 s). -->
+![Building a visual: Region dropped on the axis, Revenue on the values, Channel on the legend, a title typed, then Lines picked in the gallery](../../images/designer/build-animated.png)
 
 ## Add fields
 
@@ -55,14 +54,11 @@ The **wells follow the type**: their names and limits change, and the wells a ty
 A field in a well is a **chip**. Its badges sum its settings up: `Σ` or `avg` (aggregation), `Quarter` (grain), `PY`
 (time comparison), `Y2` (secondary axis), `↓` (sort).
 
-![Chips in the wells, the Revenue chip selected](../../images/designer/chips.png#only-light)
-![Chips in the wells, the Revenue chip selected](../../images/designer/chips-dark.png#only-dark)
-
 - **Move** a chip by dragging it, within its well (the order of the axis or of the series) or to another well.
-- **Remove** it with its `×`, or drag it back to the field list.
+- **Remove** it with its `×`, or with ++delete++ once selected.
 - **Select** it with a click: the properties panel shows its settings.
 
-<!-- GIF to record: designer/chips.gif — reorder two chips in Axis, move one to Legend, remove one with × (about 8 s). -->
+![Chips: Channel moved before Region, Region moved to the legend, Margin removed](../../images/designer/chips-animated.png)
 
 ## Set the details
 
