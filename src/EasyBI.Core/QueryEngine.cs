@@ -402,7 +402,7 @@ internal static class QueryEngine<T>
             var grain = groupBy[i].Grain;
             if (grain is DateGrain.None or DateGrain.Day) continue;
             foreach (var row in rows)
-                row[i] = new DatePeriod(grain, (int)row[i]!);
+                row[i] = row[i] is int key ? new DatePeriod(grain, key) : null;
         }
     }
 

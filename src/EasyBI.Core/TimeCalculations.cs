@@ -149,7 +149,10 @@ public static class TimeCalculations
                 TimeCalculation.YearToDate => (_, index) => runningTotals![index],
                 _ => (row, _) =>
                 {
-                    var before = lastYear?.GetValueOrDefault(KeyOf(row, groups, oneYearLater: false))?[source];
+                    // A missing date has no year before it: its group is not the missing dates of the year before
+                    var before = dateColumn is { } date && row[date] is null
+                        ? null
+                        : lastYear?.GetValueOrDefault(KeyOf(row, groups, oneYearLater: false))?[source];
                     return measure.Time switch
                     {
                         TimeCalculation.PreviousYear => before,

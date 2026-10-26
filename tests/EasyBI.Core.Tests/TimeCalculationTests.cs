@@ -186,6 +186,24 @@ public class TimeCalculationTests
         Assert.Equal([null, 190d], chart.Series[1].Values);
     }
 
+    private sealed record Shipment(DateTime? Shipped, decimal Amount);
+
+    [Theory]
+    [InlineData(DateGrain.None)]
+    [InlineData(DateGrain.Month)]
+    public async Task Missing_dates_have_no_previous_year(DateGrain grain)
+    {
+        var model = SemanticModel.For(new Shipment[] { new(new(2024, 2, 10), 1m), new(null, 2m) }, "m")
+            .Dimension(s => s.Shipped, "Expédition")
+            .Measure(s => s.Amount, "CA");
+
+        var result = await model.ExecuteWithTimeAsync(new([new("Shipped", grain)],
+            [Amount(), Amount(TimeCalculation.PreviousYear), Amount(TimeCalculation.PercentChangeFromPreviousYear)]));
+
+        var missing = Assert.Single(result.Rows, r => r[0] is null);
+        Assert.Equal([2m, null, null], missing.Skip(1));
+    }
+
     [Fact]
     public void Reports_only_mention_a_time_calculation_when_there_is_one()
     {
