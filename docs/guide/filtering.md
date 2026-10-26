@@ -1,50 +1,88 @@
-# Filtering: global filters and cross-filtering
+# Filters
 
-A `FilterContext` holds the filtering state of a dashboard. Set once on the container (it is an
-inherited property), it is used by the `FilterBar` and by every `VisualView`:
+Filters keep the rows that matter: the last 12 months, three regions, the sales over 1,000 €. They run inside the
+query, in the database.
+
+| Filter | Set by | Applies to |
+|---|---|---|
+| **Global filter** | The filter bar | Every visual of its model |
+| **Visual filter** | The designer's *Filters* well | Its visual |
+| **Selection** | A click on a chart | The other visuals: see [Cross-filtering](cross-filtering.md) |
+
+## The filter bar
+
+![The filter bar: Date in the last 12 months, Region in three values, and the button to add a filter](../images/filtering/filter-bar.png#only-light)
+![The filter bar: Date in the last 12 months, Region in three values, and the button to add a filter](../images/filtering/filter-bar-dark.png#only-dark)
+
+A `FilterContext` holds the filters of a dashboard. Set it once on a container (it is inherited): the filter bar edits
+it, and every `VisualView` inside applies it.
 
 ```xml
-<DockPanel bi:VisualView.FilterContext="{Binding Filters}">
+<DockPanel bi:VisualView.FilterContext="{Binding Filters}"> <!-- (1)! -->
     <bi:FilterBar DockPanel.Dock="Top" Context="{Binding Context}" />
-    <!-- ... the dashboard's VisualViews ... -->
+    <bi:DashboardView Context="{Binding Context}" />
 </DockPanel>
 ```
 
-- **Global filters** (slicers): added from the `FilterBar`, they apply to every visual of the same
-  model and are saved with the report (`ReportDefinition.Filters`).
-- **Cross-filtering**: clicking a bar, a point, a slice or a table row filters the other visuals of
-  the same model on the element's dimensions (axis, plus legend for a bar). Ctrl+click adds an element to the
-  selection of its visual, or removes it: the other visuals keep the rows of any selected element. Ctrl+click in
-  another visual adds that visual's own selection (`FilterContext.Selections`, one per visual): a visual is filtered by
-  the selections of all the others, "(Region = North or South) and Channel = Web". A plain click replaces every
-  selection, clicking the only selected element again clears it. A visual is not filtered by its own selection: it dims
-  what is left out of it and shows a summary of it, whose ✕ clears it (`ClearSelection(visualId)`); the `FilterBar`
-  sums them all up and clears them all.
-  Periods (quarter, month...) filter through `FilterSpec.Grain`.
-- **Period filters**: a date dimension, in the `FilterBar` or on the designer's Filters shelf, is filtered on a
-  period rather than on a list of values: between two dates, the current day / month / quarter / year, the last n
-  (current one included: "Last 12 months") or the n previous complete ones ("Last month"). Relative periods are
-  resolved when the query runs, so a saved report keeps showing the last 12 months; the date column is compared to
-  the period's bounds (`date >= start AND date < end`), so a database can use an index on it.
-- **Numeric filters**: a number dimension, in the `FilterBar` or on the designer's Filters shelf, is filtered on a list
-  of values or compared with numbers: between two numbers (inclusive, one end may stay open), greater / less than, at
-  least / at most. A **measure** dropped on the designer's Filters shelf filters the visual's groups by their
-  aggregated value ("regions whose revenue ≥ 10,000"): the comparison runs after the grouping (SQL `HAVING`), before
-  the sort and `Top`. Calculated measures can filter too, shown or not. Measures only filter a visual: their meaning
-  depends on its grouping, so the `FilterBar` and the report's filters do not offer them.
+1. `public FilterContext Filters { get; } = new();` in your view-model.
+
+Global filters are saved with the report, in `ReportDefinition.Filters`:
 
 ```csharp
-PeriodFilters.Relative("Date", FilterOperator.Last, DateGrain.Month, 12);     // last 12 months
-PeriodFilters.Between("Date", new DateOnly(2024, 1, 1), null);                // since January 1st, 2024
-PeriodFilters.Describe(filter);                                               // "Last 12 months", localized
-NumericFilters.Range("Quantity", 10, null);                                   // Quantity >= 10
-NumericFilters.Compare("Amount", FilterOperator.GreaterThanOrEqual, 10_000);  // on a measure: groups >= 10,000
-NumericFilters.Describe(filter);                                              // "≥ 10,000", localized
+var report = dashboard.Capture().Report with { Filters = Filters.Filters.ToArray() };   // save
+Filters.Load(report.Filters);                                                           // open
 ```
 
-A connector only has to call `request.Select?.Invoke(new CategorySelection(category, series))` on
-click (or `RowSelection` for a table): `Select` is null when interactivity is disabled, for example
-in the designer preview. When the visual is the source of the selection, `request.Highlight` lists the selected
-elements: draw them as usual and the others with `SelectionFilters.DimmedOpacity`, using
-`request.IsEmphasized(category, series)` (or `IsRowEmphasized(row)`). The OxyPlot connector dims bars and slices one
-by one, but lines and points by series only.
+## What can be filtered
+
+### Values
+
+Any dimension can be filtered on a list of values, checked in a list that users can search.
+
+```csharp
+new FilterSpec("Region", FilterOperator.In, ["Nord", "Sud"])
+new FilterSpec("Channel", FilterOperator.NotIn, ["Web"])
+```
+
+### Periods
+
+A date is filtered on a **period** rather than a list of values:
+
+| Period | `FilterSpec` |
+|---|---|
+| Between two dates (an end may stay open) | `PeriodFilters.Between("Date", new DateOnly(2024, 1, 1), null)` |
+| The current day, month, quarter or year | `PeriodFilters.Relative("Date", FilterOperator.Current, DateGrain.Year)` |
+| The last *n*, the current one included (*last 12 months*) | `PeriodFilters.Relative("Date", FilterOperator.Last, DateGrain.Month, 12)` |
+| The *n* previous complete ones (*last month*) | `PeriodFilters.Relative("Date", FilterOperator.Previous, DateGrain.Month)` |
+
+Relative periods are resolved when the query runs: a saved report keeps showing the last 12 months. The date is
+compared with the period's bounds (`date >= start AND date < end`), so the database can use an index on it.
+
+### Numbers
+
+A number dimension is filtered on values, or compared with numbers:
+
+```csharp
+NumericFilters.Range("Quantity", 10, null);                                   // Quantity >= 10
+NumericFilters.Compare("Quantity", FilterOperator.LessThan, 5);               // Quantity < 5
+```
+
+Operators: `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, `LessThanOrEqual`, `Range` (inclusive, an end may stay
+open).
+
+### Measures
+
+A **measure** dropped on the designer's *Filters* well filters the visual's groups by their total: *regions whose
+revenue ≥ 10,000*. The comparison runs after the grouping (a SQL `HAVING`), before the sort and Top N.
+
+```csharp
+Filters = [NumericFilters.Compare("Amount", FilterOperator.GreaterThanOrEqual, 10_000)],
+```
+
+!!! note "Only in a visual"
+    The meaning of a measure filter depends on the visual's grouping, so the filter bar does not offer measures.
+
+## Describe a filter
+
+`PeriodFilters.Describe(filter)` and `NumericFilters.Describe(filter)` give the text the filter bar shows, in the
+user's language: *Last 12 months*, *≥ 10,000*.

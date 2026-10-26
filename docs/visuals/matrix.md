@@ -1,22 +1,43 @@
 # Matrix
 
-A **matrix** (`VisualType.Matrix`) crosses its axis, the **rows** (up to four dimensions), with its legend, the
-**columns**, for each measure in `Values`, and adds the total of each row, of each column and of the whole. Each total
-is the measure computed on all the rows it covers (an average stays an average), not a sum of cells:
-`VisualPipeline.PrepareAsync` runs one query per level (`MatrixBuilder`) and hands the pivoted data to the renderer in
-`RenderRequest.Matrix` (`MatrixData`). The sort, `Top` and the filters on measures choose the rows; the column totals
-then only count those rows. Without columns, a matrix lists its rows and their totals with a total row. Clicking a cell
-cross-filters on its row and column, a row header or total on the row, a column total on the column
-(`MatrixSelection`). The built-in `MatrixRenderer` draws it in a grid styled like the table; in the designer, the
-wells of a matrix are Rows, Columns and Values.
+A matrix crosses **rows** (up to four dimensions) with **columns** (one dimension), for each measure, and adds the
+totals of every row, every column and the whole.
 
-```csharp
-new VisualDefinition
-{
-    Model = "sales",
-    Type = VisualType.Matrix,
-    Axis = [new("Product.Category")],                         // rows
-    Legend = new("Date", DateGrain.Year),                     // columns
-    Values = [new("Amount")],
-};
-```
+![Revenue by category and product in rows, by year in columns, with totals](../images/visuals/matrix.png#only-light)
+![Revenue by category and product in rows, by year in columns, with totals](../images/visuals/matrix-dark.png#only-dark)
+
+=== "Designer"
+
+    Pick *Matrix* in the gallery: its wells become **Rows**, **Columns** and **Values**.
+
+=== "Code"
+
+    ```csharp
+    new VisualDefinition
+    {
+        Model = "sales",
+        Type = VisualType.Matrix,
+        Axis = [new("Product.Category"), new("Product.Name")],    // rows
+        Legend = new("Date", DateGrain.Year),                     // columns
+        Values = [new("Amount")],
+    };
+    ```
+
+## Totals that stay right
+
+Each total is the measure **computed on all the rows it covers**, not a sum of cells: the total of a margin rate is the
+margin rate of the whole, an average stays an average. EasyBI runs one query per level of totals to get them.
+
+- Sort, Top N and the filters on measures choose the rows; the column totals then count those rows only.
+- Without columns, a matrix lists its rows with a total row.
+- [Conditional formatting](conditional-formatting.md) applies to the cells, not to the totals.
+
+## Interactions
+
+A click cross-filters the other visuals: a cell on its row and column, a row header or total on its row, a column
+total on its column.
+
+??? info "For connector authors"
+    `VisualPipeline.PrepareAsync` (with `MatrixBuilder`) hands the pivoted data to the renderer in
+    `RenderRequest.Matrix` (`MatrixData`); a click reports a `MatrixSelection`. The built-in `MatrixRenderer` draws it
+    in a grid styled like the table.
