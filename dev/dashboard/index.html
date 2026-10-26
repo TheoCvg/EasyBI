@@ -17,7 +17,7 @@
         <link rel="prev" href="../visuals/value-labels/">
       
       
-        <link rel="next" href="./drag-and-drop/">
+        <link rel="next" href="./using/">
       
       
         
@@ -345,6 +345,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -368,6 +372,8 @@
   
     
       
+      
+        
       
         
       
@@ -1216,6 +1222,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1279,14 +1289,68 @@
   
   
     <li class="md-nav__item">
-      <a href="./drag-and-drop/" class="md-nav__link">
+      <a href="./using/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Drag and drop
+  What users do
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./layout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Layout
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./customizing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Customizing
 
     
   </span>
@@ -1315,6 +1379,8 @@
   
     
     
+      
+        
       
         
       
@@ -1493,6 +1559,33 @@
     
   
   Custom visual types
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./drag-and-drop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Drag and drop in your controls
 
     
   </span>
@@ -1701,6 +1794,11 @@
                       
                     
                     
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
                   
                   <div class="md-sidebar__inner">
                     
@@ -1712,6 +1810,69 @@
   
     
   
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#show-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Show it
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#save-and-open" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Save and open
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#read-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Read-only
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Performance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Next
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -1761,6 +1922,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1798,192 +1963,119 @@
 
 
 <h1 id="dashboard">Dashboard<a class="headerlink" href="#dashboard" title="Permanent link">&para;</a></h1>
-<p>Arranging visuals is a WPF concern: the report (<code>easybi/v1</code>) never contains a layout. The dashboard is
-built in three layers, each usable on its own.</p>
-<p><strong>The layout</strong> (<code>DashboardLayoutDefinition</code>) is a stack of bands, each with a mode. Its items are <strong>greedy</strong>:
-without a constraint, they share the room their neighbours leave, so a dashboard never has a gap.</p>
-<ul>
-<li><strong>Fit</strong> bands are a grid of 12 columns that fills the width. A band is a stack of lines; a line is an item, or a
-  container (<code>LayoutNode.Row</code>: side by side, <code>LayoutNode.Column</code>: stacked) of items and containers. Along a
-  container, constrained children keep their size (<code>ColumnSpan</code> in columns, <code>RowSpan</code> in rows) and the others share
-  the rest; across it, every child takes the whole room. An item with a <code>RowSpan</code> sets the height of its line and the
-  items next to it stretch, so items stacked beside a tall item share its height.</li>
-<li><strong>Column tiers</strong>: on a narrow panel, Fit bands show fewer columns (<code>DashboardPanel.ColumnTiers</code>; by default
-  1 column under 600 px and 6 under 960 px, <code>ColumnTier.Defaults</code>). Spans are scaled to the tier, a line whose items
-  would get less than 3 columns each is broken into several lines (one item per line in a single column), and
-  constrained items keep their proportions while filling their line. Only the display adapts: the saved layout does
-  not change, and a resize in a tier is saved in the layout's columns (<code>DashboardPanel.ActiveColumns</code>, <code>ToLayoutSpan</code>).</li>
-<li><strong>Wrap</strong> bands start their items at <code>DashboardPanel.MinItemWidth</code> (or their fixed <code>Width</code> in pixels), break lines
-  when the next one does not fit, then share what is left on each line. <strong>Scroll</strong> bands do the same on one line,
-  and scroll horizontally when the items do not fit.</li>
-<li>A container whose children are all constrained leaves a <strong>free space</strong>, which the dashboard offers to fill.</li>
-</ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">new</span><span class="w"> </span><span class="n">DashboardLayoutDefinition</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="p">{</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="n">Bands</span><span class="w"> </span><span class="o">=</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="na">[</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="na">        new BandLayout</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="na">        {</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="na">            Items =</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="na">            [</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="na">                new LayoutNode { VisualId = title.Id, RowSpan = 1 },                                // a whole line</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="na">                LayoutNode.Row(</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="na">                    new LayoutNode { VisualId = map.Id, ColumnSpan = 6, RowSpan = 6 },               // left half, 2 lines high</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="na">                    LayoutNode.Column(LayoutNode.Item(sales.Id), LayoutNode.Item(margin.Id))),       // stacked beside it</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="na">            ]</span><span class="p">,</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">        </span><span class="p">},</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">BandLayout</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BandMode</span><span class="p">.</span><span class="n">Scroll</span><span class="p">,</span><span class="w"> </span><span class="n">Items</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="n">LayoutNode</span><span class="p">.</span><span class="n">Item</span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">Id</span><span class="p">),</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">LayoutNode</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">VisualId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">Id</span><span class="p">,</span><span class="w"> </span><span class="n">Width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">360</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">},</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">    </span><span class="p">],</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="p">};</span>
-</code></pre></div>
-<p><strong><code>DashboardPanel</code></strong> shows a layout (<code>Layout</code> property); children are matched to its items by the attached
-<code>DashboardPanel.ItemId</code>. The geometry itself is a pure function (<code>BandArrangement.Arrange</code>), and the panel exposes
-hit tests for interactions (<code>EdgeAt</code>, <code>FlowIndexAt</code>, <code>FreeSpaces</code>, and <code>CaptureGeometry</code> to hit-test the layout from
-before a drag).</p>
-<p><strong><code>DashboardLayout</code></strong> is the static class that changes a panel's layout while keeping it consistent: <code>AddNextTo</code>,
-<code>MoveNextTo</code> (<code>ItemSide.Right</code>, <code>Left</code>, <code>Below</code>, <code>Above</code>), <code>InsertAt</code> / <code>MoveTo</code> (a new line), <code>Resize</code>,
-<code>ResizeWidth</code>, <code>SetAuto</code>, <code>Remove</code>, <code>InsertBand</code>, <code>RemoveBand</code>, <code>SetBandMode</code>, plus <code>Update</code> for custom
-operations, <code>Capture</code> (snapshot to restore) and <code>GetLayout</code> / <code>SetLayout</code> (to save and restore). Next to an item, a
-side along its container joins it (the line's columns are shared when it has no room left), a side across it
-wraps the item and the newcomer in a new container. The rules are pure functions on records in
-<code>DashboardLayoutEngine</code>, usable without any UI.</p>
-<p><strong><code>DashboardView</code></strong> is the ready-made (lookless) control: <code>DashboardItem</code>s showing visuals in a
-<code>DashboardPanel</code>, with every interaction provided by a <strong>behavior</strong> (Microsoft.Xaml.Behaviors):</p>
+<p>A dashboard shows several visuals that users arrange themselves: they drag fields onto it to make visuals, move and
+resize them, filter them all at once, and click a chart to filter the others.</p>
+<p><img alt="The sample's dashboard tab: the filter bar, the field list and the dashboard, numbered 1 to 3" src="../images/dashboard/overview.png#only-light" />
+<img alt="The sample's dashboard tab: the filter bar, the field list and the dashboard, numbered 1 to 3" src="../images/dashboard/overview-dark.png#only-dark" /></p>
 <table>
 <thead>
 <tr>
-<th>Behavior</th>
-<th>Feature</th>
+<th></th>
+<th>Control</th>
+<th>Role</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>AddButtonsBehavior</code></td>
-<td>"+" on the right and bottom edges of an item, "+" between lines and between bands</td>
+<td><strong>1</strong></td>
+<td><code>FilterBar</code></td>
+<td>Global filters and the summary of the selections: see <a href="../guide/filtering/">Filters</a>.</td>
 </tr>
 <tr>
-<td><code>FreeSpaceBehavior</code></td>
-<td>fills free spaces with a placeholder that adds an item there</td>
+<td><strong>2</strong></td>
+<td><code>FieldList</code></td>
+<td>The fields to drag onto the dashboard to make visuals.</td>
 </tr>
 <tr>
-<td><code>FieldDropBehavior</code></td>
-<td>makes visuals from fields dragged from a <code>FieldList</code> (see below)</td>
-</tr>
-<tr>
-<td><code>MoveBehavior</code></td>
-<td>grip to drag an item: a picture follows the pointer and a placeholder shows where it lands, the others making room live; near an item's edge it goes next to it (like "+"), between two lines it becomes a line, over a free space it fills it; across bands, auto-scroll near the edges; Escape cancels</td>
-</tr>
-<tr>
-<td><code>ResizeBehavior</code></td>
-<td>corner handle: constrains the item (columns and rows in a grid band, pixels and rows elsewhere)</td>
-</tr>
-<tr>
-<td><code>ItemToolbarBehavior</code></td>
-<td>automatic size (for a resized item), edit, remove; text size, bold, alignment; image fit</td>
-</tr>
-<tr>
-<td><code>SelectionBehavior</code></td>
-<td>click selects an item (Ctrl+click adds or removes it, except on a bar, slice or row of a chart, where it extends the cross-filtering: <code>VisualView.DataSelectedEvent</code>), click on the background unselects, drag from the background draws a selection box; arrows go to the nearest item (Shift adds it), Escape unselects</td>
-</tr>
-<tr>
-<td><code>KeyboardLayoutBehavior</code></td>
-<td>Ctrl+arrows move the selected item, Ctrl+Shift+Down/Up put it in a new band, Alt+arrows extend the selected items over the free room next to them (through the commands below)</td>
-</tr>
-<tr>
-<td><code>BandMenuBehavior</code></td>
-<td>⋮ menu of a band: Fit / Scroll / Wrap, insert, remove (<code>MenuOpening</code> to customize it)</td>
-</tr>
-<tr>
-<td><code>BandScrollBehavior</code></td>
-<td>scroll bar and Shift+wheel for scrolling bands</td>
-</tr>
-<tr>
-<td><code>TextEditBehavior</code></td>
-<td>double-click a text to edit it in place</td>
-</tr>
-<tr>
-<td><code>UndoRedoBehavior</code></td>
-<td>Ctrl+Z / Ctrl+Y (<code>ApplicationCommands.Undo</code> / <code>Redo</code>)</td>
+<td><strong>3</strong></td>
+<td><code>DashboardView</code></td>
+<td>The visuals, texts and images, arranged in bands.</td>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">&lt;bi:DashboardView</span><span class="w"> </span><span class="na">x:Name=</span><span class="s">"Dashboard"</span><span class="w"> </span><span class="na">Context=</span><span class="s">"{Binding Context}"</span><span class="w"> </span><span class="na">Document=</span><span class="s">"{Binding Dashboard}"</span><span class="nt">&gt;</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="nt">&lt;i:Interaction.Behaviors&gt;</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">        </span><span class="cm">&lt;!-- Declaring a behavior replaces its default; set UseDefaultBehaviors="False" to pick them all --&gt;</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">        </span><span class="nt">&lt;bi:UndoRedoBehavior</span><span class="w"> </span><span class="na">MaxHistory=</span><span class="s">"100"</span><span class="w"> </span><span class="nt">/&gt;</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="nt">&lt;/i:Interaction.Behaviors&gt;</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="nt">&lt;/bi:DashboardView&gt;</span>
+<h2 id="show-it">Show it<a class="headerlink" href="#show-it" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">&lt;DockPanel</span><span class="w"> </span><span class="na">bi:VisualView.FilterContext=</span><span class="s">"{Binding Filters}"</span><span class="nt">&gt;</span><span class="w"> </span><span class="cm">&lt;!-- (1)! --&gt;</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span><span class="nt">&lt;bi:FilterBar</span><span class="w"> </span><span class="na">DockPanel.Dock=</span><span class="s">"Top"</span><span class="w"> </span><span class="na">Context=</span><span class="s">"{Binding Context}"</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="nt">&lt;bi:FieldList</span><span class="w"> </span><span class="na">DockPanel.Dock=</span><span class="s">"Left"</span><span class="w"> </span><span class="na">Width=</span><span class="s">"210"</span><span class="w"> </span><span class="na">Context=</span><span class="s">"{Binding Context}"</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nt">&lt;bi:DashboardView</span><span class="w"> </span><span class="na">Context=</span><span class="s">"{Binding Context}"</span><span class="w"> </span><span class="na">Document=</span><span class="s">"{Binding Dashboard}"</span><span class="w"> </span><span class="nt">/&gt;</span><span class="w"> </span><span class="cm">&lt;!-- (2)! --&gt;</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nt">&lt;/DockPanel&gt;</span>
 </code></pre></div>
-<p>Hooks for applications:</p>
-<ul>
-<li>events <code>EditVisualRequested</code> (replace the built-in designer dialog), <code>ImageRequested</code> (replace the file
-  dialog), <code>TextEditRequested</code>, <code>ItemRemoving</code> (veto), <code>Changed</code> (every change, with the documents before
-  and after), <code>DocumentLoaded</code>;</li>
-<li>the item selection: <code>SelectedItems</code>, <code>SelectionChanged</code>, <code>Select(items, DashboardSelectionMode.Replace/Add/Toggle)</code>,
-  <code>SelectAll</code>, <code>UnselectAll</code>, <code>RemoveSelected</code> and <code>DuplicateSelected</code> (one change each), also reached through
-  <code>ApplicationCommands.Delete</code> (Del), <code>ApplicationCommands.SelectAll</code> (Ctrl+A) and <code>DashboardCommands.Duplicate</code>
-  (Ctrl+D); <code>DashboardItem.IsSelected</code> for templates (the default one draws a ring) and the
-  <code>DashboardOverlay.SelectionBoxStyleKey</code> style. A read-only dashboard has no selection;</li>
-<li>lazy loading: only the visuals of the items in or near the visible part of the dashboard query their data
-  (<code>DashboardItem.IsInViewport</code>, bound to <code>VisualView.IsActive</code> by the default template); the others query once they
-  scroll into view, a change of filters or data giving them one query then. <code>ViewportMargin</code> sets how far ahead items
-  load (one viewport by default), <code>LoadsVisibleItemsOnly = false</code> loads them all (to print or export, for instance).
-  <code>VisualView.IsActive = false</code> holds back the queries of any visual;</li>
-<li>keyboard layout: <code>MoveSelected(side, toNewBand)</code> (<code>DashboardCommands.MoveItem</code> and <code>MoveItemToNewBand</code>, Ctrl+arrows
-  and Ctrl+Shift+Down/Up; <code>DashboardLayoutEngine.Step</code>): Down takes an item
-  sharing its line to a new line below; alone on its line, it joins the next line, and from the last line it goes into
-  the band below (created past the last one); Up the same upwards, so that Down and Up undo each other; Ctrl+Shift+Down/Up puts it in a new band below/above; Left/Right swap it with its
-  neighbour. <code>ExtendSelected(width)</code> (<code>DashboardCommands.ExtendItem</code>, Alt+arrows; <code>DashboardLayoutEngine.Fill</code>) extends the selected items over the
-  free room next to them without shrinking their neighbours;</li>
-<li>copy and paste of the selected items, possibly between dashboards: <code>CopySelected</code> / <code>CutSelected</code> / <code>Paste</code>
-  (Ctrl+C, Ctrl+X, Ctrl+V through <code>ApplicationCommands</code>; <code>CreateCopy</code> and <code>Paste(data)</code> work without the clipboard).
-  The clipboard holds an <code>easybi/v1</code> report (format <code>VisualTransfer.ClipboardFormat</code>) with the visuals and the
-  calculated measures they use, plus their titles as text, and their layout (format
-  <code>DashboardView.LayoutClipboardFormat</code>: their arrangement and sizes, <code>DashboardLayoutEngine.Extract</code>). Pasted items get
-  new ids, keep their arrangement and sizes, and go after the line of the last selected item, or at the end
-  (<code>DashboardLayoutEngine.Insert</code>; lines of a grid band join the anchor's grid band, other bands come as new bands);
-  without the layout format, each one goes to the right of the previous one. Visuals of a model the context does not
-  know are left out, and a calculated measure whose name is taken by another definition is renamed (<code>VisualTransfer</code>
-  in <code>EasyBI.Core</code>);</li>
-<li><code>DashboardCommands</code> (<code>AddVisual</code>, <code>AddText</code>, <code>AddImage</code>, <code>EditItem</code>, <code>RemoveItem</code>, <code>ResetSize</code>,
-  <code>AddRight</code>, <code>AddBelow</code>, <code>InsertBand</code>, <code>RemoveBand</code>, <code>Duplicate</code>, <code>MoveItem</code>, <code>MoveItemToNewBand</code>, <code>ExtendItem</code>
-  — the last three take an <code>ItemSide</code> or its name, as <code>CommandParameter="Below"</code>...) for custom templates, and public methods
-  (<code>AddNextTo</code>, <code>AddIn</code> a free space, <code>InsertLine</code>, <code>SetAutoSize</code>, <code>SetVisual</code>, <code>InsertBand</code>, <code>BeginEdit</code> to group
-  changes into one undo step...);</li>
-<li>a default template for <code>DashboardView</code> (its <code>Panel</code> in a scroll viewer, under an <code>AdornerDecorator</code> where behaviors
-  draw: a custom template shows it with <code>&lt;ContentPresenter Content="{Binding Panel, RelativeSource={RelativeSource TemplatedParent}}" /&gt;</code>),
-  an implicit style for <code>DashboardItem</code> (lookless control) and the <code>DashboardOverlay</code> style keys
-  (<code>PlusButtonStyleKey</code>, <code>IconButtonStyleKey</code>, <code>GripStyleKey</code>, <code>ResizeGripStyleKey</code>, <code>FreeSpaceStyleKey</code>,
-  <code>DropPlaceholderStyleKey</code>, <code>DragGhostStyleKey</code>) to restyle;</li>
-<li><code>DashboardBehavior</code> as a base class for new interactions: it gives access to the view, the panel and the
-  overlay where behaviors draw their controls; <code>DragGesture</code> handles press-drag-release gestures (with
-  auto-scroll: <code>AutoScroll</code>, <code>ScrollsBands</code>).</li>
-</ul>
-<p><code>IsReadOnly="True"</code> hides the editing chrome; clicks keep cross-filtering in every mode.</p>
-<p><strong>Building visuals by dragging fields.</strong> <code>FieldList</code> shows the fields of the context's models (model picker,
-dimensions, measures) and drags them as <code>ModelField</code>s. Placed next to a dashboard, it lets users build it directly:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">&lt;DockPanel&gt;</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="nt">&lt;bi:FieldList</span><span class="w"> </span><span class="na">DockPanel.Dock=</span><span class="s">"Left"</span><span class="w"> </span><span class="na">Width=</span><span class="s">"210"</span><span class="w"> </span><span class="na">Context=</span><span class="s">"{Binding Context}"</span><span class="w"> </span><span class="nt">/&gt;</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="nt">&lt;bi:DashboardView</span><span class="w"> </span><span class="na">Context=</span><span class="s">"{Binding Context}"</span><span class="w"> </span><span class="nt">/&gt;</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="nt">&lt;/DockPanel&gt;</span>
+<ol>
+<li>Shared by the filter bar and every visual: global filters and <a href="../guide/cross-filtering/">cross-filtering</a>.</li>
+<li>Two-way: every change users make comes back into <code>Dashboard</code>, a <code>DashboardDocument</code>.</li>
+</ol>
+<p>Each part is optional: a dashboard without a field list is arranged with its "+" buttons, one without a filter context
+does not cross-filter.</p>
+<h2 id="save-and-open">Save and open<a class="headerlink" href="#save-and-open" title="Permanent link">&para;</a></h2>
+<p>A <code>DashboardDocument</code> is the report (<code>easybi/v1</code>: visuals, filters, calculated measures) and its <strong>layout</strong>. It is saved
+as JSON, with the schema <code>easybi-dashboard/v1</code>:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Bound</label><label for="__tabbed_1_2">Code-behind</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">public</span><span class="w"> </span><span class="n">DashboardDocument</span><span class="w"> </span><span class="n">Dashboard</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">get</span><span class="p">;</span><span class="w"> </span><span class="k">set</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">();</span><span class="w">   </span><span class="c1">// bound to Document</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">File</span><span class="p">.</span><span class="n">WriteAllText</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="n">DashboardSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="n">Dashboard</span><span class="p">));</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">Dashboard</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">DashboardSerializer</span><span class="p">.</span><span class="n">Deserialize</span><span class="p">(</span><span class="n">File</span><span class="p">.</span><span class="n">ReadAllText</span><span class="p">(</span><span class="n">path</span><span class="p">));</span>
 </code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">File</span><span class="p">.</span><span class="n">WriteAllText</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="n">DashboardSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="n">dashboard</span><span class="p">.</span><span class="n">Capture</span><span class="p">()));</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">dashboard</span><span class="p">.</span><span class="n">Load</span><span class="p">(</span><span class="n">DashboardSerializer</span><span class="p">.</span><span class="n">Deserialize</span><span class="p">(</span><span class="n">File</span><span class="p">.</span><span class="n">ReadAllText</span><span class="p">(</span><span class="n">path</span><span class="p">)));</span><span class="w">   </span><span class="c1">// (1)!</span>
+</code></pre></div>
+<ol>
+<li>A new undo history starts. <code>DocumentLoaded</code> is raised.</li>
+</ol>
+</div>
+</div>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Plain reports open too</p>
+<p><code>DashboardSerializer.Deserialize</code> also reads an <code>easybi/v1</code> report without a layout: its visuals get a default one.
+The layout is a WPF matter and never goes into the report itself.</p>
+</div>
+<h2 id="read-only">Read-only<a class="headerlink" href="#read-only" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">&lt;bi:DashboardView</span><span class="w"> </span><span class="na">Context=</span><span class="s">"{Binding Context}"</span><span class="w"> </span><span class="na">Document=</span><span class="s">"{Binding Dashboard}"</span><span class="w"> </span><span class="na">IsReadOnly=</span><span class="s">"True"</span><span class="w"> </span><span class="nt">/&gt;</span>
+</code></pre></div>
+<p>No editing chrome, no editing command, no selection. Clicks keep cross-filtering. <code>IsReadOnly</code> is inherited, so item
+templates can use it.</p>
+<h2 id="performance">Performance<a class="headerlink" href="#performance" title="Permanent link">&para;</a></h2>
+<p>Only the visuals in or near the visible part of the dashboard query their data; the others query when they scroll into
+view. A change of filters or data costs them one query then.</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ViewportMargin</code></td>
+<td>How far ahead items load, in viewport sizes (1 by default: a screen above and below).</td>
+</tr>
+<tr>
+<td><code>LoadsVisibleItemsOnly</code></td>
+<td><code>false</code> loads every visual, to print or export the whole dashboard.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
+<div class="grid cards">
 <ul>
-<li>dropped where an item can go (an edge, between two lines, a free space, a scrolling or wrapping band), a field
-  makes a new visual: a KPI for a measure, the first measure by that dimension for a dimension (a line by month for a
-  date, bars otherwise); the other items make room live around a placeholder;</li>
-<li>dropped on an empty item, it fills it; dropped on a visual, it is added to it (a measure to its values, a dimension
-  to its axis, then its legend; a dimension breaks a KPI down into bars);</li>
-<li>the rules are pure functions in <code>FieldVisuals</code> (<code>Create</code>, <code>AddField</code>); <code>FieldDropBehavior.CreateVisual</code> and
-  <code>AddField</code> replace them. Each drop is one undo step.</li>
+<li>
+<p><strong><a href="using/">What users do</a></strong></p>
+<p>Build visuals from fields, move, resize, select, copy and paste, undo.</p>
+</li>
+<li>
+<p><strong><a href="layout/">Layout</a></strong></p>
+<p>Bands, columns and lines; what the layout looks like in code.</p>
+</li>
+<li>
+<p><strong><a href="customizing/">Customizing</a></strong></p>
+<p>Behaviors, events, commands, styles and slots.</p>
+</li>
 </ul>
-<p>The designer's field panel is the same <code>FieldList</code> (its shelves accept the <code>ModelField</code>s of the selected model).
-A search box at the top of the field list (<code>FieldList.Search</code>) and above the values of a filter (from 8 values on,
-<code>FilterItemViewModel.Search</code>; checked values that are not shown stay checked) narrow the lists down: case and accents
-are ignored and every word must appear (<code>TextMatch.Matches</code> in <code>EasyBI.Core</code>).</p>
-<p>In the designer, the visual is sorted from the properties of a chip of the Axis or Values well (ascending ↑ or
-descending ↓; one sorted field at a time, the sort following the field when its aggregation or grain changes). The
-visual's properties recall the active sort and limit the visual to its first rows (<code>Top</code>).
-<code>DashboardDropTarget.Find</code>, the place an item dropped at a point goes, is shared by moves and field drops.</p>
+</div>
 
 
 
@@ -2040,13 +2132,13 @@ visual's properties recall the active sort and limit the visual to its first row
         
         
           
-          <a href="./drag-and-drop/" class="md-footer__link md-footer__link--next" aria-label="Next: Drag and drop">
+          <a href="./using/" class="md-footer__link md-footer__link--next" aria-label="Next: What users do">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Drag and drop
+                What users do
               </div>
             </div>
             <div class="md-footer__button md-icon">
