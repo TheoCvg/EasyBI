@@ -265,26 +265,6 @@
       
         
       
-    
-    
-    
-    
-      
-  
-  
-  
-  
-    
-      
-      
-        
-          
-        
-      
-        
-      
-        
-      
         
       
     
@@ -292,16 +272,13 @@
     
     
       <li class="md-tabs__item">
-        <a href="./guide/designer/" class="md-tabs__link">
+        <a href="./guide/semantic-model/" class="md-tabs__link">
           
   
   Guide
 
         </a>
       </li>
-    
-  
-
     
   
 
@@ -481,7 +458,9 @@
           
             
               
-              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
                 <div class="md-sidebar__scrollwrap">
                   <div class="md-sidebar__inner">
                     
@@ -581,10 +560,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#projects" class="md-nav__link">
+  <a href="#in-three-steps" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Projects
+        In three steps
       </span>
     </span>
   </a>
@@ -592,10 +571,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#versions" class="md-nav__link">
+  <a href="#what-your-users-get" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Versions
+        What your users get
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-for-developers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Built for developers
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How it works
       </span>
     </span>
   </a>
@@ -644,6 +645,8 @@
   
     
     
+      
+        
       
         
       
@@ -701,6 +704,33 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="./guide/semantic-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Semantic model
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
     
     
       
@@ -727,7 +757,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -748,15 +778,15 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
         
-          <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
-            <label class="md-nav__title" for="__nav_3_1">
+          <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3_2">
               <span class="md-nav__icon md-icon"></span>
               
   
@@ -1700,6 +1730,8 @@
             
             
               
+                
+              
               <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
                 <div class="md-sidebar__scrollwrap">
                   
@@ -1733,10 +1765,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#projects" class="md-nav__link">
+  <a href="#in-three-steps" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Projects
+        In three steps
       </span>
     </span>
   </a>
@@ -1744,10 +1776,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#versions" class="md-nav__link">
+  <a href="#what-your-users-get" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Versions
+        What your users get
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-for-developers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Built for developers
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How it works
       </span>
     </span>
   </a>
@@ -1766,6 +1820,8 @@
             <div class="md-content" data-md-component="content">
               
                 
+
+  
 
 
 
@@ -1788,90 +1844,118 @@
 
 
 <h1 id="easybi">EasyBI<a class="headerlink" href="#easybi" title="Permanent link">&para;</a></h1>
-<p>A <strong>self-service BI library for WPF</strong>. The developer declares <em>what can be analyzed</em>, end users build their visuals
-by drag-and-drop, and rendering is delegated to interchangeable <strong>connectors</strong> (LiveCharts2, OxyPlot, ...).</p>
-<pre class="mermaid"><code>flowchart LR
-  source["Source&lt;br/&gt;IQueryable"] --&gt; model["Semantic model&lt;br/&gt;&lt;i&gt;developer&lt;/i&gt;"] --&gt; query["AnalyticQuery&lt;br/&gt;&lt;i&gt;end user&lt;/i&gt;"]
-  query --&gt; result["ResultSet&lt;br/&gt;&lt;i&gt;engine&lt;/i&gt;"] --&gt; chart["ChartData&lt;br/&gt;&lt;i&gt;pivot&lt;/i&gt;"] --&gt; renderer["IVisualRenderer&lt;br/&gt;&lt;i&gt;connector&lt;/i&gt;"]</code></pre>
-<p><img alt="A dashboard of the sample: key indicators, combined charts, cross-filtering" src="images/dashboard.png" /></p>
+<p><strong>Self-service BI for WPF.</strong> You declare what can be analyzed; your users build their charts, tables and dashboards by
+drag and drop, inside your application.</p>
+<p><img alt="A dashboard of the sample: key indicators, combined charts, a matrix, cross-filtering" src="images/dashboard.png" /></p>
+<p><a class="md-button md-button--primary" href="getting-started/">Get started</a> <a class="md-button" href="https://github.com/TheoCvg/EasyBI/tree/develop/samples/EasyBI.Sample">See the sample</a></p>
+<h2 id="in-three-steps">In three steps<a class="headerlink" href="#in-three-steps" title="Permanent link">&para;</a></h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">1. Describe your data</label><label for="__tabbed_1_2">2. Create the context</label><label for="__tabbed_1_3">3. Show the designer</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kt">var</span><span class="w"> </span><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SemanticModel</span><span class="p">.</span><span class="n">For</span><span class="p">(</span><span class="n">sales</span><span class="p">,</span><span class="w"> </span><span class="s">"sales"</span><span class="p">,</span><span class="w"> </span><span class="s">"Sales"</span><span class="p">)</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span><span class="p">.</span><span class="n">Dimension</span><span class="p">(</span><span class="n">s</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="s">"Date"</span><span class="p">)</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="p">.</span><span class="n">Dimension</span><span class="p">(</span><span class="n">s</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">Region</span><span class="p">,</span><span class="w"> </span><span class="s">"Region"</span><span class="p">)</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="p">.</span><span class="n">Measure</span><span class="p">(</span><span class="n">s</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">Amount</span><span class="p">,</span><span class="w"> </span><span class="s">"Revenue"</span><span class="p">,</span><span class="w"> </span><span class="n">format</span><span class="p">:</span><span class="w"> </span><span class="s">"#,##0 €"</span><span class="p">);</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">Context</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EasyBIContext</span><span class="p">.</span><span class="n">Create</span><span class="p">()</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="p">.</span><span class="n">AddModel</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="p">.</span><span class="n">UseRenderer</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">LiveCharts2Renderer</span><span class="p">());</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">&lt;bi:ReportDesigner</span><span class="w"> </span><span class="na">Context=</span><span class="s">"{Binding Context}"</span><span class="w"> </span><span class="na">Visual=</span><span class="s">"{Binding Visual}"</span><span class="w"> </span><span class="nt">/&gt;</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="what-your-users-get">What your users get<a class="headerlink" href="#what-your-users-get" title="Permanent link">&para;</a></h2>
 <div class="grid cards">
 <ul>
 <li>
-<p><strong><a href="getting-started/">Getting started</a></strong></p>
-<p>Install the packages, declare a model and show your first designer.</p>
+<p><strong>A designer</strong></p>
+<hr />
+<p><img alt="The designer" src="images/designer.png" /></p>
+<p>Fields dragged onto wells, a dozen types of visuals, a properties panel, undo and redo.</p>
+<p><a href="guide/designer/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> The designer</a></p>
 </li>
 <li>
-<p><strong><a href="guide/designer/">Guide</a></strong></p>
-<p>The designer, calculated measures, filters and cross-filtering.</p>
+<p><strong>Dashboards</strong></p>
+<hr />
+<p><img alt="A dashboard" src="images/dashboard.png" /></p>
+<p>Visuals arranged and resized by drag and drop, filled by dragging fields, with global filters and cross-filtering.</p>
+<p><a href="dashboard/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Dashboard</a></p>
 </li>
 <li>
-<p><strong><a href="visuals/matrix/">Visuals</a></strong></p>
-<p>Matrix, combined charts, conditional formatting, tooltips, legends...</p>
+<p><strong>Their own measures</strong></p>
+<hr />
+<p><img alt="The formula editor" src="images/measure-editor.png" /></p>
+<p>Formulas such as <code>SUM([Revenue]; [Region] = "North") / [Revenue]</code>, with an editor that suggests what can be written.</p>
+<p><a href="guide/calculated-measures/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Calculated measures</a></p>
 </li>
 <li>
-<p><strong><a href="dashboard/">Dashboard</a></strong></p>
-<p>Arrange visuals, let end users build them by dragging fields.</p>
-</li>
-<li>
-<p><strong><a href="customization/theming/">Customization</a></strong></p>
-<p>Themes, slots, localization and your own chart connector.</p>
-</li>
-<li>
-<p><strong><a href="changelog/">Changelog</a></strong></p>
-<p>What changed in each version, and the breaking changes.</p>
+<p><strong>Your look</strong></p>
+<hr />
+<p><img alt="The sample in WPF UI's dark theme" src="images/dashboard-dark.png" /></p>
+<p>Light and dark, following WPF UI or Material Design. English and French, switched at runtime.</p>
+<p><a href="customization/theming/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Theming</a></p>
 </li>
 </ul>
 </div>
-<h2 id="projects">Projects<a class="headerlink" href="#projects" title="Permanent link">&para;</a></h2>
+<h2 id="built-for-developers">Built for developers<a class="headerlink" href="#built-for-developers" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>One query per visual, in your database.</strong> Filters, grouping, aggregates, sort and Top N stay in the <code>IQueryable</code>:
+  with EF Core, one SQL statement per visual, whatever the size of the table.</li>
+<li><strong>Plain records and JSON.</strong> Visuals and reports are immutable records, saved in a documented, versioned format
+  (<code>easybi/v1</code>).</li>
+<li><strong>Open everywhere.</strong> Lookless controls made of <a href="customization/slots/">slots</a>, <a href="guide/designer/rules/">rules</a> on
+  what users may change, your own <a href="customization/connectors/">chart connector</a> and <a href="customization/visual-types/">visual
+  types</a>.</li>
+</ul>
+<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart LR
+  source["Your data&lt;br/&gt;IQueryable"] --&gt; model["Semantic model&lt;br/&gt;&lt;i&gt;you declare it&lt;/i&gt;"]
+  model --&gt; visual["Visual&lt;br/&gt;&lt;i&gt;users build it&lt;/i&gt;"]
+  visual --&gt; query["Query&lt;br/&gt;&lt;i&gt;in your database&lt;/i&gt;"]
+  query --&gt; chart["Chart&lt;br/&gt;&lt;i&gt;LiveCharts2, OxyPlot...&lt;/i&gt;"]</code></pre>
 <table>
 <thead>
 <tr>
-<th>Project</th>
+<th>Package</th>
 <th>Role</th>
-<th>Dependencies</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>EasyBI.Abstractions</code></td>
-<td><strong>The contract</strong>: model, query, <code>ResultSet</code>, <code>VisualDefinition</code>, <code>ReportDefinition</code></td>
-<td>none</td>
-</tr>
-<tr>
-<td><code>EasyBI.Core</code></td>
-<td>Model builder, query engine over <code>IQueryable</code> (expression trees), pivot, filtering, JSON</td>
-<td>Abstractions</td>
-</tr>
-<tr>
 <td><code>EasyBI.Wpf</code></td>
-<td><code>IVisualRenderer</code>, <code>EasyBIContext</code>, <code>VisualView</code>, <code>ReportDesigner</code>, <code>FilterBar</code>, dashboard (<code>DashboardPanel</code>, <code>DashboardView</code>, behaviors), built-in KPI, Table, Matrix, Gauge, Text and Image renderers</td>
-<td>Core + Microsoft.Xaml.Behaviors.Wpf</td>
+<td>The controls: designer, visual, dashboard, filter bar, field list. Brings <code>EasyBI.Core</code> (query engine, JSON) and <code>EasyBI.Abstractions</code> (the records).</td>
 </tr>
 <tr>
 <td><code>EasyBI.Renderers.LiveCharts2</code></td>
-<td>LiveCharts2 connector (bars, stacked bars, lines, areas, points, combined charts, pies, donuts, waterfalls)</td>
-<td>Wpf + LiveCharts2</td>
+<td>Draws the charts with LiveCharts2.</td>
 </tr>
 <tr>
 <td><code>EasyBI.Renderers.OxyPlot</code></td>
-<td>OxyPlot connector (the same chart types)</td>
-<td>Wpf + OxyPlot</td>
-</tr>
-<tr>
-<td><code>EasyBI.Themes.MaterialDesign</code></td>
-<td>EasyBI follows a Material Design in XAML theme</td>
-<td>Wpf + MaterialDesignThemes</td>
+<td>Draws the same charts with OxyPlot.</td>
 </tr>
 <tr>
 <td><code>EasyBI.Themes.WpfUi</code></td>
-<td>EasyBI follows a WPF UI (lepoco) theme</td>
-<td>Wpf + WPF-UI</td>
+<td>Follows a WPF UI theme.</td>
+</tr>
+<tr>
+<td><code>EasyBI.Themes.MaterialDesign</code></td>
+<td>Follows a Material Design in XAML theme.</td>
 </tr>
 </tbody>
 </table>
-<h2 id="versions">Versions<a class="headerlink" href="#versions" title="Permanent link">&para;</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Versions</p>
 <p>This site documents every published version: pick one in the selector at the top of the page. <strong>dev</strong> is the
-development branch, not yet released. The versions published before this site show the README of their time.</p>
+development branch, not yet released.</p>
+</div>
+
+  
 
 
 
@@ -1881,8 +1965,13 @@ development branch, not yet released. The versions published before this site sh
 
 
 
+  
+  
 
 
+
+
+  
 
 
 
@@ -1907,6 +1996,8 @@ development branch, not yet released. The versions published before this site sh
         <footer class="md-footer">
   
     
+      
+        
       
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
