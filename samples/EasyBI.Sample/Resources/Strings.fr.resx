@@ -12,36 +12,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Sales" xml:space="preserve">
-    <value>Ventes</value>
-  </data>
-  <data name="Date" xml:space="preserve">
-    <value>Date</value>
-  </data>
-  <data name="Region" xml:space="preserve">
-    <value>Région</value>
-  </data>
-  <data name="Channel" xml:space="preserve">
-    <value>Canal</value>
-  </data>
-  <data name="Category" xml:space="preserve">
-    <value>Catégorie</value>
-  </data>
-  <data name="Product" xml:space="preserve">
-    <value>Produit</value>
-  </data>
-  <data name="Revenue" xml:space="preserve">
-    <value>Chiffre d'affaires</value>
-  </data>
-  <data name="Margin" xml:space="preserve">
-    <value>Marge</value>
-  </data>
-  <data name="Quantity" xml:space="preserve">
-    <value>Quantité</value>
-  </data>
-  <data name="SalesCount" xml:space="preserve">
-    <value>Nombre de ventes</value>
-  </data>
   <data name="WindowTitle" xml:space="preserve">
     <value>EasyBI – démo</value>
   </data>
@@ -165,17 +135,8 @@
   <data name="DataSourceUnavailable" xml:space="preserve">
     <value>Source de données indisponible</value>
   </data>
-  <data name="MarginRate" xml:space="preserve">
-    <value>Taux de marge</value>
-  </data>
-  <data name="AverageBasket" xml:space="preserve">
-    <value>Panier moyen</value>
-  </data>
   <data name="LastYearComparison" xml:space="preserve">
     <value>2025 comparé à 2024</value>
-  </data>
-  <data name="WebShare" xml:space="preserve">
-    <value>Part du Web</value>
   </data>
   <data name="Ranking" xml:space="preserve">
     <value>Classement</value>
@@ -206,5 +167,14 @@
   </data>
   <data name="SalesDatabaseNotAnswering" xml:space="preserve">
     <value>La base des ventes ne répond pas. Réessayez dans un instant.</value>
+  </data>
+  <data name="DataSourceServer" xml:space="preserve">
+    <value>Serveur HTTP (EasyBI.Sample.Server)</value>
+  </data>
+  <data name="ServerNotRunning" xml:space="preserve">
+    <value>Le serveur de la démo ne répond pas à {0}. Démarrez-le avec : dotnet run --project samples/EasyBI.Sample.Server</value>
+  </data>
+  <data name="SalesServerNotAnswering" xml:space="preserve">
+    <value>Le serveur des ventes ne répond pas. Réessayez dans un instant.</value>
   </data>
 </root>

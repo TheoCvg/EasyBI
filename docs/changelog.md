@@ -19,6 +19,11 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   (a server, a cache...). `QuerySemanticModel` is the base of models that run `AnalyticQuery`s, from which EasyBI
   composes comparisons with a year earlier, year-to-date totals and matrices; `QueryableSemanticModel<T>` derives from
   it. `VisualPipeline.Prepare` draws data obtained otherwise.
+- **Data format for remote sources**: `DataSerializer` writes and reads, as transport-neutral JSON, what travels
+  between an application and a data source it reaches remotely: the `VisualDataRequest` of a visual, its `VisualData`,
+  a model's `ModelMetadata` and the distinct values of a dimension, with dates, date periods and numbers keeping their
+  type. The sample gets the results of its visuals from an ASP.NET Core server (`samples/EasyBI.Sample.Server`).
+  `ModelMetadata.Dimensions` and `Measures` are not serialized.
 
 ### Breaking changes
 

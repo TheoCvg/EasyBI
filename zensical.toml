@@ -52,6 +52,7 @@ nav = [
   ] },
   { "Reference" = [
     { "Report format" = "reference/report-format.md" },
+    { "Data format" = "reference/data-format.md" },
     { "Known limitations" = "reference/limitations.md" },
   ] },
   { "Changelog" = "changelog.md" },

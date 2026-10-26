@@ -7,6 +7,7 @@ using EasyBI.Abstractions;
 using EasyBI.Core;
 using EasyBI.Renderers.LiveCharts2;
 using EasyBI.Renderers.OxyPlot;
+using EasyBI.Sample.Sales;
 using EasyBI.Wpf;
 using EasyBI.Wpf.Dashboard;
 using Microsoft.Win32;
@@ -17,11 +18,12 @@ public partial class MainWindow : Window
 {
     private readonly ISemanticModel _memorySales;
     private readonly SwitchableModel _sales;
+    private RemoteModel? _remoteSales;
 
     public MainWindow()
     {
         // The demo switches between data sources and times the queries; an application would add its model directly
-        _memorySales = SalesData.CreateModel(SalesData.Generate(), App.TextResources);
+        _memorySales = SalesData.CreateModel(SalesData.Generate());
         _sales = new SwitchableModel(_memorySales);
         _sales.RunningChanged += (_, running) => Dispatcher.BeginInvoke(() =>
         {
@@ -45,6 +47,7 @@ public partial class MainWindow : Window
         {
             System.Diagnostics.Trace.TraceError($"Visual '{e.Visual.Title}' failed ({e.Stage}): {e.Exception}");
             if (e.Exception is TimeoutException) e.Message = Text("SalesDatabaseNotAnswering");
+            else if (e.Exception is System.Net.Http.HttpRequestException) e.Message = Text("SalesServerNotAnswering");
         };
 
         InitializeComponent();
@@ -82,29 +85,40 @@ public partial class MainWindow : Window
     private async void OnSourceChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!IsLoaded || SourcePicker.SelectedItem is not ComboBoxItem { Tag: string tag }) return;
-        var rows = int.Parse(tag, CultureInfo.InvariantCulture);
         SourcePicker.IsEnabled = false;
         try
         {
-            if (rows > 0 && !SalesDatabase.Exists(rows))
+            if (tag == "server")
             {
-                QueryStatus.Text = string.Format(EasyBILocalization.FormatCulture, Text("GeneratingDatabase"), rows);
-                // SQLite runs synchronously even through the async API: keep the UI responsive
-                await Task.Run(() => SalesDatabase.EnsureCreatedAsync(rows));
+                _remoteSales ??= await RemoteModel.ConnectAsync(RemoteModel.DefaultServer, App.Languages);
+                _sales.Source = _remoteSales;
             }
-            _sales.Source = rows switch
+            else
             {
-                0 => _memorySales,
-                < 0 => new UnavailableModel(_memorySales.Metadata),
-                _ => SalesDatabase.CreateModel(rows, App.TextResources),
-            };
+                var rows = int.Parse(tag, CultureInfo.InvariantCulture);
+                if (rows > 0 && !SalesDatabase.Exists(rows))
+                {
+                    QueryStatus.Text = string.Format(EasyBILocalization.FormatCulture, Text("GeneratingDatabase"), rows);
+                    // SQLite runs synchronously even through the async API: keep the UI responsive
+                    await Task.Run(() => SalesDatabase.EnsureCreatedAsync(rows));
+                }
+                _sales.Source = rows switch
+                {
+                    0 => _memorySales,
+                    < 0 => new UnavailableModel(_memorySales.Metadata),
+                    _ => SalesDatabase.CreateModel(rows),
+                };
+            }
             // Same queries, other data: the dashboard and the designer's preview query again
             Context.RefreshData(_sales.Metadata.Name);
         }
         catch (Exception ex)
         {
             QueryStatus.Text = "";
-            MessageBox.Show(this, ex.Message, Text("DataSourceUnavailable"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            var message = ex is System.Net.Http.HttpRequestException
+                ? string.Format(EasyBILocalization.FormatCulture, Text("ServerNotRunning"), RemoteModel.DefaultServer)
+                : ex.Message;
+            MessageBox.Show(this, message, Text("DataSourceUnavailable"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         finally
         {

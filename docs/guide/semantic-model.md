@@ -234,20 +234,47 @@ that serializes; the drawing (chart data, theme, renderer) always stays in the a
 === "A source that answers visuals"
 
     ```csharp
-    public sealed class RemoteSalesModel(ModelMetadata metadata, ISalesApi api) : ISemanticModel
+    public sealed class RemoteSalesModel(HttpClient http, ModelMetadata metadata) : ISemanticModel
     {
-        public ModelMetadata Metadata { get; } = metadata;
+        public ModelMetadata Metadata { get; } = metadata; // (1)!
 
-        public Task<VisualData> GetDataAsync(VisualDataRequest request, CancellationToken cancellationToken = default)
-            => api.GetVisualDataAsync(request, cancellationToken);   // the server answers, with a QuerySemanticModel
+        public async Task<VisualData> GetDataAsync(VisualDataRequest request, CancellationToken cancellationToken = default)
+        {
+            using var content = new StringContent(DataSerializer.Serialize(request), Encoding.UTF8, "application/json");
+            using var response = await http.PostAsync("sales/data", content, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return DataSerializer.DeserializeData(await response.Content.ReadAsStringAsync());
+        }
 
-        public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default)
-            => api.GetDistinctValuesAsync(field, cancellationToken);
+        public async Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default)
+        {
+            var json = await http.GetStringAsync($"sales/values/{Uri.EscapeDataString(field)}");
+            return DataSerializer.DeserializeValues(json, Metadata.GetField(field).DataType);
+        }
     }
     ```
 
-    The model decides everything about the transport (HTTP, gRPC, a message bus...) and its security. On the server,
-    a `QuerySemanticModel` (`SemanticModel.For` over EF Core, for one) answers the request with `GetDataAsync`.
+    1. Read once from the server: `DataSerializer.DeserializeMetadata(await http.GetStringAsync("sales/metadata"))`.
+
+    The server answers with any `ISemanticModel`, here ASP.NET Core over EF Core:
+
+    ```csharp
+    var sales = SemanticModel.For(() => new SalesDbContext(options), db => db.Sales, "sales", "Sales")...;
+
+    app.MapGet("/sales/metadata", () => Results.Json(sales.Metadata, DataSerializer.Options));
+    app.MapPost("/sales/data", async (HttpRequest http, CancellationToken cancellationToken) =>
+    {
+        var request = await JsonSerializer.DeserializeAsync<VisualDataRequest>(http.Body, DataSerializer.Options, cancellationToken);
+        return Results.Json(await sales.GetDataAsync(request!, cancellationToken), DataSerializer.Options);
+    });
+    app.MapGet("/sales/values/{field}", async (string field, CancellationToken cancellationToken) =>
+        Results.Json(await sales.GetDistinctValuesAsync(field, cancellationToken), DataSerializer.Options));
+    ```
+
+    `DataSerializer` writes the request, the data, the metadata and the distinct values as plain JSON (see
+    [Data format](../reference/data-format.md)): the server can be written in another language. The routes, the
+    transport (HTTP, gRPC, a message bus...) and its security are yours. The sample does exactly this: see
+    `samples/EasyBI.Sample.Server` and the *Server over HTTP* data source.
 
 `VisualPipeline.PrepareAsync` asks a model for a visual's data and builds what renderers draw; `VisualPipeline.Prepare`
 does it with data obtained otherwise.
