@@ -2053,7 +2053,7 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   operator keypad (#55).</li>
 <li><strong>Measures used in other formulas</strong>: a calculated measure can use the report's other measures; loops are refused (#56).</li>
 <li>This documentation site, with a version per release.</li>
-<li><strong>Designer rules</strong>: every change of the visual being designed passes <code>DesignerViewModel.Rules</code>, which look at the
+<li><strong>Designer rules</strong>: every change of the visual being designed passes the designer's <code>Rules</code>, which look at the
   change (<code>VisualChange</code>: <code>Changes(v =&gt; ...)</code>, <code>FieldsChanged</code>) and refuse it with a message; what they would refuse
   is shown unavailable beforehand. Also declared as behaviors: <code>LockVisualTypeBehavior</code>, <code>LockFieldsBehavior</code>,
   <code>ReadOnlyDesignerBehavior</code>, or one of the application's derived from <code>DesignerRuleBehavior</code> (#65).</li>
@@ -2082,9 +2082,8 @@ opens older reports, and a report using a newer feature cannot be opened by an o
 </ul>
 <h3 id="breaking-changes">Breaking changes<a class="headerlink" href="#breaking-changes" title="Permanent link">&para;</a></h3>
 <ul>
-<li>The <code>ReportDesigner</code> shows the <code>DesignerViewModel</code> of its data context, which the application creates and keeps
-  (<code>&lt;bi:ReportDesigner DataContext="{Binding Designer}" /&gt;</code>): its <code>Context</code>, <code>ViewModel</code>, <code>Visual</code>, <code>Edit</code> and <code>Clear</code>
-  members are gone, the view-model has them (#65).</li>
+<li><code>ReportDesigner.Visual</code> is two-way, like <code>DashboardView.Document</code>: setting it loads a visual (null starts a new one)
+  and it receives every change of the end user; <code>Edit</code> and <code>Clear</code> are gone (#65).</li>
 <li><code>FilterContext.Selection</code> became <code>Selections</code> (one per visual), with <code>SelectionOf</code>, <code>ClearSelection(visualId)</code> and
   <code>DescribeSelections</code>; <code>CrossFilter</code> holds <code>Elements</code> (<code>SelectedElement</code>), its <code>Values</code> and filter-based constructor are
   gone and <code>Filters</code> is computed (#41).</li>
