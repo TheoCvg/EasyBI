@@ -10,7 +10,7 @@ namespace EasyBI.Wpf;
 /// </summary>
 public sealed class EasyBIContext
 {
-    private static readonly IVisualRenderer[] BuiltInRenderers = [new KpiRenderer(), new TableRenderer(), new TextRenderer(), new ImageRenderer()];
+    private static readonly IVisualRenderer[] BuiltInRenderers = [new KpiRenderer(), new GaugeRenderer(), new TableRenderer(), new MatrixRenderer(), new TextRenderer(), new ImageRenderer()];
 
     private readonly List<ISemanticModel> _models = [];
     private readonly List<IVisualRenderer> _renderers = [];
@@ -25,13 +25,47 @@ public sealed class EasyBIContext
     /// <summary>Raised by <see cref="RefreshData"/>: the visuals of the model query again.</summary>
     public event EventHandler<DataChangedEventArgs>? DataChanged;
 
+    /// <summary>
+    /// Raised before the tooltip of a chart opens, with EasyBI's content (following the visual's settings): change
+    /// <see cref="TooltipOpeningEventArgs.Content"/> to show something else, or set it to null to show nothing.
+    /// </summary>
+    public event EventHandler<TooltipOpeningEventArgs>? TooltipOpening;
+
+    /// <summary>
+    /// Raised when a visual cannot be shown because its query or its renderer threw, before it shows the failure: log
+    /// it, change the message, or hide the details from the end user (see <see cref="VisualFailedEventArgs"/>).
+    /// </summary>
+    public event EventHandler<VisualFailedEventArgs>? VisualFailed;
+
     public IReadOnlyList<ISemanticModel> Models => _models;
+
+    /// <summary>How a failed visual shows its failure: EasyBI's message, then the application's changes (<see cref="VisualFailed"/>).</summary>
+    internal VisualFailedEventArgs FailureFor(VisualDefinition visual, Exception exception, VisualFailureStage stage, string? renderer)
+    {
+        var args = new VisualFailedEventArgs(visual, exception, stage, renderer);
+        VisualFailed?.Invoke(this, args);
+        return args;
+    }
+
+    /// <summary>The content of a chart's tooltip: EasyBI's, then the application's changes (<see cref="TooltipOpening"/>).</summary>
+    internal TooltipContent? TooltipFor(RenderRequest request, int category, IReadOnlyList<int> series)
+    {
+        var args = new TooltipOpeningEventArgs(request, category, series, Tooltips.Build(request, category, series));
+        TooltipOpening?.Invoke(this, args);
+        return args.Content;
+    }
 
     /// <summary>
     /// The calculated measures the end user defined in the open report: field lists offer them with the model's
     /// measures, and visuals compute them. A <see cref="Dashboard.DashboardView"/> loads and saves them with its document.
     /// </summary>
     public MeasureContext Measures { get; } = new();
+
+    /// <summary>
+    /// The visual types the designer offers and the visuals follow: EasyBI's, and those the application adds
+    /// (<see cref="AddVisualType"/>) or the renderers bring. Change it before showing the designer.
+    /// </summary>
+    public VisualTypeCatalog VisualTypes { get; } = new();
 
     public IReadOnlyList<IVisualRenderer> Renderers => _renderers;
 
@@ -62,8 +96,24 @@ public sealed class EasyBIContext
         return this;
     }
 
+    /// <summary>
+    /// Declares a visual type of the application (see <see cref="VisualTypeCatalog.Add"/>); a renderer listing it in
+    /// its <see cref="RendererCapabilities.Types"/> draws it.
+    /// </summary>
+    public EasyBIContext AddVisualType(VisualTypeDefinition definition)
+    {
+        VisualTypes.Add(definition);
+        return this;
+    }
+
+    /// <summary>
+    /// Plugs in a renderer; the first one becomes the <see cref="ActiveRenderer"/>. The visual types it brings
+    /// (<see cref="RendererCapabilities.VisualTypes"/>) are declared, unless they already are.
+    /// </summary>
     public EasyBIContext UseRenderer(IVisualRenderer renderer)
     {
+        foreach (var definition in renderer.Capabilities.VisualTypes.Where(d => !VisualTypes.Contains(d.Type)))
+            VisualTypes.Add(definition);
         _renderers.Add(renderer);
         _activeRenderer ??= renderer;
         return this;
@@ -75,13 +125,14 @@ public sealed class EasyBIContext
     /// </summary>
     public void RefreshData(string? model = null) => DataChanged?.Invoke(this, new DataChangedEventArgs(model));
 
-    /// <summary>The measures a user can pick in a model: the model's own, then the calculated measures of the report.</summary>
-    public IEnumerable<FieldDescriptor> MeasuresOf(ISemanticModel model) =>
-        model.Metadata.Measures.Concat(Measures.For(model.Metadata.Name).Select(MeasureContext.ToField));
+    /// <summary>
+    /// The measures a user can pick in a model: the model's own, as the report redefines them, then the calculated
+    /// measures of the report.
+    /// </summary>
+    public IEnumerable<FieldDescriptor> MeasuresOf(ISemanticModel model) => Measures.MeasuresOf(model.Metadata);
 
-    /// <summary>A field of a model, or one of the report's calculated measures on it.</summary>
-    public FieldDescriptor GetField(ISemanticModel model, string name) =>
-        Measures.Find(model.Metadata.Name, name) is { } measure ? MeasureContext.ToField(measure) : model.Metadata.GetField(name);
+    /// <summary>A field of a model, as the report redefines it, or one of the report's calculated measures on it.</summary>
+    public FieldDescriptor GetField(ISemanticModel model, string name) => Measures.GetField(model.Metadata, name);
 
     public ISemanticModel GetModel(string name) =>
         _models.FirstOrDefault(m => m.Metadata.Name == name)
@@ -92,21 +143,21 @@ public sealed class EasyBIContext
         ReportValidator.Validate(report, _models.Select(m => m.Metadata));
 
     /// <summary>
-    /// Capability negotiation: the active renderer if it can draw the mark, otherwise another
+    /// Capability negotiation: the active renderer if it can draw the type, otherwise another
     /// plugged-in renderer, otherwise a built-in one (KPI, table, text, image).
     /// </summary>
-    public IVisualRenderer? ResolveRenderer(MarkType mark) => Resolve(new HashSet<MarkType> { mark });
+    public IVisualRenderer? ResolveRenderer(VisualType type) => Resolve(new HashSet<VisualType> { type });
 
     /// <summary>
-    /// Same negotiation for a whole visual: the renderer must support every mark it uses, including the chart types
+    /// Same negotiation for a whole visual: the renderer must support every type it uses, including the chart types
     /// of its measures (a chart mixing bars and a line needs both).
     /// </summary>
-    public IVisualRenderer? ResolveRenderer(VisualDefinition visual) => Resolve(VisualPipeline.MarksOf(visual));
+    public IVisualRenderer? ResolveRenderer(VisualDefinition visual) => Resolve(VisualPipeline.TypesOf(visual));
 
-    private IVisualRenderer? Resolve(IReadOnlySet<MarkType> marks)
+    private IVisualRenderer? Resolve(IReadOnlySet<VisualType> types)
     {
-        if (_activeRenderer is not null && marks.IsSubsetOf(_activeRenderer.Capabilities.Marks)) return _activeRenderer;
-        return _renderers.Concat(BuiltInRenderers).FirstOrDefault(r => marks.IsSubsetOf(r.Capabilities.Marks));
+        if (_activeRenderer is not null && types.IsSubsetOf(_activeRenderer.Capabilities.Types)) return _activeRenderer;
+        return _renderers.Concat(BuiltInRenderers).FirstOrDefault(r => types.IsSubsetOf(r.Capabilities.Types));
     }
 }
 
@@ -114,4 +165,22 @@ public sealed class EasyBIContext
 public sealed class DataChangedEventArgs(string? model) : EventArgs
 {
     public string? Model { get; } = model;
+}
+
+/// <summary>The tooltip about to open over a chart (see <see cref="EasyBIContext.TooltipOpening"/>).</summary>
+public sealed class TooltipOpeningEventArgs(RenderRequest request, int category, IReadOnlyList<int> series, TooltipContent? content) : EventArgs
+{
+    /// <summary>What the chart draws: its visual, data and theme.</summary>
+    public RenderRequest Request { get; } = request;
+
+    public VisualDefinition Visual => Request.Visual;
+
+    /// <summary>The hovered category, an index in <see cref="ChartData.Categories"/> (a waterfall's total is the last one + 1).</summary>
+    public int Category { get; } = category;
+
+    /// <summary>The hovered series, indexes in <see cref="ChartData.Series"/>.</summary>
+    public IReadOnlyList<int> Series { get; } = series;
+
+    /// <summary>What the tooltip shows; null shows no tooltip.</summary>
+    public TooltipContent? Content { get; set; } = content;
 }

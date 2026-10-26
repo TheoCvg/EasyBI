@@ -7,11 +7,14 @@ namespace EasyBI.Wpf.Dashboard;
 /// <summary>Built-in editor of a dashboard visual: the report designer in a dialog.</summary>
 public partial class VisualEditorWindow : Window
 {
+    private readonly EasyBIContext _context;
+
     public VisualEditorWindow(EasyBIContext context, VisualDefinition? visual)
     {
         InitializeComponent();
+        _context = context;
         Designer.Context = context;
-        if (visual is not null) Designer.Edit(visual);
+        Designer.Visual = visual;
     }
 
     /// <summary>The visual confirmed with OK.</summary>
@@ -20,7 +23,7 @@ public partial class VisualEditorWindow : Window
     private void OnOk(object sender, RoutedEventArgs e)
     {
         if (Designer.Visual is not { } visual) return;
-        if (VisualValidator.Validate(visual) is { } problem)
+        if (VisualValidator.Validate(visual, _context.VisualTypes) is { } problem)
         {
             Problem.Text = problem;
             return;

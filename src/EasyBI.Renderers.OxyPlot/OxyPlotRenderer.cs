@@ -2,7 +2,9 @@ using System.Windows;
 using EasyBI.Abstractions;
 using EasyBI.Core;
 using EasyBI.Wpf;
+using EasyBI.Wpf.Renderers;
 using OxyPlot;
+using OxyPlot.Annotations;
 using OxyPlot.Axes;
 using OxyPlot.Legends;
 using OxyPlot.Series;
@@ -15,60 +17,122 @@ public sealed class OxyPlotRenderer : IVisualRenderer
 {
     public string Name => "OxyPlot";
 
-    public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType>
+    public RendererCapabilities Capabilities { get; } = new(new HashSet<VisualType>
     {
-        MarkType.Bar, MarkType.StackedBar, MarkType.Line, MarkType.Area, MarkType.Scatter, MarkType.Pie,
+        VisualType.Bar, VisualType.StackedBar, VisualType.Line, VisualType.Area, VisualType.Scatter, VisualType.Pie, VisualType.Donut, VisualType.Waterfall,
     });
 
     public FrameworkElement Render(RenderRequest request)
     {
-        var model = request.Visual.Mark switch
+        // A waterfall is laid out as a chart with a last "Total" category
+        var fitted = request.Visual.Type == VisualType.Waterfall ? request with { Chart = Waterfall.Of(request.Chart).Chart } : request;
+        var model = request.Visual.Type switch
         {
-            MarkType.Pie => BuildPie(request),
-            var mark when mark.IsCartesian() => BuildCartesian(request),
-            _ => throw new NotSupportedException($"OxyPlotRenderer does not support '{request.Visual.Mark}'."),
+            var type when type.IsCircular() => BuildPie(request),
+            var type when type == VisualType.Waterfall => BuildWaterfall(request),
+            var type when type.IsCartesian() => BuildCartesian(request),
+            _ => throw new NotSupportedException($"OxyPlotRenderer does not support '{request.Visual.Type}'."),
         };
         model.PlotAreaBorderThickness = new OxyThickness(0);
         ApplyTheme(model, request.Theme);
         var view = new PlotView { Model = model, Background = System.Windows.Media.Brushes.Transparent };
         // Legend, labels and axis title adapt to the room the chart actually gets
-        view.SizeChanged += (_, _) => Fit(view, model, request);
-        if (request.Select is { } select)
-            view.Controller = SelectionController(model, select);
-        return view;
+        view.SizeChanged += (_, _) => Fit(view, model, fitted);
+        // The host's pager turns the pages of the legend
+        if (request.LegendPager is { } pager) pager.Changed += (_, _) => Fit(view, model, fitted);
+        view.Controller = Controller(model, request.Select);
+        // EasyBI's tooltip over the element under the pointer, instead of OxyPlot's tracker
+        var tooltip = new ChartTooltipHost(view);
+        view.MouseMove += (_, e) =>
+        {
+            var pointer = e.GetPosition(view);
+            tooltip.Show(HitTest(model, new ScreenPoint(pointer.X, pointer.Y), withTotal: true) is CategorySelection hovered
+                ? request.TooltipFor(hovered.Category, [hovered.Series ?? 0])
+                : null);
+        };
+        if (request.Visual.Type != VisualType.Donut) return view;
+
+        // A donut shows its total in its hole, the middle of the plot area
+        var source = request.Chart.Series[0];
+        return new ChartCenterLabel(view, () => model.PlotArea is { Width: > 0, Height: > 0 } area
+                ? new Rect(area.Left, area.Top, area.Width, area.Height)
+                : null,
+            ValueFormatter.Format(source.Values.OfType<double>().Sum(), source.Format), source.Name);
     }
 
     private static void Fit(PlotView view, PlotModel model, RenderRequest request)
     {
         if (view.ActualWidth <= 0) return;
-        var changed = request.Visual.Mark == MarkType.Pie
-            ? FitPie(model, ChartFitting.Pie(request.Chart, view.ActualWidth, view.ActualHeight))
-            : FitCartesian(model, request.Chart, ChartFitting.Cartesian(request.Chart, view.ActualWidth, view.ActualHeight));
+        var preferred = request.Visual.LegendPosition;
+        var changed = request.Visual.Type switch
+        {
+            var type when type.IsCircular() => FitPie(model, ChartFitting.Pie(request.Chart, view.ActualWidth, view.ActualHeight, type == VisualType.Donut, preferred)),
+            // A waterfall has no legend: its colors are the direction of the steps
+            var type when type == VisualType.Waterfall => FitCartesian(model, request.Chart, ChartLegend.Hidden, view.ActualWidth, view.ActualHeight, null),
+            _ => FitCartesian(model, request.Chart, preferred, view.ActualWidth, view.ActualHeight, request.LegendPager),
+        };
         // Only redraw when something changed: SizeChanged fires continuously while a dashboard cell is resized
         if (changed) model.InvalidatePlot(false);
     }
 
-    private static bool FitCartesian(PlotModel model, ChartData chart, ChartFit fit)
+    /// <summary>The size of OxyPlot's legend entries (its default font), for the pages of a legend.</summary>
+    private static readonly LegendMetrics LegendSize = new(EntryHeight: 20, CharWidth: 7, EntryWidth: 40);
+
+    private const double GroupRowHeight = 24;
+
+    private static bool FitCartesian(PlotModel model, ChartData chart, ChartLegend preferred, double width, double height, LegendPager? pager)
     {
+        // Several axis fields: the category labels are the innermost field's, each group axis below takes a row
+        var groupAxes = model.Axes.OfType<GroupAxis>().OrderBy(a => a.PositionTier).ToArray();
+        var levels = groupAxes.Length > 0 ? CategoryLevels.Of(chart) : null;
+        var displayed = levels is null ? chart : chart with { Categories = levels.Labels };
+        var fit = ChartFitting.Cartesian(displayed, width, height - groupAxes.Length * GroupRowHeight, preferred, LegendSize);
+
         var changed = false;
         var axis = (CategoryAxis)model.Axes.First(a => a.Key == CategoryAxisKey);
         if (axis.Angle != fit.LabelRotation) (axis.Angle, changed) = (fit.LabelRotation, true);
         if (axis.MajorStep != fit.LabelStep) (axis.MajorStep, changed) = (fit.LabelStep, true);
+        if (levels is not null)
+        {
+            // Fewer than two labels a group would repeat one name: the groups' labels say enough
+            var hidden = (double)levels.Labels.Count / levels.Groups[0].Count / fit.LabelStep < 2;
+            if ((axis.LabelFormatter is not null) != hidden) (axis.LabelFormatter, changed) = (hidden ? _ => "" : null, true);
+            // Every n-th group label when the groups are too narrow for them
+            var perCategory = Math.Max(1, width - 80) / Math.Max(1, chart.Categories.Count);
+            foreach (var groups in groupAxes)
+                changed |= groups.Fit(perCategory);
+        }
+        // The axis title goes below everything: under the outermost group axis
         var title = fit.ShowAxisTitles ? chart.CategoryCaption : null;
-        if (axis.Title != title) (axis.Title, changed) = (title, true);
+        var titled = groupAxes.LastOrDefault() ?? (Axis)axis;
+        foreach (var bottom in groupAxes.Cast<Axis>().Append(axis))
+        {
+            var name = bottom == titled ? title : null;
+            if (bottom.Title != name) (bottom.Title, changed) = (name, true);
+        }
 
         var visible = fit.Legend != ChartLegend.Hidden;
         if (model.IsLegendVisible != visible) (model.IsLegendVisible, changed) = (visible, true);
         if (visible && model.Legends.FirstOrDefault() is { } legend)
         {
-            var position = fit.Legend == ChartLegend.Bottom ? LegendPosition.BottomCenter : LegendPosition.RightTop;
+            var position = fit.Legend switch
+            {
+                ChartLegend.Bottom => LegendPosition.BottomCenter,
+                ChartLegend.Top => LegendPosition.TopCenter,
+                ChartLegend.Left => LegendPosition.LeftTop,
+                _ => LegendPosition.RightTop,
+            };
             if (legend.LegendPosition != position)
             {
                 legend.LegendPosition = position;
-                legend.LegendOrientation = fit.Legend == ChartLegend.Bottom ? LegendOrientation.Horizontal : LegendOrientation.Vertical;
+                legend.LegendOrientation = fit.Legend is ChartLegend.Bottom or ChartLegend.Top ? LegendOrientation.Horizontal : LegendOrientation.Vertical;
                 changed = true;
             }
         }
+        // The legend keeps OxyPlot's look: only the series of the page show in it (the model's first series are the chart's)
+        var shown = ChartFitting.LegendEntries(fit, pager);
+        for (var i = 0; i < chart.Series.Count && i < model.Series.Count; i++)
+            if (model.Series[i].RenderInLegend != shown(i)) (model.Series[i].RenderInLegend, changed) = (shown(i), true);
         return changed;
     }
 
@@ -86,19 +150,26 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         return true;
     }
 
-    /// <summary>Left click: shows the tracker as usual, and selects the element that was hit.</summary>
-    private static PlotController SelectionController(PlotModel model, Action<DataSelection> select)
+    /// <summary>
+    /// Left click selects the element that was hit (OxyPlot's tracker gives way to EasyBI's tooltip). A binding only
+    /// applies to its own modifier keys: Ctrl+click (adding to the selection) is bound too.
+    /// </summary>
+    private static PlotController Controller(PlotModel model, Action<DataSelection>? select)
     {
         var controller = new PlotController();
-        controller.BindMouseDown(OxyMouseButton.Left, new DelegatePlotCommand<OxyMouseDownEventArgs>((view, ctl, args) =>
+        controller.UnbindMouseDown(OxyMouseButton.Left);
+        if (select is null) return controller;
+        var click = new DelegatePlotCommand<OxyMouseDownEventArgs>((_, _, args) =>
         {
-            global::OxyPlot.PlotCommands.SnapTrack.Execute(view, ctl, args);
             if (HitTest(model, args.Position) is { } selection) select(selection);
-        }));
+        });
+        controller.BindMouseDown(OxyMouseButton.Left, click);
+        controller.BindMouseDown(OxyMouseButton.Left, OxyModifierKeys.Control, click);
         return controller;
     }
 
-    private static DataSelection? HitTest(PlotModel model, ScreenPoint position)
+    // The element under the pointer; a waterfall's total (its last item) is no category to select, but has a tooltip
+    private static DataSelection? HitTest(PlotModel model, ScreenPoint position, bool withTotal = false)
     {
         const double tolerance = 12;
         for (var s = 0; s < model.Series.Count; s++)
@@ -111,6 +182,9 @@ public sealed class OxyPlotRenderer : IVisualRenderer
                     return new CategorySelection(categories[pie.Slices.IndexOf(slice)]);
                 case BarSeries:
                     return new CategorySelection((int)hit.Index, s);
+                // A step of a waterfall; its total (the last item) is no category
+                case IntervalBarSeries steps when withTotal || (int)hit.Index < steps.Items.Count - 1:
+                    return new CategorySelection((int)hit.Index);
                 case LineSeries or ScatterSeries when hit.Position.DistanceTo(position) <= tolerance:
                     return new CategorySelection((int)Math.Round(hit.DataPoint.X), s);
             }
@@ -124,7 +198,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
 
     /// <summary>
     /// Bars, stacked bars, lines, areas and points in one chart: each series is drawn with its own
-    /// <see cref="ChartSeries.Mark"/>, against the left axis or, for <see cref="ChartSeries.SecondaryAxis"/>, the right one.
+    /// <see cref="ChartSeries.SeriesType"/>, against the left axis or, for <see cref="ChartSeries.SecondaryAxis"/>, the right one.
     /// </summary>
     private static PlotModel BuildCartesian(RenderRequest request)
     {
@@ -138,26 +212,92 @@ public sealed class OxyPlotRenderer : IVisualRenderer
             AxisTitleDistance = 10,
             Key = CategoryAxisKey,
         };
-        categoryAxis.Labels.AddRange(chart.Categories);
+        // Several axis fields: the innermost one's values under the categories, each outer one once under its groups
+        var levels = CategoryLevels.Of(chart);
+        categoryAxis.Labels.AddRange(levels?.Labels ?? chart.Categories);
         model.Axes.Add(categoryAxis);
+        if (levels is not null)
+        {
+            for (var level = 0; level < levels.Groups.Count; level++)
+                model.Axes.Add(new GroupAxis(levels.Groups[level], chart.Categories.Count) { PositionTier = level + 1, Key = $"groups{level}" });
+            foreach (var group in levels.Groups[^1].Skip(1))
+                model.Annotations.Add(new LineAnnotation
+                {
+                    Type = LineAnnotationType.Vertical,
+                    X = group.First - 0.5,
+                    XAxisKey = CategoryAxisKey,
+                    Color = OxyColor.Parse(request.Theme.GridLine ?? "#D1D5DB"),
+                    LineStyle = LineStyle.Solid,
+                    StrokeThickness = 1,
+                    Layer = AnnotationLayer.BelowSeries,
+                });
+        }
         model.Axes.Add(ValueAxis(chart, secondary: false));
         if (chart.Series.Any(s => s.SecondaryAxis))
             model.Axes.Add(ValueAxis(chart, secondary: true));
 
+        var formatting = ChartFormatting.For(request);
         for (var i = 0; i < chart.Series.Count; i++)
-            model.Series.Add(CreateSeries(chart.Series[i], Color(request.Theme, i)));
+            model.Series.Add(CreateSeries(request, formatting, i));
+        foreach (var band in formatting.Bands)
+            model.Annotations.Add(Zone(band, request.Theme));
+        var groups = chart.Series.Where(s => (s.SeriesType == VisualType.Bar || s.SeriesType == VisualType.StackedBar))
+            .Select(s => s.SeriesType == VisualType.StackedBar ? (s.SecondaryAxis ? "stack2" : "stack") : s.Name).Distinct().ToList();
+        foreach (var outline in formatting.StackOutlines)
+            model.Annotations.Add(Frame(outline, categoryAxis, groups));
 
-        if (chart.Series.Count > 1)
-            model.Legends.Add(new Legend { LegendPosition = LegendPosition.RightTop, LegendPlacement = LegendPlacement.Outside });
+        // Shown or not by the fit: a visual can ask for the legend of a single series
+        model.Legends.Add(new Legend { LegendPosition = LegendPosition.RightTop, LegendPlacement = LegendPlacement.Outside });
         return model;
     }
 
-    /// <summary>A value axis formatted like the first series drawn against it; bars start at zero.</summary>
+    /// <summary>
+    /// An axis below the category axis for an outer axis field: its value once at the center of each group of categories
+    /// sharing it (every n-th group when they are too narrow for their labels), on the category axis' scale.
+    /// </summary>
+    private sealed class GroupAxis : LinearAxis
+    {
+        private readonly IReadOnlyList<CategoryGroup> _groups;
+        private int _step = 1;
+
+        public GroupAxis(IReadOnlyList<CategoryGroup> groups, int categories)
+        {
+            _groups = groups;
+            Position = AxisPosition.Bottom;
+            Minimum = -0.5;
+            Maximum = categories - 0.5;
+            IsZoomEnabled = false;
+            IsPanEnabled = false;
+            TickStyle = TickStyle.None;
+            AxislineStyle = LineStyle.None;
+            LabelFormatter = value => _groups.FirstOrDefault(g => Math.Abs(g.Center - value) < 0.01)?.Label ?? "";
+        }
+
+        /// <summary>Shows every n-th group label so that they do not overlap; true when that changed.</summary>
+        public bool Fit(double perCategory)
+        {
+            var widest = _groups.Max(g => g.Label.Length) * 7.0 + 16;
+            var narrowest = _groups.Average(g => g.Count) * perCategory;
+            var step = Math.Max(1, (int)Math.Ceiling(widest / Math.Max(1, narrowest)));
+            if (step == _step) return false;
+            _step = step;
+            return true;
+        }
+
+        public override void GetTickValues(out IList<double> majorLabelValues, out IList<double> majorTickValues, out IList<double> minorTickValues)
+        {
+            majorLabelValues = [.. _groups.Where((_, i) => i % _step == 0).Select(g => g.Center)];
+            majorTickValues = [];
+            minorTickValues = [];
+        }
+    }
+
+    /// <summary>A value axis formatted like the first series drawn against it; an axis with bars holds zero (<see cref="ChartFitting.ZeroBounds"/>).</summary>
     private static LinearAxis ValueAxis(ChartData chart, bool secondary)
     {
         var series = chart.Series.Where(s => s.SecondaryAxis == secondary).ToList();
         var format = series.FirstOrDefault()?.Format;
-        var onlyBars = series.Count > 0 && series.All(s => s.Mark is MarkType.Bar or MarkType.StackedBar);
+        var (minimum, maximum) = ChartFitting.ZeroBounds(chart, secondary);
         return new LinearAxis
         {
             Position = secondary ? AxisPosition.Right : AxisPosition.Left,
@@ -166,20 +306,76 @@ public sealed class OxyPlotRenderer : IVisualRenderer
             // Grid lines come from the left axis only, so that the two scales do not draw two grids
             MajorGridlineStyle = secondary ? LineStyle.None : LineStyle.Solid,
             MajorGridlineColor = OxyColor.FromRgb(0xE5, 0xE7, 0xEB),
-            MinimumPadding = onlyBars ? 0 : 0.05,
-            MaximumPadding = 0.08,
-            AbsoluteMinimum = onlyBars ? 0 : double.MinValue,
+            Minimum = minimum ?? double.NaN,
+            Maximum = maximum ?? double.NaN,
+            MinimumPadding = minimum is null ? 0.05 : 0,
+            MaximumPadding = maximum is null ? 0.08 : 0,
         };
     }
 
-    private static Series CreateSeries(ChartSeries source, OxyColor color)
+    /// <summary>
+    /// The series in its color. With a highlight (cross-filtering), the bars left out of it are faded; OxyPlot has
+    /// no color per point for lines and points, so a series is faded when none of its points is highlighted.
+    /// </summary>
+    /// <summary>
+    /// The zone of a rule shown on the chart (<see cref="ChartBand"/>): a translucent band across the chart between
+    /// its values, an open end reaching the edge of the value axis, with the rule's condition as text.
+    /// </summary>
+    private static RectangleAnnotation Zone(ChartBand band, BiTheme theme)
     {
+        var color = OxyColor.Parse(band.Color);
+        var zone = new RectangleAnnotation
+        {
+            XAxisKey = CategoryAxisKey,
+            YAxisKey = band.SecondaryAxis ? SecondaryAxisKey : PrimaryAxisKey,
+            Fill = OxyColor.FromAColor(0x26, color),
+            Stroke = OxyColor.FromAColor(0x99, color),
+            StrokeThickness = 1,
+            Text = band.Label,
+            TextColor = Parse(theme.MutedForeground) ?? color,
+            TextHorizontalAlignment = global::OxyPlot.HorizontalAlignment.Left,
+            Layer = AnnotationLayer.BelowSeries,
+        };
+        if (band.From is { } from) zone.MinimumY = from;
+        if (band.To is { } to) zone.MaximumY = to;
+        return zone;
+    }
+
+    /// <summary>
+    /// The frame of a stack a rule or a scale picks out (<see cref="StackOutline"/>), over the stack's bar: its slot
+    /// among the category's bar groups (each stack is one group, each other bar series one too).
+    /// </summary>
+    private static RectangleAnnotation Frame(StackOutline outline, CategoryAxis axis, List<string> groups)
+    {
+        // OxyPlot shares a category between its bar groups, a gap as wide as one bar on each side
+        var width = 1 / (1 + axis.GapWidth) / Math.Max(1, groups.Count);
+        var slot = groups.IndexOf(outline.SecondaryAxis ? "stack2" : "stack");
+        var left = outline.Category - 0.5 / (1 + axis.GapWidth) + slot * width;
+        return new RectangleAnnotation
+        {
+            XAxisKey = CategoryAxisKey,
+            YAxisKey = outline.SecondaryAxis ? SecondaryAxisKey : PrimaryAxisKey,
+            MinimumX = left,
+            MaximumX = left + width,
+            MinimumY = 0,
+            MaximumY = outline.Top,
+            Fill = OxyColors.Transparent,
+            Stroke = OxyColor.Parse(outline.Color),
+            StrokeThickness = 3,
+            Layer = AnnotationLayer.AboveSeries,
+        };
+    }
+
+    private static Series CreateSeries(RenderRequest request, ChartFormatting formatting, int index)
+    {
+        var source = request.Chart.Series[index];
+        var color = request.IsEmphasized(index) ? Color(request.Theme, index) : Dim(Color(request.Theme, index));
         var valueAxis = source.SecondaryAxis ? SecondaryAxisKey : PrimaryAxisKey;
         var valueFormat = "{4:" + (source.Format ?? "#,##0.##") + "}";
-        switch (source.Mark)
+        switch (source.SeriesType)
         {
-            case MarkType.Line or MarkType.Area:
-                var line = source.Mark == MarkType.Area
+            case var type when type == VisualType.Line || type == VisualType.Area:
+                var line = source.SeriesType == VisualType.Area
                     ? new AreaSeries { Fill = OxyColor.FromAColor(0x55, color), Color2 = OxyColors.Transparent, ConstantY2 = 0 }
                     : new LineSeries { MarkerType = MarkerType.Circle, MarkerSize = 4, MarkerFill = color };
                 line.Title = source.Name;
@@ -192,7 +388,7 @@ public sealed class OxyPlotRenderer : IVisualRenderer
                 line.Points.AddRange(source.Values.Select((v, x) => v is null ? DataPoint.Undefined : new DataPoint(x, v.Value)));
                 return line;
 
-            case MarkType.Scatter:
+            case var type when type == VisualType.Scatter:
                 var points = new ScatterSeries
                 {
                     Title = source.Name,
@@ -217,14 +413,56 @@ public sealed class OxyPlotRenderer : IVisualRenderer
                     FillColor = color,
                     XAxisKey = valueAxis,
                     YAxisKey = CategoryAxisKey,
-                    IsStacked = source.Mark == MarkType.StackedBar,
+                    IsStacked = source.SeriesType == VisualType.StackedBar,
                     // Series on the right axis stack separately from those on the left
                     StackGroup = source.SecondaryAxis ? SecondaryAxisKey : PrimaryAxisKey,
                     TrackerFormatString = "{0}\n{1}: {2:" + (source.Format ?? "#,##0.##") + "}",
                 };
-                bars.Items.AddRange(source.Values.Select(v => new BarItem(v ?? 0)));
+                bars.Items.AddRange(source.Values.Select((v, category) => new BarItem(v ?? 0)
+                {
+                    Color = BarColor(request, formatting, index, category),
+                }));
                 return bars;
         }
+    }
+
+    /// <summary>
+    /// A waterfall (<see cref="Waterfall"/>): each step a bar from the running total before it to the one after it,
+    /// increases in the theme's success color, decreases in its error color, the total in the first series color; a
+    /// rule of the measure's format colors a step it matches, and the highlight fades the others.
+    /// </summary>
+    private static PlotModel BuildWaterfall(RenderRequest request)
+    {
+        var (chart, steps) = Waterfall.Of(request.Chart);
+        var source = chart.Series[0];
+        var theme = request.Theme;
+        var formatting = ChartFormatting.For(request);
+        var categories = request.Chart.Categories.Count;
+        var model = new PlotModel();
+        var categoryAxis = new CategoryAxis { Position = AxisPosition.Bottom, Title = chart.CategoryCaption, AxisTitleDistance = 10, Key = CategoryAxisKey };
+        categoryAxis.Labels.AddRange(chart.Categories);
+        model.Axes.Add(categoryAxis);
+        model.Axes.Add(ValueAxis(chart, secondary: false));
+        var bars = new IntervalBarSeries
+        {
+            Title = source.Name,
+            XAxisKey = PrimaryAxisKey,
+            YAxisKey = CategoryAxisKey,
+            // OxyPlot's default label ("{2}") points past the values it gives a label: no labels
+            LabelFormatString = null,
+            StrokeThickness = 0,
+        };
+        for (var i = 0; i < steps.Count; i++)
+        {
+            var step = steps[i];
+            var color = i >= categories ? Color(theme, 0)
+                : formatting.PointColor(0, i) is { } hex ? OxyColor.Parse(hex)
+                : OxyColor.Parse(theme.Resolve(step.Kind == WaterfallStepKind.Decrease ? ThemeColors.Error : ThemeColors.Success));
+            if (i < categories && !request.IsEmphasized(i, 0)) color = Dim(color);
+            bars.Items.Add(new IntervalBarItem(Math.Min(step.Start, step.End), Math.Max(step.Start, step.End)) { Color = color });
+        }
+        model.Series.Add(bars);
+        return model;
     }
 
     private const string PieOutsideLabelFormat = "{1}";
@@ -233,9 +471,11 @@ public sealed class OxyPlotRenderer : IVisualRenderer
     {
         var chart = request.Chart;
         var source = chart.Series[0];
+        var formatting = ChartFormatting.For(request);
         var pie = new PieSeries
         {
-            InnerDiameter = 0.45,
+            // A donut's hole; a pie is a full disc
+            InnerDiameter = request.Visual.Type == VisualType.Donut ? 0.5 : 0,
             StrokeThickness = 2,
             Stroke = OxyColors.White,
             InsideLabelPosition = 0.75,
@@ -250,7 +490,8 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         for (var i = 0; i < chart.Categories.Count; i++)
         {
             if (source.Values[i] is not { } value) continue;
-            pie.Slices.Add(new PieSlice(chart.Categories[i], value) { Fill = Color(request.Theme, i) });
+            var fill = formatting.PointColor(0, i) is { } formatted ? OxyColor.Parse(formatted) : Color(request.Theme, i);
+            pie.Slices.Add(new PieSlice(chart.Categories[i], value) { Fill = request.IsEmphasized(i, 0) ? fill : Dim(fill) });
             categories.Add(i);
         }
         // Categories without a value have no slice: slice index → category index
@@ -261,6 +502,16 @@ public sealed class OxyPlotRenderer : IVisualRenderer
     }
 
     private static OxyColor Color(BiTheme theme, int index) => OxyColor.Parse(theme.ColorAt(index));
+
+    // A bar: the color of its rule or scale (as LiveCharts2's conditional draw), else the series'; faded when left out of the highlight
+    private static OxyColor BarColor(RenderRequest request, ChartFormatting formatting, int series, int category)
+    {
+        var formatted = formatting.PointColor(series, category) is { } hex ? OxyColor.Parse(hex) : (OxyColor?)null;
+        if (request.IsEmphasized(category, series)) return formatted ?? OxyColors.Automatic;
+        return Dim(formatted ?? Color(request.Theme, series));
+    }
+
+    private static OxyColor Dim(OxyColor color) => OxyColor.FromAColor((byte)(color.A * SelectionFilters.DimmedOpacity), color);
 
     /// <summary>Text, axes, grid lines and slice borders in the theme's colors (EasyBI's light colors when it has none).</summary>
     private static void ApplyTheme(PlotModel model, BiTheme theme)

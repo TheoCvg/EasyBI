@@ -19,7 +19,13 @@
     <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.SecondarySoftBorderBrushKey}" Color="#7A5230" />
     <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.HoverBrushKey}" Color="#374151" />
     <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.ErrorBrushKey}" Color="#F87171" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.SuccessBrushKey}" Color="#4ADE80" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.WarningBrushKey}" Color="#FBBF24" />
     <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.MeasureBrushKey}" Color="#34D399" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.FormulaFunctionBrushKey}" Color="#C4B5FD" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.FormulaDimensionBrushKey}" Color="#93C5FD" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.FormulaTextBrushKey}" Color="#FDBA74" />
+    <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.FormulaNumberBrushKey}" Color="#5EEAD4" />
     <SolidColorBrush x:Key="{x:Static bi:EasyBITheme.GridLineBrushKey}" Color="#374151" />
 
     <bi:ChartPalette x:Key="{x:Static bi:EasyBITheme.ChartPaletteKey}">

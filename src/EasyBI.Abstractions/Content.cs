@@ -2,7 +2,7 @@ namespace EasyBI.Abstractions;
 
 public enum TextAlign { Left, Center, Right }
 
-/// <summary>Free text shown by a <see cref="MarkType.Text"/> visual (title, comment...).</summary>
+/// <summary>Free text shown by a <see cref="VisualType.Text"/> visual (title, comment...).</summary>
 public sealed record TextContent
 {
     public string Text { get; init; } = "";
@@ -26,7 +26,7 @@ public enum ImageFit
     Stretch,
 }
 
-/// <summary>Image shown by a <see cref="MarkType.Image"/> visual, embedded so that the report file stays self-contained.</summary>
+/// <summary>Image shown by a <see cref="VisualType.Image"/> visual, embedded so that the report file stays self-contained.</summary>
 public sealed record ImageContent
 {
     /// <summary>Image bytes, base64-encoded.</summary>

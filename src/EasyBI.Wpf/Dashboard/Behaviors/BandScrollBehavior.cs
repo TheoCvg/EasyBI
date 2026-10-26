@@ -71,7 +71,7 @@ public sealed class BandScrollBehavior : DashboardBehavior
 
     private void OnWheel(object sender, MouseWheelEventArgs e)
     {
-        if (e.Handled || !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) return;
+        if (e.Handled || !ModifierKeysState.Shift) return;
         var band = Panel.BandAt(e.GetPosition(Panel).Y);
         if (band >= Panel.Bands.Count || !Panel.Bands[band].CanScroll) return;
         var definition = Panel.Bands[band];

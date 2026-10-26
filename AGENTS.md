@@ -119,7 +119,13 @@ Branches:
   (`src/EasyBI.Wpf/Properties/AssemblyInfo.cs`): register any new public namespace there.
 - CI (`.github/workflows/ci.yml`) builds, tests and packs every pull request and every push to
   `develop` and `main`.
-- Releasing: merge `develop` into `main`, then tag `main` with `vX.Y.Z` (or `vX.Y.Z-beta.N`).
+- Documentation: the site (https://theocvg.github.io/EasyBI/) is built by Zensical from `docs/` and `zensical.toml`.
+  The `Docs` workflow (`.github/workflows/docs.yml`) publishes it to the `gh-pages` branch with mike: every push to
+  `develop` updates the **dev** version, every release tag publishes its own version and moves **latest** to it.
+  `README.md` stays short (presentation, get started, links): it is also the README of the NuGet packages, so its
+  links and images are absolute URLs.
+- Releasing: in `docs/changelog.md`, turn *Unreleased* into the version and its date, merge `develop` into `main`, then
+  tag `main` with `vX.Y.Z` (or `vX.Y.Z-beta.N`).
   The `Release` workflow builds, tests, publishes the packages to nuget.org and creates the GitHub
   release. Publishing uses nuget.org **Trusted Publishing** (OIDC, no stored API key): it needs the
   nuget.org policy for `TheoCvg/EasyBI` / `release.yml` and the `NUGET_USER` secret (nuget.org
@@ -135,6 +141,7 @@ Branches:
   `develop` and `main` keep a shared history.
 - Before opening a PR: `dotnet build` and `dotnet test` are green.
 - Bug fixes and features include tests (see above).
-- Any change to the public API or to the JSON report format updates `README.md` in the same PR.
+- Any change to the public API or to the JSON report format updates the page of `docs/` that documents it, and adds
+  an entry under *Unreleased* in `docs/changelog.md` (in *Breaking changes* when it breaks), in the same PR.
 - The description explains what changed, why, and how it was verified (tests, manual check in the
   sample app); mention anything left unverified.

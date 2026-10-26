@@ -34,8 +34,13 @@
     <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=Line}">M1,13 L5,8 L9,10 L15,3 M1,15 L15,15</Geometry>
     <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=Area}">M1,15 L1,11 L5,6 L9,9 L15,3 L15,15 Z</Geometry>
     <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=Pie}">M8,2 A6,6 0 1 0 14,8 L8,8 Z M10,0.5 A6,6 0 0 1 15.5,6 L10,6 Z</Geometry>
+    <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=Donut}">M14.5,8 A6.5,6.5 0 1 1 14.49,7.9 Z M11,8 A3,3 0 1 1 10.99,7.9 Z M8,1.5 L8,5 M10.6,9.5 L13.6,11.2</Geometry>
+    <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=Gauge}">M1.5,12.5 A6.5,6.5 0 0 1 14.5,12.5 M8,12.5 L11,7.5 M1,14.5 L15,14.5</Geometry>
+    <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=Waterfall}">M1.5,14 L1.5,9 L4,9 L4,14 Z M5,9 L5,5 L7.5,5 L7.5,9 Z M8.5,5 L8.5,7.5 L11,7.5 L11,5 Z M12,14 L12,7.5 L14.5,7.5 L14.5,14 Z</Geometry>
     <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=Kpi}">M1.5,3.5 L14.5,3.5 L14.5,12.5 L1.5,12.5 Z M4,10 L7,7 L9,9 L12,5.5 M10,5.5 L12,5.5 L12,7.5</Geometry>
     <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=Table}">M1.5,2.5 L14.5,2.5 L14.5,13.5 L1.5,13.5 Z M1.5,6 L14.5,6 M1.5,9.75 L14.5,9.75 M6,2.5 L6,13.5 M10.5,2.5 L10.5,13.5</Geometry>
+    <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=(default)}">M1.5,2.5 L14.5,2.5 L14.5,13.5 L1.5,13.5 Z M4.5,10.5 L4.5,8.5 M8,10.5 L8,5.5 M11.5,10.5 L11.5,7</Geometry>
+    <Geometry x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:VisualTypeIcons}, ResourceId=Matrix}">M1.5,2.5 L14.5,2.5 L14.5,13.5 L1.5,13.5 Z M1.5,6 L14.5,6 M5.5,2.5 L5.5,13.5 M5.5,9.75 L14.5,9.75 M10,6 L10,13.5 M2.5,4.25 L4.5,4.25 M2.5,8 L4.5,8 M2.5,11.75 L4.5,11.75</Geometry>
 
     <Style TargetType="local:VisualTypeIcon">
         <Setter Property="Width" Value="18" />
@@ -46,10 +51,16 @@
                 <ControlTemplate TargetType="local:VisualTypeIcon">
                     <Viewbox Stretch="Uniform">
                         <Canvas Width="16" Height="16">
-                            <Path Data="{TemplateBinding Geometry}" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.3"
+                            <Path x:Name="Icon" Data="{TemplateBinding Geometry}" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.3"
                                   StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                         </Canvas>
                     </Viewbox>
+                    <ControlTemplate.Triggers>
+                        <!-- A type without an icon of its own -->
+                        <Trigger Property="Geometry" Value="{x:Null}">
+                            <Setter TargetName="Icon" Property="Data" Value="{DynamicResource {x:Static local:VisualTypeIcons.DefaultKey}}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -64,6 +75,56 @@
             <!-- The selected filter is edited in the properties panel -->
             <DataTemplate DataType="{x:Type local:FilterItemViewModel}">
                 <local:FilterEditor />
+            </DataTemplate>
+
+            <!-- And the labels of the selected dimension's values, added one at a time: those given, then a value to pick -->
+            <DataTemplate DataType="{x:Type local:ValueLabelsViewModel}">
+                <StackPanel>
+                    <TextBlock Text="{bi:Localize ValueLabelsHint}" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,6"
+                               Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+                    <ItemsControl x:Name="Given" ItemsSource="{Binding Labels}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type local:ValueLabelViewModel}">
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Original}" ToolTip="{Binding Original}" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" Margin="0,0,6,0" />
+                                    <TextBox Grid.Column="1" Text="{Binding Text}" />
+                                    <Button Grid.Column="2" Content="✕" Margin="4,0,0,0" Padding="5,0" MinWidth="0" Cursor="Hand"
+                                            ToolTip="{bi:Localize ValueLabelRemove}" CommandParameter="{Binding}"
+                                            Command="{Binding DataContext.RemoveCommand, ElementName=Given}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <!-- Editable: typing the start of a value finds it among many -->
+                        <ComboBox ItemsSource="{Binding AvailableValues}" SelectedItem="{Binding NewValue}" DisplayMemberPath="Label"
+                                  IsEditable="True" IsTextSearchEnabled="True" TextSearch.TextPath="Label" Margin="0,0,6,0"
+                                  ToolTip="{bi:Localize ValueLabelPick}" />
+                        <TextBox Grid.Column="1" Text="{Binding NewText, UpdateSourceTrigger=PropertyChanged}" ToolTip="{bi:Localize ValueLabelText}">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter" Command="{Binding AddCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <Button Grid.Column="2" Content="+" Margin="4,0,0,0" Padding="6,0" MinWidth="0" Cursor="Hand"
+                                Command="{Binding AddCommand}" ToolTip="{bi:Localize ValueLabelAdd}" />
+                    </Grid>
+                </StackPanel>
+            </DataTemplate>
+
+            <!-- So is the format of the selected measure -->
+            <DataTemplate DataType="{x:Type local:ValueFormatViewModel}">
+                <local:ValueFormatEditor />
             </DataTemplate>
 
             <!-- Dragged chip: its caption only -->
@@ -300,6 +361,7 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
 
@@ -321,8 +383,8 @@
                                                           IsChecked="{Binding IsTypeGalleryOpen, Mode=TwoWay}"
                                                           IsHitTestVisible="{Binding IsOpen, ElementName=TypeGallery, Converter={x:Static local:InverseBooleanConverter.Instance}}">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <local:VisualTypeIcon Mark="{Binding SelectedMarkOption.Mark}" Margin="0,0,6,0" />
-                                                    <TextBlock Text="{Binding SelectedMarkOption.Label}" VerticalAlignment="Center" />
+                                                    <local:VisualTypeIcon Type="{Binding SelectedTypeOption.Type}" Margin="0,0,6,0" />
+                                                    <TextBlock Text="{Binding SelectedTypeOption.Label}" VerticalAlignment="Center" />
                                                     <TextBlock Text="▾" Margin="8,0,0,0" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </ToggleButton>
@@ -330,18 +392,18 @@
                                                    AllowsTransparency="True" IsOpen="{Binding IsTypeGalleryOpen, Mode=TwoWay}">
                                                 <Border Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}"
                                                         BorderThickness="1" CornerRadius="6" Padding="10,4,10,10" Margin="0,4,0,0">
-                                                    <ItemsControl ItemsSource="{Binding MarkGroups}" Focusable="False">
+                                                    <ItemsControl ItemsSource="{Binding TypeGroups}" Focusable="False">
                                                         <ItemsControl.ItemTemplate>
-                                                            <DataTemplate DataType="{x:Type local:MarkGroupViewModel}">
+                                                            <DataTemplate DataType="{x:Type local:VisualTypeGroupViewModel}">
                                                                 <StackPanel>
                                                                     <TextBlock Text="{Binding Label}" Style="{StaticResource SectionHeader}" Margin="2,8,0,4" />
                                                                     <ItemsControl ItemsSource="{Binding Options}" ItemsPanel="{StaticResource WrapItems}" Focusable="False">
                                                                         <ItemsControl.ItemTemplate>
-                                                                            <DataTemplate DataType="{x:Type local:MarkOptionViewModel}">
+                                                                            <DataTemplate DataType="{x:Type local:VisualTypeOptionViewModel}">
                                                                                 <Button x:Name="Type" Command="{Binding ChooseCommand}" IsEnabled="{Binding IsAvailable}"
                                                                                         Width="84" Margin="2" Padding="4,6" Cursor="Hand" ToolTipService.ShowOnDisabled="True">
                                                                                     <StackPanel>
-                                                                                        <local:VisualTypeIcon Mark="{Binding Mark}" Width="26" Height="26" />
+                                                                                        <local:VisualTypeIcon Type="{Binding Type}" Width="26" Height="26" />
                                                                                         <TextBlock x:Name="Caption" Text="{Binding Label}" FontSize="11" Margin="0,4,0,0" HorizontalAlignment="Center" />
                                                                                     </StackPanel>
                                                                                 </Button>
@@ -351,7 +413,7 @@
                                                                                         <Setter TargetName="Type" Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
                                                                                     </DataTrigger>
                                                                                     <DataTrigger Binding="{Binding IsAvailable}" Value="False">
-                                                                                        <Setter TargetName="Type" Property="ToolTip" Value="{bi:Localize NotSupportedByRenderer}" />
+                                                                                        <Setter TargetName="Type" Property="ToolTip" Value="{Binding UnavailableReason}" />
                                                                                     </DataTrigger>
                                                                                 </DataTemplate.Triggers>
                                                                             </DataTemplate>
@@ -372,7 +434,21 @@
                                 </DockPanel>
                             </bi:SlotHost>
 
-                            <bi:SlotHost Grid.Row="1" Slot="{x:Static local:ReportDesignerSlots.Shelves}" Orientation="Vertical">
+                            <!-- Why the last change was refused (DesignerViewModel.Rules) -->
+                            <TextBlock Grid.Row="1" Text="{Binding Refusal}" TextWrapping="Wrap" Margin="0,0,0,8"
+                                       Foreground="{DynamicResource {x:Static bi:EasyBITheme.WarningBrushKey}}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Refusal}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <bi:SlotHost Grid.Row="2" Slot="{x:Static local:ReportDesignerSlots.Shelves}" Orientation="Vertical">
                                 <StackPanel>
                                     <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.AxisShelf}"
                                                  Visibility="{Binding AxisWell.IsVisible, Converter={StaticResource BoolToVisibility}}">
@@ -386,6 +462,10 @@
                                                  Visibility="{Binding ValuesWell.IsVisible, Converter={StaticResource BoolToVisibility}}">
                                         <ContentControl Content="{Binding ValuesWell}" ContentTemplate="{StaticResource WellTemplate}" Focusable="False" />
                                     </bi:SlotHost>
+                                    <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.TooltipShelf}"
+                                                 Visibility="{Binding TooltipWell.IsVisible, Converter={StaticResource BoolToVisibility}}">
+                                        <ContentControl Content="{Binding TooltipWell}" ContentTemplate="{StaticResource WellTemplate}" Focusable="False" />
+                                    </bi:SlotHost>
                                     <bi:SlotHost Slot="{x:Static local:ReportDesignerSlots.FiltersShelf}"
                                                  Visibility="{Binding FiltersWell.IsVisible, Converter={StaticResource BoolToVisibility}}">
                                         <ContentControl Content="{Binding FiltersWell}" ContentTemplate="{StaticResource WellTemplate}" Focusable="False" />
@@ -393,7 +473,7 @@
                                 </StackPanel>
                             </bi:SlotHost>
 
-                            <bi:SlotHost Grid.Row="2" Slot="{x:Static local:ReportDesignerSlots.Preview}" Orientation="Vertical">
+                            <bi:SlotHost Grid.Row="3" Slot="{x:Static local:ReportDesignerSlots.Preview}" Orientation="Vertical">
                                 <Border Margin="0,14,0,0" Padding="14" Background="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" CornerRadius="{DynamicResource {x:Static bi:EasyBITheme.CornerRadiusKey}}"
                                         BorderBrush="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" BorderThickness="1">
                                     <bi:VisualView x:Name="Preview" Context="{Binding Context}" Definition="{Binding Visual}" />

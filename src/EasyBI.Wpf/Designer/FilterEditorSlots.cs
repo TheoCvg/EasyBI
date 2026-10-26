@@ -12,4 +12,7 @@ public static class FilterEditorSlots
 
     /// <summary>The period (between two dates, or relative to today), for a filter on a date.</summary>
     public const string Period = "FilterEditor.Period";
+
+    /// <summary>The comparison with numbers, for a filter on a measure or (when chosen) on a number dimension.</summary>
+    public const string Comparison = "FilterEditor.Comparison";
 }

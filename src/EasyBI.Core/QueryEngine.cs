@@ -30,7 +30,10 @@ internal static class QueryEngine<T>
             throw new NotSupportedException($"At most {MaxGroupFields} grouping dimensions are supported.");
 
         var parameter = Expression.Parameter(typeof(T), "x");
-        var filtered = ApplyFilters(Cancellable(source, cancellationToken), metadata, selectors, query.Filters ?? [], parameter);
+        // Filters on measures keep groups (HAVING), the others keep rows (WHERE)
+        var measureFilters = (query.Filters ?? []).Where(f => NumericFilters.IsOnMeasure(f, metadata, query.Calculations)).ToList();
+        var rowFilters = (query.Filters ?? []).Except(measureFilters);
+        var filtered = ApplyFilters(Cancellable(source, cancellationToken), metadata, selectors, rowFilters, parameter);
         var columns = new List<ResultColumn>();
 
         // Grouping keys
@@ -65,24 +68,36 @@ internal static class QueryEngine<T>
         for (var i = 0; i < keyBodies.Count; i++)
             cells.Add(Expression.Property(key, $"K{i + 1}"));
 
+        var values = new GroupValues(group, metadata, selectors, query.Calculations ?? []);
         foreach (var measureRef in query.Measures)
         {
-            if (query.Calculations?.FirstOrDefault(c => c.Name == measureRef.Measure) is { } calculation)
+            var calculation = query.Calculations?.FirstOrDefault(c => c.Name == measureRef.Measure);
+            var declared = metadata.Fields.FirstOrDefault(f => f.Name == measureRef.Measure);
+            if (calculation is not null && (declared is null || !MeasureFormula.IsOnly(calculation.Formula, declared.Name)))
             {
-                // The end user's formula over the model's measures, each aggregated as the model declares it
-                cells.Add(MeasureFormula.Build(calculation.Formula, name => MeasureCell(group, metadata, selectors, name, null)));
-                columns.Add(new ResultColumn(measureRef.Key, calculation.Caption, FieldKind.Measure, DataType.Number, calculation.Format));
+                // The end user's formula: the model's measures aggregated as declared, functions over the group's rows
+                cells.Add(values.Formula(calculation));
+                var named = calculation.Caption is { Length: > 0 } own ? own : declared?.Caption ?? calculation.Name;
+                columns.Add(new ResultColumn(measureRef.Key, named, FieldKind.Measure, DataType.Number, calculation.Format));
                 continue;
             }
-            var field = RequireKind(metadata.GetField(measureRef.Measure), FieldKind.Measure);
+            // A measure of the model, possibly renamed and reformatted by the report
+            var field = RequireKind(declared ?? metadata.GetField(measureRef.Measure), FieldKind.Measure);
+            if (calculation is not null)
+                field = field with { Caption = calculation.Caption is { Length: > 0 } own ? own : field.Caption, Format = calculation.Format };
             // A calculated measure is computed from the group's rows by the model: an aggregation saved with the visual does not apply
             var aggregation = field.IsCalculated ? null : measureRef.Aggregation;
-            cells.Add(MeasureCell(group, metadata, selectors, field.Name, aggregation));
+            cells.Add(values.Declared(field.Name, aggregation));
             var caption = aggregation is { } chosen ? $"{field.Caption} ({Aggregations.Caption(chosen)})" : field.Caption;
             columns.Add(new ResultColumn(measureRef.Key, caption, FieldKind.Measure, DataType.Number, field.Format));
         }
 
         var grouped = CallQueryable(filtered, nameof(Queryable.GroupBy), [typeof(T), keyType], keySelector);
+        foreach (var filter in measureFilters)
+        {
+            var cell = values.Measure(filter.Field);
+            grouped = CallQueryable(grouped, nameof(Queryable.Where), [groupType], Expression.Lambda(Comparison(cell, filter), group));
+        }
         var ordered = ApplySort(grouped, groupType, group, columns, cells, query);
         if (query.Top is { } top)
         {
@@ -188,38 +203,88 @@ internal static class QueryEngine<T>
         ParameterExpression parameter)
     {
         foreach (var filter in filters)
-        {
-            var field = RequireKind(metadata.GetField(filter.Field), FieldKind.Dimension);
-            if (filter.Operator.IsPeriod())
-            {
-                source = source.Where(InPeriod(field, Rebind(selectors[field.Name], parameter), filter, parameter));
-                continue;
-            }
-            var selector = ApplyGrain(field, Rebind(selectors[field.Name], parameter), filter.Grain);
-            var valueType = selector.Type;
-            var acceptsNull = !valueType.IsValueType || Nullable.GetUnderlyingType(valueType) is not null;
-            var values = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(valueType))!;
-            foreach (var text in filter.Values)
-            {
-                var value = InvariantValue.Parse(text, valueType);
-                if (value is not null || acceptsNull) values.Add(value);
-            }
-
-            Expression body = Expression.Call(
-                typeof(Enumerable), nameof(Enumerable.Contains), [valueType],
-                Expression.Constant(values), selector);
-            if (filter.Operator == FilterOperator.NotIn)
-                body = Expression.Not(body);
-            source = source.Where(Expression.Lambda<Func<T, bool>>(body, parameter));
-        }
+            source = source.Where(Expression.Lambda<Func<T, bool>>(Predicate(metadata, selectors, filter, parameter), parameter));
         return source;
+    }
+
+    private static Expression Predicate(
+        ModelMetadata metadata,
+        IReadOnlyDictionary<string, LambdaExpression> selectors,
+        FilterSpec filter,
+        ParameterExpression parameter)
+    {
+        if (filter.Operator == FilterOperator.AnyOf)
+        {
+            // An empty group matches every row, no group matches none
+            var groups = (filter.Alternatives ?? [])
+                .Select(group => group.Count == 0
+                    ? Expression.Constant(true)
+                    : group.Select(f => Predicate(metadata, selectors, f, parameter)).Aggregate(Expression.AndAlso))
+                .ToList();
+            return groups.Count == 0 ? Expression.Constant(false) : groups.Aggregate(Expression.OrElse);
+        }
+
+        var field = RequireKind(metadata.GetField(filter.Field), FieldKind.Dimension);
+        if (filter.Operator.IsPeriod())
+            return InPeriod(field, Rebind(selectors[field.Name], parameter), filter);
+        if (filter.Operator.IsComparison())
+        {
+            if (field.DataType != DataType.Number)
+                throw new InvalidOperationException($"A comparison requires a number dimension ('{field.Name}').");
+            return Comparison(Rebind(selectors[field.Name], parameter), filter);
+        }
+
+        var selector = ApplyGrain(field, Rebind(selectors[field.Name], parameter), filter.Grain);
+        var valueType = selector.Type;
+        var acceptsNull = !valueType.IsValueType || Nullable.GetUnderlyingType(valueType) is not null;
+        var values = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(valueType))!;
+        foreach (var text in filter.Values)
+        {
+            var value = InvariantValue.Parse(text, valueType);
+            if (value is not null || acceptsNull) values.Add(value);
+        }
+
+        Expression body = Expression.Call(
+            typeof(Enumerable), nameof(Enumerable.Contains), [valueType],
+            Expression.Constant(values), selector);
+        return filter.Operator == FilterOperator.NotIn ? Expression.Not(body) : body;
+    }
+
+    /// <summary>
+    /// The value compared with the filter's numbers, converted to its own type; a missing value never matches, and an
+    /// unreadable number leaves that side open.
+    /// </summary>
+    private static Expression Comparison(Expression value, FilterSpec filter)
+    {
+        // An integer is compared as a decimal number, so that "> 2.5" does not become "> 2"
+        var type = Nullable.GetUnderlyingType(value.Type) ?? value.Type;
+        if (type == typeof(int) || type == typeof(long) || type == typeof(short) || type == typeof(byte))
+            value = Expression.Convert(value, value.Type == type ? typeof(double) : typeof(double?));
+        var (first, second) = NumericFilters.Bounds(filter);
+        Expression? Side(double? bound, Func<Expression, Expression, BinaryExpression> compare) =>
+            bound is { } number ? compare(value, Number(number, value.Type)) : null;
+        var sides = filter.Operator switch
+        {
+            FilterOperator.GreaterThan => [Side(first, Expression.GreaterThan)],
+            FilterOperator.GreaterThanOrEqual => [Side(first, Expression.GreaterThanOrEqual)],
+            FilterOperator.LessThan => [Side(first, Expression.LessThan)],
+            FilterOperator.LessThanOrEqual => [Side(first, Expression.LessThanOrEqual)],
+            _ => new[] { Side(first, Expression.GreaterThanOrEqual), Side(second, Expression.LessThanOrEqual) },
+        };
+        return sides.OfType<Expression>().DefaultIfEmpty(Expression.Constant(true)).Aggregate(Expression.AndAlso);
+    }
+
+    private static ConstantExpression Number(double number, Type type)
+    {
+        var target = Nullable.GetUnderlyingType(type) ?? type;
+        return Expression.Constant(Convert.ChangeType(number, target, System.Globalization.CultureInfo.InvariantCulture), type);
     }
 
     /// <summary>
     /// date &gt;= start AND date &lt; end, resolved today. The date itself is compared, not a period key, so that a
     /// database can use an index on it.
     /// </summary>
-    private static Expression<Func<T, bool>> InPeriod(FieldDescriptor field, Expression date, FilterSpec filter, ParameterExpression parameter)
+    private static Expression InPeriod(FieldDescriptor field, Expression date, FilterSpec filter)
     {
         if (field.DataType != DataType.Date)
             throw new InvalidOperationException($"A period filter requires a date dimension ('{field.Name}').");
@@ -231,7 +296,7 @@ internal static class QueryEngine<T>
             var before = Expression.LessThan(date, Bound(to, date.Type));
             body = body is null ? before : Expression.AndAlso(body, before);
         }
-        return Expression.Lambda<Func<T, bool>>(body ?? Expression.Constant(true), parameter);
+        return body ?? Expression.Constant(true);
     }
 
     private static ConstantExpression Bound(DateTime day, Type dateType)
@@ -252,19 +317,56 @@ internal static class QueryEngine<T>
         return DateGrains.Apply(body, grain);
     }
 
-    /// <summary>The value of a model's measure for a group: its own expression when calculated, otherwise aggregated.</summary>
-    private static Expression MeasureCell(
+    /// <summary>
+    /// The value of a measure for a group, as the report defines it: the report's calculated measures and redefinitions
+    /// are computed from their formulas, which may use other measures of the report. Under its own name, a measure being
+    /// computed is the model's one (the redefinition of <c>[Amount]</c> reads the model's <c>[Amount]</c>), and the
+    /// model's formulas read the report's measures too.
+    /// </summary>
+    private sealed class GroupValues(
         ParameterExpression group,
         ModelMetadata metadata,
         IReadOnlyDictionary<string, LambdaExpression> selectors,
-        string name,
-        Aggregation? aggregation)
+        IReadOnlyList<CalculatedMeasure> calculations)
     {
-        var field = RequireKind(metadata.GetField(name), FieldKind.Measure);
-        var selector = selectors[field.Name];
-        return field.IsCalculated
-            ? new ParameterReplacer(selector.Parameters[0], group).Visit(selector.Body)
-            : Aggregate(group, selector, aggregation ?? field.DefaultAggregation ?? Aggregation.Sum);
+        // The measures being computed, to read a measure's own name as the model's one and to stop a loop
+        private readonly List<string> _computing = [];
+
+        public Expression Measure(string name)
+        {
+            var calculation = calculations.FirstOrDefault(c => c.Name == name);
+            var declared = metadata.Fields.Any(f => f.Name == name);
+            if (calculation is null || (declared && (_computing.Contains(name) || MeasureFormula.IsOnly(calculation.Formula, name))))
+                return Declared(name, null);
+            if (_computing.Contains(name)) throw new InvalidOperationException($"The measure '{name}' uses itself.");
+            return Formula(calculation);
+        }
+
+        public Expression Formula(CalculatedMeasure calculation) => Computing(calculation.Name, calculation.Formula);
+
+        /// <summary>The model's measure: aggregated, or computed by the model.</summary>
+        public Expression Declared(string name, Aggregation? aggregation)
+        {
+            var field = RequireKind(metadata.GetField(name), FieldKind.Measure);
+            if (field.Formula is { } formula) return Computing(field.Name, formula);
+            var selector = selectors[field.Name];
+            return field.IsCalculated
+                ? new ParameterReplacer(selector.Parameters[0], group).Visit(selector.Body)
+                : Aggregate(group, selector, aggregation ?? field.DefaultAggregation ?? Aggregation.Sum);
+        }
+
+        private Expression Computing(string name, string formula)
+        {
+            _computing.Add(name);
+            try
+            {
+                return MeasureFormula.Build(formula, group, typeof(T), Measure, row => selectors[metadata.GetField(row).Name]);
+            }
+            finally
+            {
+                _computing.RemoveAt(_computing.Count - 1);
+            }
+        }
     }
 
     private static Expression Aggregate(Expression group, LambdaExpression selector, Aggregation aggregation)
@@ -300,7 +402,7 @@ internal static class QueryEngine<T>
             var grain = groupBy[i].Grain;
             if (grain is DateGrain.None or DateGrain.Day) continue;
             foreach (var row in rows)
-                row[i] = new DatePeriod(grain, (int)row[i]!);
+                row[i] = row[i] is int key ? new DatePeriod(grain, key) : null;
         }
     }
 

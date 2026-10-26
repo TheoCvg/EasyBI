@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Input;
@@ -7,9 +8,9 @@ using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf.Designer;
 
-public enum Shelf { Axis, Legend, Values, Filters }
+public enum Shelf { Axis, Legend, Values, Tooltip, Filters }
 
-/// <summary>A field dropped on the Axis, Legend or Values shelf.</summary>
+/// <summary>A field dropped on the Axis, Legend, Values or Tooltip shelf.</summary>
 public sealed class ShelfItemViewModel : ObservableObject
 {
     public static IReadOnlyList<Option<DateGrain>> GrainOptions { get; } =
@@ -21,14 +22,11 @@ public sealed class ShelfItemViewModel : ObservableObject
             .ToArray();
 
     /// <summary>Chart types a measure can take in a cartesian chart; null follows the visual's type.</summary>
-    public static IReadOnlyList<Option<MarkType?>> SeriesMarkOptions { get; } =
+    public static IReadOnlyList<Option<VisualType?>> SeriesTypeOptions { get; } =
     [
         new(null, () => Strings.SeriesMarkDefault),
-        new(MarkType.Bar, () => Strings.MarkBar),
-        new(MarkType.StackedBar, () => Strings.MarkStackedBar),
-        new(MarkType.Line, () => Strings.MarkLine),
-        new(MarkType.Area, () => Strings.MarkArea),
-        new(MarkType.Scatter, () => Strings.MarkScatter),
+        .. new[] { VisualType.Bar, VisualType.StackedBar, VisualType.Line, VisualType.Area, VisualType.Scatter }
+            .Select(type => new Option<VisualType?>(type, VisualTypeCatalog.Default.Get(type).Caption)),
     ];
 
     /// <summary>How a measure can be seen through time.</summary>
@@ -50,12 +48,15 @@ public sealed class ShelfItemViewModel : ObservableObject
     ];
 
     private readonly Action _changed;
+    private ValueFormatViewModel? _format;
     private bool _isSelected;
     private ListSortDirection? _sortDirection;
     private DateGrain _grain;
+    private IReadOnlyDictionary<string, string>? _labels;
+    private ValueLabelsViewModel? _valueLabels;
     private TimeCalculation _time;
     private Aggregation _aggregation;
-    private MarkType? _seriesMark;
+    private VisualType? _seriesType;
     private bool _secondaryAxis;
     private bool _showSeriesOptions;
 
@@ -106,7 +107,7 @@ public sealed class ShelfItemViewModel : ObservableObject
                 TimeCalculation.PercentChangeFromPreviousYear => Strings.BadgePercentChange,
                 _ => Strings.BadgeYearToDate,
             });
-            if (ShowSeriesOptions && SeriesMark is not null) badges.Add(SeriesMarkOption.Label);
+            if (ShowSeriesOptions && SeriesType is not null) badges.Add(SeriesTypeOption.Label);
             if (ShowSeriesOptions && SecondaryAxis) badges.Add(Strings.SecondaryAxis);
             if (CanSort && SortDirection is not null) badges.Add(SortOption.Symbol);
             return badges;
@@ -181,22 +182,22 @@ public sealed class ShelfItemViewModel : ObservableObject
     }
 
     /// <summary>Chart type of this measure (Values shelf, cartesian chart); null follows the visual's type.</summary>
-    public MarkType? SeriesMark
+    public VisualType? SeriesType
     {
-        get => _seriesMark;
+        get => _seriesType;
         set
         {
-            if (!SetProperty(ref _seriesMark, value)) return;
-            OnPropertyChanged(nameof(SeriesMarkOption));
+            if (!SetProperty(ref _seriesType, value)) return;
+            OnPropertyChanged(nameof(SeriesTypeOption));
             _changed();
         }
     }
 
-    /// <summary><see cref="SeriesMark"/> as a list option (a combo box cannot select a null value).</summary>
-    public Option<MarkType?> SeriesMarkOption
+    /// <summary><see cref="SeriesType"/> as a list option (a combo box cannot select a null value).</summary>
+    public Option<VisualType?> SeriesTypeOption
     {
-        get => SeriesMarkOptions.First(o => o.Value == _seriesMark);
-        set => SeriesMark = value?.Value;
+        get => SeriesTypeOptions.First(o => o.Value == _seriesType);
+        set => SeriesType = value?.Value;
     }
 
     /// <summary>Draws this measure against the second value axis.</summary>
@@ -213,13 +214,47 @@ public sealed class ShelfItemViewModel : ObservableObject
         internal set => SetProperty(ref _showSeriesOptions, value);
     }
 
-    public FieldRef ToFieldRef() => new(Field.Name, Grain);
+    public FieldRef ToFieldRef() => new(Field.Name, Grain) { Labels = _labels };
+
+    /// <summary>
+    /// The texts the visual shows instead of some values of this dimension (keyed by the value's invariant text).
+    /// Not for dates: their periods are shown by their grain.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? Labels
+    {
+        get => _labels;
+        set
+        {
+            _labels = value is { Count: > 0 } ? value : null;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Whether the visual can show other texts for the values of this field: a dimension other than a date.</summary>
+    public bool HasValueLabels => Field.Kind == FieldKind.Dimension && Field.DataType != DataType.Date;
+
+    /// <summary>The editor of <see cref="Labels"/> (the field's values, loaded once from the model).</summary>
+    internal ValueLabelsViewModel ValueLabels(ISemanticModel model) => _valueLabels ??= new ValueLabelsViewModel(this, model);
+
+    /// <summary>Shows <paramref name="text"/> instead of <paramref name="value"/>; a blank text shows the value again.</summary>
+    public void SetLabel(object? value, string? text)
+    {
+        Labels = ToFieldRef().WithLabel(value, text).Labels;
+        _changed();
+    }
+
+    /// <summary>The format of this measure's values (Values shelf), edited in the properties panel.</summary>
+    public ValueFormatViewModel Format => _format ??= new ValueFormatViewModel(null, _changed);
+
+    /// <summary>Starts from a saved format (when a visual is loaded).</summary>
+    internal void LoadFormat(ValueFormat? format) => _format = new ValueFormatViewModel(format, _changed);
 
     public MeasureRef ToMeasureRef() => new(Field.Name, HasAggregation && Aggregation != Field.DefaultAggregation ? Aggregation : null)
     {
-        Mark = SeriesMark,
+        SeriesType = SeriesType,
         SecondaryAxis = SecondaryAxis,
         Time = Time,
+        Format = _format?.ToFormat(),
     };
 }
 
@@ -247,6 +282,9 @@ public sealed class FilterItemViewModel : ObservableObject
     private int _count = 12;
     private Option<DateGrain> _unit;
     private string _search = "";
+    private Option<FilterOperator?> _condition;
+    private string _number = "";
+    private string _secondNumber = "";
 
     /// <summary>A list of values shows a search box from this number of values on.</summary>
     public const int SearchThreshold = 8;
@@ -276,9 +314,28 @@ public sealed class FilterItemViewModel : ObservableObject
             .Select(g => new Option<DateGrain>(g, () => DateGrains.Caption(g))).ToArray();
         _periodKind = PeriodKinds[0];
         _unit = Units[1];
+        // A number dimension is filtered on a list of values or compared; a measure is only compared
+        Conditions = field.DataType != DataType.Number ? [] :
+        [
+            IsMeasure ? new(null, () => Strings.ConditionAny) : new(@operator.IsComparison() ? FilterOperator.In : @operator, () => Strings.ConditionValues),
+            new(FilterOperator.Range, () => Strings.ConditionRange),
+            new(FilterOperator.GreaterThan, () => Strings.ConditionGreaterThan),
+            new(FilterOperator.GreaterThanOrEqual, () => Strings.ConditionGreaterThanOrEqual),
+            new(FilterOperator.LessThan, () => Strings.ConditionLessThan),
+            new(FilterOperator.LessThanOrEqual, () => Strings.ConditionLessThanOrEqual),
+        ];
+        _condition = Conditions.FirstOrDefault(c => c.Value == @operator) ?? Conditions.FirstOrDefault()!;
         if (IsPeriod)
         {
             LoadPeriod(new FilterSpec(field.Name, @operator, selection?.ToArray() ?? [], grain));
+            _isLoading = false;
+            return;
+        }
+        if (@operator.IsComparison())
+            LoadComparison(new FilterSpec(field.Name, @operator, selection?.ToArray() ?? []));
+        if (IsMeasure)
+        {
+            // A measure has no list of values
             _isLoading = false;
             return;
         }
@@ -300,6 +357,7 @@ public sealed class FilterItemViewModel : ObservableObject
 
     internal Action<object>? Selecting { get; set; }
 
+    /// <summary>The operator the filter was created with; <see cref="Condition"/> tells how it filters now.</summary>
     public FilterOperator Operator { get; }
 
     public string Caption => Field.Caption;
@@ -307,7 +365,48 @@ public sealed class FilterItemViewModel : ObservableObject
     /// <summary>A date dimension: filtered on a period rather than on a list of values.</summary>
     public bool IsPeriod => Field.DataType == DataType.Date;
 
-    public bool IsValueList => !IsPeriod;
+    /// <summary>A measure of the visual: its groups are kept by comparing the measure with numbers.</summary>
+    public bool IsMeasure => Field.Kind == FieldKind.Measure;
+
+    public bool IsValueList => !IsPeriod && !IsMeasure && !IsComparison;
+
+    /// <summary>Compared with numbers (see <see cref="Condition"/>).</summary>
+    public bool IsComparison => Condition?.Value?.IsComparison() == true;
+
+    /// <summary>A number dimension or a measure: <see cref="Conditions"/> are offered.</summary>
+    public bool HasConditions => Conditions.Count > 0;
+
+    /// <summary>How a number is filtered: on a list of values (a dimension), on any value (a measure), or compared.</summary>
+    public IReadOnlyList<Option<FilterOperator?>> Conditions { get; }
+
+    public Option<FilterOperator?> Condition
+    {
+        get => _condition;
+        set
+        {
+            if (value is null || !SetProperty(ref _condition, value)) return;
+            OnPropertyChanged(nameof(IsComparison));
+            OnPropertyChanged(nameof(IsValueList));
+            OnPropertyChanged(nameof(ShowSecondNumber));
+            OnConditionChanged();
+        }
+    }
+
+    /// <summary>The number compared with, or the minimum of a range, as typed (in <see cref="EasyBILocalization.FormatCulture"/>).</summary>
+    public string Number
+    {
+        get => _number;
+        set { if (SetProperty(ref _number, value ?? "")) OnConditionChanged(); }
+    }
+
+    /// <summary>The maximum of a range, as typed.</summary>
+    public string SecondNumber
+    {
+        get => _secondNumber;
+        set { if (SetProperty(ref _secondNumber, value ?? "")) OnConditionChanged(); }
+    }
+
+    public bool ShowSecondNumber => Condition?.Value == FilterOperator.Range;
 
     public ObservableCollection<FilterValueViewModel> Values { get; } = [];
 
@@ -387,6 +486,7 @@ public sealed class FilterItemViewModel : ObservableObject
         get
         {
             if (IsPeriod) return ToFilterSpec() is { } period ? PeriodFilters.Describe(period) : Strings.FilterAll;
+            if (IsComparison || IsMeasure) return ToFilterSpec() is { } comparison ? NumericFilters.Describe(comparison, Field.Format) : Strings.FilterAll;
             var selected = Values.Where(v => v.IsChecked).Select(v => v.Label).ToList();
             var summary = selected.Count switch
             {
@@ -410,6 +510,17 @@ public sealed class FilterItemViewModel : ObservableObject
                 var relative => PeriodFilters.Relative(Field.Name, relative.Value, Unit.Value, Count),
             };
         }
+        if (IsComparison)
+        {
+            var (first, second) = (ParseNumber(Number), ParseNumber(SecondNumber));
+            return Condition.Value switch
+            {
+                FilterOperator.Range when first is null && second is null => null,
+                FilterOperator.Range => NumericFilters.Range(Field.Name, first, second),
+                var comparison => first is { } value ? NumericFilters.Compare(Field.Name, comparison!.Value, value) : null,
+            };
+        }
+        if (IsMeasure) return null;
         // While values are loading, keep the original selection
         var selected = _pendingSelection?.ToArray()
             ?? Values.Where(v => v.IsChecked).Select(v => InvariantValue.Format(v.Value)).ToArray();
@@ -417,6 +528,25 @@ public sealed class FilterItemViewModel : ObservableObject
     }
 
     private static DateOnly? Day(DateTime? date) => date is { } d ? DateOnly.FromDateTime(d) : null;
+
+    private static double? ParseNumber(string text) =>
+        double.TryParse(text, NumberStyles.Float | NumberStyles.AllowThousands, EasyBILocalization.FormatCulture, out var number)
+            ? number
+            : null;
+
+    private static string ShowNumber(double? number) => number?.ToString("G", EasyBILocalization.FormatCulture) ?? "";
+
+    private void LoadComparison(FilterSpec filter)
+    {
+        var (first, second) = NumericFilters.Bounds(filter);
+        (_number, _secondNumber) = (ShowNumber(first), ShowNumber(second));
+    }
+
+    private void OnConditionChanged()
+    {
+        OnPropertyChanged(nameof(Summary));
+        _changed();
+    }
 
     private void LoadPeriod(FilterSpec filter)
     {

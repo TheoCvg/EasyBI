@@ -31,6 +31,51 @@ public class FixesTests
         Assert.Equal(1m, Assert.Single((await model.ExecuteAsync(onlyEmpty)).Rows)[0]);
     }
 
+    private sealed record Shipment(DateTime? Shipped, DateOnly? Day, DateTimeOffset? At, decimal Amount);
+
+    private static QueryableSemanticModel<Shipment> Shipments() =>
+        SemanticModel.For(new Shipment[]
+            {
+                new(new(2024, 2, 10), new(2024, 2, 10), new(new DateTime(2024, 2, 10)), 1m),
+                new(null, null, null, 2m),
+            }, "m")
+            .Dimension(s => s.Shipped, "Expédition")
+            .Dimension(s => s.Day, "Jour")
+            .Dimension(s => s.At, "Horodatage")
+            .Measure(s => s.Amount, "CA");
+
+    [Theory]
+    [InlineData("Shipped", DateGrain.Year)]
+    [InlineData("Shipped", DateGrain.Quarter)]
+    [InlineData("Shipped", DateGrain.Month)]
+    [InlineData("Shipped", DateGrain.Day)]
+    [InlineData("Day", DateGrain.Month)]
+    [InlineData("Day", DateGrain.Day)]
+    [InlineData("At", DateGrain.Quarter)]
+    [InlineData("At", DateGrain.Day)]
+    public async Task Missing_dates_form_an_empty_period_rather_than_year_one(string field, DateGrain grain)
+    {
+        var result = await Shipments().ExecuteAsync(new([new(field, grain)], [new("Amount")]));
+
+        Assert.Equal(2, result.Rows.Count);
+        Assert.Equal((null, 2m), (result.Rows[0][0], result.Rows[0][1]));
+        Assert.NotNull(result.Rows[1][0]);
+    }
+
+    [Fact]
+    public async Task Filtering_on_the_empty_period_keeps_the_missing_dates()
+    {
+        var model = Shipments();
+
+        var empty = await model.ExecuteAsync(new([], [new("Amount")],
+            Filters: [new("Shipped", FilterOperator.In, [InvariantValue.Format(null)], DateGrain.Month)]));
+        Assert.Equal(2m, Assert.Single(empty.Rows)[0]);
+
+        var february = await model.ExecuteAsync(new([], [new("Amount")],
+            Filters: [new("Shipped", FilterOperator.NotIn, ["202402"], DateGrain.Month)]));
+        Assert.Equal(2m, Assert.Single(february.Rows)[0]);
+    }
+
     [Fact]
     public async Task DateOnly_and_DateTimeOffset_are_dates_with_grains()
     {

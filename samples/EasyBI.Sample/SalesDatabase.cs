@@ -109,6 +109,8 @@ public static class SalesDatabase
             // Ratios of sums per group: the margin rate of a region is not the average of its sales' rates
             .Ratio(s => s.Margin, s => s.Amount, "MarginRate", "MarginRate", format: "P1")
             .Ratio(s => s.Amount, s => 1, "AverageBasket", "AverageBasket", format: "#,##0 €")
+            // A formula, as end users write them: they can rewrite it in the application
+            .Formula("SUM([Amount]; [Channel] = \"Web\") / [Amount]", "WebShare", "WebShare", format: "P1")
             .Localize(captions);
     }
 }

@@ -67,7 +67,7 @@
     <value>Un KPI ne montre que des valeurs : retirez les champs des autres zones.</value>
   </data>
   <data name="ValidationPie" xml:space="preserve">
-    <value>Un camembert demande une catégorie et une seule valeur.</value>
+    <value>Un camembert ou un anneau demande une catégorie et une seule valeur.</value>
   </data>
   <data name="ValidationNoImage" xml:space="preserve">
     <value>Choisissez une image à afficher.</value>
@@ -109,7 +109,7 @@
     <value>« {0} » inattendu à la position {1}.</value>
   </data>
   <data name="FormulaExpectedOperand" xml:space="preserve">
-    <value>Une mesure, un nombre ou « ( » est attendu à la position {0}.</value>
+    <value>Un champ, un nombre ou « ( » est attendu à la position {0}.</value>
   </data>
   <data name="FormulaMissingParenthesis" xml:space="preserve">
     <value>Il manque une parenthèse fermante.</value>
@@ -118,16 +118,10 @@
     <value>Il manque un crochet fermant « ] ».</value>
   </data>
   <data name="FormulaDecimalComma" xml:space="preserve">
-    <value>Écrivez les nombres décimaux avec un point (0.5).</value>
-  </data>
-  <data name="FormulaUnknownMeasure" xml:space="preserve">
-    <value>Mesure inconnue : « {0} ».</value>
-  </data>
-  <data name="FormulaNotAMeasure" xml:space="preserve">
-    <value>« {0} » n&apos;est pas une mesure.</value>
+    <value>Écrivez les nombres décimaux avec un point (0.5), et séparez les arguments d'une fonction par « ; ».</value>
   </data>
   <data name="FormulaAmbiguous" xml:space="preserve">
-    <value>Plusieurs mesures s&apos;appellent « {0} ».</value>
+    <value>Plusieurs champs s'appellent « {0} ».</value>
   </data>
   <data name="ReportCalculatedMeasure" xml:space="preserve">
     <value>Mesure calculée « {0} »</value>
@@ -209,5 +203,221 @@
   </data>
   <data name="TimeYearToDate" xml:space="preserve">
     <value>{0}, cumul annuel</value>
+  </data>
+  <data name="SelectionAnd" xml:space="preserve">
+    <value>et</value>
+  </data>
+  <data name="SelectionOr" xml:space="preserve">
+    <value>ou</value>
+  </data>
+  <data name="CompareGreaterThan" xml:space="preserve">
+    <value>&gt; {0}</value>
+  </data>
+  <data name="CompareGreaterThanOrEqual" xml:space="preserve">
+    <value>≥ {0}</value>
+  </data>
+  <data name="CompareLessThan" xml:space="preserve">
+    <value>&lt; {0}</value>
+  </data>
+  <data name="CompareLessThanOrEqual" xml:space="preserve">
+    <value>≤ {0}</value>
+  </data>
+  <data name="CompareRange" xml:space="preserve">
+    <value>entre {0} et {1}</value>
+  </data>
+  <data name="ReportComparisonOnNonNumber" xml:space="preserve">
+    <value>{0} : comparaison sur &apos;{1}&apos;, qui n&apos;est pas un nombre.</value>
+  </data>
+  <data name="ReportMeasureFilterOnReport" xml:space="preserve">
+    <value>{0} : &apos;{1}&apos; est une mesure, qui ne peut filtrer qu&apos;un visuel.</value>
+  </data>
+  <data name="ValidationGauge" xml:space="preserve">
+    <value>Une jauge montre une seule valeur, sans axe ni légende.</value>
+  </data>
+  <data name="ValidationWaterfall" xml:space="preserve">
+    <value>Une cascade demande un axe et une seule valeur, sans légende.</value>
+  </data>
+  <data name="FormulaUnknownField" xml:space="preserve">
+    <value>Champ inconnu : « {0} ».</value>
+  </data>
+  <data name="FormulaMissingQuote" xml:space="preserve">
+    <value>Il manque un guillemet fermant « " ».</value>
+  </data>
+  <data name="FormulaDimensionOutsideFunction" xml:space="preserve">
+    <value>{0} est une dimension : utilisez-la dans une fonction, comme DISTINCTCOUNT({0}) ou SUM(valeur; {0} = "...").</value>
+  </data>
+  <data name="FormulaNotAggregatable" xml:space="preserve">
+    <value>{0} est calculée pour chaque groupe : elle ne peut pas être utilisée dans {1}(...).</value>
+  </data>
+  <data name="FormulaNestedAggregation" xml:space="preserve">
+    <value>{0}(...) ne peut pas être utilisée dans {1}(...).</value>
+  </data>
+  <data name="FormulaUsage" xml:space="preserve">
+    <value>Écrivez {0}.</value>
+  </data>
+  <data name="FormulaUnknownFunction" xml:space="preserve">
+    <value>Fonction inconnue : « {0} ». Les fonctions sont SUM, AVERAGE, MIN, MAX, COUNT, DISTINCTCOUNT et IF.</value>
+  </data>
+  <data name="FormulaMismatch" xml:space="preserve">
+    <value>« {0} » et « {1} » ne peuvent pas être comparés.</value>
+  </data>
+  <data name="FormulaEqualityOnly" xml:space="preserve">
+    <value>Les textes et les valeurs oui/non se comparent seulement avec = ou &lt;&gt; : « {0} ».</value>
+  </data>
+  <data name="FormulaNotADate" xml:space="preserve">
+    <value>{0} n'est pas une date : écrivez-la comme "2024-12-31".</value>
+  </data>
+  <data name="FormulaNotANumber" xml:space="preserve">
+    <value>« {0} » ne donne pas un nombre.</value>
+  </data>
+  <data name="FormulaNotACondition" xml:space="preserve">
+    <value>« {0} » n'est pas une condition : comparez des valeurs, comme [Région] = "Nord".</value>
+  </data>
+  <data name="FormulaUsageSUM" xml:space="preserve">
+    <value>SUM(valeur) ou SUM(valeur; condition)</value>
+  </data>
+  <data name="FormulaUsageAVERAGE" xml:space="preserve">
+    <value>AVERAGE(valeur) ou AVERAGE(valeur; condition)</value>
+  </data>
+  <data name="FormulaUsageMIN" xml:space="preserve">
+    <value>MIN(valeur) ou MIN(valeur; condition)</value>
+  </data>
+  <data name="FormulaUsageMAX" xml:space="preserve">
+    <value>MAX(valeur) ou MAX(valeur; condition)</value>
+  </data>
+  <data name="FormulaUsageCOUNT" xml:space="preserve">
+    <value>COUNT() ou COUNT(condition)</value>
+  </data>
+  <data name="FormulaUsageDISTINCTCOUNT" xml:space="preserve">
+    <value>DISTINCTCOUNT([champ]) ou DISTINCTCOUNT([champ]; condition)</value>
+  </data>
+  <data name="FormulaUsageIF" xml:space="preserve">
+    <value>IF(condition; valeur si vrai; valeur sinon)</value>
+  </data>
+  <data name="FormulaDescriptionSUM" xml:space="preserve">
+    <value>Somme d'une valeur calculée sur chaque ligne du groupe, comme SUM([Quantité] * [Prix]) ; avec une condition, des seules lignes qui la vérifient, comme SUM([CA]; [Région] = "Nord").</value>
+  </data>
+  <data name="FormulaDescriptionAVERAGE" xml:space="preserve">
+    <value>Moyenne d'une valeur calculée sur chaque ligne du groupe ; avec une condition, des seules lignes qui la vérifient.</value>
+  </data>
+  <data name="FormulaDescriptionMIN" xml:space="preserve">
+    <value>Plus petite valeur calculée sur les lignes du groupe ; avec une condition, sur les seules lignes qui la vérifient.</value>
+  </data>
+  <data name="FormulaDescriptionMAX" xml:space="preserve">
+    <value>Plus grande valeur calculée sur les lignes du groupe ; avec une condition, sur les seules lignes qui la vérifient.</value>
+  </data>
+  <data name="FormulaDescriptionCOUNT" xml:space="preserve">
+    <value>Nombre de lignes du groupe ; avec une condition, des lignes qui la vérifient, comme COUNT([Région] = "Nord").</value>
+  </data>
+  <data name="FormulaDescriptionDISTINCTCOUNT" xml:space="preserve">
+    <value>Nombre de valeurs différentes d'un champ dans le groupe, comme DISTINCTCOUNT([Client]) ; les valeurs vides ne sont pas comptées.</value>
+  </data>
+  <data name="FormulaDescriptionIF" xml:space="preserve">
+    <value>Une valeur ou une autre selon une condition, comme IF([CA] &gt; 1000; [Marge]; 0) ; sans la dernière valeur, vide.</value>
+  </data>
+  <data name="FormulaSummarySUM" xml:space="preserve">
+    <value>Somme</value>
+  </data>
+  <data name="FormulaSummaryAVERAGE" xml:space="preserve">
+    <value>Moyenne</value>
+  </data>
+  <data name="FormulaSummaryMIN" xml:space="preserve">
+    <value>Plus petite valeur</value>
+  </data>
+  <data name="FormulaSummaryMAX" xml:space="preserve">
+    <value>Plus grande valeur</value>
+  </data>
+  <data name="FormulaSummaryCOUNT" xml:space="preserve">
+    <value>Nombre de lignes</value>
+  </data>
+  <data name="FormulaSummaryDISTINCTCOUNT" xml:space="preserve">
+    <value>Nombre de valeurs différentes</value>
+  </data>
+  <data name="FormulaSummaryIF" xml:space="preserve">
+    <value>Si … alors … sinon</value>
+  </data>
+  <data name="FormulaCycle" xml:space="preserve">
+    <value>Une mesure ne peut pas s’utiliser elle-même : {0}.</value>
+  </data>
+  <data name="FormulaThisMeasure" xml:space="preserve">
+    <value>cette mesure</value>
+  </data>
+  <data name="VisualTypeBar" xml:space="preserve">
+    <value>Barres</value>
+  </data>
+  <data name="VisualTypeStackedBar" xml:space="preserve">
+    <value>Empilées</value>
+  </data>
+  <data name="VisualTypeScatter" xml:space="preserve">
+    <value>Points</value>
+  </data>
+  <data name="VisualTypeLine" xml:space="preserve">
+    <value>Courbes</value>
+  </data>
+  <data name="VisualTypeArea" xml:space="preserve">
+    <value>Aires</value>
+  </data>
+  <data name="VisualTypePie" xml:space="preserve">
+    <value>Secteurs</value>
+  </data>
+  <data name="VisualTypeDonut" xml:space="preserve">
+    <value>Anneau</value>
+  </data>
+  <data name="VisualTypeWaterfall" xml:space="preserve">
+    <value>Cascade</value>
+  </data>
+  <data name="VisualTypeKpi" xml:space="preserve">
+    <value>KPI</value>
+  </data>
+  <data name="VisualTypeGauge" xml:space="preserve">
+    <value>Jauge</value>
+  </data>
+  <data name="VisualTypeTable" xml:space="preserve">
+    <value>Table</value>
+  </data>
+  <data name="VisualTypeMatrix" xml:space="preserve">
+    <value>Tableau croisé</value>
+  </data>
+  <data name="WellCategory" xml:space="preserve">
+    <value>Catégorie</value>
+  </data>
+  <data name="WellRows" xml:space="preserve">
+    <value>Lignes</value>
+  </data>
+  <data name="WellColumns" xml:space="preserve">
+    <value>Colonnes</value>
+  </data>
+  <data name="WellValue" xml:space="preserve">
+    <value>Valeur</value>
+  </data>
+  <data name="VisualTypeText" xml:space="preserve">
+    <value>Texte</value>
+  </data>
+  <data name="VisualTypeImage" xml:space="preserve">
+    <value>Image</value>
+  </data>
+  <data name="WellAxis" xml:space="preserve">
+    <value>Axe</value>
+  </data>
+  <data name="WellLegend" xml:space="preserve">
+    <value>Légende</value>
+  </data>
+  <data name="WellValues" xml:space="preserve">
+    <value>Valeurs</value>
+  </data>
+  <data name="ValidationWellUnused" xml:space="preserve">
+    <value>« {0} » n'est pas utilisé par ce type de visuel</value>
+  </data>
+  <data name="ValidationWellMissing" xml:space="preserve">
+    <value>Ajoutez un champ dans « {0} »</value>
+  </data>
+  <data name="ValidationWellMinimum" xml:space="preserve">
+    <value>« {0} » demande au moins {1} champs</value>
+  </data>
+  <data name="ValidationWellSingle" xml:space="preserve">
+    <value>« {0} » ne contient qu'un champ</value>
+  </data>
+  <data name="ValidationWellMaximum" xml:space="preserve">
+    <value>« {0} » contient au plus {1} champs</value>
   </data>
 </root>

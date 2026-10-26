@@ -16,10 +16,10 @@ public static class ReportValidator
         var problems = new List<string>();
 
         // Text and image visuals carry their content and reference no model
-        foreach (var visual in report.Visuals.Where(v => !v.Mark.IsContent()))
+        foreach (var visual in report.Visuals.Where(v => !v.Type.IsContent()))
         {
             var where = string.IsNullOrWhiteSpace(visual.Title)
-                ? Strings.Format(Strings.ReportUntitledVisual, visual.Mark)
+                ? Strings.Format(Strings.ReportUntitledVisual, visual.Type)
                 : Strings.Format(Strings.ReportTitledVisual, visual.Title);
             if (!byName.TryGetValue(visual.Model, out var model))
             {
@@ -31,8 +31,9 @@ public static class ReportValidator
             // The report's calculated measures are checked once, below
             foreach (var value in visual.Values.Where(v => !report.Measures.Any(m => m.Model == visual.Model && m.Name == v.Measure)))
                 CheckField(model, value.Measure, FieldKind.Measure, where, problems);
+            string[] calculated = [.. report.Measures.Where(m => m.Model == visual.Model).Select(m => m.Name)];
             foreach (var filter in visual.Filters)
-                CheckFilter(model, filter, where, problems);
+                CheckFilter(model, filter, where, problems, calculated);
 
             if (visual.Sort is { } sort)
             {
@@ -53,18 +54,35 @@ public static class ReportValidator
 
         foreach (var measure in report.Measures)
         {
-            var where = Strings.Format(Strings.ReportCalculatedMeasure, measure.Caption);
+            var where = Strings.Format(Strings.ReportCalculatedMeasure, measure.Caption.Length > 0 ? measure.Caption : measure.Name);
             if (!byName.TryGetValue(measure.Model, out var model))
                 problems.Add(Strings.Format(Strings.ReportUnknownModel, where, measure.Model));
-            else if (MeasureFormula.Validate(measure.Formula, model) is { } problem)
+            else if (MeasureFormula.Validate(measure.Formula, model, report.Measures, measure.Name) is { } problem)
                 problems.Add(Strings.Format(Strings.ReportInvalidFormula, where, problem));
         }
         return problems;
     }
 
-    private static void CheckFilter(ModelMetadata model, FilterSpec filter, string where, List<string> problems)
+    // measures: the calculated measures a filter may compare, or null where measures cannot filter (the report's
+    // filters, and the alternatives of an AnyOf filter, which keep rows)
+    private static void CheckFilter(ModelMetadata model, FilterSpec filter, string where, List<string> problems, IReadOnlyCollection<string>? measures = null)
     {
-        if (!filter.Operator.IsPeriod())
+        if (filter.Operator == FilterOperator.AnyOf)
+        {
+            foreach (var alternative in (filter.Alternatives ?? []).SelectMany(group => group))
+                CheckFilter(model, alternative, where, problems);
+        }
+        else if (filter.Operator.IsComparison())
+        {
+            var field = model.Fields.FirstOrDefault(f => f.Name == filter.Field);
+            if (field?.Kind == FieldKind.Measure || field is null && measures?.Contains(filter.Field) == true)
+            {
+                if (measures is null) problems.Add(Strings.Format(Strings.ReportMeasureFilterOnReport, where, filter.Field));
+            }
+            else if (CheckField(model, filter.Field, FieldKind.Dimension, where, problems) is { DataType: not DataType.Number })
+                problems.Add(Strings.Format(Strings.ReportComparisonOnNonNumber, where, filter.Field));
+        }
+        else if (!filter.Operator.IsPeriod())
             CheckDimension(model, filter.Field, filter.Grain, where, problems);
         else if (CheckField(model, filter.Field, FieldKind.Dimension, where, problems) is { DataType: not DataType.Date })
             problems.Add(Strings.Format(Strings.ReportPeriodOnNonDate, where, filter.Field));

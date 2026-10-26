@@ -35,11 +35,22 @@ public partial class MainWindow : Window
         Context = EasyBIContext.Create()
             .AddModel(_sales)
             .UseRenderer(new LiveCharts2Renderer())
-            .UseRenderer(new OxyPlotRenderer());
+            .UseRenderer(new OxyPlotRenderer())
+            // A visual type of the application, with the renderer drawing it
+            .UseRenderer(new RankingRenderer());
+
+        // A visual whose query or renderer throws shows a short message, Retry and the details: log the failure, and
+        // say what happened in the user's words when the application knows
+        Context.VisualFailed += (_, e) =>
+        {
+            System.Diagnostics.Trace.TraceError($"Visual '{e.Visual.Title}' failed ({e.Stage}): {e.Exception}");
+            if (e.Exception is TimeoutException) e.Message = Text("SalesDatabaseNotAnswering");
+        };
 
         InitializeComponent();
         DataContext = this;
-        RendererPicker.ItemsSource = Context.Renderers;
+        // The charting libraries to choose from: not the renderer of the ranking alone
+        RendererPicker.ItemsSource = Context.Renderers.Where(r => r.Capabilities.Types.Contains(VisualType.Bar)).ToArray();
         RendererPicker.SelectedItem = Context.ActiveRenderer;
         LanguagePicker.ItemsSource = App.Languages;
         LanguagePicker.SelectedItem = App.Languages.FirstOrDefault(l => l.Equals(EasyBILocalization.Culture));
@@ -81,7 +92,12 @@ public partial class MainWindow : Window
                 // SQLite runs synchronously even through the async API: keep the UI responsive
                 await Task.Run(() => SalesDatabase.EnsureCreatedAsync(rows));
             }
-            _sales.Source = rows == 0 ? _memorySales : SalesDatabase.CreateModel(rows, App.TextResources);
+            _sales.Source = rows switch
+            {
+                0 => _memorySales,
+                < 0 => new UnavailableModel(_memorySales.Metadata),
+                _ => SalesDatabase.CreateModel(rows, App.TextResources),
+            };
             // Same queries, other data: the dashboard and the designer's preview query again
             Context.RefreshData(_sales.Metadata.Name);
         }
@@ -101,14 +117,14 @@ public partial class MainWindow : Window
 
     private void OnNewVisual(object sender, RoutedEventArgs e)
     {
-        Designer.Clear();
+        Designer.Visual = null;
         SetPublishLabel("AddToDashboard");
     }
 
     private void OnPublishVisual(object sender, RoutedEventArgs e)
     {
         if (Designer.Visual is not { } visual) return;
-        if (VisualValidator.Validate(visual) is { } problem)
+        if (VisualValidator.Validate(visual, Context.VisualTypes) is { } problem)
         {
             MessageBox.Show(this, problem, Text("IncompleteVisual"), MessageBoxButton.OK, MessageBoxImage.Information);
             return;
@@ -120,7 +136,7 @@ public partial class MainWindow : Window
             Dashboard.SetVisual(item, visual);
             edit.Commit();
         }
-        Designer.Clear();
+        Designer.Visual = null;
         SetPublishLabel("AddToDashboard");
         Tabs.SelectedIndex = 0;
     }
@@ -163,30 +179,30 @@ public partial class MainWindow : Window
     {
         VisualDefinition title = new()
         {
-            Mark = MarkType.Text,
+            Type = VisualType.Text,
             Text = new TextContent { Text = Text("DashboardTitle"), FontSize = 24, IsBold = true },
         };
         VisualDefinition kpis = new()
         {
             Title = Text("KeyIndicators"),
             Model = "sales",
-            Mark = MarkType.Kpi,
+            Type = VisualType.Kpi,
             Values = [new("Amount"), new("Margin"), new("MarginRate"), new("Count")],
         };
         VisualDefinition quarters = new()
         {
             Title = Text("RevenueByQuarter"),
             Model = "sales",
-            Mark = MarkType.Bar,
+            Type = VisualType.Bar,
             Axis = [new("Date", DateGrain.Quarter)],
             // A combined chart: revenue in bars, margin as a line, number of sales as points on the right axis
-            Values = [new("Amount"), new("Margin") { Mark = MarkType.Line }, new("Count") { Mark = MarkType.Scatter, SecondaryAxis = true }],
+            Values = [new("Amount"), new("Margin") { SeriesType = VisualType.Line }, new("Count") { SeriesType = VisualType.Scatter, SecondaryAxis = true }],
         };
         VisualDefinition regions = new()
         {
             Title = Text("RevenueByRegionAndChannel"),
             Model = "sales",
-            Mark = MarkType.Bar,
+            Type = VisualType.Bar,
             Axis = [new("Region")],
             Legend = new("Channel"),
             Values = [new("Amount")],
@@ -196,13 +212,34 @@ public partial class MainWindow : Window
         {
             Title = Text("RevenueByCategory"),
             Model = "sales",
-            Mark = MarkType.Pie,
+            Type = VisualType.Pie,
             Axis = [new("Product.Category")],
             Values = [new("Amount")],
         };
+        // A matrix: categories by year, with the total of each row and each column
+        VisualDefinition matrix = new()
+        {
+            Title = Text("RevenueByCategoryAndYear"),
+            Model = "sales",
+            Type = VisualType.Matrix,
+            Axis = [new("Product.Category")],
+            Legend = new("Date", DateGrain.Year),
+            Values = [new("Amount")],
+        };
+        // A visual type of the application (RankingRenderer)
+        VisualDefinition topProducts = new()
+        {
+            Title = Text("TopProducts"),
+            Model = "sales",
+            Type = RankingRenderer.Ranking,
+            Axis = [new("Product.Name")],
+            Values = [new("Amount")],
+            Top = 8,
+            Sort = new("Amount", Descending: true),
+        };
         VisualDefinition note = new()
         {
-            Mark = MarkType.Text,
+            Type = VisualType.Text,
             Text = new TextContent { Text = Text("DashboardNote"), FontSize = 14 },
         };
         // The demo's sales end in 2025: the last full year, and how it changed since the year before
@@ -210,14 +247,14 @@ public partial class MainWindow : Window
         {
             Title = Text("LastYearComparison"),
             Model = "sales",
-            Mark = MarkType.Kpi,
+            Type = VisualType.Kpi,
             Values = [new("Amount"), new("Amount") { Time = TimeCalculation.PercentChangeFromPreviousYear }],
             Filters = [PeriodFilters.Between("Date", new DateOnly(2025, 1, 1), new DateOnly(2025, 12, 31))],
         };
 
         return new DashboardDocument
         {
-            Report = new ReportDefinition { Title = Text("ReportTitle"), Visuals = [title, kpis, quarters, regions, categories, lastYear, note] },
+            Report = new ReportDefinition { Title = Text("ReportTitle"), Visuals = [title, kpis, quarters, regions, categories, topProducts, lastYear, matrix, note] },
             Layout = new DashboardLayoutDefinition
             {
                 Bands =
@@ -229,12 +266,13 @@ public partial class MainWindow : Window
                             new LayoutNode { VisualId = title.Id, RowSpan = 1 },
                             new LayoutNode { VisualId = kpis.Id, RowSpan = 2 },
                             LayoutNode.Row(LayoutNode.Item(quarters.Id), LayoutNode.Item(regions.Id)),
+                            new LayoutNode { VisualId = matrix.Id, RowSpan = 2 },
                         ],
                     },
                     new BandLayout
                     {
                         Mode = BandMode.Scroll,
-                        Items = [LayoutNode.Item(categories.Id), LayoutNode.Item(lastYear.Id), new LayoutNode { VisualId = note.Id, Width = 360 }],
+                        Items = [LayoutNode.Item(categories.Id), LayoutNode.Item(topProducts.Id), LayoutNode.Item(lastYear.Id), new LayoutNode { VisualId = note.Id, Width = 360 }],
                     },
                 ],
             },

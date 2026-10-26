@@ -63,6 +63,72 @@ public class TimeCalculationTests
         Assert.Equal(190d, Num(Assert.Single(clickedYear.Rows)[0]));
     }
 
+    // --- A period under way: compared with the same days a year earlier
+
+    private static readonly DateOnly Today = new(2026, 2, 15);
+
+    // Last year's sales before and after today's date a year earlier, and this year's up to today
+    private static readonly Sale[] UnderWay =
+    [
+        new(new(2025, 1, 10), "Nord", 100m),
+        new(new(2025, 2, 10), "Nord", 30m),
+        new(new(2025, 2, 20), "Nord", 70m),
+        new(new(2025, 6, 1), "Nord", 500m),
+        new(new(2026, 1, 12), "Nord", 120m),
+        new(new(2026, 2, 3), "Nord", 40m),
+    ];
+
+    private static Task<ResultSet> RunOn(DateOnly today, AnalyticQuery query) =>
+        Model(UnderWay.AsQueryable()).ExecuteWithTimeAsync(query, today, CancellationToken.None);
+
+    [Fact]
+    public async Task A_range_ending_later_is_compared_up_to_the_same_day_and_a_past_range_whole()
+    {
+        var underWay = await RunOn(Today, new([], [Amount(), Amount(TimeCalculation.PreviousYear)], [PeriodFilters.Between("Date", new(2026, 1, 1), new(2026, 12, 31))]));
+        var since = await RunOn(Today, new([], [Amount(TimeCalculation.PreviousYear)], [PeriodFilters.Between("Date", new(2026, 1, 1), null)]));
+        var past = await RunOn(Today, new([], [Amount(TimeCalculation.PreviousYear)], [PeriodFilters.Between("Date", new(2025, 1, 1), new(2025, 12, 31))]));
+
+        Assert.Equal((160d, 130d), (Num(underWay.Rows[0][0])!.Value, Num(underWay.Rows[0][1])!.Value));
+        Assert.Equal(130d, Num(since.Rows[0][0])); // not this year's sales, a year earlier than an open end
+        Assert.Null(Num(past.Rows[0][0])); // 2024: no sales
+    }
+
+    [Fact]
+    public async Task The_month_under_way_is_compared_with_the_same_days_a_year_earlier_and_past_months_whole()
+    {
+        var result = await RunOn(Today, new([new("Date", DateGrain.Month)], [Amount(), Amount(TimeCalculation.PreviousYear)],
+            [PeriodFilters.Between("Date", new(2026, 1, 1), new(2026, 12, 31))]));
+
+        var byMonth = result.Rows.ToDictionary(r => ((DatePeriod)r[0]!).Key, r => Num(r[2]));
+        Assert.Equal(100d, byMonth[202601]);
+        Assert.Equal(30d, byMonth[202602]);
+    }
+
+    [Theory]
+    [InlineData(DateGrain.Year, "2026", 130d)]
+    [InlineData(DateGrain.Month, "202602", 30d)]
+    [InlineData(DateGrain.Year, "2025", null)] // a past year: compared whole (2024)
+    public async Task A_clicked_period_under_way_is_compared_up_to_the_same_day(DateGrain grain, string period, double? expected)
+    {
+        var result = await RunOn(Today, new([], [Amount(TimeCalculation.PreviousYear)], [new FilterSpec("Date", FilterOperator.In, [period], grain)]));
+
+        Assert.Equal(expected, Num(result.Rows[0][0]));
+    }
+
+    [Fact]
+    public async Task Dates_inside_alternative_filters_are_shifted_a_year_earlier()
+    {
+        // Selected elements: (2024, North) or (2024, South)
+        var filter = FilterSpec.AnyOf([
+            [new FilterSpec("Date", FilterOperator.In, ["2024"], DateGrain.Year), new FilterSpec("Region", FilterOperator.In, ["Nord"])],
+            [new FilterSpec("Date", FilterOperator.In, ["2024"], DateGrain.Year), new FilterSpec("Region", FilterOperator.In, ["Sud"])],
+        ]);
+
+        var result = await Run(new([], [Amount(), Amount(TimeCalculation.PreviousYear)], [filter]));
+
+        Assert.Equal((235d, 190d), (Num(result.Rows[0][0])!.Value, Num(result.Rows[0][1])!.Value));
+    }
+
     [Fact]
     public async Task Without_any_date_the_previous_year_is_left_empty()
     {
@@ -112,12 +178,30 @@ public class TimeCalculationTests
     [Fact]
     public async Task Visuals_draw_time_columns_like_any_measure()
     {
-        var visual = new VisualDefinition { Model = "m", Mark = MarkType.Line, Axis = [new("Date", DateGrain.Year)], Values = [Amount(), Amount(TimeCalculation.PreviousYear)] };
+        var visual = new VisualDefinition { Model = "m", Type = VisualType.Line, Axis = [new("Date", DateGrain.Year)], Values = [Amount(), Amount(TimeCalculation.PreviousYear)] };
 
         var chart = (await VisualPipeline.PrepareAsync(Model(), visual)).Chart;
 
         Assert.Equal(["CA", "CA, previous year"], chart.Series.Select(s => s.Name));
         Assert.Equal([null, 190d], chart.Series[1].Values);
+    }
+
+    private sealed record Shipment(DateTime? Shipped, decimal Amount);
+
+    [Theory]
+    [InlineData(DateGrain.None)]
+    [InlineData(DateGrain.Month)]
+    public async Task Missing_dates_have_no_previous_year(DateGrain grain)
+    {
+        var model = SemanticModel.For(new Shipment[] { new(new(2024, 2, 10), 1m), new(null, 2m) }, "m")
+            .Dimension(s => s.Shipped, "Expédition")
+            .Measure(s => s.Amount, "CA");
+
+        var result = await model.ExecuteWithTimeAsync(new([new("Shipped", grain)],
+            [Amount(), Amount(TimeCalculation.PreviousYear), Amount(TimeCalculation.PercentChangeFromPreviousYear)]));
+
+        var missing = Assert.Single(result.Rows, r => r[0] is null);
+        Assert.Equal([2m, null, null], missing.Skip(1));
     }
 
     [Fact]

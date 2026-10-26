@@ -18,12 +18,12 @@ public class RendererOptionsDesignerTests
     {
         public string Name => "Test";
 
-        public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType> { MarkType.Bar, MarkType.Line, MarkType.Pie })
+        public RendererCapabilities Capabilities { get; } = new(new HashSet<VisualType> { VisualType.Bar, VisualType.Line, VisualType.Pie })
         {
             Options =
             [
                 RendererOption.Toggle("scrollable", () => EasyBILocalization.UICulture.TwoLetterISOLanguageName == "fr" ? "Défilement" : "Scrolling",
-                    appliesTo: v => v.Mark.IsCartesian()),
+                    appliesTo: v => v.Type.IsCartesian()),
                 RendererOption.Choice("style", () => "Style", [new("flat", () => "Flat"), new("smooth", () => "Smooth")]),
                 RendererOption.Number("size", () => "Size", 8, minimum: 1, maximum: 20),
             ],
@@ -63,10 +63,10 @@ public class RendererOptionsDesignerTests
     {
         var designer = Designer();
 
-        designer.SelectedMark = MarkType.Pie;
+        designer.SelectedType = VisualType.Pie;
         Assert.DoesNotContain(designer.RendererOptions, o => o.Option.Key == "scrollable");
 
-        designer.SelectedMark = MarkType.Table; // drawn by the built-in table renderer, which has no options
+        designer.SelectedType = VisualType.Table; // drawn by the built-in table renderer, which has no options
         Assert.False(designer.HasRendererOptions);
     }
 

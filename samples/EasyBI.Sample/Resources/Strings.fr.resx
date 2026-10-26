@@ -108,6 +108,9 @@
   <data name="RevenueByRegionAndChannel" xml:space="preserve">
     <value>CA par région et canal</value>
   </data>
+  <data name="RevenueByCategoryAndYear" xml:space="preserve">
+    <value>CA par catégorie et par année</value>
+  </data>
   <data name="RevenueByCategory" xml:space="preserve">
     <value>Répartition du CA par catégorie</value>
   </data>
@@ -170,5 +173,38 @@
   </data>
   <data name="LastYearComparison" xml:space="preserve">
     <value>2025 comparé à 2024</value>
+  </data>
+  <data name="WebShare" xml:space="preserve">
+    <value>Part du Web</value>
+  </data>
+  <data name="Ranking" xml:space="preserve">
+    <value>Classement</value>
+  </data>
+  <data name="RankingItems" xml:space="preserve">
+    <value>Éléments</value>
+  </data>
+  <data name="RankingBy" xml:space="preserve">
+    <value>Classé par</value>
+  </data>
+  <data name="RankingShare" xml:space="preserve">
+    <value>Part du total</value>
+  </data>
+  <data name="TopProducts" xml:space="preserve">
+    <value>Meilleurs produits</value>
+  </data>
+  <data name="XamlOnlyTab" xml:space="preserve">
+    <value>  XAML seul  </value>
+  </data>
+  <data name="XamlOnlyTip" xml:space="preserve">
+    <value>Ce designer n'a ni view-model ni code-behind : son contexte est lié, un behavior garde le visuel en barres, les boutons annulent et rétablissent par des commandes, et le visuel de droite est lié au Visual du designer.</value>
+  </data>
+  <data name="BoundVisual" xml:space="preserve">
+    <value>Lié au Visual du designer</value>
+  </data>
+  <data name="DataSourceUnavailableDemo" xml:space="preserve">
+    <value>Source indisponible (erreurs)</value>
+  </data>
+  <data name="SalesDatabaseNotAnswering" xml:space="preserve">
+    <value>La base des ventes ne répond pas. Réessayez dans un instant.</value>
   </data>
 </root>

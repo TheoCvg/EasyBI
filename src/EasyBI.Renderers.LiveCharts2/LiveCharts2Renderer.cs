@@ -4,9 +4,12 @@ using EasyBI.Abstractions;
 using EasyBI.Core;
 using EasyBI.Renderers.LiveCharts2.Resources;
 using EasyBI.Wpf;
+using EasyBI.Wpf.Renderers;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.Drawing;
+using LiveChartsCore.Kernel;
+using LiveChartsCore.Kernel.Events;
 using LiveChartsCore.Measure;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
@@ -26,25 +29,26 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
 
     public string Name => "LiveCharts2";
 
-    public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType>
+    public RendererCapabilities Capabilities { get; } = new(new HashSet<VisualType>
     {
-        MarkType.Bar, MarkType.StackedBar, MarkType.Line, MarkType.Area, MarkType.Scatter, MarkType.Pie,
+        VisualType.Bar, VisualType.StackedBar, VisualType.Line, VisualType.Area, VisualType.Scatter, VisualType.Pie, VisualType.Donut, VisualType.Waterfall,
     })
     {
         Options =
         [
-            RendererOption.Toggle(ScrollableOption, () => Strings.Scrollable, appliesTo: v => v.Mark.IsCartesian())
+            RendererOption.Toggle(ScrollableOption, () => Strings.Scrollable, appliesTo: v => v.Type.IsCartesian())
                 with { Description = () => Strings.ScrollableHint },
         ],
     };
 
-    public FrameworkElement Render(RenderRequest request) => request.Visual.Mark switch
+    public FrameworkElement Render(RenderRequest request) => request.Visual.Type switch
     {
-        MarkType.Pie => RenderPie(request),
-        var mark when mark.IsCartesian() => request.Visual.GetRendererOption<bool>(Name, ScrollableOption)
+        var type when type.IsCircular() => RenderPie(request),
+        var type when type == VisualType.Waterfall => RenderWaterfall(request),
+        var type when type.IsCartesian() => request.Visual.GetRendererOption<bool>(Name, ScrollableOption)
             ? RenderScrollable(request)
             : RenderCartesian(request),
-        _ => throw new NotSupportedException($"LiveCharts2Renderer does not support '{request.Visual.Mark}'."),
+        _ => throw new NotSupportedException($"LiveCharts2Renderer does not support '{request.Visual.Type}'."),
     };
 
     /// <summary>
@@ -55,7 +59,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
     {
         var chart = request.Chart;
         var view = RenderCartesian(request);
-        var axis = (Axis)view.XAxes.First();
+        var axis = (Axis)view.XAxes.Last(); // the category axis, below its group axes
         double first = -0.5, last = chart.Categories.Count - 0.5;
         view.ZoomMode = ZoomAndPanMode.X;
         if (chart.Categories.Count > ScrollWindow)
@@ -100,7 +104,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         {
             thumb.Xi = axis.MinLimit ?? first;
             thumb.Xj = axis.MaxLimit ?? last;
-            view.Dispatcher.InvokeAsync(() => FitCartesian(view, axis, chart));
+            view.Dispatcher.InvokeAsync(() => FitCartesian(view, axis, Displayed(chart), request.Visual.LegendPosition, request.LegendPager, CategoryLevels.Of(chart)));
         };
 
         // Dragging on the scroll bar centers the visible categories on the pointer
@@ -137,92 +141,294 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
 
     /// <summary>
     /// Bars, stacked bars, lines, areas and points in one chart: each series is drawn with its own
-    /// <see cref="ChartSeries.Mark"/>, against the left axis or, for <see cref="ChartSeries.SecondaryAxis"/>, the right one.
+    /// <see cref="ChartSeries.SeriesType"/>, against the left axis or, for <see cref="ChartSeries.SecondaryAxis"/>, the right one.
     /// </summary>
     private static CartesianChart RenderCartesian(RenderRequest request)
     {
         var chart = request.Chart;
-        var series = chart.Series.Select((s, i) => CreateSeries(s, Color(request.Theme, i))).ToArray();
+        var formatting = ChartFormatting.For(request);
+        var series = chart.Series.Select((_, i) => CreateSeries(request, formatting, i)).ToArray();
         var hasSecondary = chart.Series.Any(s => s.SecondaryAxis);
 
         var theme = request.Theme;
+        // Several axis fields: each category labelled by its innermost field, the outer ones once under their group
+        var levels = CategoryLevels.Of(chart);
+        var displayed = Displayed(chart);
         var categoryAxis = Themed(new Axis
         {
-            Labels = chart.Categories.ToArray(),
+            Labels = displayed.Categories.ToArray(),
             Name = chart.CategoryCaption,
             NameTextSize = 13,
             TextSize = 12,
+            // Every category gets its label slot: the fit decides which ones show (LiveCharts2 would skip its own on top)
+            MinStep = 1,
+            ForceStepToMin = true,
         }, theme);
+        var groupAxes = levels?.Groups.Select(groups => GroupAxis(groups, theme)).ToArray() ?? [];
         var view = new CartesianChart
         {
-            Series = series,
-            XAxes = [categoryAxis],
+            Series = [.. series, .. Outlines(formatting, chart.Categories.Count)],
+            // LiveCharts2 stacks the first axis outermost: the outermost field's groups first, the categories last
+            XAxes = [.. groupAxes.Reverse(), categoryAxis],
             YAxes = hasSecondary
                 ? [ValueAxis(chart, theme, secondary: false), ValueAxis(chart, theme, secondary: true)]
                 : [ValueAxis(chart, theme, secondary: false)],
             LegendPosition = chart.Series.Count > 1 ? LegendPosition.Right : LegendPosition.Hidden,
         };
         ApplyTheme(view, theme);
+        // LiveCharts2 has no open section end: far beyond the data, the chart clips it to the axis
+        var far = chart.Series.SelectMany(s => s.Values).OfType<double>()
+            .Concat(formatting.Bands.SelectMany(b => new[] { b.From, b.To }).OfType<double>())
+            .Select(Math.Abs).DefaultIfEmpty(1).Max() * 1000 + 1;
+        view.Sections = [.. formatting.Bands.Select(band => Zone(band, theme, far)), .. GroupSeparators(levels, theme)];
+        // Series and zones are placed along the category axis
+        foreach (var scaled in view.Series.OfType<LiveChartsCore.Kernel.Sketches.ICartesianSeries>()) scaled.ScalesXAt = groupAxes.Length;
+        foreach (var section in view.Sections.OfType<RectangularSection>()) section.ScalesXAt = groupAxes.Length;
+        if (levels is not null)
+        {
+            // The group axes have no series: they follow the category axis, whose range is set for them to follow
+            categoryAxis.MinLimit = -0.5;
+            categoryAxis.MaxLimit = chart.Categories.Count - 0.5;
+            view.UpdateStarted += _ => FitGroups(view, categoryAxis, groupAxes, levels);
+        }
         // Legend, labels and axis title adapt to the room the chart actually gets
-        view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, chart);
+        view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, displayed, request.Visual.LegendPosition, request.LegendPager, levels);
+        // The host's pager turns the pages of the legend
+        if (request.LegendPager is { } pager)
+            pager.Changed += (_, _) => FitCartesian(view, categoryAxis, displayed, request.Visual.LegendPosition, pager, levels);
+
+        // Only bars: the bar under the pointer (category + legend series).
+        // With lines, areas or points: the points closest to the pointer's X position.
+        view.FindingStrategy = chart.Series.All(s => (s.SeriesType == VisualType.Bar || s.SeriesType == VisualType.StackedBar))
+            ? FindingStrategy.ExactMatch
+            : FindingStrategy.CompareOnlyXTakeClosest;
+        view.Tooltip = new EasyBITooltip(view, request, points =>
+            points.FirstOrDefault() is { } first ? (first.Index, [.. points.Select(p => Array.IndexOf(series, p.Context.Series)).Where(i => i >= 0)]) : null);
 
         if (request.Select is { } select)
         {
-            // Only bars: the clicked bar is picked (category + legend series).
-            // With lines, areas or points: the point closest to the clicked X position.
-            view.FindingStrategy = chart.Series.All(s => s.Mark is MarkType.Bar or MarkType.StackedBar)
-                ? FindingStrategy.ExactMatch
-                : FindingStrategy.CompareOnlyXTakeClosest;
             view.Cursor = System.Windows.Input.Cursors.Hand;
-            view.DataPointerDown += (_, points) =>
+            OnPointClicked(view, view.FindingStrategy, point =>
             {
-                if (points?.FirstOrDefault() is not { } point) return;
                 var index = Array.IndexOf(series, point.Context.Series);
                 select(new CategorySelection(point.Index, index < 0 ? null : index));
-            };
+            });
         }
         return view;
     }
 
-    private static void FitCartesian(CartesianChart view, Axis categoryAxis, ChartData chart)
+    /// <summary>
+    /// A waterfall (<see cref="Waterfall"/>): each step a candle from the running total before it to the one after it,
+    /// increases in the theme's success color, decreases in its error color, the total in the first series color; a
+    /// rule of the measure's format colors a step it matches, and the highlight fades the others.
+    /// </summary>
+    private static CartesianChart RenderWaterfall(RenderRequest request)
+    {
+        var (chart, steps) = Waterfall.Of(request.Chart);
+        var source = chart.Series[0];
+        var theme = request.Theme;
+        var formatting = ChartFormatting.For(request);
+        var categories = request.Chart.Categories.Count;
+        SolidColorPaint Paint(string? color, float stroke = 0) =>
+            stroke > 0 ? new SolidColorPaint(SKColor.Parse(color), stroke) : new SolidColorPaint(SKColor.Parse(color));
+        var (up, down) = (theme.Resolve(ThemeColors.Success)!, theme.Resolve(ThemeColors.Error)!);
+        var total = Paint(theme.ColorAt(0));
+        var paints = new Dictionary<string, SolidColorPaint>();
+
+        var series = new CandlesticksSeries<FinancialPointI>
+        {
+            Name = source.Name,
+            Values = [.. steps.Select(s => new FinancialPointI(Math.Max(s.Start, s.End), s.Start, s.End, Math.Min(s.Start, s.End)))],
+            UpFill = Paint(up),
+            UpStroke = Paint(up, 1),
+            DownFill = Paint(down),
+            DownStroke = Paint(down, 1),
+            MaxBarWidth = 48,
+            YToolTipLabelFormatter = p => ValueFormatter.Format(p.Model is { } step ? step.Close - step.Open : 0, source.Format),
+        }.OnPointMeasured(p =>
+        {
+            if (p.Visual is not DrawnGeometry step) return;
+            // The total in its own color; a step matching a rule in the rule's
+            var paint = p.Index >= categories ? total
+                : formatting.PointColor(0, p.Index) is { } hex ? paints.TryGetValue(hex, out var known) ? known : paints[hex] = Paint(hex)
+                : null;
+            step.Fill = paint;
+            step.Stroke = paint;
+            if (request.Highlight is { Count: > 0 })
+                step.Opacity = p.Index < categories && request.IsEmphasized(p.Index, 0) ? 1f : (float)SelectionFilters.DimmedOpacity;
+        });
+
+        var categoryAxis = Themed(new Axis { Labels = [.. chart.Categories], Name = chart.CategoryCaption, NameTextSize = 13, TextSize = 12 }, theme);
+        var view = new CartesianChart
+        {
+            Series = [series],
+            XAxes = [categoryAxis],
+            YAxes = [ValueAxis(chart, theme, secondary: false)],
+            LegendPosition = LegendPosition.Hidden,
+        };
+        ApplyTheme(view, theme);
+        // A waterfall has no legend: its colors are the direction of the steps
+        view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, chart, ChartLegend.Hidden, null);
+        view.FindingStrategy = FindingStrategy.CompareOnlyXTakeClosest;
+        view.Tooltip = new EasyBITooltip(view, request, points => points.FirstOrDefault() is { } step ? (step.Index, [0]) : null);
+        if (request.Select is { } select)
+        {
+            view.Cursor = System.Windows.Input.Cursors.Hand;
+            OnPointClicked(view, FindingStrategy.CompareOnlyXTakeClosest, point =>
+            {
+                // The total is no category: nothing to filter on
+                if (point.Index < categories) select(new CategorySelection(point.Index));
+            });
+        }
+        return view;
+    }
+
+    private const double GroupRowHeight = 26;
+
+    // The axis labels' font, to measure them as they are drawn
+    private static readonly SKFont LabelFont = new(SKTypeface.Default, 12);
+
+    // The width the plot gives the categories: LiveCharts2's once it has drawn, an estimate before
+    private static double PlotWidth(CartesianChart view) =>
+        view.CoreChart?.DrawMarginSize.Width is > 0 and var width ? width : Math.Max(1, view.ActualWidth - 80);
+
+    /// <summary>The labels, each measured and shown where it does not overlap the previous one shown (blank otherwise).</summary>
+    private static string[] Spaced(CartesianChart view, Axis categoryAxis, IReadOnlyList<string> categories)
+    {
+        var (min, max) = (categoryAxis.MinLimit ?? -0.5, categoryAxis.MaxLimit ?? categories.Count - 0.5);
+        var pitch = PlotWidth(view) / Math.Max(1, max - min);
+        var shown = new string[categories.Count];
+        var end = double.NegativeInfinity;
+        for (var i = 0; i < categories.Count; i++)
+        {
+            var center = (i - min) * pitch;
+            var half = LabelFont.MeasureText(categories[i]) / 2 + 4;
+            shown[i] = center - half >= end ? categories[i] : "";
+            if (shown[i].Length > 0) end = center + half;
+        }
+        return shown;
+    }
+
+    // The chart as its category axis labels it: by the innermost axis field when the axis has several
+    private static ChartData Displayed(ChartData chart) =>
+        CategoryLevels.Of(chart) is { } levels ? chart with { Categories = levels.Labels } : chart;
+
+    /// <summary>
+    /// An axis below the category axis for an outer axis field: its value once at the center of each group of
+    /// categories sharing it.
+    /// </summary>
+    private static Axis GroupAxis(IReadOnlyList<CategoryGroup> groups, BiTheme theme)
+    {
+        var axis = Themed(new Axis
+        {
+            CustomSeparators = groups.Select(g => g.Center).ToArray(),
+            Labeler = value => groups.FirstOrDefault(g => Math.Abs(g.Center - value) < 0.01)?.Label ?? "",
+            TextSize = 12,
+            NameTextSize = 13,
+            SeparatorsPaint = null,
+            TicksPaint = null,
+        }, theme);
+        // The groups stand out from the category labels
+        if (Parse(theme.Foreground) is { } text) axis.LabelsPaint = new SolidColorPaint(text);
+        return axis;
+    }
+
+    // Lines between the groups of the outermost field, across the plot
+    private static IEnumerable<RectangularSection> GroupSeparators(CategoryLevels? levels, BiTheme theme) =>
+        levels?.Groups[^1].Skip(1).Select(group => new RectangularSection
+        {
+            Xi = group.First - 0.5,
+            Xj = group.First - 0.5,
+            Stroke = new SolidColorPaint(Parse(theme.GridLine) ?? new SKColor(0xD1, 0xD5, 0xDB), 1),
+        }) ?? [];
+
+    /// <summary>
+    /// The group axes show the categories the category axis shows (zoom, scroll), and every n-th group label only
+    /// when the groups are too narrow for their labels.
+    /// </summary>
+    private static void FitGroups(CartesianChart view, Axis categoryAxis, IReadOnlyList<Axis> groupAxes, CategoryLevels levels)
+    {
+        var (min, max) = (categoryAxis.MinLimit ?? -0.5, categoryAxis.MaxLimit ?? levels.Labels.Count - 0.5);
+        var perCategory = PlotWidth(view) / Math.Max(1, max - min);
+        for (var level = 0; level < groupAxes.Count; level++)
+        {
+            var axis = groupAxes[level];
+            if (axis.MinLimit != min) axis.MinLimit = min;
+            if (axis.MaxLimit != max) axis.MaxLimit = max;
+            var groups = levels.Groups[level];
+            var widest = groups.Max(g => LabelFont.MeasureText(g.Label)) + 16;
+            var narrowest = groups.Where(g => g.First + g.Count > min && g.First < max).Select(g => g.Count).DefaultIfEmpty(1).Average() * perCategory;
+            var step = Math.Max(1, (int)Math.Ceiling(widest / Math.Max(1, narrowest)));
+            var shown = groups.Where((_, i) => i % step == 0).Select(g => g.Center).ToArray();
+            if (!shown.SequenceEqual(axis.CustomSeparators ?? [])) axis.CustomSeparators = shown;
+        }
+    }
+
+    // The first series of the view are the chart's, in its order: the legend's entries
+    private static void FitCartesian(CartesianChart view, Axis categoryAxis, ChartData chart, ChartLegend preferred, LegendPager? pager,
+        CategoryLevels? levels = null)
     {
         if (view.ActualWidth <= 0) return;
         // A zoomed or scrollable chart shows part of the categories: labels are fitted to those
         var shown = categoryAxis.MaxLimit - categoryAxis.MinLimit is double range && range < chart.Categories.Count
             ? chart with { Categories = chart.Categories.Take(Math.Max(1, (int)Math.Ceiling(range))).ToArray() }
             : chart;
-        var fit = ChartFitting.Cartesian(shown, view.ActualWidth, view.ActualHeight);
+        // Each group axis below the category labels takes a row of the height
+        var fit = ChartFitting.Cartesian(shown, view.ActualWidth, view.ActualHeight - (view.XAxes.Count() - 1) * GroupRowHeight, preferred);
 
         // Only assign what changed: every assignment redraws the chart
         var legend = Position(fit.Legend);
         if (view.LegendPosition != legend) view.LegendPosition = legend;
+        ShowLegendPage(view.Series.Take(chart.Series.Count), ChartFitting.LegendEntries(fit, pager));
         if (categoryAxis.LabelsRotation != fit.LabelRotation) categoryAxis.LabelsRotation = fit.LabelRotation;
-        // Skipped labels are blanked: LiveCharts2 does not apply a step to an axis made of labels
-        var labels = chart.Categories.Select((c, i) => i % fit.LabelStep == 0 ? c : "").ToArray();
+        // Skipped labels are blanked: LiveCharts2 does not apply a step to an axis made of labels. Short labels under
+        // groups that stay flat are each shown where they do not overlap the previous one (more of them than a step)
+        var labels = levels is not null && fit.LabelRotation == 0
+            ? Spaced(view, categoryAxis, chart.Categories)
+            : chart.Categories.Select((c, i) => i % fit.LabelStep == 0 ? c : "").ToArray();
+        // Under groups, fewer than two labels a group would repeat one name: the groups' labels say enough
+        if (levels is not null && labels.Count(l => l.Length > 0) < Math.Min(2, (double)chart.Categories.Count / levels.Groups[0].Count) * levels.Groups[0].Count * 0.9)
+            labels = [.. labels.Select(_ => "")];
         if (!labels.SequenceEqual(categoryAxis.Labels ?? [])) categoryAxis.Labels = labels;
+        // The axis title goes below everything: under the outermost group axis
         var title = fit.ShowAxisTitles ? chart.CategoryCaption : null;
-        if (categoryAxis.Name != title) categoryAxis.Name = title;
+        foreach (var axis in view.XAxes.OfType<Axis>())
+        {
+            var name = axis == view.XAxes.First() ? title : null;
+            if (axis.Name != name) axis.Name = name;
+        }
     }
 
     private static LegendPosition Position(ChartLegend placement) => placement switch
     {
         ChartLegend.Right => LegendPosition.Right,
         ChartLegend.Bottom => LegendPosition.Bottom,
+        ChartLegend.Top => LegendPosition.Top,
+        ChartLegend.Left => LegendPosition.Left,
         _ => LegendPosition.Hidden,
     };
 
-    /// <summary>A value axis formatted like the first series drawn against it.</summary>
+    // The legend keeps the library's look: only the entries of the page show in it
+    private static void ShowLegendPage(IEnumerable<ISeries> entries, Func<int, bool> shown)
+    {
+        var index = 0;
+        foreach (var entry in entries)
+        {
+            var visible = shown(index++);
+            if (entry.IsVisibleAtLegend != visible) entry.IsVisibleAtLegend = visible;
+        }
+    }
+
+    /// <summary>A value axis formatted like the first series drawn against it; an axis with bars holds zero (<see cref="ChartFitting.ZeroBounds"/>).</summary>
     private static Axis ValueAxis(ChartData chart, BiTheme theme, bool secondary)
     {
         var series = chart.Series.Where(s => s.SecondaryAxis == secondary).ToList();
         var format = series.FirstOrDefault()?.Format;
-        // Bars are compared by their height: an axis showing only bars of positive values starts at zero
-        var barsFromZero = series.Count > 0
-            && series.All(s => s.Mark is MarkType.Bar or MarkType.StackedBar)
-            && series.SelectMany(s => s.Values).All(v => v is null or >= 0);
+        var (minimum, maximum) = ChartFitting.ZeroBounds(chart, secondary);
         return Themed(new Axis
         {
-            MinLimit = barsFromZero ? 0 : null,
+            MinLimit = minimum,
+            MaxLimit = maximum,
             Labeler = value => ValueFormatter.Format(value, format),
             TextSize = 12,
             Position = secondary ? AxisPosition.End : AxisPosition.Start,
@@ -245,6 +451,8 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         // The chart is drawn on the visual's own background
         view.Background = System.Windows.Media.Brushes.Transparent;
         if (view is not LiveChartsCore.Kernel.Sketches.IChartView chart) return;
+        // The size of the axis labels: the legend's pages (ChartFitting) are measured for it
+        chart.LegendTextSize = 13;
         if (Parse(theme.Foreground) is { } text)
         {
             chart.LegendTextPaint = new SolidColorPaint(text);
@@ -255,29 +463,94 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
 
     private static SKColor? Parse(string? color) => color is null ? null : SKColor.Parse(color);
 
-    private static ISeries CreateSeries(ChartSeries source, SKColor color)
+    /// <summary>
+    /// The frames of the stacks a rule or a scale picks out (<see cref="StackOutline"/>): one column series per color,
+    /// empty inside, centered on the category like the stack (same width) and drawn over it.
+    /// </summary>
+    private static IEnumerable<ISeries> Outlines(ChartFormatting formatting, int categories) =>
+        formatting.StackOutlines
+            .GroupBy(o => (o.Color, o.SecondaryAxis))
+            .Select(group => new ColumnSeries<ObservableValue>
+            {
+                Values = [.. Enumerable.Range(0, categories).Select(c => new ObservableValue(group.FirstOrDefault(o => o.Category == c)?.Top))],
+                Fill = null,
+                Stroke = new SolidColorPaint(SKColor.Parse(group.Key.Color), 3),
+                MaxBarWidth = 48,
+                IgnoresBarPosition = true,
+                ScalesYAt = group.Key.SecondaryAxis ? 1 : 0,
+                IsHoverable = false,
+                IsVisibleAtLegend = false,
+                ZIndex = 1000,
+            });
+
+    /// <summary>
+    /// The zone of a rule shown on the chart (<see cref="ChartBand"/>): a translucent band across the chart between
+    /// its values, an open end reaching the edge of the axis, with the rule's condition as label.
+    /// </summary>
+    private static RectangularSection Zone(ChartBand band, BiTheme theme, double far)
     {
+        var color = SKColor.Parse(band.Color);
+        return new RectangularSection
+        {
+            Yi = band.From ?? -far,
+            Yj = band.To ?? far,
+            ScalesYAt = band.SecondaryAxis ? 1 : 0,
+            Fill = new SolidColorPaint(color.WithAlpha(0x26)),
+            Stroke = new SolidColorPaint(color.WithAlpha(0x99), 1),
+            Label = band.Label,
+            LabelSize = 11,
+            LabelPaint = new SolidColorPaint(Parse(theme.MutedForeground) ?? color),
+            ZIndex = -1,
+        };
+    }
+
+    /// <summary>
+    /// The series in its color; a point whose measure's format gives a color (a rule, a scale) is drawn in it, as in
+    /// LiveCharts2's conditional draw. With a highlight (cross-filtering), the points left out of it are faded, and so
+    /// is the line or area of a series that has none of them.
+    /// </summary>
+    private static ISeries CreateSeries(RenderRequest request, ChartFormatting formatting, int index)
+    {
+        var source = request.Chart.Series[index];
+        var color = Color(request.Theme, index);
+        var lineColor = request.IsEmphasized(index) ? color : Dim(color);
         // ObservableValue(null) = missing point: LiveCharts2 draws it as a gap (or no bar, no point).
         var values = source.Values.Select(v => new ObservableValue(v)).ToArray();
         var axis = source.SecondaryAxis ? 1 : 0;
         string Tooltip(double value) => ValueFormatter.Format(value, source.Format);
-
-        return source.Mark switch
+        var paints = new Dictionary<string, SolidColorPaint>();
+        void Fade(IDrawnElement? point, int category)
         {
-            MarkType.Line or MarkType.Area => new LineSeries<ObservableValue>
+            if (point is null) return;
+            if (request.Highlight is { Count: > 0 })
+                point.Opacity = request.IsEmphasized(category, index) ? 1f : (float)SelectionFilters.DimmedOpacity;
+            if (formatting.ColorsPoints && point is DrawnGeometry geometry)
+            {
+                // Null gives the point back the series' paint
+                var paint = formatting.PointColor(index, category) is { } hex
+                    ? paints.TryGetValue(hex, out var known) ? known : paints[hex] = new SolidColorPaint(SKColor.Parse(hex))
+                    : null;
+                geometry.Fill = paint;
+                if ((source.SeriesType == VisualType.Line || source.SeriesType == VisualType.Scatter)) geometry.Stroke = paint;
+            }
+        }
+
+        return source.SeriesType switch
+        {
+            var type when type == VisualType.Line || type == VisualType.Area => new LineSeries<ObservableValue>
             {
                 Name = source.Name,
                 Values = values,
-                Stroke = new SolidColorPaint(color, 3),
-                Fill = source.Mark == MarkType.Area ? new SolidColorPaint(color.WithAlpha(0x55)) : null,
-                GeometrySize = source.Mark == MarkType.Area ? 0 : 8,
+                Stroke = new SolidColorPaint(lineColor, 3),
+                Fill = source.SeriesType == VisualType.Area ? new SolidColorPaint(color.WithAlpha((byte)(lineColor.Alpha * 0x55 / 0xFF))) : null,
+                GeometrySize = source.SeriesType == VisualType.Area ? 0 : 8,
                 GeometryStroke = new SolidColorPaint(color, 3),
                 LineSmoothness = 0.3,
                 ScalesYAt = axis,
                 YToolTipLabelFormatter = p => Tooltip(p.Coordinate.PrimaryValue),
-            },
+            }.OnPointMeasured(p => Fade(p.Visual, p.Index)),
             // Points sit on the categories, without a line between them
-            MarkType.Scatter => new LineSeries<ObservableValue>
+            var type when type == VisualType.Scatter => new LineSeries<ObservableValue>
             {
                 Name = source.Name,
                 Values = values,
@@ -288,8 +561,8 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                 GeometryStroke = new SolidColorPaint(color, 2),
                 ScalesYAt = axis,
                 YToolTipLabelFormatter = p => Tooltip(p.Coordinate.PrimaryValue),
-            },
-            MarkType.StackedBar => new StackedColumnSeries<ObservableValue>
+            }.OnPointMeasured(p => Fade(p.Visual, p.Index)),
+            var type when type == VisualType.StackedBar => new StackedColumnSeries<ObservableValue>
             {
                 Name = source.Name,
                 Values = values,
@@ -299,7 +572,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                 StackGroup = axis,
                 ScalesYAt = axis,
                 YToolTipLabelFormatter = p => Tooltip(p.Coordinate.PrimaryValue),
-            },
+            }.OnPointMeasured(p => Fade(p.Visual, p.Index)),
             _ => new ColumnSeries<ObservableValue>
             {
                 Name = source.Name,
@@ -308,14 +581,26 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
                 MaxBarWidth = 48,
                 ScalesYAt = axis,
                 YToolTipLabelFormatter = p => Tooltip(p.Coordinate.PrimaryValue),
-            },
+            }.OnPointMeasured(p => Fade(p.Visual, p.Index)),
         };
     }
 
-    private static PieChart RenderPie(RenderRequest request)
+    // A slice: the color of its rule or scale, else the palette's; faded when left out of the highlight
+    private static SKColor SliceColor(RenderRequest request, ChartFormatting formatting, int category)
     {
+        var color = formatting.PointColor(0, category) is { } hex ? SKColor.Parse(hex) : Color(request.Theme, category);
+        return request.IsEmphasized(category, 0) ? color : Dim(color);
+    }
+
+    private static SKColor Dim(SKColor color) => color.WithAlpha((byte)(color.Alpha * SelectionFilters.DimmedOpacity));
+
+    /// <summary>A pie (a full disc), or a donut with the total in its hole.</summary>
+    private static FrameworkElement RenderPie(RenderRequest request)
+    {
+        var donut = request.Visual.Type == VisualType.Donut;
         var chart = request.Chart;
         var source = chart.Series[0];
+        var formatting = ChartFormatting.For(request);
         // One series per slice: keep each slice's category index for selection
         var slices = new Dictionary<ISeries, int>();
         foreach (var (category, i) in chart.Categories.Select((category, i) => (category, i)))
@@ -325,34 +610,86 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
             {
                 Name = category,
                 Values = [value],
-                Fill = new SolidColorPaint(Color(request.Theme, i)),
+                Fill = new SolidColorPaint(SliceColor(request, formatting, i)),
                 ToolTipLabelFormatter = p => ValueFormatter.Format(p.Coordinate.PrimaryValue, source.Format),
             }] = i;
         }
 
         var view = new PieChart { Series = slices.Keys.ToArray(), LegendPosition = LegendPosition.Right };
+        view.Tooltip = new EasyBITooltip(view, request, points =>
+            points.FirstOrDefault() is { } slice && slices.TryGetValue(slice.Context.Series, out var category) ? (category, [0]) : null);
         ApplyTheme(view, request.Theme);
         // Legend and donut hole adapt to the room the chart actually gets
-        view.SizeChanged += (_, _) => FitPie(view, slices.Keys, chart);
+        view.SizeChanged += (_, _) => FitPie(view, slices, chart, donut, request);
+        if (request.LegendPager is { } pager)
+            pager.Changed += (_, _) => FitPie(view, slices, chart, donut, request);
         if (request.Select is { } select)
         {
             view.Cursor = System.Windows.Input.Cursors.Hand;
-            view.DataPointerDown += (_, points) =>
+            OnPointClicked(view, FindingStrategy.Automatic, point =>
             {
-                if (points?.FirstOrDefault() is { } point && slices.TryGetValue(point.Context.Series, out var category))
+                if (slices.TryGetValue(point.Context.Series, out var category))
                     select(new CategorySelection(category));
-            };
+            });
         }
-        return view;
+        if (!donut) return view;
+
+        var total = source.Values.OfType<double>().Sum();
+        var label = new ChartCenterLabel(view, () =>
+            view.CoreChart is { DrawMarginSize: { Width: > 0 } size, DrawMarginLocation: var location }
+                ? new Rect(location.X, location.Y, size.Width, size.Height)
+                : null,
+            ValueFormatter.Format(total, source.Format), source.Name);
+        // LiveCharts2 measures the pie after WPF's layout
+        view.UpdateFinished += _ => view.Dispatcher.InvokeAsync(label.Place);
+        return label;
     }
 
-    private static void FitPie(PieChart view, IEnumerable<ISeries> slices, ChartData chart)
+    /// <summary>
+    /// LiveCharts2's tooltip replaced by EasyBI's (<see cref="ChartTooltipHost"/>): <c>locate</c> turns the points found
+    /// under the pointer into the hovered category and series, whose content the request gives.
+    /// </summary>
+    private sealed class EasyBITooltip(FrameworkElement view, RenderRequest request, Func<IReadOnlyList<ChartPoint>, (int Category, IReadOnlyList<int> Series)?> locate)
+        : LiveChartsCore.Kernel.Sketches.IChartTooltip
+    {
+        private readonly ChartTooltipHost _host = new(view);
+
+        public void Show(IEnumerable<ChartPoint> foundPoints, Chart chart) =>
+            _host.Show(locate([.. foundPoints]) is { } at ? request.TooltipFor(at.Category, at.Series) : null);
+
+        public void Hide(Chart chart) => _host.Hide();
+    }
+
+    /// <summary>
+    /// Reports the clicked point. LiveCharts2 ignores a click made with a modifier key held down, so a Ctrl+click
+    /// (adding to the selection) looks for the point itself.
+    /// </summary>
+    private static void OnPointClicked<TView>(TView view, FindingStrategy strategy, Action<ChartPoint> clicked)
+        where TView : Control, LiveChartsCore.Kernel.Sketches.IChartView
+    {
+        view.DataPointerDown += (_, points) =>
+        {
+            if (points?.FirstOrDefault() is { } point) clicked(point);
+        };
+        view.MouseLeftButtonDown += (_, e) =>
+        {
+            if (System.Windows.Input.Keyboard.Modifiers == System.Windows.Input.ModifierKeys.None) return;
+            var position = e.GetPosition(view);
+            if (view.GetPointsAt(new LvcPointD(position.X, position.Y), strategy).FirstOrDefault() is { } point) clicked(point);
+        };
+    }
+
+    // The slices and their categories: the legend's entries
+    private static void FitPie(PieChart view, IReadOnlyDictionary<ISeries, int> slices, ChartData chart, bool donut, RenderRequest request)
     {
         if (view.ActualWidth <= 0) return;
-        var fit = ChartFitting.Pie(chart, view.ActualWidth, view.ActualHeight);
+        var fit = ChartFitting.Pie(chart, view.ActualWidth, view.ActualHeight, donut, request.Visual.LegendPosition);
         var legend = Position(fit.Legend);
         if (view.LegendPosition != legend) view.LegendPosition = legend;
-        foreach (var slice in slices.OfType<PieSeries<double>>())
+        var shown = ChartFitting.LegendEntries(fit, request.LegendPager);
+        foreach (var (slice, category) in slices)
+            if (slice.IsVisibleAtLegend != shown(category)) slice.IsVisibleAtLegend = shown(category);
+        foreach (var slice in slices.Keys.OfType<PieSeries<double>>())
             if (Math.Abs(slice.InnerRadius - fit.InnerRadius) > 1) slice.InnerRadius = fit.InnerRadius;
     }
 

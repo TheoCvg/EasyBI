@@ -108,6 +108,9 @@
   <data name="RevenueByRegionAndChannel" xml:space="preserve">
     <value>Revenue by region and channel</value>
   </data>
+  <data name="RevenueByCategoryAndYear" xml:space="preserve">
+    <value>Revenue by category and year</value>
+  </data>
   <data name="RevenueByCategory" xml:space="preserve">
     <value>Revenue by category</value>
   </data>
@@ -170,5 +173,38 @@
   </data>
   <data name="LastYearComparison" xml:space="preserve">
     <value>2025 compared with 2024</value>
+  </data>
+  <data name="WebShare" xml:space="preserve">
+    <value>Web share</value>
+  </data>
+  <data name="Ranking" xml:space="preserve">
+    <value>Ranking</value>
+  </data>
+  <data name="RankingItems" xml:space="preserve">
+    <value>Items</value>
+  </data>
+  <data name="RankingBy" xml:space="preserve">
+    <value>Ranked by</value>
+  </data>
+  <data name="RankingShare" xml:space="preserve">
+    <value>Share of the total</value>
+  </data>
+  <data name="TopProducts" xml:space="preserve">
+    <value>Top products</value>
+  </data>
+  <data name="XamlOnlyTab" xml:space="preserve">
+    <value>  XAML only  </value>
+  </data>
+  <data name="XamlOnlyTip" xml:space="preserve">
+    <value>This designer has no view-model and no code-behind: its context is bound, a behavior keeps the visual a bar chart, the buttons undo and redo with commands, and the visual on the right is bound to the designer's Visual.</value>
+  </data>
+  <data name="BoundVisual" xml:space="preserve">
+    <value>Bound to the designer's Visual</value>
+  </data>
+  <data name="DataSourceUnavailableDemo" xml:space="preserve">
+    <value>Unavailable source (failures)</value>
+  </data>
+  <data name="SalesDatabaseNotAnswering" xml:space="preserve">
+    <value>The sales database is not answering. Try again in a moment.</value>
   </data>
 </root>

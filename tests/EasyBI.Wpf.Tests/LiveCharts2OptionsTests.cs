@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Globalization;
 using System.Resources;
+using System.Windows;
 using System.Windows.Controls;
 using EasyBI.Abstractions;
 using EasyBI.Core;
@@ -19,7 +20,7 @@ public class LiveCharts2OptionsTests
         return new RenderRequest(visual, new ResultSet([], []), chart, BiTheme.Default);
     }
 
-    private static readonly VisualDefinition Bars = new() { Mark = MarkType.Bar };
+    private static readonly VisualDefinition Bars = new() { Type = VisualType.Bar };
 
     [Fact]
     public void Scrollable_option_is_offered_for_cartesian_charts_only()
@@ -28,7 +29,7 @@ public class LiveCharts2OptionsTests
 
         Assert.Equal(RendererOptionKind.Toggle, option.Kind);
         Assert.True(option.AppliesTo!(Bars));
-        Assert.False(option.AppliesTo!(new VisualDefinition { Mark = MarkType.Pie }));
+        Assert.False(option.AppliesTo!(new VisualDefinition { Type = VisualType.Pie }));
     }
 
     [Fact]
@@ -56,6 +57,103 @@ public class LiveCharts2OptionsTests
         var grid = Assert.IsType<Grid>(renderer.Render(Request(visual, 5)));
 
         Assert.Null(((Axis)grid.Children.OfType<CartesianChart>().First().XAxes.First()).MaxLimit);
+    });
+
+    // Two months of three regions: an axis with two fields
+    private static RenderRequest TwoLevels()
+    {
+        object?[][] keys = [["2024-01", "Est"], ["2024-01", "Nord"], ["2024-01", "Sud"], ["2024-02", "Est"], ["2024-02", "Nord"], ["2024-02", "Sud"]];
+        var chart = new ChartData("Month / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", [1, 2, 3, 4, 5, 6], null) { SeriesType = VisualType.Bar }])
+        {
+            CategoryValues = keys,
+        };
+        return new RenderRequest(Bars, new ResultSet([], []), chart, BiTheme.Default);
+    }
+
+    [Fact]
+    public void Several_axis_fields_show_short_labels_under_the_groups_of_the_outer_field() => Sta.Run(() =>
+    {
+        var view = (CartesianChart)new LiveCharts2Renderer().Render(TwoLevels());
+
+        var axes = view.XAxes.Cast<Axis>().ToArray();
+        // The outermost axis first: LiveCharts2 draws it farthest from the plot
+        Assert.Equal(2, axes.Length);
+        Assert.Equal(["Est", "Nord", "Sud", "Est", "Nord", "Sud"], axes[1].Labels);
+        Assert.Equal([1d, 4d], axes[0].CustomSeparators);
+        Assert.Equal(["2024-01", "2024-02"], axes[0].CustomSeparators!.Select(axes[0].Labeler));
+        // Series follow the category axis; a line separates the months
+        Assert.All(view.Series.OfType<LiveChartsCore.Kernel.Sketches.ICartesianSeries>(), s => Assert.Equal(1, s.ScalesXAt));
+        Assert.Contains(view.Sections.OfType<LiveChartsCore.SkiaSharpView.RectangularSection>(), s => s.Xi == 2.5 && s.Xj == 2.5);
+    });
+
+    [Fact]
+    public void Every_category_has_a_label_slot_so_that_only_the_fit_skips_labels() => Sta.Run(() =>
+    {
+        // LiveCharts2 skips labels by itself unless told not to: on top of the fit's step, almost none were left
+        var renderer = new LiveCharts2Renderer();
+        var scrollable = Bars.WithRendererOption(renderer.Name, LiveCharts2Renderer.ScrollableOption, true);
+        var charts = new[] { (CartesianChart)renderer.Render(Request(Bars, 50)), ((Grid)renderer.Render(Request(scrollable, 50))).Children.OfType<CartesianChart>().First() };
+
+        foreach (var axis in charts.Select(c => (Axis)c.XAxes.Last()))
+            Assert.Equal((1d, true), (axis.MinStep, axis.ForceStepToMin));
+    });
+
+    [Fact]
+    public void Labels_under_groups_turn_like_other_category_labels_rather_than_being_skipped() => Sta.Run(() =>
+    {
+        string[] regions = ["Est", "Île-de-France", "Nord", "Ouest", "Sud"];
+        object?[][] keys = [.. new[] { "Équipement", "Services", "Vélos" }.SelectMany(c => regions.Select(r => new object?[] { c, r }))];
+        var chart = new ChartData("Category / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", new double?[keys.Length], null) { SeriesType = VisualType.Bar }])
+        {
+            CategoryValues = keys,
+        };
+        var view = (CartesianChart)new LiveCharts2Renderer().Render(new RenderRequest(Bars, new ResultSet([], []), chart, BiTheme.Default));
+        var window = new Window { Content = view, Width = 700, Height = 450, Left = -10000, Top = -10000, ShowActivated = false, ShowInTaskbar = false };
+        window.Show();
+        try
+        {
+            System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+
+            var axis = (Axis)view.XAxes.Last();
+            Assert.Equal(-45, axis.LabelsRotation);
+            Assert.Equal(keys.Select(k => (string)k[1]!), axis.Labels);
+        }
+        finally
+        {
+            window.Close();
+        }
+    });
+
+    [Fact]
+    public void A_short_scrollable_chart_keeps_flat_labels_under_its_groups_where_they_fit() => Sta.Run(() =>
+    {
+        // 36 months of 5 regions, 20 bars at a time: too short to turn the labels
+        string[] regions = ["Est", "Île-de-France", "Nord", "Ouest", "Sud"];
+        object?[][] keys = [.. Enumerable.Range(1, 36).SelectMany(m => regions.Select(r => new object?[] { $"M{m:00}", r }))];
+        var chart = new ChartData("Month / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", new double?[keys.Length], null) { SeriesType = VisualType.Bar }])
+        {
+            CategoryValues = keys,
+        };
+        var renderer = new LiveCharts2Renderer();
+        var visual = Bars.WithRendererOption(renderer.Name, LiveCharts2Renderer.ScrollableOption, true);
+        var grid = (Grid)renderer.Render(new RenderRequest(visual, new ResultSet([], []), chart, BiTheme.Default));
+        var window = new Window { Content = grid, Width = 700, Height = 300, Left = -10000, Top = -10000, ShowActivated = false, ShowInTaskbar = false };
+        window.Show();
+        try
+        {
+            System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+
+            var axis = (Axis)grid.Children.OfType<CartesianChart>().First().XAxes.Last();
+            Assert.Equal(0, axis.LabelsRotation);
+            // At least two regions a month among the 20 bars shown, each one whole
+            var shown = axis.Labels!.Take(20).Where(l => l.Length > 0).ToArray();
+            Assert.True(shown.Length >= 8, string.Join(", ", shown));
+            Assert.All(shown, l => Assert.Contains(l, regions));
+        }
+        finally
+        {
+            window.Close();
+        }
     });
 
     [Fact]

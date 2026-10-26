@@ -15,11 +15,11 @@ public class ComboChartDesignerTests
             .Measure(s => s.Amount, "Revenue")
             .Measure(s => s.Quantity, "Units"));
 
-    private sealed class FakeRenderer(string name, params MarkType[] marks) : IVisualRenderer
+    private sealed class FakeRenderer(string name, params VisualType[] types) : IVisualRenderer
     {
         public string Name => name;
 
-        public RendererCapabilities Capabilities { get; } = new(marks.ToHashSet());
+        public RendererCapabilities Capabilities { get; } = new(types.ToHashSet());
 
         public FrameworkElement Render(RenderRequest request) => throw new NotSupportedException();
     }
@@ -32,11 +32,11 @@ public class ComboChartDesignerTests
         designer.AddToDefaultShelf(designer.Measures.Last());
 
         var units = designer.Values[1];
-        units.SeriesMark = MarkType.Line;
+        units.SeriesType = VisualType.Line;
         units.SecondaryAxis = true;
 
-        Assert.Equal([(null, false), (MarkType.Line, true)], designer.Visual!.Values.Select(v => (v.Mark, v.SecondaryAxis)));
-        Assert.Same(ShelfItemViewModel.SeriesMarkOptions[0], designer.Values[0].SeriesMarkOption); // "as the visual"
+        Assert.Equal([(null, false), (VisualType.Line, true)], designer.Visual!.Values.Select(v => (v.SeriesType, v.SecondaryAxis)));
+        Assert.Same(ShelfItemViewModel.SeriesTypeOptions[0], designer.Values[0].SeriesTypeOption); // "as the visual"
     }
 
     [Fact]
@@ -46,10 +46,10 @@ public class ComboChartDesignerTests
         designer.AddToDefaultShelf(designer.Measures.First());
         Assert.True(designer.Values[0].ShowSeriesOptions);
 
-        designer.SelectedMark = MarkType.Pie;
+        designer.SelectedType = VisualType.Pie;
         Assert.False(designer.Values[0].ShowSeriesOptions);
 
-        designer.SelectedMark = MarkType.Area;
+        designer.SelectedType = VisualType.Area;
         Assert.True(designer.Values[0].ShowSeriesOptions);
     }
 
@@ -60,25 +60,25 @@ public class ComboChartDesignerTests
         designer.Load(new VisualDefinition
         {
             Model = "sales",
-            Mark = MarkType.Bar,
+            Type = VisualType.Bar,
             Axis = [new("Region")],
-            Values = [new("Amount") { Mark = MarkType.StackedBar }, new("Quantity") { Mark = MarkType.Scatter, SecondaryAxis = true }],
+            Values = [new("Amount") { SeriesType = VisualType.StackedBar }, new("Quantity") { SeriesType = VisualType.Scatter, SecondaryAxis = true }],
         });
 
-        Assert.Equal([(MarkType.StackedBar, false), (MarkType.Scatter, true)], designer.Values.Select(v => (v.SeriesMark, v.SecondaryAxis)));
-        Assert.Equal(new[] { new MeasureRef("Amount") { Mark = MarkType.StackedBar }, new MeasureRef("Quantity") { Mark = MarkType.Scatter, SecondaryAxis = true } }, designer.Visual!.Values);
+        Assert.Equal([(VisualType.StackedBar, false), (VisualType.Scatter, true)], designer.Values.Select(v => (v.SeriesType, v.SecondaryAxis)));
+        Assert.Equal(new[] { new MeasureRef("Amount") { SeriesType = VisualType.StackedBar }, new MeasureRef("Quantity") { SeriesType = VisualType.Scatter, SecondaryAxis = true } }, designer.Visual!.Values);
     }
 
     [Fact]
     public void The_renderer_of_a_combined_chart_supports_every_chart_type_it_uses()
     {
-        var barsOnly = new FakeRenderer("bars", MarkType.Bar);
-        var combo = new FakeRenderer("combo", MarkType.Bar, MarkType.Line);
+        var barsOnly = new FakeRenderer("bars", VisualType.Bar);
+        var combo = new FakeRenderer("combo", VisualType.Bar, VisualType.Line);
         var context = Context().UseRenderer(barsOnly).UseRenderer(combo);
-        var visual = new VisualDefinition { Model = "sales", Mark = MarkType.Bar, Values = [new("Amount"), new("Quantity") { Mark = MarkType.Line }] };
+        var visual = new VisualDefinition { Model = "sales", Type = VisualType.Bar, Values = [new("Amount"), new("Quantity") { SeriesType = VisualType.Line }] };
 
-        Assert.Same(barsOnly, context.ResolveRenderer(MarkType.Bar)); // the active renderer
+        Assert.Same(barsOnly, context.ResolveRenderer(VisualType.Bar)); // the active renderer
         Assert.Same(combo, context.ResolveRenderer(visual));
-        Assert.Null(context.ResolveRenderer(visual with { Values = [new("Amount") { Mark = MarkType.Area }] }));
+        Assert.Null(context.ResolveRenderer(visual with { Values = [new("Amount") { SeriesType = VisualType.Area }] }));
     }
 }

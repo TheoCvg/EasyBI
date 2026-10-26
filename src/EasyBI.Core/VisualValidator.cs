@@ -6,23 +6,31 @@ namespace EasyBI.Core;
 /// <summary>Consistency rules between a visual type and the dropped fields.</summary>
 public static class VisualValidator
 {
+    /// <summary>
+    /// Checks a visual against the definition of its type in <paramref name="types"/> (EasyBI's types when null): its
+    /// rule, then the number of fields of each well.
+    /// </summary>
     /// <returns>A message for the end user, or null when the visual can be displayed.</returns>
-    public static string? Validate(VisualDefinition visual) => visual.Mark switch
+    public static string? Validate(VisualDefinition visual, VisualTypeCatalog? types = null)
     {
-        MarkType.Text => null,
-        MarkType.Image when visual.Image is null => Strings.ValidationNoImage,
-        MarkType.Image => null,
-        MarkType.Table when visual.Axis.Count == 0 && visual.Legend is null && visual.Values.Count == 0 =>
-            Strings.ValidationEmptyTable,
-        MarkType.Table => null,
-        _ when visual.Mark.IsCartesian() && visual.Values.Any(v => v.Mark is { } mark && !mark.IsCartesian()) =>
-            Strings.ValidationSeriesMark,
-        _ when visual.Values.Count == 0 =>
-            Strings.ValidationNoMeasure,
-        MarkType.Kpi when visual.Axis.Count > 0 || visual.Legend is not null =>
-            Strings.ValidationKpi,
-        MarkType.Pie when visual.Axis.Count != 1 || visual.Legend is not null || visual.Values.Count != 1 =>
-            Strings.ValidationPie,
-        _ => null,
-    };
+        if (visual.Type.IsCartesian() && visual.Values.Any(v => v.SeriesType is { } type && !type.IsCartesian()))
+            return Strings.ValidationSeriesMark;
+        var definition = (types ?? VisualTypeCatalog.Default).Get(visual.Type);
+        if (definition.Values.MinFields > 0 && visual.Values.Count == 0) return Strings.ValidationNoMeasure;
+        return definition.Validate?.Invoke(visual)
+            ?? Check(definition.Axis, visual.Axis.Count, Strings.WellAxis)
+            ?? Check(definition.Legend, visual.Legend is null ? 0 : 1, Strings.WellLegend)
+            ?? Check(definition.Values, visual.Values.Count, Strings.WellValues);
+    }
+
+    private static string? Check(VisualWell well, int count, string name)
+    {
+        var caption = well.Caption?.Invoke() ?? name;
+        if (!well.IsUsed) return count > 0 ? Strings.Format(Strings.ValidationWellUnused, caption) : null;
+        if (count < well.MinFields)
+            return well.MinFields == 1 ? Strings.Format(Strings.ValidationWellMissing, caption) : Strings.Format(Strings.ValidationWellMinimum, caption, well.MinFields);
+        if (count > well.MaxFields)
+            return well.MaxFields == 1 ? Strings.Format(Strings.ValidationWellSingle, caption) : Strings.Format(Strings.ValidationWellMaximum, caption, well.MaxFields);
+        return null;
+    }
 }

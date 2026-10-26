@@ -22,12 +22,21 @@ public static class DateGrains
 
     /// <summary>
     /// Reduces a date (DateTime, DateOnly, DateTimeOffset) to its granularity: a sortable integer
-    /// (2024, 20241, 202403) or the day, a simple expression that LINQ providers can translate.
+    /// (2024, 20241, 202403) or the day, a simple expression that LINQ providers can translate. A missing date has no
+    /// period: its key is null.
     /// </summary>
     internal static Expression Apply(Expression date, DateGrain grain)
     {
         if (Nullable.GetUnderlyingType(date.Type) is not null)
-            date = Expression.Call(date, nameof(Nullable<int>.GetValueOrDefault), Type.EmptyTypes);
+        {
+            // date.HasValue ? key(date.Value) : null, which EF Core translates (CASE WHEN), unlike GetValueOrDefault()
+            var key = Apply(Expression.Property(date, nameof(Nullable<int>.Value)), grain);
+            var nullableKey = typeof(Nullable<>).MakeGenericType(key.Type);
+            return Expression.Condition(
+                Expression.Property(date, nameof(Nullable<int>.HasValue)),
+                Expression.Convert(key, nullableKey),
+                Expression.Constant(null, nullableKey));
+        }
 
         if (grain == DateGrain.Day)
             return date.Type == typeof(DateOnly) ? date : Expression.Property(date, nameof(DateTime.Date));

@@ -15,14 +15,17 @@ public static class VisualTransfer
     /// <summary>Name of the clipboard format holding copied visuals (see <see cref="Copy"/>).</summary>
     public const string ClipboardFormat = "EasyBI.Visuals";
 
-    /// <summary>The visuals and the calculated measures they use, as report JSON.</summary>
-    public static string Copy(IEnumerable<VisualDefinition> visuals, MeasureContext measures)
+    /// <summary>
+    /// The visuals and the calculated measures they use, with those these use (see <see cref="MeasureContext.UsedBy"/>),
+    /// as report JSON.
+    /// </summary>
+    public static string Copy(IEnumerable<VisualDefinition> visuals, MeasureContext measures, Func<string, ModelMetadata?>? metadata = null)
     {
         var copied = visuals.ToArray();
         return ReportSerializer.Serialize(new ReportDefinition
         {
             Visuals = copied,
-            Measures = copied.SelectMany(measures.UsedBy).Distinct().ToArray(),
+            Measures = copied.SelectMany(v => measures.UsedBy(v, metadata?.Invoke(v.Model))).Distinct().ToArray(),
         });
     }
 
@@ -30,9 +33,16 @@ public static class VisualTransfer
     /// The visuals of copied report JSON, ready to be added to a report: they get new ids, those of a model the target
     /// does not know are left out (texts and images have none), and the calculated measures they use are added to
     /// <paramref name="measures"/>. A measure whose name the target already uses for another definition is added under
-    /// a new name, which its visuals follow. Content that is not copied visuals gives nothing.
+    /// a new name, which its visuals follow. A copied redefinition of a model's measure (<paramref name="metadata"/> tells
+    /// which fields a model declares) is added as a calculated measure of its own unless the target redefines the measure
+    /// the same way, so that pasting never changes the target's measures. The formulas of the pasted measures follow the
+/// renamed ones. Content that is not copied visuals gives nothing.
     /// </summary>
-    public static IReadOnlyList<PastedVisual> Paste(string json, MeasureContext measures, Func<string, bool> hasModel)
+    public static IReadOnlyList<PastedVisual> Paste(
+        string json,
+        MeasureContext measures,
+        Func<string, bool> hasModel,
+        Func<string, ModelMetadata?>? metadata = null)
     {
         ReportDefinition copied;
         try
@@ -44,23 +54,34 @@ public static class VisualTransfer
             return [];
         }
 
+        // First the names, then the formulas: a pasted measure may use another one that is renamed
         var renamed = new Dictionary<(string Model, string Name), string>();
+        var added = new List<CalculatedMeasure>();
         foreach (var measure in copied.Measures.Where(m => hasModel(m.Model)))
         {
             var existing = measures.Find(measure.Model, measure.Name) ?? measures.Measures.FirstOrDefault(m => m.Name == measure.Name);
             if (existing == measure) continue;
-            if (existing is null)
+            var declared = metadata?.Invoke(measure.Model)?.Fields.FirstOrDefault(f => f.Name == measure.Name);
+            if (existing is null && declared is null)
             {
-                measures.Set(measure);
+                added.Add(measure);
                 continue;
             }
             var name = MeasureContext.NewName();
             renamed[(measure.Model, measure.Name)] = name;
-            measures.Set(measure with { Name = name });
+            added.Add(measure with { Name = name, Caption = measure.Caption.Length > 0 ? measure.Caption : declared?.Caption ?? measure.Name });
+        }
+        foreach (var measure in added)
+        {
+            // Under its own name, a redefinition read the model's measure: it still does once renamed
+            var own = renamed.FirstOrDefault(r => r.Key.Model == measure.Model && r.Value == measure.Name).Key.Name ?? measure.Name;
+            var formula = MeasureFormula.Rename(measure.Formula,
+                used => used != own && renamed.TryGetValue((measure.Model, used), out var name) ? name : used);
+            measures.Set(measure with { Formula = formula });
         }
 
         return copied.Visuals
-            .Where(v => v.Mark is MarkType.Text or MarkType.Image || hasModel(v.Model))
+            .Where(v => v.Type.IsContent() || hasModel(v.Model))
             .Select(v => new PastedVisual(v.Id, Rename(v, renamed) with { Id = Guid.NewGuid().ToString("N") }))
             .ToArray();
     }

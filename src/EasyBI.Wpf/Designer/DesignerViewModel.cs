@@ -12,29 +12,34 @@ using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf.Designer;
 
-/// <summary>The groups of the visual type gallery, by what a visual shows.</summary>
-public enum MarkGroup { Comparison, Trend, Composition, IndicatorsAndTables }
-
-public sealed class MarkOptionViewModel : Option<MarkType>
+public sealed class VisualTypeOptionViewModel : Option<VisualType>
 {
     private bool _isAvailable = true;
+    private string? _unavailableReason;
     private bool _isSelected;
 
-    public MarkOptionViewModel(MarkType mark, MarkGroup group, Func<string> label) : base(mark, label)
+    public VisualTypeOptionViewModel(VisualType type, VisualTypeGroup group, Func<string> label) : base(type, label)
     {
         Group = group;
-        ChooseCommand = new RelayCommand<object?>(_ => { if (IsAvailable) Choosing?.Invoke(Mark); });
+        ChooseCommand = new RelayCommand<object?>(_ => { if (IsAvailable) Choosing?.Invoke(Type); });
     }
 
-    public MarkType Mark => Value;
+    public VisualType Type => Value;
 
-    public MarkGroup Group { get; }
+    public VisualTypeGroup Group { get; }
 
-    /// <summary>False when no renderer draws this type: it is shown greyed.</summary>
+    /// <summary>False when no renderer draws this type, or a rule of the designer refuses it: it is shown greyed.</summary>
     public bool IsAvailable
     {
         get => _isAvailable;
         set => SetProperty(ref _isAvailable, value);
+    }
+
+    /// <summary>Why the type cannot be chosen (no renderer, a rule's message); null when it can.</summary>
+    public string? UnavailableReason
+    {
+        get => _unavailableReason;
+        set => SetProperty(ref _unavailableReason, value);
     }
 
     /// <summary>True for the type of the visual being designed.</summary>
@@ -47,19 +52,19 @@ public sealed class MarkOptionViewModel : Option<MarkType>
     /// <summary>Makes the visual of this type (when it is available) and closes the gallery.</summary>
     public ICommand ChooseCommand { get; }
 
-    internal Action<MarkType>? Choosing { get; set; }
+    internal Action<VisualType>? Choosing { get; set; }
 }
 
 /// <summary>A group of the visual type gallery.</summary>
-public sealed class MarkGroupViewModel(MarkGroup group, IReadOnlyList<MarkOptionViewModel> options) : Option<MarkGroup>(group, () => Caption(group))
+public sealed class VisualTypeGroupViewModel(VisualTypeGroup group, IReadOnlyList<VisualTypeOptionViewModel> options) : Option<VisualTypeGroup>(group, () => Caption(group))
 {
-    public IReadOnlyList<MarkOptionViewModel> Options { get; } = options;
+    public IReadOnlyList<VisualTypeOptionViewModel> Options { get; } = options;
 
-    private static string Caption(MarkGroup group) => group switch
+    private static string Caption(VisualTypeGroup group) => group switch
     {
-        MarkGroup.Comparison => Strings.MarkGroupComparison,
-        MarkGroup.Trend => Strings.MarkGroupTrend,
-        MarkGroup.Composition => Strings.MarkGroupComposition,
+        VisualTypeGroup.Comparison => Strings.MarkGroupComparison,
+        VisualTypeGroup.Trend => Strings.MarkGroupTrend,
+        VisualTypeGroup.Composition => Strings.MarkGroupComposition,
         _ => Strings.MarkGroupIndicators,
     };
 }
@@ -71,20 +76,22 @@ public sealed class MarkGroupViewModel(MarkGroup group, IReadOnlyList<MarkOption
 /// </summary>
 public sealed class DesignerViewModel : ObservableObject, IDropHandler
 {
-    private const int MaxAxisFields = 3;
-
     private ISemanticModel? _selectedModel;
     private string _title = "";
-    private MarkType _selectedMark = MarkType.Bar;
+    private VisualType _selectedType = VisualType.Bar;
     private VisualDefinition? _visual;
     private string _visualId = NewId();
     private bool _suspended;
 
     private int? _top;
+    private GaugeSettings? _gauge;
+    private TooltipSettings _tooltip = new();
+    private ChartLegend _legendPosition;
     private string? _sortSummary;
     private object? _selectedItem;
     private bool _isTypeGalleryOpen;
     private object? _draggedItem;
+    private string? _refusal;
 
     // History of the visual (undo/redo): the states before and after the current one, recorded at each change
     private readonly List<VisualDefinition> _undo = [];
@@ -102,26 +109,19 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     public DesignerViewModel(EasyBIContext context)
     {
         Context = context;
-        MarkOptions =
-        [
-            new(MarkType.Bar, MarkGroup.Comparison, () => Strings.MarkBar),
-            new(MarkType.StackedBar, MarkGroup.Comparison, () => Strings.MarkStackedBar),
-            new(MarkType.Scatter, MarkGroup.Comparison, () => Strings.MarkScatter),
-            new(MarkType.Line, MarkGroup.Trend, () => Strings.MarkLine),
-            new(MarkType.Area, MarkGroup.Trend, () => Strings.MarkArea),
-            new(MarkType.Pie, MarkGroup.Composition, () => Strings.MarkPie),
-            new(MarkType.Kpi, MarkGroup.IndicatorsAndTables, () => Strings.MarkKpi),
-            new(MarkType.Table, MarkGroup.IndicatorsAndTables, () => Strings.MarkTable),
-        ];
-        MarkGroups = MarkOptions.GroupBy(o => o.Group).Select(g => new MarkGroupViewModel(g.Key, g.ToArray())).ToArray();
-        foreach (var option in MarkOptions) option.Choosing = mark =>
+        TypeOptions = context.VisualTypes.Definitions
+            .Where(d => d.Group is not null)
+            .Select(d => new VisualTypeOptionViewModel(d.Type, d.Group!.Value, d.Caption))
+            .ToArray();
+        TypeGroups = TypeOptions.GroupBy(o => o.Group).Select(g => new VisualTypeGroupViewModel(g.Key, g.ToArray())).ToArray();
+        foreach (var option in TypeOptions) option.Choosing = type =>
         {
-            SelectedMark = mark;
+            SelectedType = type;
             IsTypeGalleryOpen = false;
         };
-        SyncSelectedMark();
+        SyncSelectedType();
         Models = context.Models.Select(m => new Option<ISemanticModel>(m, () => m.Metadata.Caption)).ToArray();
-        RemoveCommand = new RelayCommand<object>(Remove);
+        RemoveCommand = new RelayCommand<object>(Remove, item => item is not null && RemoveRefusal(item) is null);
         SelectCommand = new RelayCommand<object?>(item => SelectedItem = item);
         UndoCommand = new RelayCommand(Undo, () => CanUndo);
         RedoCommand = new RelayCommand(Redo, () => CanRedo);
@@ -129,39 +129,60 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         {
             if (Unwrap(item) is FieldDescriptor field) AddToDefaultShelf(field);
         });
-        context.Changed += (_, _) =>
-        {
-            RefreshAvailability();
-            RefreshRendererOptions(); // another renderer may draw the visual
-            SyncProperties();
-        };
         // Weak: a designer (a dialog's) may be shorter-lived than the shared context
+        WeakEventManager<EasyBIContext, EventArgs>.AddHandler(context, nameof(EasyBIContext.Changed), OnContextChanged);
         WeakEventManager<MeasureContext, EventArgs>.AddHandler(context.Measures, nameof(MeasureContext.Changed), OnMeasuresChanged);
         PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, OnLanguageChanged, string.Empty);
-        foreach (var chips in new[] { Axis, Legend, Values }) chips.CollectionChanged += OnChipsChanged;
+        foreach (var chips in new[] { Axis, Legend, Values, TooltipValues }) chips.CollectionChanged += OnChipsChanged;
         AxisWell = new ShelfViewModel(this, Shelf.Axis, Axis);
         LegendWell = new ShelfViewModel(this, Shelf.Legend, Legend);
         ValuesWell = new ShelfViewModel(this, Shelf.Values, Values);
+        TooltipWell = new ShelfViewModel(this, Shelf.Tooltip, TooltipValues);
         FiltersWell = new ShelfViewModel(this, Shelf.Filters, Filters);
         Filters.CollectionChanged += (_, e) =>
         {
             foreach (var filter in e.NewItems?.OfType<FilterItemViewModel>() ?? []) filter.Selecting = item => SelectedItem = item;
         };
+        Rules.CollectionChanged += (_, _) => RefreshAvailability();
         RefreshAvailability();
         SelectedModel = context.Models.FirstOrDefault();
     }
 
+    private void OnContextChanged(object? sender, EventArgs e)
+    {
+        RefreshAvailability();
+        RefreshRendererOptions(); // another renderer may draw the visual
+        SyncProperties();
+    }
+
     public EasyBIContext Context { get; }
+
+    /// <summary>
+    /// The rules every change of the visual must pass, whatever the action of the end user (a type picked, a field
+    /// dropped, a property edited...): each returns null to accept the change, or the message telling why it is refused.
+    /// The first refusal wins: the visual stays as it was and <see cref="Refusal"/> shows the message. What a rule
+    /// would refuse is shown unavailable beforehand (the types of the gallery, the wells while a field is dragged, the
+    /// remove buttons). A rule is called to try changes: it must be quick and have no side effect.
+    /// <see cref="Load"/>, <see cref="Clear"/>, <see cref="Undo"/> and <see cref="Redo"/> do not go through the rules.
+    /// </summary>
+    public ObservableCollection<Func<VisualChange, string?>> Rules { get; } = [];
+
+    /// <summary>The message of the last change a rule refused; null once a change is accepted.</summary>
+    public string? Refusal
+    {
+        get => _refusal;
+        private set => SetProperty(ref _refusal, value);
+    }
 
     public IReadOnlyList<Option<ISemanticModel>> Models { get; }
 
-    public IReadOnlyList<MarkOptionViewModel> MarkOptions { get; }
+    public IReadOnlyList<VisualTypeOptionViewModel> TypeOptions { get; }
 
-    /// <summary>The <see cref="MarkOptions"/> by group, as the visual type gallery shows them.</summary>
-    public IReadOnlyList<MarkGroupViewModel> MarkGroups { get; }
+    /// <summary>The <see cref="TypeOptions"/> by group, as the visual type gallery shows them.</summary>
+    public IReadOnlyList<VisualTypeGroupViewModel> TypeGroups { get; }
 
-    /// <summary>The option of the <see cref="SelectedMark"/> (shown on the button opening the gallery).</summary>
-    public MarkOptionViewModel SelectedMarkOption => MarkOptions.FirstOrDefault(o => o.Mark == _selectedMark) ?? MarkOptions[0];
+    /// <summary>The option of the <see cref="SelectedType"/> (shown on the button opening the gallery).</summary>
+    public VisualTypeOptionViewModel SelectedTypeOption => TypeOptions.FirstOrDefault(o => o.Type == _selectedType) ?? TypeOptions[0];
 
     /// <summary>Whether the visual type gallery is open.</summary>
     public bool IsTypeGalleryOpen
@@ -176,6 +197,9 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
 
     public ObservableCollection<ShelfItemViewModel> Values { get; } = [];
 
+    /// <summary>The measures shown in the tooltips of a chart, besides its values.</summary>
+    public ObservableCollection<ShelfItemViewModel> TooltipValues { get; } = [];
+
     public ObservableCollection<FilterItemViewModel> Filters { get; } = [];
 
     /// <summary>The wells as the visual type sees them (names, use, hints, see <see cref="ShelfViewModel"/>).</summary>
@@ -185,9 +209,11 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
 
     public ShelfViewModel ValuesWell { get; }
 
+    public ShelfViewModel TooltipWell { get; }
+
     public ShelfViewModel FiltersWell { get; }
 
-    private IEnumerable<ShelfViewModel> Wells => [AxisWell, LegendWell, ValuesWell, FiltersWell];
+    private IEnumerable<ShelfViewModel> Wells => [AxisWell, LegendWell, ValuesWell, TooltipWell, FiltersWell];
 
     /// <summary>
     /// The item being dragged (a field or a chip), set by the designer's view while a drag is in progress: each well
@@ -279,13 +305,13 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         set { if (SetProperty(ref _title, value)) Rebuild(); }
     }
 
-    public MarkType SelectedMark
+    public VisualType SelectedType
     {
-        get => _selectedMark;
+        get => _selectedType;
         set
         {
-            if (!SetProperty(ref _selectedMark, value)) return;
-            SyncSelectedMark();
+            if (!SetProperty(ref _selectedType, value)) return;
+            SyncSelectedType();
             Rebuild();
         }
     }
@@ -295,6 +321,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         Shelf.Axis => AxisWell,
         Shelf.Legend => LegendWell,
         Shelf.Values => ValuesWell,
+        Shelf.Tooltip => TooltipWell,
         _ => FiltersWell,
     };
 
@@ -303,6 +330,108 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     {
         get => _top;
         set { if (SetProperty(ref _top, value is > 0 ? value : null)) Rebuild(); }
+    }
+
+    /// <summary>The minimum of a gauge; null: 0.</summary>
+    public double? GaugeMinimum
+    {
+        get => _gauge?.Minimum;
+        set => SetGauge((_gauge ?? new()) with { Minimum = value });
+    }
+
+    /// <summary>The maximum of a gauge; null: a round number above the value and the target.</summary>
+    public double? GaugeMaximum
+    {
+        get => _gauge?.Maximum;
+        set => SetGauge((_gauge ?? new()) with { Maximum = value });
+    }
+
+    /// <summary>The target marked on a gauge; null: none.</summary>
+    public double? GaugeTarget
+    {
+        get => _gauge?.Target;
+        set => SetGauge((_gauge ?? new()) with { Target = value });
+    }
+
+    /// <summary>Where the legend of a chart goes (cartesian charts, pies and donuts).</summary>
+    public ChartLegend LegendPosition
+    {
+        get => _legendPosition;
+        set
+        {
+            if (SetProperty(ref _legendPosition, value)) Rebuild();
+        }
+    }
+
+    public static IReadOnlyList<Option<ChartLegend>> LegendPositionOptions { get; } =
+    [
+        new(ChartLegend.Auto, () => Strings.LegendAuto),
+        new(ChartLegend.Right, () => Strings.LegendRight),
+        new(ChartLegend.Bottom, () => Strings.LegendBottom),
+        new(ChartLegend.Top, () => Strings.LegendTop),
+        new(ChartLegend.Left, () => Strings.LegendLeft),
+        new(ChartLegend.Hidden, () => Strings.LegendHidden),
+    ];
+
+    private bool HasLegend() => SelectedType.IsCartesian() || SelectedType.IsCircular();
+
+    /// <summary>Whether the chart shows tooltips.</summary>
+    public bool ShowTooltips
+    {
+        get => !_tooltip.IsHidden;
+        set => SetTooltip(_tooltip with { IsHidden = !value });
+    }
+
+    /// <summary>Whether tooltips show the category (their title).</summary>
+    public bool TooltipShowsCategory
+    {
+        get => !_tooltip.HideCategory;
+        set => SetTooltip(_tooltip with { HideCategory = !value });
+    }
+
+    /// <summary>Whether tooltips show the names of the series.</summary>
+    public bool TooltipShowsSeries
+    {
+        get => !_tooltip.HideSeries;
+        set => SetTooltip(_tooltip with { HideSeries = !value });
+    }
+
+    /// <summary>Whether tooltips show each value's share of its series' total.</summary>
+    public bool TooltipShowsPercent
+    {
+        get => _tooltip.ShowPercent;
+        set => SetTooltip(_tooltip with { ShowPercent = value });
+    }
+
+    /// <summary>A text replacing the tooltip's content, with fields between braces ({category}, {value}...); empty for none.</summary>
+    public string TooltipTemplate
+    {
+        get => _tooltip.Template ?? "";
+        set => SetTooltip(_tooltip with { Template = string.IsNullOrWhiteSpace(value) ? null : value });
+    }
+
+    /// <summary>The fields a tooltip text can use: the category, the hovered series and value, and the measures' captions.</summary>
+    public IReadOnlyList<string> TooltipFields =>
+        ["category", "series", "value", "percent", .. Values.Concat(TooltipValues).Select(c => c.Caption).Distinct()];
+
+    private void SetTooltip(TooltipSettings tooltip)
+    {
+        _tooltip = tooltip;
+        OnPropertyChanged(nameof(ShowTooltips));
+        OnPropertyChanged(nameof(TooltipShowsCategory));
+        OnPropertyChanged(nameof(TooltipShowsSeries));
+        OnPropertyChanged(nameof(TooltipShowsPercent));
+        OnPropertyChanged(nameof(TooltipTemplate));
+        Rebuild();
+    }
+
+    private void SetGauge(GaugeSettings gauge)
+    {
+        _gauge = gauge is { Minimum: null, Maximum: null, Target: null } ? null : gauge;
+        OnPropertyChanged(nameof(GaugeMinimum));
+        OnPropertyChanged(nameof(GaugeMaximum));
+        OnPropertyChanged(nameof(GaugeTarget));
+        Rebuild();
     }
 
     /// <summary>The active sort in words ("Amount, descending"), or null when the visual is not sorted.</summary>
@@ -319,12 +448,17 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         private set => SetProperty(ref _visual, value);
     }
 
-    public bool CanDrop(FieldDescriptor field, Shelf shelf) => ShelfViewModel.IsUsedBy(shelf, SelectedMark) && shelf switch
+    public bool CanDrop(FieldDescriptor field, Shelf shelf) => Accepts(field, shelf) && DropRefusal(field, shelf) is null;
+
+    // What the wells take, before the rules
+    private bool Accepts(FieldDescriptor field, Shelf shelf) => ShelfViewModel.IsUsedBy(shelf, SelectedType, Context.VisualTypes) && shelf switch
     {
-        Shelf.Values => field.Kind == FieldKind.Measure,
-        Shelf.Axis => field.Kind == FieldKind.Dimension && Axis.Count < MaxAxisFields && Axis.All(a => a.Field != field),
+        Shelf.Values => field.Kind == FieldKind.Measure && Values.Count < Limit(shelf),
+        Shelf.Tooltip => field.Kind == FieldKind.Measure && TooltipValues.All(t => t.Field != field),
+        Shelf.Axis => field.Kind == FieldKind.Dimension && Axis.Count < Limit(shelf) && Axis.All(a => a.Field != field),
         Shelf.Legend => field.Kind == FieldKind.Dimension,
-        Shelf.Filters => field.Kind == FieldKind.Dimension && Filters.All(f => f.Field != field),
+        // A measure filters the visual's groups by comparing its value
+        Shelf.Filters => Filters.All(f => f.Field != field),
         _ => false,
     };
 
@@ -335,15 +469,17 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     /// or a <see cref="ModelField"/> of the selected model, see <see cref="CanDrop(FieldDescriptor, Shelf)"/>), a chip
     /// moved within its shelf, or a dimension moved between Axis and Legend.
     /// </summary>
-    public bool CanDrop(object item, Shelf shelf) => ShelfViewModel.IsUsedBy(shelf, SelectedMark) && Unwrap(item) switch
+    public bool CanDrop(object item, Shelf shelf) => Accepts(item, shelf) && DropRefusal(item, shelf) is null;
+
+    private bool Accepts(object item, Shelf shelf) => ShelfViewModel.IsUsedBy(shelf, SelectedType, Context.VisualTypes) && Unwrap(item) switch
     {
-        FieldDescriptor field => CanDrop(field, shelf),
+        FieldDescriptor field => Accepts(field, shelf),
         // A chip of another designer (or already removed) is not ours to move
         ShelfItemViewModel chip when !Collection(chip.Shelf).Contains(chip) => false,
         ShelfItemViewModel chip when chip.Shelf == shelf => true,
         ShelfItemViewModel chip => (chip.Shelf, shelf) switch
         {
-            (Shelf.Legend, Shelf.Axis) => CanDrop(chip.Field, Shelf.Axis),
+            (Shelf.Legend, Shelf.Axis) => Accepts(chip.Field, Shelf.Axis),
             (Shelf.Axis, Shelf.Legend) => true,
             _ => false,
         },
@@ -372,7 +508,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
                 break;
             case ShelfItemViewModel chip:
                 Collection(chip.Shelf).Remove(chip);
-                Insert(Collection(shelf), index, new ShelfItemViewModel(chip.Field, shelf, Rebuild) { Grain = chip.Grain, SortDirection = chip.SortDirection });
+                Insert(Collection(shelf), index, new ShelfItemViewModel(chip.Field, shelf, Rebuild) { Grain = chip.Grain, SortDirection = chip.SortDirection, Labels = chip.Labels });
                 break;
             case FilterItemViewModel filter:
                 Move(Filters, filter, index);
@@ -400,8 +536,8 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     /// </summary>
     public string? RefusalReason(object item, Shelf shelf)
     {
-        if (CanDrop(item, shelf)) return null;
-        if (!ShelfViewModel.IsUsedBy(shelf, SelectedMark)) return Strings.Format(Strings.DropNotUsed, WellOf(shelf).Label);
+        if (Accepts(item, shelf)) return DropRefusal(item, shelf);
+        if (!ShelfViewModel.IsUsedBy(shelf, SelectedType, Context.VisualTypes)) return Strings.Format(Strings.DropNotUsed, WellOf(shelf).Label);
         if (item is ModelField field && field.Model != _selectedModel)
             return Strings.Format(Strings.DropOtherModel, field.Caption, field.Model.Metadata.Caption);
         return Unwrap(item) switch
@@ -416,17 +552,27 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
 
     private string? FieldRefusal(FieldDescriptor field, Shelf shelf)
     {
-        if (shelf == Shelf.Values)
-            return field.Kind == FieldKind.Measure ? null : Strings.DropMeasuresOnly;
-        if (field.Kind != FieldKind.Dimension) return Strings.Format(Strings.DropDimensionsOnly, ShelfName(shelf));
+        if (shelf is Shelf.Values or Shelf.Tooltip)
+            return field.Kind != FieldKind.Measure ? Strings.DropMeasuresOnly
+                : shelf == Shelf.Tooltip && TooltipValues.Any(t => t.Field == field) ? Strings.Format(Strings.DropAlreadyThere, field.Caption, ShelfName(shelf))
+                : shelf == Shelf.Values && Values.Count >= Limit(shelf) ? WellFull(shelf)
+                : null;
+        if (field.Kind != FieldKind.Dimension && shelf != Shelf.Filters) return Strings.Format(Strings.DropDimensionsOnly, ShelfName(shelf));
         return shelf switch
         {
             Shelf.Axis when Axis.Any(a => a.Field == field) => Strings.Format(Strings.DropAlreadyThere, field.Caption, ShelfName(shelf)),
-            Shelf.Axis when Axis.Count >= MaxAxisFields => Strings.Format(Strings.DropAxisFull, MaxAxisFields),
+            Shelf.Axis when Axis.Count >= Limit(shelf) => WellFull(shelf),
             Shelf.Filters when Filters.Any(f => f.Field == field) => Strings.Format(Strings.DropAlreadyThere, field.Caption, ShelfName(shelf)),
             _ => null,
         };
     }
+
+    // The fields the visual type takes in a well
+    private int Limit(Shelf shelf) => ShelfViewModel.DefinitionOf(shelf, SelectedType, Context.VisualTypes)?.MaxFields ?? int.MaxValue;
+
+    private string WellFull(Shelf shelf) => Limit(shelf) == 1
+        ? Strings.Format(Strings.DropWellSingleField, ShelfName(shelf))
+        : Strings.Format(Strings.DropWellFull, ShelfName(shelf), Limit(shelf));
 
     // The name the well shows for the visual type
     private string ShelfName(Shelf shelf) => WellOf(shelf).Label;
@@ -439,6 +585,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         Shelf.Axis => Axis,
         Shelf.Legend => Legend,
         Shelf.Values => Values,
+        Shelf.Tooltip => TooltipValues,
         _ => throw new ArgumentOutOfRangeException(nameof(shelf)),
     };
 
@@ -478,11 +625,16 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         Axis.Clear();
         Legend.Clear();
         Values.Clear();
+        TooltipValues.Clear();
         Filters.Clear();
         _title = "";
         OnPropertyChanged(nameof(Title));
         _visualId = NewId();
         _top = null;
+        _gauge = null;
+        _tooltip = new();
+        _legendPosition = ChartLegend.Auto;
+        OnPropertyChanged(nameof(LegendPosition));
         OnPropertyChanged(nameof(Top));
         _extensions = null;
         _hiddenFilters = [];
@@ -508,36 +660,47 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         var metadata = model.Metadata;
         _visualId = visual.Id;
         _title = visual.Title;
-        _selectedMark = visual.Mark;
+        _selectedType = visual.Type;
         _top = visual.Top;
+        _gauge = visual.Gauge;
+        _tooltip = (visual.Tooltip ?? new()) with { Values = [] };
+        _legendPosition = visual.LegendPosition;
+        OnPropertyChanged(nameof(LegendPosition));
         _extensions = visual.Extensions;
         OnPropertyChanged(nameof(Title));
-        OnPropertyChanged(nameof(SelectedMark));
-        SyncSelectedMark();
+        OnPropertyChanged(nameof(SelectedType));
+        SyncSelectedType();
         OnPropertyChanged(nameof(Top));
         foreach (var a in visual.Axis)
-            Axis.Add(new(metadata.GetField(a.Field), Shelf.Axis, Rebuild) { Grain = a.Grain });
+            Axis.Add(new(metadata.GetField(a.Field), Shelf.Axis, Rebuild) { Grain = a.Grain, Labels = a.Labels });
         if (visual.Legend is { } legend)
-            Legend.Add(new(metadata.GetField(legend.Field), Shelf.Legend, Rebuild) { Grain = legend.Grain });
+            Legend.Add(new(metadata.GetField(legend.Field), Shelf.Legend, Rebuild) { Grain = legend.Grain, Labels = legend.Labels });
         foreach (var v in visual.Values)
         {
             var field = Context.GetField(model, v.Measure);
-            Values.Add(new(field, Shelf.Values, Rebuild)
+            var chip = new ShelfItemViewModel(field, Shelf.Values, Rebuild)
             {
                 Aggregation = v.Aggregation ?? field.DefaultAggregation ?? Aggregation.Sum,
-                SeriesMark = v.Mark,
+                SeriesType = v.SeriesType,
                 SecondaryAxis = v.SecondaryAxis,
                 Time = v.Time,
-            });
+            };
+            chip.LoadFormat(v.Format);
+            Values.Add(chip);
+        }
+        foreach (var t in visual.Tooltip?.Values ?? [])
+        {
+            var field = Context.GetField(model, t.Measure);
+            TooltipValues.Add(new ShelfItemViewModel(field, Shelf.Tooltip, Rebuild) { Aggregation = t.Aggregation ?? field.DefaultAggregation ?? Aggregation.Sum });
         }
         // A sort on a column that is not displayed is dropped, as the query could not sort on it
         if (visual.Sort is { } sort && Axis.Concat(Legend).Concat(Values).FirstOrDefault(c => c.Key == sort.Key) is { } sorted)
             sorted.SortDirection = sort.Descending ? ListSortDirection.Descending : ListSortDirection.Ascending;
         foreach (var f in visual.Filters)
         {
-            // Filters on period keys (a clicked quarter...) have no shelf: they are kept without being shown
-            if (f.Grain == DateGrain.None || f.Operator.IsPeriod())
-                Filters.Add(new(metadata.GetField(f.Field), model, Rebuild, f.Values, f.Operator, f.Grain));
+            // Filters on period keys (a clicked quarter...) or on several fields have no shelf: they are kept without being shown
+            if (f.Operator != FilterOperator.AnyOf && (f.Grain == DateGrain.None || f.Operator.IsPeriod()))
+                Filters.Add(new(Context.GetField(model, f.Field), model, Rebuild, f.Values, f.Operator, f.Grain));
             else
                 _hiddenFilters = [.. _hiddenFilters, f];
         }
@@ -552,6 +715,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         {
             case ShelfItemViewModel s when s.Shelf == Shelf.Axis: Axis.Remove(s); break;
             case ShelfItemViewModel s when s.Shelf == Shelf.Legend: Legend.Remove(s); break;
+            case ShelfItemViewModel s when s.Shelf == Shelf.Tooltip: TooltipValues.Remove(s); break;
             case ShelfItemViewModel s: Values.Remove(s); break;
             case FilterItemViewModel f: Filters.Remove(f); break;
         }
@@ -562,32 +726,106 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     {
         if (_suspended) return;
         // Chart types per measure only exist in cartesian charts; the settings are kept for when the user comes back
-        foreach (var value in Values) value.ShowSeriesOptions = SelectedMark.IsCartesian();
-        var axis = Axis.Select(a => a.ToFieldRef()).ToArray();
-        var legend = Legend.FirstOrDefault()?.ToFieldRef();
-        var values = Values.Select(v => v.ToMeasureRef()).ToArray();
-        // The sort follows its chip: it goes with it, and its key follows the chip's aggregation or grain
+        foreach (var value in Values) value.ShowSeriesOptions = SelectedType.IsCartesian();
         var sorted = Axis.Concat(Legend).Concat(Values).FirstOrDefault(c => c.SortDirection is not null);
         SortSummary = sorted is null ? null : Strings.Format(Strings.SortSummary, sorted.Caption,
             sorted.SortDirection == ListSortDirection.Descending ? Strings.SortDescending : Strings.SortAscending);
-        Visual = _selectedModel is null ? null : new VisualDefinition
+        var visual = Build(SelectedType, Axis, Legend, Values, TooltipValues, Filters);
+        // A change a rule refuses: the designer goes back to the visual as it was
+        if (_historyHold == 0 && _current is { } current && visual is not null && RefusalOf(current, visual) is { } refusal)
         {
-            Id = _visualId,
-            Title = Title,
-            Model = _selectedModel.Metadata.Name,
-            Mark = SelectedMark,
-            Axis = axis,
-            Legend = legend,
-            Values = values,
-            Filters = [.. Filters.Select(f => f.ToFilterSpec()).OfType<FilterSpec>(), .. _hiddenFilters],
-            Sort = sorted is null ? null : new SortSpec(sorted.Key, sorted.SortDirection == ListSortDirection.Descending),
-            Top = _top,
-            Extensions = _extensions,
-        };
+            Restore(current);
+            Refusal = refusal;
+            return;
+        }
+        Visual = visual;
         RefreshRendererOptions();
         SyncProperties();
         Record();
     }
+
+    /// <summary>
+    /// The visual the designer shows with these chips and this type: what <see cref="Rebuild"/> makes, and what the
+    /// rules are asked about before the user makes a change.
+    /// </summary>
+    private VisualDefinition? Build(VisualType type, IEnumerable<ShelfItemViewModel> axisChips, IEnumerable<ShelfItemViewModel> legendChips,
+        IEnumerable<ShelfItemViewModel> valueChips, IEnumerable<ShelfItemViewModel> tooltipChips, IEnumerable<FilterItemViewModel> filters)
+    {
+        if (_selectedModel is null) return null;
+        // Saved only when it differs from the default; kept for when the user comes back to a chart
+        var tooltip = _tooltip with { Values = [.. tooltipChips.Select(t => t.ToMeasureRef())] };
+        var hasTooltip = Tooltips.Has(type, Context.VisualTypes) && (tooltip.Values.Count > 0 || _tooltip is not { IsHidden: false, HideCategory: false, HideSeries: false, ShowPercent: false, Template: null });
+        // The sort follows its chip: it goes with it, and its key follows the chip's aggregation or grain
+        var sorted = axisChips.Concat(legendChips).Concat(valueChips).FirstOrDefault(c => c.SortDirection is not null);
+        return new VisualDefinition
+        {
+            Id = _visualId,
+            Title = Title,
+            Model = _selectedModel.Metadata.Name,
+            Type = type,
+            Axis = [.. axisChips.Select(a => a.ToFieldRef())],
+            Legend = legendChips.FirstOrDefault()?.ToFieldRef(),
+            Values = [.. valueChips.Select(v => v.ToMeasureRef())],
+            Filters = [.. filters.Select(f => f.ToFilterSpec()).OfType<FilterSpec>(), .. _hiddenFilters],
+            Sort = sorted is null ? null : new SortSpec(sorted.Key, sorted.SortDirection == ListSortDirection.Descending),
+            Top = _top,
+            Gauge = type == VisualType.Gauge ? _gauge : null,
+            Tooltip = hasTooltip ? tooltip : null,
+            LegendPosition = type.IsCartesian() || type.IsCircular() ? _legendPosition : ChartLegend.Auto,
+            Extensions = _extensions,
+        };
+    }
+
+    // --- Rules ---
+
+    private string? RefusalOf(VisualDefinition before, VisualDefinition after)
+    {
+        if (Rules.Count == 0) return null;
+        var change = new VisualChange(before, after);
+        return Rules.Select(rule => rule(change)).FirstOrDefault(refusal => refusal is not null);
+    }
+
+    // What the rules would say of a visual made from the current one, before the user makes it
+    private string? Try(VisualDefinition? candidate) =>
+        Rules.Count == 0 || Visual is not { } current || candidate is null ? null : RefusalOf(current, candidate);
+
+    /// <summary>What the rules say of a field or a chip dropped on a well (a chip moved within its well is checked once moved).</summary>
+    private string? DropRefusal(object item, Shelf shelf)
+    {
+        if (Rules.Count == 0 || shelf == Shelf.Filters) return null;
+        var lists = Lists();
+        switch (Unwrap(item))
+        {
+            case FieldDescriptor field:
+                lists[shelf].Add(new ShelfItemViewModel(field, shelf, () => { }));
+                break;
+            case ShelfItemViewModel chip when chip.Shelf != shelf:
+                lists[chip.Shelf].Remove(chip);
+                lists[shelf].Add(new ShelfItemViewModel(chip.Field, shelf, () => { }) { Grain = chip.Grain, Labels = chip.Labels });
+                break;
+            default:
+                return null;
+        }
+        return Try(Build(SelectedType, lists[Shelf.Axis], lists[Shelf.Legend], lists[Shelf.Values], lists[Shelf.Tooltip], Filters));
+    }
+
+    /// <summary>What the rules say of a chip or a filter removed.</summary>
+    private string? RemoveRefusal(object item)
+    {
+        if (Rules.Count == 0) return null;
+        var lists = Lists();
+        if (item is ShelfItemViewModel chip) lists[chip.Shelf].Remove(chip);
+        return Try(Build(SelectedType, lists[Shelf.Axis], lists[Shelf.Legend], lists[Shelf.Values], lists[Shelf.Tooltip],
+            item is FilterItemViewModel filter ? Filters.Where(f => f != filter) : Filters));
+    }
+
+    private Dictionary<Shelf, List<ShelfItemViewModel>> Lists() => new()
+    {
+        [Shelf.Axis] = [.. Axis],
+        [Shelf.Legend] = [.. Legend],
+        [Shelf.Values] = [.. Values],
+        [Shelf.Tooltip] = [.. TooltipValues],
+    };
 
     // --- Properties panel ---
 
@@ -616,9 +854,10 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             SelectedItem = null;
             return;
         }
-        var shape = (_selectedItem, Options: RendererOptions.ToArray());
-        if (_propertiesShape is ValueTuple<object?, RendererOptionViewModel[]> previous
-            && Equals(previous.Item1, shape._selectedItem) && previous.Item2.SequenceEqual(shape.Options))
+        // Only charts have a tooltips section
+        var shape = (_selectedItem, Options: RendererOptions.ToArray(), Tooltips: Tooltips.Has(SelectedType, Context.VisualTypes));
+        if (_propertiesShape is ValueTuple<object?, RendererOptionViewModel[], bool> previous
+            && Equals(previous.Item1, shape._selectedItem) && previous.Item2.SequenceEqual(shape.Options) && previous.Item3 == shape.Tooltips)
         {
             foreach (var property in Properties.SelectMany(s => s.Properties)) property.Refresh();
             return;
@@ -650,13 +889,22 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
                         () => chip.Grain, v => chip.Grain = v, () => chip.HasGrain),
                     DesignerProperty.Choice("Time", () => Strings.PropertyTime, ShelfItemViewModel.TimeOptions,
                         () => chip.Time, v => chip.Time = v, () => chip.IsValue, () => Strings.TimeHint),
-                    DesignerProperty.Choice("SeriesMark", () => Strings.PropertySeriesMark, ShelfItemViewModel.SeriesMarkOptions,
-                        () => chip.SeriesMark, v => chip.SeriesMark = v, () => chip.ShowSeriesOptions, () => Strings.SeriesMarkHint),
+                    DesignerProperty.Choice("SeriesType", () => Strings.PropertySeriesMark, ShelfItemViewModel.SeriesTypeOptions,
+                        () => chip.SeriesType, v => chip.SeriesType = v, () => chip.ShowSeriesOptions, () => Strings.SeriesMarkHint),
                     DesignerProperty.Toggle("SecondaryAxis", () => Strings.PropertySecondaryAxis,
                         () => chip.SecondaryAxis, v => chip.SecondaryAxis = v, () => chip.ShowSeriesOptions, () => Strings.SecondaryAxisHint),
                     DesignerProperty.Choice("Sort", () => Strings.Sort, ShelfItemViewModel.SortOptions,
                         () => chip.SortDirection, v => chip.SortDirection = v, () => chip.CanSort, () => Strings.SortHint),
                 ]));
+                if (chip.HasValueLabels && _selectedModel is { } model)
+                    sections.Add(new DesignerPropertySection(DesignerPropertySections.ValueLabels, () => Strings.PropertiesValueLabels,
+                        [DesignerProperty.Custom("Labels", () => Strings.PropertiesValueLabels, chip.ValueLabels(model))]));
+                if (chip.IsValue)
+                {
+                    chip.Format.Target = ValueFormatViewModel.TargetOf(SelectedType, Context.VisualTypes);
+                    sections.Add(new DesignerPropertySection(DesignerPropertySections.Formatting, () => Strings.PropertiesFormatting,
+                        [DesignerProperty.Custom("Format", () => Strings.PropertiesFormatting, chip.Format)]));
+                }
                 break;
             case FilterItemViewModel filter:
                 sections.Add(new DesignerPropertySection(DesignerPropertySections.Filter, () => filter.Caption,
@@ -668,11 +916,28 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             DesignerProperty.Text("Title", () => Strings.VisualTitle, () => Title, v => Title = v),
             DesignerProperty.Info("Sort", () => Strings.Sort, () => SortSummary ?? Strings.NoSort),
             DesignerProperty.Number("Top", () => Strings.Top, () => Top, v => Top = v is { } top ? (int)Math.Round(top) : null, description: () => Strings.TopHint),
+            DesignerProperty.Choice("LegendPosition", () => Strings.PropertyLegendPosition, LegendPositionOptions,
+                () => LegendPosition, v => LegendPosition = v, HasLegend, () => Strings.LegendPositionHint),
+            DesignerProperty.Number("GaugeMinimum", () => Strings.GaugeMinimum, () => GaugeMinimum, v => GaugeMinimum = v, IsGauge, () => Strings.GaugeScaleHint),
+            DesignerProperty.Number("GaugeMaximum", () => Strings.GaugeMaximum, () => GaugeMaximum, v => GaugeMaximum = v, IsGauge),
+            DesignerProperty.Number("GaugeTarget", () => Strings.GaugeTarget, () => GaugeTarget, v => GaugeTarget = v, IsGauge),
         ]));
+        if (Tooltips.Has(SelectedType, Context.VisualTypes))
+            sections.Add(new DesignerPropertySection(DesignerPropertySections.Tooltips, () => Strings.PropertiesTooltips,
+            [
+                DesignerProperty.Toggle("ShowTooltips", () => Strings.TooltipShow, () => ShowTooltips, v => ShowTooltips = v),
+                DesignerProperty.Toggle("TooltipCategory", () => Strings.TooltipCategory, () => TooltipShowsCategory, v => TooltipShowsCategory = v, () => ShowTooltips),
+                DesignerProperty.Toggle("TooltipSeries", () => Strings.TooltipSeries, () => TooltipShowsSeries, v => TooltipShowsSeries = v, () => ShowTooltips),
+                DesignerProperty.Toggle("TooltipPercent", () => Strings.TooltipPercent, () => TooltipShowsPercent, v => TooltipShowsPercent = v, () => ShowTooltips),
+                DesignerProperty.Text("TooltipTemplate", () => Strings.TooltipTemplate, () => TooltipTemplate, v => TooltipTemplate = v, () => ShowTooltips,
+                    () => Strings.Format(Strings.TooltipTemplateHint, string.Join(", ", TooltipFields.Select(f => $"{{{f}}}")))),
+            ]));
         if (RendererOptions.Count > 0)
             sections.Add(new DesignerPropertySection(DesignerPropertySections.Options, () => Strings.RendererOptions, RendererOptions.Select(OptionProperty)));
         return sections;
     }
+
+    private bool IsGauge() => SelectedType == VisualType.Gauge;
 
     private static DesignerProperty OptionProperty(RendererOptionViewModel option) => option.Option.Kind switch
     {
@@ -705,22 +970,28 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     }
 
     /// <summary>
-    /// Shows the options of the renderer resolved for the visual. The option view-models are kept while the same
-    /// options apply, so that editing one (typing a number) is not interrupted by the visual it updates.
+    /// Shows the options of the visual's type (saved under its id), then those of the renderer resolved for it (saved
+    /// under its name). The option view-models are kept while the same options apply, so that editing one (typing a
+    /// number) is not interrupted by the visual it updates.
     /// </summary>
     private void RefreshRendererOptions()
     {
         var visual = Visual;
         var renderer = visual is null ? null : Context.ResolveRenderer(visual);
-        var options = renderer is null ? [] : renderer.Capabilities.Options.Where(o => o.AppliesTo?.Invoke(visual!) ?? true).ToList();
-        if (RendererOptions.Select(o => (o.Renderer, o.Option)).SequenceEqual(options.Select(o => (renderer!.Name, o))))
+        IEnumerable<(string Owner, RendererOption Option)> declared = visual is null ? [] :
+        [
+            .. Context.VisualTypes.Get(visual.Type).Options.Select(o => (visual.Type.Id, o)),
+            .. renderer?.Capabilities.Options.Select(o => (renderer.Name, o)) ?? [],
+        ];
+        var options = declared.Where(o => o.Option.AppliesTo?.Invoke(visual!) ?? true).ToList();
+        if (RendererOptions.Select(o => (o.Renderer, o.Option)).SequenceEqual(options))
         {
             foreach (var option in RendererOptions) option.Sync(visual!.GetRendererOption(option.Renderer, option.Option));
             return;
         }
         RendererOptions.Clear();
-        foreach (var option in options)
-            RendererOptions.Add(new(renderer!.Name, option, visual!.GetRendererOption(renderer.Name, option), OnRendererOptionChanged));
+        foreach (var (owner, option) in options)
+            RendererOptions.Add(new(owner, option, visual!.GetRendererOption(owner, option), OnRendererOptionChanged));
         OnPropertyChanged(nameof(HasRendererOptions));
     }
 
@@ -751,15 +1022,22 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     {
         OnPropertyChanged(nameof(Measures));
         if (Visual is not { } visual || _selectedModel is not { } model) return;
-        var calculated = visual.Values.Where(v => !model.Metadata.Fields.Any(f => f.Name == v.Measure)).ToArray();
-        if (calculated.Length == 0) return;
-        Reload(visual with { Values = visual.Values.Where(v => !calculated.Contains(v) || Context.Measures.Find(model.Metadata.Name, v.Measure) is not null).ToArray() });
+        bool Exists(MeasureRef v) => model.Metadata.Fields.Any(f => f.Name == v.Measure) || Context.Measures.Find(model.Metadata.Name, v.Measure) is not null;
+        // Reloaded when a measure it shows changed: deleted, or defined differently (renamed, redefined, restored...)
+        var shown = visual.Values.Concat(visual.Tooltip?.Values ?? []).ToArray();
+        if (shown.All(Exists) && Values.Concat(TooltipValues).Select(c => c.Field).SequenceEqual(shown.Select(v => Context.GetField(model, v.Measure))))
+            return;
+        Reload(visual with
+        {
+            Values = visual.Values.Where(Exists).ToArray(),
+            Tooltip = visual.Tooltip is { } tooltip ? tooltip with { Values = tooltip.Values.Where(Exists).ToArray() } : null,
+        });
     }
 
     // --- Keyboard ---
 
     // The chips in reading order: the wells from top to bottom
-    private IReadOnlyList<object> Chips => [.. Axis, .. Legend, .. Values, .. Filters];
+    private IReadOnlyList<object> Chips => [.. Axis, .. Legend, .. Values, .. TooltipValues, .. Filters];
 
     private IList Items(Shelf shelf) => shelf == Shelf.Filters ? Filters : Collection(shelf);
 
@@ -836,11 +1114,13 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         _redo.Clear();
         _current = visual;
         _currentJson = json;
+        Refusal = null;
         OnHistoryChanged();
     }
 
     private void ResetHistory()
     {
+        Refusal = null;
         _undo.Clear();
         _redo.Clear();
         _current = Visual;
@@ -895,19 +1175,27 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         CommandManager.InvalidateRequerySuggested();
     }
 
-    private void SyncSelectedMark()
+    private void SyncSelectedType()
     {
-        foreach (var option in MarkOptions) option.IsSelected = option.Mark == _selectedMark;
-        OnPropertyChanged(nameof(SelectedMarkOption));
+        foreach (var option in TypeOptions) option.IsSelected = option.Type == _selectedType;
+        OnPropertyChanged(nameof(SelectedTypeOption));
         // The wells take the names and the use of the new type (not built yet while the designer is constructed)
         if (AxisWell is null) return;
         foreach (var well in Wells) well.Refresh();
+        // The format editors show what the new type uses
+        foreach (var chip in Values) chip.Format.Target = ValueFormatViewModel.TargetOf(_selectedType, Context.VisualTypes);
     }
 
     private void RefreshAvailability()
     {
-        foreach (var option in MarkOptions)
-            option.IsAvailable = Context.ResolveRenderer(option.Mark) is not null;
+        foreach (var option in TypeOptions)
+        {
+            option.UnavailableReason = Context.ResolveRenderer(option.Type) is null ? Strings.NotSupportedByRenderer
+                : option.Type == _selectedType ? null
+                : Try(Build(option.Type, Axis, Legend, Values, TooltipValues, Filters));
+            option.IsAvailable = option.UnavailableReason is null;
+        }
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private static string NewId() => Guid.NewGuid().ToString("N");

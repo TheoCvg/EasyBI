@@ -1,0 +1,117 @@
+# Documentation site, built by Zensical (https://zensical.org) from the docs folder and published on GitHub Pages by
+# .github/workflows/docs.yml: one version per release tag, and "dev" for the develop branch.
+
+[project]
+site_name = "EasyBI"
+site_description = "A self-service BI library for WPF"
+site_url = "https://theocvg.github.io/EasyBI/"
+repo_url = "https://github.com/TheoCvg/EasyBI"
+repo_name = "TheoCvg/EasyBI"
+# The edit button of a page opens its Markdown file on the development branch
+edit_uri = "edit/develop/docs/"
+copyright = "EasyBI contributors"
+nav = [
+  { "Home" = "index.md" },
+  { "Getting started" = "getting-started.md" },
+  { "Guide" = [
+    { "Semantic model" = "guide/semantic-model.md" },
+    { "The designer" = [
+      "guide/designer/index.md",
+      { "Building a visual" = "guide/designer/building-a-visual.md" },
+      { "Rules" = "guide/designer/rules.md" },
+      { "Customizing" = "guide/designer/customizing.md" },
+    ] },
+    { "Calculated measures" = "guide/calculated-measures.md" },
+    { "Filters" = "guide/filtering.md" },
+    { "Cross-filtering" = "guide/cross-filtering.md" },
+  ] },
+  { "Visuals" = [
+    { "Visual types" = "visuals/index.md" },
+    { "Combined charts" = "visuals/combined-charts.md" },
+    { "Several axis fields" = "visuals/axis-fields.md" },
+    { "Matrix" = "visuals/matrix.md" },
+    { "Comparisons over time" = "visuals/time-comparisons.md" },
+    { "Conditional formatting" = "visuals/conditional-formatting.md" },
+    { "Tooltips" = "visuals/tooltips.md" },
+    { "Legends" = "visuals/legends.md" },
+    { "Value labels" = "visuals/value-labels.md" },
+  ] },
+  { "Dashboard" = [
+    "dashboard/index.md",
+    { "What users do" = "dashboard/using.md" },
+    { "Layout" = "dashboard/layout.md" },
+    { "Customizing" = "dashboard/customizing.md" },
+  ] },
+  { "Customization" = [
+    { "Theming" = "customization/theming.md" },
+    { "Slots" = "customization/slots.md" },
+    { "Localization" = "customization/localization.md" },
+    { "Writing a connector" = "customization/connectors.md" },
+    { "Custom visual types" = "customization/visual-types.md" },
+    { "Drag and drop in your controls" = "dashboard/drag-and-drop.md" },
+  ] },
+  { "Reference" = [
+    { "Report format" = "reference/report-format.md" },
+    { "Known limitations" = "reference/limitations.md" },
+  ] },
+  { "Changelog" = "changelog.md" },
+  { "Contributing" = "contributing.md" },
+]
+
+[project.theme]
+language = "en"
+# Templates overriding the theme's: the banner of an older version
+custom_dir = "overrides"
+features = [
+  "content.action.edit",
+  "content.code.annotate",
+  "content.code.copy",
+  "content.tabs.link",
+  "navigation.footer",
+  "navigation.indexes",
+  "navigation.instant",
+  "navigation.path",
+  "navigation.sections",
+  "navigation.tabs",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to system preference"
+
+# The version selector, filled by mike (one version per release tag, "dev" for develop)
+[project.extra.version]
+provider = "mike"
+default = "latest"
+
+[project.markdown_extensions]
+admonition = {}
+attr_list = {}
+md_in_html = {}
+tables = {}
+toc.permalink = true
+pymdownx.details = {}
+pymdownx.highlight.anchor_linenums = true
+pymdownx.inlinehilite = {}
+pymdownx.keys = {}
+pymdownx.emoji = { emoji_index = "zensical.extensions.emoji.twemoji", emoji_generator = "zensical.extensions.emoji.to_svg" }
+pymdownx.superfences.custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+]
+pymdownx.tabbed.alternate_style = true

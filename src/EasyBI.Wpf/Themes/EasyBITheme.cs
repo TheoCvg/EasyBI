@@ -69,8 +69,26 @@ public static class EasyBITheme
     /// <summary>Error messages.</summary>
     public static ComponentResourceKey ErrorBrushKey { get; } = Key("Error");
 
+    /// <summary>Good values (conditional formats: the "success" color, high icons).</summary>
+    public static ComponentResourceKey SuccessBrushKey { get; } = Key("Success");
+
+    /// <summary>Values to watch (conditional formats: the "warning" color, middle icons).</summary>
+    public static ComponentResourceKey WarningBrushKey { get; } = Key("Warning");
+
     /// <summary>The Σ of measures in field lists.</summary>
     public static ComponentResourceKey MeasureBrushKey { get; } = Key("Measure");
+
+    /// <summary>Functions (SUM, IF...) and keywords (AND, OR...) in a formula.</summary>
+    public static ComponentResourceKey FormulaFunctionBrushKey { get; } = Key("FormulaFunction");
+
+    /// <summary>Dimensions in a formula and in the formula editor's lists (measures take <see cref="MeasureBrushKey"/>).</summary>
+    public static ComponentResourceKey FormulaDimensionBrushKey { get; } = Key("FormulaDimension");
+
+    /// <summary>Texts and dates ("North") in a formula.</summary>
+    public static ComponentResourceKey FormulaTextBrushKey { get; } = Key("FormulaText");
+
+    /// <summary>Numbers in a formula.</summary>
+    public static ComponentResourceKey FormulaNumberBrushKey { get; } = Key("FormulaNumber");
 
     /// <summary>Grid lines of charts and tables.</summary>
     public static ComponentResourceKey GridLineBrushKey { get; } = Key("GridLine");
@@ -99,6 +117,9 @@ public static class EasyBITheme
             MutedForeground = theme.MutedForeground ?? Color(MutedForegroundBrushKey),
             GridLine = theme.GridLine ?? Color(GridLineBrushKey),
             Background = theme.Background ?? Color(SurfaceBrushKey),
+            Success = theme.Success ?? Color(SuccessBrushKey),
+            Warning = theme.Warning ?? Color(WarningBrushKey),
+            Error = theme.Error ?? Color(ErrorBrushKey),
         };
     }
 

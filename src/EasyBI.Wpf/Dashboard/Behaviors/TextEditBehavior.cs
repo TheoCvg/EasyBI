@@ -45,7 +45,7 @@ public sealed class TextEditBehavior : DashboardBehavior
     /// <summary>Starts editing the text of an item.</summary>
     public void Begin(DashboardItem item)
     {
-        if (!CanEdit || item.Visual is not { Mark: MarkType.Text } visual) return;
+        if (!CanEdit || item.Visual is not { } visual || visual.Type != VisualType.Text) return;
         End(commit: true);
         var text = visual.Text ?? new TextContent();
         _item = item;
@@ -105,7 +105,7 @@ public sealed class TextEditBehavior : DashboardBehavior
             End(commit: false);
             e.Handled = true;
         }
-        else if (e.Key == Key.Enter && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        else if (e.Key == Key.Enter && ModifierKeysState.Ctrl)
         {
             End(commit: true);
             e.Handled = true;
@@ -117,7 +117,7 @@ public sealed class TextEditBehavior : DashboardBehavior
         if (_item is not { } item) return;
         _item = null;
         Overlay.Refresh();
-        if (commit && item.Visual is { Mark: MarkType.Text } visual && (visual.Text?.Text ?? "") != _editor.Text)
+        if (commit && item.Visual is { } visual && visual.Type == VisualType.Text && (visual.Text?.Text ?? "") != _editor.Text)
             View.SetVisual(item, visual with { Text = (visual.Text ?? new TextContent()) with { Text = _editor.Text } });
         // Give the keyboard back to the view so that its shortcuts keep working
         if (_editor.IsKeyboardFocused) View.Focus();

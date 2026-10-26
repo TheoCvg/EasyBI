@@ -4,6 +4,11 @@
     <ProjectReference Include="..\EasyBI.Abstractions\EasyBI.Abstractions.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Tests run the time calculations on a given day -->
+    <InternalsVisibleTo Include="EasyBI.Core.Tests" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Description>EasyBI query engine: semantic models over IQueryable (EF Core, LINQ to objects), expression-tree query translation, pivot, cross-filtering and JSON reports.</Description>

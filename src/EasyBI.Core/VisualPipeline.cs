@@ -7,38 +7,56 @@ namespace EasyBI.Core;
 /// <summary>Chains: visual definition → query → execution → pivoted data.</summary>
 public static class VisualPipeline
 {
-    /// <summary>True for the marks that show their own content (text, image) instead of querying a model.</summary>
-    public static bool IsContent(this MarkType mark) => mark is MarkType.Text or MarkType.Image;
+    private static readonly IReadOnlySet<VisualType> Cartesian =
+        new HashSet<VisualType> { VisualType.Bar, VisualType.StackedBar, VisualType.Line, VisualType.Area, VisualType.Scatter };
 
-    /// <summary>True for the marks drawn on category and value axes, which can be mixed in one chart.</summary>
-    public static bool IsCartesian(this MarkType mark) =>
-        mark is MarkType.Bar or MarkType.StackedBar or MarkType.Line or MarkType.Area or MarkType.Scatter;
+    /// <summary>True for the types that show their own content (text, image) instead of querying a model.</summary>
+    public static bool IsContent(this VisualType type) => type == VisualType.Text || type == VisualType.Image;
 
-    /// <summary>The chart type of a measure's series: its own mark in a cartesian chart, otherwise the visual's.</summary>
-    public static MarkType SeriesMark(this VisualDefinition visual, MeasureRef measure) =>
-        visual.Mark.IsCartesian() && measure.Mark is { } mark && mark.IsCartesian() ? mark : visual.Mark;
+    /// <summary>True for the types drawn on category and value axes, which can be mixed in one chart.</summary>
+    public static bool IsCartesian(this VisualType type) => Cartesian.Contains(type);
 
-    /// <summary>Every mark a renderer must support to draw the visual.</summary>
-    public static IReadOnlySet<MarkType> MarksOf(VisualDefinition visual) =>
-        visual.Values.Select(visual.SeriesMark).Append(visual.Mark).ToHashSet();
+    /// <summary>True for the types drawn as slices of a circle (one category per slice): a pie and a donut.</summary>
+    public static bool IsCircular(this VisualType type) => type == VisualType.Pie || type == VisualType.Donut;
+
+    /// <summary>The chart type of a measure's series: its own type in a cartesian chart, otherwise the visual's.</summary>
+    public static VisualType SeriesType(this VisualDefinition visual, MeasureRef measure) =>
+        visual.Type.IsCartesian() && measure.SeriesType is { } type && type.IsCartesian() ? type : visual.Type;
+
+    /// <summary>Every type a renderer must support to draw the visual: its own and those of its measures.</summary>
+    public static IReadOnlySet<VisualType> TypesOf(VisualDefinition visual) =>
+        visual.Values.Select(visual.SeriesType).Append(visual.Type).ToHashSet();
 
     /// <summary>Render request of a text or image visual: no query, empty data.</summary>
     public static RenderRequest PrepareContent(VisualDefinition visual, BiTheme? theme = null) =>
         new(visual, new ResultSet([], []), new ChartData(null, [], []), theme ?? BiTheme.Default);
 
-    /// <summary>The query of a visual; those of the end user's calculated <c>measures</c> it shows go with it.</summary>
-    public static AnalyticQuery ToQuery(this VisualDefinition visual, IEnumerable<CalculatedMeasure>? measures = null)
+    /// <summary>
+    /// The query of a visual; those of the end user's calculated <c>measures</c> it shows go with it, with those they use
+    /// (and, with the model's <c>metadata</c>, those its formula measures use). The visual <paramref name="types"/> tell
+    /// whether it has tooltips, whose measures are queried with it (EasyBI's types when null).
+    /// </summary>
+    public static AnalyticQuery ToQuery(this VisualDefinition visual, IEnumerable<CalculatedMeasure>? measures = null, ModelMetadata? metadata = null,
+        VisualTypeCatalog? types = null)
     {
         var groupBy = visual.Legend is null ? visual.Axis : [.. visual.Axis, visual.Legend];
-        var used = measures?.Where(m => m.Model == visual.Model && visual.Values.Any(v => v.Measure == m.Name)).ToArray();
+        // A chart's tooltips may show other measures: they are queried with it, not drawn
+        IEnumerable<MeasureRef> tooltip = Tooltips.Has(visual.Type, types) ? visual.Tooltip?.Values ?? [] : [];
+        // Shown, in a tooltip, or filtered on, and what they use
+        var names = visual.Values.Concat(tooltip).Select(v => v.Measure)
+            .Concat(visual.Filters.Where(f => f.Operator.IsComparison()).Select(f => f.Field));
+        var used = measures is null ? null : MeasureContext.Needed(names, measures.Where(m => m.Model == visual.Model), metadata);
         return new AnalyticQuery(
             groupBy,
-            // Chart types and axes only change the drawing: changing them must not query again
-            visual.Values.Select(v => v with { Mark = null, SecondaryAxis = false }).ToArray(),
+            // Chart types, axes and formats only change the drawing: changing them must not query again
+            visual.Values.Concat(tooltip)
+                .Select(v => v with { SeriesType = null, SecondaryAxis = false, Format = null })
+                .DistinctBy(v => v.Key)
+                .ToArray(),
             visual.Filters,
             visual.Sort is null ? null : [visual.Sort],
             visual.Top,
-            used is { Length: > 0 } ? used : null);
+            used is { Count: > 0 } ? used : null);
     }
 
     /// <summary>
@@ -54,9 +72,15 @@ public static class VisualPipeline
         VisualDefinition visual,
         BiTheme? theme = null,
         IEnumerable<CalculatedMeasure>? measures = null,
+        VisualTypeCatalog? types = null,
         CancellationToken cancellationToken = default)
     {
-        var result = await model.ExecuteWithTimeAsync(visual.ToQuery(measures), cancellationToken).ConfigureAwait(false);
+        if (visual.Type == VisualType.Matrix)
+        {
+            var (cells, matrix) = await MatrixBuilder.ExecuteAsync(model, visual, measures, cancellationToken).ConfigureAwait(false);
+            return new RenderRequest(visual, cells, ChartDataBuilder.Build(visual, cells), theme ?? BiTheme.Default) { Matrix = matrix };
+        }
+        var result = await model.ExecuteWithTimeAsync(visual.ToQuery(measures, model.Metadata, types), cancellationToken).ConfigureAwait(false);
         return new RenderRequest(visual, result, ChartDataBuilder.Build(visual, result), theme ?? BiTheme.Default);
     }
 }
@@ -93,8 +117,8 @@ public static class ChartDataBuilder
                 if (!seriesIndex.TryGetValue(seriesKey, out var s))
                 {
                     var name = legend < 0 ? column.Caption
-                        : measures.Length == 1 ? ValueFormatter.Display(legendValue)
-                        : $"{ValueFormatter.Display(legendValue)} · {column.Caption}";
+                        : measures.Length == 1 ? visual.Legend!.Display(legendValue)
+                        : $"{visual.Legend!.Display(legendValue)} · {column.Caption}";
                     seriesIndex[seriesKey] = s = series.Count;
                     series.Add((name, column.Format, legendValue, m, []));
                 }
@@ -104,20 +128,24 @@ public static class ChartDataBuilder
         }
 
         var caption = axis.Length == 0 ? null : string.Join(" / ", axis.Select(i => result.Columns[i].Caption));
+        // The visual's labels replace the values they name
+        var labels = categories.Select(c => (IReadOnlyList<string>)[.. c.Select((value, i) => visual.Axis[i].Display(value))]).ToArray();
         return new ChartData(
             caption,
-            categories.Select(c => c.Length == 0 ? Strings.Total : string.Join(" / ", c.Select(ValueFormatter.Display))).ToArray(),
+            labels.Select(c => c.Count == 0 ? Strings.Total : string.Join(" / ", c)).ToArray(),
             series.Select(s => new ChartSeries(
                 s.Name,
                 Enumerable.Range(0, categories.Count).Select(i => s.Values.GetValueOrDefault(i)).ToArray(),
                 s.Format)
             {
                 LegendValue = s.LegendValue,
-                Mark = visual.SeriesMark(visual.Values[s.Measure]),
-                SecondaryAxis = visual.Mark.IsCartesian() && visual.Values[s.Measure].SecondaryAxis,
+                SeriesType = visual.SeriesType(visual.Values[s.Measure]),
+                SecondaryAxis = visual.Type.IsCartesian() && visual.Values[s.Measure].SecondaryAxis,
+                MeasureKey = visual.Values[s.Measure].Key,
             }).ToArray())
         {
             CategoryValues = categories,
+            CategoryLabels = labels,
         };
     }
 

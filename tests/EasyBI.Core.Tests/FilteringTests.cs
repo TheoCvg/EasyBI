@@ -26,13 +26,13 @@ public class FilteringTests
     private static readonly VisualDefinition ByRegionAndChannel = new()
     {
         Model = "sales",
-        Mark = MarkType.Bar,
+        Type = VisualType.Bar,
         Axis = [new("Region")],
         Legend = new("Channel"),
         Values = [new("Amount")],
     };
 
-    private static readonly VisualDefinition Total = new() { Model = "sales", Mark = MarkType.Kpi, Values = [new("Amount")] };
+    private static readonly VisualDefinition Total = new() { Model = "sales", Type = VisualType.Kpi, Values = [new("Amount")] };
 
     private static async Task<decimal> TotalAsync(FilterContext filters) =>
         (decimal)(await Model().ExecuteAsync(filters.Apply(Total).ToQuery())).Rows[0][0]!;
@@ -47,7 +47,7 @@ public class FilteringTests
 
         filters.Select(request, new CategorySelection(sud, web));
 
-        Assert.Equal("Région = Sud, Canal = Web", filters.Selection!.Describe(Model().Metadata));
+        Assert.Equal("Région = Sud, Canal = Web", Assert.Single(filters.Selections).Describe(Model().Metadata));
         Assert.Equal(300m, await TotalAsync(filters));
         // The source visual is not filtered by its own selection
         Assert.Same(ByRegionAndChannel, filters.Apply(ByRegionAndChannel));
@@ -64,7 +64,7 @@ public class FilteringTests
         filters.Select(request, new CategorySelection(0, 0));
         filters.Select(request, new CategorySelection(0, 0));
 
-        Assert.Null(filters.Selection);
+        Assert.Empty(filters.Selections);
         Assert.Equal(2, changes);
         Assert.Equal(640m, await TotalAsync(filters));
     }
@@ -73,12 +73,12 @@ public class FilteringTests
     public async Task Selecting_a_date_period_filters_by_grain()
     {
         var filters = new FilterContext();
-        var byQuarter = new VisualDefinition { Model = "sales", Mark = MarkType.Line, Axis = [new("Date", DateGrain.Quarter)], Values = [new("Amount")] };
+        var byQuarter = new VisualDefinition { Model = "sales", Type = VisualType.Line, Axis = [new("Date", DateGrain.Quarter)], Values = [new("Amount")] };
         var request = await VisualPipeline.PrepareAsync(Model(), byQuarter);
 
         filters.Select(request, new CategorySelection(request.Chart.Categories.ToList().IndexOf("2024 Q1")));
 
-        var filter = Assert.Single(filters.Selection!.Filters);
+        var filter = Assert.Single(Assert.Single(filters.Selections).Filters);
         Assert.Equal(("Date", DateGrain.Quarter), (filter.Field, filter.Grain));
         Assert.Equal(["20241"], filter.Values);
         Assert.Equal(400m, await TotalAsync(filters));
@@ -88,7 +88,7 @@ public class FilteringTests
     public async Task Clicking_a_table_row_selects_all_its_dimensions()
     {
         var filters = new FilterContext();
-        var table = ByRegionAndChannel with { Mark = MarkType.Table };
+        var table = ByRegionAndChannel with { Type = VisualType.Table };
         var request = await VisualPipeline.PrepareAsync(Model(), table);
 
         filters.Select(request, new RowSelection(0)); // Nord · Magasin
@@ -101,7 +101,7 @@ public class FilteringTests
     {
         var filters = new FilterContext();
         filters.Select(await VisualPipeline.PrepareAsync(Model(), Total), new CategorySelection(0));
-        Assert.Null(filters.Selection);
+        Assert.Empty(filters.Selections);
     }
 
     [Fact]
@@ -141,7 +141,7 @@ public class FilteringTests
         filters.Load([new ReportFilter("sales", new FilterSpec("Channel", FilterOperator.NotIn, ["Web"]))]);
 
         Assert.Equal("Channel", Assert.Single(filters.Filters).Filter.Field);
-        Assert.Null(filters.Selection);
+        Assert.Empty(filters.Selections);
     }
 
     [Fact]

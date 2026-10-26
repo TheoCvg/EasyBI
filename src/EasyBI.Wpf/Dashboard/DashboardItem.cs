@@ -74,11 +74,11 @@ public class DashboardItem : Control
         internal set => SetValue(IsSelectedPropertyKey, value);
     }
 
-    public static DashboardItemKind KindOf(VisualDefinition? visual) => visual?.Mark switch
+    public static DashboardItemKind KindOf(VisualDefinition? visual) => visual?.Type switch
     {
         null => DashboardItemKind.Empty,
-        MarkType.Text => DashboardItemKind.Text,
-        MarkType.Image => DashboardItemKind.Image,
+        var type when type == VisualType.Text => DashboardItemKind.Text,
+        var type when type == VisualType.Image => DashboardItemKind.Image,
         _ => DashboardItemKind.Visual,
     };
 }

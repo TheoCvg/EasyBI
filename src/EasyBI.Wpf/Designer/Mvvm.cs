@@ -38,13 +38,21 @@ public sealed class RelayCommand(Action execute, Func<bool> canExecute) : IComma
     }
 }
 
-public sealed class RelayCommand<T>(Action<T> execute) : ICommand
+/// <summary>A command taking a parameter; with <paramref name="canExecute"/>, its state is asked again with the other commands'.</summary>
+public sealed class RelayCommand<T>(Action<T> execute, Func<T, bool>? canExecute = null) : ICommand
 {
-    public event EventHandler? CanExecuteChanged { add { } remove { } }
+    public event EventHandler? CanExecuteChanged
+    {
+        add { if (canExecute is not null) CommandManager.RequerySuggested += value; }
+        remove { if (canExecute is not null) CommandManager.RequerySuggested -= value; }
+    }
 
-    public bool CanExecute(object? parameter) => true;
+    public bool CanExecute(object? parameter) => canExecute is null || (parameter is T value && canExecute(value));
 
-    public void Execute(object? parameter) => execute((T)parameter!);
+    public void Execute(object? parameter)
+    {
+        if (CanExecute(parameter)) execute((T)parameter!);
+    }
 }
 
 /// <summary>

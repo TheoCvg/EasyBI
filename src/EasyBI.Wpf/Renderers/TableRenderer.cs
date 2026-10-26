@@ -12,7 +12,7 @@ namespace EasyBI.Wpf.Renderers;
 public sealed class TableRenderer : IVisualRenderer
 {
     // Headers follow the theme (the system's stay light whatever the theme)
-    private static readonly Style HeaderStyle = CreateHeaderStyle();
+    internal static readonly Style HeaderStyle = CreateHeaderStyle();
 
     public string Name => "EasyBI Table";
 
@@ -25,40 +25,37 @@ public sealed class TableRenderer : IVisualRenderer
         style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0, 0, 0, 1)));
         style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(4)));
         style.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.SemiBold));
+        // Shared by every grid, whatever its thread: a sealed style belongs to none
+        style.Seal();
         return style;
     }
 
-    public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType> { MarkType.Table });
+    public RendererCapabilities Capabilities { get; } = new(new HashSet<VisualType> { VisualType.Table });
 
     public FrameworkElement Render(RenderRequest request)
     {
-        var grid = new DataGrid
-        {
-            AutoGenerateColumns = false,
-            IsReadOnly = true,
-            CanUserSortColumns = false,
-            HeadersVisibility = DataGridHeadersVisibility.Column,
-            GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
-            Background = Brushes.Transparent,
-            RowBackground = Brushes.Transparent,
-            // A minimum, not a fixed height: control libraries give cells larger paddings
-            MinRowHeight = 26,
-            BorderThickness = new Thickness(0),
-            ItemsSource = request.Result.Rows,
-            ColumnHeaderStyle = HeaderStyle,
-        }
-            .Themed(DataGrid.HorizontalGridLinesBrushProperty, EasyBITheme.GridLineBrushKey)
-            .Themed(DataGrid.AlternatingRowBackgroundProperty, EasyBITheme.SurfaceAltBrushKey)
-            .Themed(Control.ForegroundProperty, EasyBITheme.ForegroundBrushKey);
+        var grid = Grid(request.Result.Rows);
 
         for (var i = 0; i < request.Result.Columns.Count; i++)
         {
             var column = request.Result.Columns[i];
+            var index = i;
+            if (column.Role == FieldKind.Measure
+                && ValueStyler.For(request.Visual.Values.FirstOrDefault(v => v.Key == column.Key),
+                    request.Result.Rows.Select(r => Number(r[index])), request.Theme) is { } styler)
+            {
+                grid.Columns.Add(FormattedColumn(column.Caption, $"[{i}]", column.Format,
+                    new Binding($"[{i}]") { Converter = new StyleConverter(styler) }));
+                continue;
+            }
             var binding = new Binding($"[{i}]") { ConverterCulture = EasyBILocalization.FormatCulture };
             if (column.Role == FieldKind.Measure)
                 binding.StringFormat = $"{{0:{column.Format ?? "#,##0.##"}}}";
             else
-                binding.Converter = DisplayConverter.Instance;
+                // The visual's labels for the values of its dimension
+                binding.Converter = request.Visual.Axis.Append(request.Visual.Legend).FirstOrDefault(f => f?.Key == column.Key) is { Labels: not null } field
+                    ? new LabelConverter(field)
+                    : DisplayConverter.Instance;
 
             var style = new Style(typeof(TextBlock));
             if (column.Role == FieldKind.Measure)
@@ -72,6 +69,12 @@ public sealed class TableRenderer : IVisualRenderer
                 Width = new DataGridLength(1, DataGridLengthUnitType.Star),
             });
         }
+        if (request.Highlight is { Count: > 0 })
+        {
+            // Rows are recycled while scrolling: their opacity is set each time one shows a row
+            grid.LoadingRow += (_, e) =>
+                e.Row.Opacity = request.IsRowEmphasized(e.Row.GetIndex()) ? 1 : SelectionFilters.DimmedOpacity;
+        }
         if (request.Select is { } select)
         {
             grid.Cursor = System.Windows.Input.Cursors.Hand;
@@ -83,6 +86,71 @@ public sealed class TableRenderer : IVisualRenderer
         }
         return grid;
     }
+
+    /// <summary>
+    /// A column of numbers drawn by <see cref="FormattedValue"/>: <paramref name="path"/> gives the value,
+    /// <paramref name="style"/> its <see cref="ValueStyle"/>.
+    /// </summary>
+    internal static DataGridTemplateColumn FormattedColumn(string header, string path, string? format, BindingBase style, BindingBase? opacity = null)
+    {
+        var cell = new FrameworkElementFactory(typeof(FormattedValue));
+        cell.SetBinding(FormattedValue.TextProperty, new Binding(path)
+        {
+            StringFormat = $"{{0:{format ?? "#,##0.##"}}}",
+            ConverterCulture = EasyBILocalization.FormatCulture,
+            TargetNullValue = "",
+        });
+        cell.SetBinding(FormattedValue.ValueStyleProperty, style);
+        if (opacity is not null) cell.SetBinding(UIElement.OpacityProperty, opacity);
+        return new DataGridTemplateColumn
+        {
+            Header = header,
+            CellTemplate = new DataTemplate { VisualTree = cell },
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+        };
+    }
+
+    internal static double? Number(object? value) =>
+        value is null ? null : System.Convert.ToDouble(value, CultureInfo.InvariantCulture);
+
+    /// <summary>A read-only grid in the theme's colors, without columns yet (shared with <see cref="MatrixRenderer"/>).</summary>
+    internal static DataGrid Grid(System.Collections.IEnumerable items)
+    {
+        return new DataGrid
+        {
+            AutoGenerateColumns = false,
+            IsReadOnly = true,
+            CanUserSortColumns = false,
+            HeadersVisibility = DataGridHeadersVisibility.Column,
+            GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
+            Background = Brushes.Transparent,
+            RowBackground = Brushes.Transparent,
+            // A minimum, not a fixed height: control libraries give cells larger paddings
+            MinRowHeight = 26,
+            BorderThickness = new Thickness(0),
+            ItemsSource = items,
+            ColumnHeaderStyle = HeaderStyle,
+        }
+            .Themed(DataGrid.HorizontalGridLinesBrushProperty, EasyBITheme.GridLineBrushKey)
+            .Themed(DataGrid.AlternatingRowBackgroundProperty, EasyBITheme.SurfaceAltBrushKey)
+            .Themed(Control.ForegroundProperty, EasyBITheme.ForegroundBrushKey);
+    }
+}
+
+/// <summary>The style of a cell's value, from its measure's format.</summary>
+internal sealed class StyleConverter(ValueStyler styler) : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => styler.Style(TableRenderer.Number(value));
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
+/// <summary>Displays the values of a dimension with the visual's labels for them.</summary>
+internal sealed class LabelConverter(FieldRef field) : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => field.Display(value);
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
 }
 
 /// <summary>Displays dimension values (dates, periods, booleans, blanks) as the charts do.</summary>

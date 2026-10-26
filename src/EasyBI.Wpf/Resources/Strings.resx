@@ -12,21 +12,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="MarkBar" xml:space="preserve">
-    <value>Bars</value>
-  </data>
-  <data name="MarkLine" xml:space="preserve">
-    <value>Lines</value>
-  </data>
-  <data name="MarkPie" xml:space="preserve">
-    <value>Pie</value>
-  </data>
-  <data name="MarkKpi" xml:space="preserve">
-    <value>KPI</value>
-  </data>
-  <data name="MarkTable" xml:space="preserve">
-    <value>Table</value>
-  </data>
   <data name="FilterAll" xml:space="preserve">
     <value>(all)</value>
   </data>
@@ -186,15 +171,6 @@
   <data name="Cancel" xml:space="preserve">
     <value>Cancel</value>
   </data>
-  <data name="MarkArea" xml:space="preserve">
-    <value>Areas</value>
-  </data>
-  <data name="MarkScatter" xml:space="preserve">
-    <value>Points</value>
-  </data>
-  <data name="MarkStackedBar" xml:space="preserve">
-    <value>Stacked</value>
-  </data>
   <data name="SeriesMarkDefault" xml:space="preserve">
     <value>As the visual</value>
   </data>
@@ -244,7 +220,7 @@
     <value>Formula</value>
   </data>
   <data name="MeasureFormulaHint" xml:space="preserve">
-    <value>Click a measure or an operator to insert it. Each measure is aggregated as in the field list.</value>
+    <value>A measure on its own is aggregated as in the field list. Inside a function, measures and dimensions are read row by row: SUM([Quantity] * [Price]), SUM([Revenue]; [Region] = "North"), DISTINCTCOUNT([Customer]). Texts and dates go in double quotes ("2024-12-31"), decimals take a point, arguments are separated by “;”.</value>
   </data>
   <data name="MeasurePreview" xml:space="preserve">
     <value>Valid formula. Total: {0}</value>
@@ -348,8 +324,11 @@
   <data name="DropAlreadyThere" xml:space="preserve">
     <value>{0} is already in {1}</value>
   </data>
-  <data name="DropAxisFull" xml:space="preserve">
-    <value>The axis holds at most {0} fields</value>
+  <data name="DropWellFull" xml:space="preserve">
+    <value>{0} holds at most {1} fields</value>
+  </data>
+  <data name="DropWellSingleField" xml:space="preserve">
+    <value>{0} holds a single field</value>
   </data>
   <data name="DropFilterFromList" xml:space="preserve">
     <value>To filter on {0}, drag it from the field list</value>
@@ -426,15 +405,6 @@
   <data name="VisualTypeHint" xml:space="preserve">
     <value>Change the type of visual</value>
   </data>
-  <data name="WellCategory" xml:space="preserve">
-    <value>Category</value>
-  </data>
-  <data name="WellValue" xml:space="preserve">
-    <value>Value</value>
-  </data>
-  <data name="WellRows" xml:space="preserve">
-    <value>Rows</value>
-  </data>
   <data name="WellUnused" xml:space="preserve">
     <value>Not used by this type of visual</value>
   </data>
@@ -445,7 +415,7 @@
     <value>Drop a measure here</value>
   </data>
   <data name="WellHintFilter" xml:space="preserve">
-    <value>Drop a dimension to filter on it</value>
+    <value>Drop a field to filter on it</value>
   </data>
   <data name="DropNotUsed" xml:space="preserve">
     <value>{0} is not used by this type of visual</value>
@@ -455,5 +425,404 @@
   </data>
   <data name="DesignerRedo" xml:space="preserve">
     <value>Redo (Ctrl+Y)</value>
+  </data>
+  <data name="ConditionValues" xml:space="preserve">
+    <value>List of values</value>
+  </data>
+  <data name="ConditionAny" xml:space="preserve">
+    <value>Any value</value>
+  </data>
+  <data name="ConditionRange" xml:space="preserve">
+    <value>Between</value>
+  </data>
+  <data name="ConditionGreaterThan" xml:space="preserve">
+    <value>Greater than</value>
+  </data>
+  <data name="ConditionGreaterThanOrEqual" xml:space="preserve">
+    <value>At least</value>
+  </data>
+  <data name="ConditionLessThan" xml:space="preserve">
+    <value>Less than</value>
+  </data>
+  <data name="ConditionLessThanOrEqual" xml:space="preserve">
+    <value>At most</value>
+  </data>
+  <data name="ConditionAnd" xml:space="preserve">
+    <value>and</value>
+  </data>
+  <data name="ConditionNumber" xml:space="preserve">
+    <value>A number</value>
+  </data>
+  <data name="MatrixTotal" xml:space="preserve">
+    <value>Total</value>
+  </data>
+  <data name="PropertiesFormatting" xml:space="preserve">
+    <value>Formatting</value>
+  </data>
+  <data name="FormatColor" xml:space="preserve">
+    <value>Text color</value>
+  </data>
+  <data name="FormatBold" xml:space="preserve">
+    <value>Bold</value>
+  </data>
+  <data name="FormatItalic" xml:space="preserve">
+    <value>Italic</value>
+  </data>
+  <data name="FormatAlignment" xml:space="preserve">
+    <value>Alignment</value>
+  </data>
+  <data name="AlignDefault" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="AlignLeft" xml:space="preserve">
+    <value>Left</value>
+  </data>
+  <data name="AlignCenter" xml:space="preserve">
+    <value>Center</value>
+  </data>
+  <data name="AlignRight" xml:space="preserve">
+    <value>Right</value>
+  </data>
+  <data name="FormatRules" xml:space="preserve">
+    <value>Rules (the first that matches applies)</value>
+  </data>
+  <data name="AddRule" xml:space="preserve">
+    <value>+ Add a rule</value>
+  </data>
+  <data name="RemoveRule" xml:space="preserve">
+    <value>Remove the rule</value>
+  </data>
+  <data name="RuleColor" xml:space="preserve">
+    <value>Text</value>
+  </data>
+  <data name="RuleBackground" xml:space="preserve">
+    <value>Background</value>
+  </data>
+  <data name="FormatScale" xml:space="preserve">
+    <value>Color scale</value>
+  </data>
+  <data name="ScaleMinimum" xml:space="preserve">
+    <value>Lowest</value>
+  </data>
+  <data name="ScaleMiddle" xml:space="preserve">
+    <value>Middle</value>
+  </data>
+  <data name="ScaleMaximum" xml:space="preserve">
+    <value>Highest</value>
+  </data>
+  <data name="FormatBars" xml:space="preserve">
+    <value>Data bars</value>
+  </data>
+  <data name="BarPositive" xml:space="preserve">
+    <value>Positive</value>
+  </data>
+  <data name="BarNegative" xml:space="preserve">
+    <value>Negative</value>
+  </data>
+  <data name="FormatIcons" xml:space="preserve">
+    <value>Icons</value>
+  </data>
+  <data name="IconArrows" xml:space="preserve">
+    <value>Arrows ↑ → ↓</value>
+  </data>
+  <data name="IconTriangles" xml:space="preserve">
+    <value>Triangles ▲ ▬ ▼</value>
+  </data>
+  <data name="IconCircles" xml:space="preserve">
+    <value>Circles ●</value>
+  </data>
+  <data name="IconLow" xml:space="preserve">
+    <value>Low under</value>
+  </data>
+  <data name="IconHigh" xml:space="preserve">
+    <value>High from</value>
+  </data>
+  <data name="IconThresholdsHint" xml:space="preserve">
+    <value>Empty: the values are split in thirds.</value>
+  </data>
+  <data name="ColorNone" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="ColorAccent" xml:space="preserve">
+    <value>Accent</value>
+  </data>
+  <data name="ColorSuccess" xml:space="preserve">
+    <value>Good (green)</value>
+  </data>
+  <data name="ColorWarning" xml:space="preserve">
+    <value>Warning (orange)</value>
+  </data>
+  <data name="ColorError" xml:space="preserve">
+    <value>Bad (red)</value>
+  </data>
+  <data name="ColorMuted" xml:space="preserve">
+    <value>Muted (grey)</value>
+  </data>
+  <data name="ColorCustom" xml:space="preserve">
+    <value>Custom (#RRGGBB)</value>
+  </data>
+  <data name="RuleShowOnChart" xml:space="preserve">
+    <value>Show its zone on charts</value>
+  </data>
+  <data name="RuleColorChart" xml:space="preserve">
+    <value>Color</value>
+  </data>
+  <data name="FormatChartHint" xml:space="preserve">
+    <value>On a chart, the rules and the color scale color the bars, points and slices (stacked bars: a frame around the whole stack).</value>
+  </data>
+  <data name="GaugeMinimum" xml:space="preserve">
+    <value>Minimum</value>
+  </data>
+  <data name="GaugeMaximum" xml:space="preserve">
+    <value>Maximum</value>
+  </data>
+  <data name="GaugeTarget" xml:space="preserve">
+    <value>Target</value>
+  </data>
+  <data name="GaugeScaleHint" xml:space="preserve">
+    <value>Empty: from 0 to a round number above the value and the target.</value>
+  </data>
+  <data name="GaugeTargetLabel" xml:space="preserve">
+    <value>Target: {0}</value>
+  </data>
+  <data name="WellTooltip" xml:space="preserve">
+    <value>Tooltip</value>
+  </data>
+  <data name="PropertiesTooltips" xml:space="preserve">
+    <value>Tooltips</value>
+  </data>
+  <data name="TooltipShow" xml:space="preserve">
+    <value>Show tooltips</value>
+  </data>
+  <data name="TooltipCategory" xml:space="preserve">
+    <value>Show the category</value>
+  </data>
+  <data name="TooltipSeries" xml:space="preserve">
+    <value>Show series names</value>
+  </data>
+  <data name="TooltipPercent" xml:space="preserve">
+    <value>Show the % of total</value>
+  </data>
+  <data name="TooltipTemplate" xml:space="preserve">
+    <value>Custom text</value>
+  </data>
+  <data name="TooltipTemplateHint" xml:space="preserve">
+    <value>Replaces the content when filled in. Fields between braces: {0}</value>
+  </data>
+  <data name="TooltipWellHint" xml:space="preserve">
+    <value>Measures shown in the tooltip</value>
+  </data>
+  <data name="LegendPreviousPage" xml:space="preserve">
+    <value>Previous page of the legend</value>
+  </data>
+  <data name="LegendNextPage" xml:space="preserve">
+    <value>Next page of the legend</value>
+  </data>
+  <data name="PropertyLegendPosition" xml:space="preserve">
+    <value>Legend</value>
+  </data>
+  <data name="LegendPositionHint" xml:space="preserve">
+    <value>Where the legend goes; a side only applies when the chart has room for it. A long legend shows its entries by pages.</value>
+  </data>
+  <data name="LegendAuto" xml:space="preserve">
+    <value>Automatic</value>
+  </data>
+  <data name="LegendRight" xml:space="preserve">
+    <value>Right</value>
+  </data>
+  <data name="LegendBottom" xml:space="preserve">
+    <value>Bottom</value>
+  </data>
+  <data name="LegendTop" xml:space="preserve">
+    <value>Top</value>
+  </data>
+  <data name="LegendLeft" xml:space="preserve">
+    <value>Left</value>
+  </data>
+  <data name="LegendHidden" xml:space="preserve">
+    <value>Hidden</value>
+  </data>
+  <data name="PropertiesValueLabels" xml:space="preserve">
+    <value>Value labels</value>
+  </data>
+  <data name="ValueLabelsHint" xml:space="preserve">
+    <value>Pick a value and the text this visual shows instead (axis, legend, tooltips, tables).</value>
+  </data>
+  <data name="ValueLabelPick" xml:space="preserve">
+    <value>Value to rename (type to search)</value>
+  </data>
+  <data name="ValueLabelText" xml:space="preserve">
+    <value>Text shown instead of the value</value>
+  </data>
+  <data name="ValueLabelAdd" xml:space="preserve">
+    <value>Add this label</value>
+  </data>
+  <data name="ValueLabelRemove" xml:space="preserve">
+    <value>Remove this label: the value shows as itself again</value>
+  </data>
+  <data name="FormulaFunctionsHeader" xml:space="preserve">
+    <value>FUNCTIONS</value>
+  </data>
+  <data name="MeasureRedefinitionHint" xml:space="preserve">
+    <value>This measure comes from the application: your changes apply to this report only. The formula {0} keeps the application's calculation (and the aggregation chosen in each visual); “Restore” brings back its definition.</value>
+  </data>
+  <data name="ResetMeasure" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+  <data name="ResetMeasureConfirm" xml:space="preserve">
+    <value>Restore “{0}” as the application defines it (“{1}”)? The changes made to its name, format and formula in this report will be lost.</value>
+  </data>
+  <data name="FormatCustom" xml:space="preserve">
+    <value>Custom ({0})</value>
+  </data>
+  <data name="RestoreMeasureTooltip" xml:space="preserve">
+    <value>Restore the application's definition</value>
+  </data>
+  <data name="FormulaSearchPlaceholder" xml:space="preserve">
+    <value>Search a function or a field</value>
+  </data>
+  <data name="FormulaPlaceholder" xml:space="preserve">
+    <value>Type a formula, such as SUM([Revenue]; [Region] = "North"), or pick items on the right</value>
+  </data>
+  <data name="FormulaShortcutsHint" xml:space="preserve">
+    <value>Suggestions appear as you type (Ctrl+Space shows them anywhere): ↑↓ to choose, Tab or Enter to insert, Esc to close. Double-click an item of the list to insert it.</value>
+  </data>
+  <data name="FormulaMeasureHelp" xml:space="preserve">
+    <value>Measure of the model. On its own, it is aggregated as in the field list; inside a function such as SUM, it is read row by row.</value>
+  </data>
+  <data name="FormulaCalculatedMeasureHelp" xml:space="preserve">
+    <value>Measure computed for each group by the application: use it on its own, not inside a function.</value>
+  </data>
+  <data name="FormulaDimensionHelp" xml:space="preserve">
+    <value>Dimension: use it inside a function, in a condition such as SUM(value; {0} = "...") or counted with DISTINCTCOUNT({0}).</value>
+  </data>
+  <data name="FormulaNoMatch" xml:space="preserve">
+    <value>No function or field matches.</value>
+  </data>
+  <data name="FormulaValid" xml:space="preserve">
+    <value>Valid formula</value>
+  </data>
+  <data name="FormulaKeywordAND" xml:space="preserve">
+    <value>Both conditions are true.</value>
+  </data>
+  <data name="FormulaKeywordOR" xml:space="preserve">
+    <value>At least one of the conditions is true.</value>
+  </data>
+  <data name="FormulaKeywordNOT" xml:space="preserve">
+    <value>The opposite of a condition.</value>
+  </data>
+  <data name="FormulaKeywordTRUE" xml:space="preserve">
+    <value>Yes, to compare a yes/no dimension.</value>
+  </data>
+  <data name="FormulaKeywordFALSE" xml:space="preserve">
+    <value>No, to compare a yes/no dimension.</value>
+  </data>
+  <data name="OperatorAdd" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="OperatorSubtract" xml:space="preserve">
+    <value>Subtract</value>
+  </data>
+  <data name="OperatorMultiply" xml:space="preserve">
+    <value>Multiply</value>
+  </data>
+  <data name="OperatorDivide" xml:space="preserve">
+    <value>Divide</value>
+  </data>
+  <data name="OperatorDivideHelp" xml:space="preserve">
+    <value>A division by zero gives an empty value.</value>
+  </data>
+  <data name="OperatorParentheses" xml:space="preserve">
+    <value>Parentheses</value>
+  </data>
+  <data name="OperatorParenthesesHelp" xml:space="preserve">
+    <value>Compute a part first. With a selection, they go around it.</value>
+  </data>
+  <data name="OperatorEqual" xml:space="preserve">
+    <value>Equal to</value>
+  </data>
+  <data name="OperatorNotEqual" xml:space="preserve">
+    <value>Different from</value>
+  </data>
+  <data name="OperatorLess" xml:space="preserve">
+    <value>Less than</value>
+  </data>
+  <data name="OperatorLessOrEqual" xml:space="preserve">
+    <value>Less than or equal to</value>
+  </data>
+  <data name="OperatorGreater" xml:space="preserve">
+    <value>Greater than</value>
+  </data>
+  <data name="OperatorGreaterOrEqual" xml:space="preserve">
+    <value>Greater than or equal to</value>
+  </data>
+  <data name="OperatorComparisonHelp" xml:space="preserve">
+    <value>Compares two values, in a condition of a function or of IF. Texts and dates go in double quotes.</value>
+  </data>
+  <data name="OperatorsCalculation" xml:space="preserve">
+    <value>CALCULATION</value>
+  </data>
+  <data name="OperatorsComparison" xml:space="preserve">
+    <value>COMPARISON</value>
+  </data>
+  <data name="OperatorsLogic" xml:space="preserve">
+    <value>LOGIC</value>
+  </data>
+  <data name="FormulaTabFunctions" xml:space="preserve">
+    <value>Functions</value>
+  </data>
+  <data name="FormulaTabMeasures" xml:space="preserve">
+    <value>Measures</value>
+  </data>
+  <data name="FormulaTabDimensions" xml:space="preserve">
+    <value>Dimensions</value>
+  </data>
+  <data name="FormulaReportMeasureHelp" xml:space="preserve">
+    <value>Measure of this report, computed for each group: use it on its own, such as [Margin] / [Revenue], not inside a function.</value>
+  </data>
+  <data name="DeleteUsedMeasureConfirm" xml:space="preserve">
+    <value>Delete the measure “{0}”? It is used by {1}, which will show an error, as will the visuals that show it.</value>
+  </data>
+  <data name="QuotedCaption" xml:space="preserve">
+    <value>“{0}”</value>
+  </data>
+  <data name="RuleVisualTypeLocked" xml:space="preserve">
+    <value>The type of this visual cannot change</value>
+  </data>
+  <data name="RuleFieldsLocked" xml:space="preserve">
+    <value>The fields of this visual cannot change</value>
+  </data>
+  <data name="RuleReadOnly" xml:space="preserve">
+    <value>This visual cannot be changed</value>
+  </data>
+  <data name="VisualFailed" xml:space="preserve">
+    <value>This visual could not be displayed.</value>
+  </data>
+  <data name="VisualFailedRetry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="VisualFailedDetails" xml:space="preserve">
+    <value>See what happened</value>
+  </data>
+  <data name="VisualFailureTitle" xml:space="preserve">
+    <value>What happened</value>
+  </data>
+  <data name="VisualFailureQuery" xml:space="preserve">
+    <value>The data source could not run the query of this visual.</value>
+  </data>
+  <data name="VisualFailureRender" xml:space="preserve">
+    <value>The renderer {0} could not draw this visual.</value>
+  </data>
+  <data name="VisualFailureTechnicalDetails" xml:space="preserve">
+    <value>Technical details, to send to the developer of the application:</value>
+  </data>
+  <data name="VisualFailureCopy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="VisualFailureCopied" xml:space="preserve">
+    <value>Copied</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Close</value>
   </data>
 </root>

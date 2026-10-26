@@ -99,7 +99,7 @@ public class PeriodFilterTests
         var filter = PeriodFilters.Relative("Amount", FilterOperator.Last, DateGrain.Month, 12);
         var report = new ReportDefinition
         {
-            Visuals = [new VisualDefinition { Title = "V", Model = "m", Mark = MarkType.Kpi, Values = [new("Amount")], Filters = [filter with { Field = "Date" }] }],
+            Visuals = [new VisualDefinition { Title = "V", Model = "m", Type = VisualType.Kpi, Values = [new("Amount")], Filters = [filter with { Field = "Date" }] }],
             Filters = [new ReportFilter("m", PeriodFilters.Between("Amount", new(2024, 1, 1), null))],
         };
 

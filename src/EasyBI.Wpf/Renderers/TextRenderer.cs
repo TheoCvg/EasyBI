@@ -4,12 +4,12 @@ using EasyBI.Abstractions;
 
 namespace EasyBI.Wpf.Renderers;
 
-/// <summary>Built-in renderer of <see cref="MarkType.Text"/> visuals.</summary>
+/// <summary>Built-in renderer of <see cref="VisualType.Text"/> visuals.</summary>
 public sealed class TextRenderer : IVisualRenderer
 {
     public string Name => "EasyBI Text";
 
-    public RendererCapabilities Capabilities { get; } = new(new HashSet<MarkType> { MarkType.Text });
+    public RendererCapabilities Capabilities { get; } = new(new HashSet<VisualType> { VisualType.Text });
 
     public FrameworkElement Render(RenderRequest request)
     {

@@ -188,7 +188,7 @@ public class DashboardView : Control
     /// <summary>
     /// The selected items, in the order they were selected (see <see cref="Select(IEnumerable{DashboardItem}, DashboardSelectionMode)"/>).
     /// <see cref="Behaviors.SelectionBehavior"/> selects them with the mouse and the keyboard; the selection commands act on them.
-    /// Not to be confused with the cross-filter selection of a visual (<see cref="EasyBI.Core.FilterContext.Selection"/>).
+    /// Not to be confused with the cross-filter selection of a visual (<see cref="EasyBI.Core.FilterContext.Selections"/>).
     /// </summary>
     public ReadOnlyObservableCollection<DashboardItem> SelectedItems { get; }
 
@@ -507,7 +507,7 @@ public class DashboardView : Control
     /// <summary>Turns an item into an empty text and starts editing it.</summary>
     public void AddText(DashboardItem item)
     {
-        SetVisual(item, new VisualDefinition { Mark = MarkType.Text, Text = new TextContent() });
+        SetVisual(item, new VisualDefinition { Type = VisualType.Text, Text = new TextContent() });
         RequestTextEdit(item);
     }
 
@@ -517,9 +517,9 @@ public class DashboardView : Control
     /// <summary>Picks an image for an item: <see cref="ImageRequested"/>, or the built-in file dialog.</summary>
     public void PickImage(DashboardItem item)
     {
-        var args = new ImageRequestedEventArgs(item, image => SetVisual(item, item.Visual is { Mark: MarkType.Image } visual
+        var args = new ImageRequestedEventArgs(item, image => SetVisual(item, item.Visual is { } visual && visual.Type == VisualType.Image
             ? visual with { Image = image }
-            : new VisualDefinition { Mark = MarkType.Image, Image = image }));
+            : new VisualDefinition { Type = VisualType.Image, Image = image }));
         ImageRequested?.Invoke(this, args);
         if (args.Handled) return;
 
@@ -643,7 +643,8 @@ public class DashboardView : Control
         var visuals = _selected.Select(i => i.Visual).OfType<VisualDefinition>().ToArray();
         if (visuals.Length == 0) return null;
         var data = new DataObject();
-        data.SetData(VisualTransfer.ClipboardFormat, VisualTransfer.Copy(visuals, Context?.Measures ?? new MeasureContext()));
+        data.SetData(VisualTransfer.ClipboardFormat, VisualTransfer.Copy(visuals, Context?.Measures ?? new MeasureContext(),
+            model => Context?.Models.FirstOrDefault(m => m.Metadata.Name == model)?.Metadata));
         data.SetText(string.Join(Environment.NewLine, visuals.Select(v => v.Title).Where(t => !string.IsNullOrEmpty(t))));
         // Their arrangement and sizes, so that they are pasted as they were laid out
         var layout = DashboardLayoutEngine.Extract(Capture().Layout ?? new DashboardLayoutDefinition(), visuals.Select(v => v.Id).ToHashSet());
@@ -685,7 +686,8 @@ public class DashboardView : Control
     {
         if (IsReadOnly || Copied(data) is not { } json) return [];
         var measures = Context?.Measures ?? new MeasureContext();
-        var visuals = VisualTransfer.Paste(json, measures, model => Context?.Models.Any(m => m.Metadata.Name == model) ?? false);
+        var visuals = VisualTransfer.Paste(json, measures, model => Context?.Models.Any(m => m.Metadata.Name == model) ?? false,
+            model => Context?.Models.FirstOrDefault(m => m.Metadata.Name == model)?.Metadata);
         if (visuals.Count == 0) return [];
         if (CopiedLayout(data) is { } copiedLayout) return PasteWithLayout(visuals, copiedLayout);
 
@@ -812,9 +814,9 @@ public class DashboardView : Control
     /// <summary>A removed visual can no longer filter the others.</summary>
     private void ClearSelectionOf(IEnumerable<DashboardItem> items)
     {
-        if (VisualView.GetFilterContext(this) is { Selection: { } selection } filters
-            && items.Any(i => i.Visual?.Id == selection.SourceVisualId))
-            filters.ClearSelection();
+        if (VisualView.GetFilterContext(this) is not { } filters) return;
+        foreach (var id in items.Select(i => i.Visual?.Id).OfType<string>())
+            filters.ClearSelection(id);
     }
 
     // --- Commands ---

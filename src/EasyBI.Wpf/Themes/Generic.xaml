@@ -3,7 +3,9 @@
                     xmlns:bi="clr-namespace:EasyBI.Wpf"
                     xmlns:local="clr-namespace:EasyBI.Wpf.Dashboard"
                     xmlns:behaviors="clr-namespace:EasyBI.Wpf.Dashboard.Behaviors"
-                    xmlns:dnd="clr-namespace:EasyBI.Wpf.DragAndDrop">
+                    xmlns:dnd="clr-namespace:EasyBI.Wpf.DragAndDrop"
+                    xmlns:renderers="clr-namespace:EasyBI.Wpf.Renderers"
+                    xmlns:abstractions="clr-namespace:EasyBI.Abstractions;assembly=EasyBI.Abstractions">
 
     <!-- Default values of the EasyBITheme keys: the light theme -->
     <ResourceDictionary.MergedDictionaries>
@@ -14,6 +16,8 @@
         <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/FieldList.xaml" />
         <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/FilterBar.xaml" />
         <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/FilterEditor.xaml" />
+        <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/FormattedValue.xaml" />
+        <ResourceDictionary Source="/EasyBI.Wpf;component/Themes/ValueFormatEditor.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
     <!-- Dashboard item: a card showing its visual, or the choices of an empty item -->
@@ -89,6 +93,70 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <!-- The pager of a chart's legend: previous page, "2/5", next page -->
+    <Style TargetType="renderers:ChartLegendPager">
+        <Setter Property="Background" Value="{DynamicResource {x:Static bi:EasyBITheme.SurfaceBrushKey}}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource {x:Static bi:EasyBITheme.BorderBrushKey}}" />
+        <Setter Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Margin" Value="4" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="renderers:ChartLegendPager">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{DynamicResource {x:Static bi:EasyBITheme.CornerRadiusKey}}" Padding="2">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="◀" Command="{Binding PreviousCommand, RelativeSource={RelativeSource TemplatedParent}}"
+                                    ToolTip="{bi:Localize LegendPreviousPage}" Padding="5,0" MinWidth="0" BorderThickness="0" Background="Transparent" Cursor="Hand" />
+                            <TextBlock Text="{TemplateBinding PageText}" Margin="4,0" VerticalAlignment="Center" />
+                            <Button Content="▶" Command="{Binding NextCommand, RelativeSource={RelativeSource TemplatedParent}}"
+                                    ToolTip="{bi:Localize LegendNextPage}" Padding="5,0" MinWidth="0" BorderThickness="0" Background="Transparent" Cursor="Hand" />
+                        </StackPanel>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The content of a chart tooltip (a TooltipContent): the category, then each series with its color and value,
+         or the visual's template text. An application replaces it with the same key. No DataType: in a theme
+         dictionary, it would replace the x:Key -->
+    <DataTemplate x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type renderers:ChartTooltips}, ResourceId=Template}">
+        <StackPanel MinWidth="120" MaxWidth="360">
+            <TextBlock x:Name="Title" Text="{Binding Title}" FontWeight="SemiBold" Margin="0,0,0,4" TextWrapping="Wrap" />
+            <ItemsControl x:Name="Items" ItemsSource="{Binding Items}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type abstractions:TooltipItem}">
+                        <DockPanel Margin="0,1">
+                            <Ellipse x:Name="Swatch" DockPanel.Dock="Left" Width="9" Height="9" Margin="0,0,6,0" VerticalAlignment="Center"
+                                     Fill="{Binding Color}" />
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding Value}" FontWeight="SemiBold" Margin="12,0,0,0" />
+                            <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding Color}" Value="{x:Null}">
+                                <Setter TargetName="Swatch" Property="Visibility" Value="Hidden" />
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock x:Name="Text" Text="{Binding Text}" TextWrapping="Wrap" Visibility="Collapsed" />
+        </StackPanel>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding Title}" Value="{x:Null}">
+                <Setter TargetName="Title" Property="Visibility" Value="Collapsed" />
+            </DataTrigger>
+            <!-- A template's text replaces the title and the items -->
+            <DataTrigger Binding="{Binding Text, Converter={x:Static renderers:ChartTooltips.HasText}}" Value="True">
+                <Setter TargetName="Title" Property="Visibility" Value="Collapsed" />
+                <Setter TargetName="Items" Property="Visibility" Value="Collapsed" />
+                <Setter TargetName="Text" Property="Visibility" Value="Visible" />
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
 
     <!-- Controls drawn by the dashboard behaviors; an application overrides them with the same keys -->
     <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type behaviors:DashboardOverlay}, ResourceId=PlusButton}" TargetType="Button">

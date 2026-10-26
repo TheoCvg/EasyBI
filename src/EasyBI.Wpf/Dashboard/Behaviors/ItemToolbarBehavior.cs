@@ -80,7 +80,7 @@ public class ItemToolbarBehavior : DashboardBehavior
 
     private void ChangeText(DashboardItem item, Func<TextContent, TextContent> change)
     {
-        if (item.Visual is { Mark: MarkType.Text } visual) View.SetVisual(item, visual with { Text = change(visual.Text ?? new TextContent()) });
+        if (item.Visual is { } visual && visual.Type == VisualType.Text) View.SetVisual(item, visual with { Text = change(visual.Text ?? new TextContent()) });
     }
 
     private Rect? Place(DashboardOverlay overlay, Size size)
