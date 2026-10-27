@@ -1804,6 +1804,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#distinct-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Distinct values
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#compatibility" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1995,6 +2006,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#distinct-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Distinct values
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#compatibility" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2121,8 +2143,13 @@ them as plain JSON, so that the server can be written in .NET or in any other la
 <td><code>DeserializeData(json)</code></td>
 </tr>
 <tr>
+<td>Distinct values asked by a filter</td>
+<td><code>Serialize(DistinctValuesRequest)</code></td>
+<td><code>DeserializeValuesRequest(json)</code></td>
+</tr>
+<tr>
 <td>Distinct values</td>
-<td><code>SerializeValues(values)</code></td>
+<td><code>Serialize(DistinctValues)</code></td>
 <td><code>DeserializeValues(json, dataType)</code></td>
 </tr>
 </tbody>
@@ -2227,8 +2254,16 @@ are omitted for the server's own.</p>
 </tr>
 </tbody>
 </table>
-<p>The column's <code>dataType</code> tells a date from a text: in a <code>Date</code> column, <code>"2024-03-10"</code> is read as a date. Distinct values
-are a JSON array of values, read with the type of their dimension (<code>Metadata.GetField(field).DataType</code>).</p>
+<p>The column's <code>dataType</code> tells a date from a text: in a <code>Date</code> column, <code>"2024-03-10"</code> is read as a date.</p>
+<h2 id="distinct-values">Distinct values<a class="headerlink" href="#distinct-values" title="Permanent link">&para;</a></h2>
+<p>A filter asks for the values of a dimension, at most <code>limit</code> (10,000 by default); when the list was truncated, a search
+asks for the values containing a text, ignoring case:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">"field"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Customer"</span><span class="p">,</span><span class="w"> </span><span class="nt">"search"</span><span class="p">:</span><span class="w"> </span><span class="s2">"dupont"</span><span class="p">,</span><span class="w"> </span><span class="nt">"limit"</span><span class="p">:</span><span class="w"> </span><span class="mi">10000</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<p>The answer lists the values in order, read with the type of their dimension (<code>Metadata.GetField(field).DataType</code>), and
+tells whether there were more than the limit:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">"values"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">"Alice Dupont"</span><span class="p">,</span><span class="w"> </span><span class="s2">"Hugo Dupont"</span><span class="p">,</span><span class="w"> </span><span class="kc">null</span><span class="w"> </span><span class="p">],</span><span class="w"> </span><span class="nt">"isTruncated"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
 <h2 id="compatibility">Compatibility<a class="headerlink" href="#compatibility" title="Permanent link">&para;</a></h2>
 <p>Like the report format, this format only grows with optional properties: a reader ignores properties it does not know
 and uses defaults for the missing ones, so that an application and its server can be updated one after the other.</p>

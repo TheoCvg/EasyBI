@@ -2490,6 +2490,12 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   a model's <code>ModelMetadata</code> and the distinct values of a dimension, with dates, date periods and numbers keeping their
   type. The sample gets the results of its visuals from an ASP.NET Core server (<code>samples/EasyBI.Sample.Server</code>).
   <code>ModelMetadata.Dimensions</code> and <code>Measures</code> are not serialized.</li>
+<li><strong>Value filters like Excel</strong>: every value checked at first, a <strong>(Select all)</strong> box checked, unchecked or partly
+  checked, <strong>(Select all search results)</strong> and <strong>Add current selection to filter</strong> while searching. Lists of thousands
+  of values (suppliers...) open and search without delay, and checking them all changes the filter once.</li>
+<li><strong>Long lists of values</strong>: a filter lists up to 10,000 values of a dimension instead of 1,000, says when there are
+  more, and then searches them in the model (<code>DistinctValuesRequest.Search</code>), translated to SQL by EF Core. The sample
+  has 2,500 customers to filter on.</li>
 </ul>
 <h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
 <ul>
@@ -2498,6 +2504,14 @@ opens older reports, and a report using a newer feature cannot be opened by an o
 </ul>
 <h3 id="breaking-changes">Breaking changes<a class="headerlink" href="#breaking-changes" title="Permanent link">&para;</a></h3>
 <ul>
+<li><code>FilterContext.SetFilter</code> keeps a filter <code>In</code> without values, which keeps no row (every value unchecked), instead of
+  removing it; a filter <code>NotIn</code> without values is still removed. A value filter is saved as the shorter list of values,
+  <code>In</code> or <code>NotIn</code>, whatever operator it was created with.</li>
+<li><code>ISemanticModel.GetDistinctValuesAsync(string field)</code> becomes <code>GetDistinctValuesAsync(DistinctValuesRequest request)</code>
+  and returns <code>DistinctValues</code> (the values and whether there are more): a model gives at most <code>request.Limit</code> values,
+  those containing <code>request.Search</code> for a dimension of texts when it is given. <code>DataSerializer.SerializeValues</code> becomes
+  <code>Serialize(DistinctValues)</code>, <code>DeserializeValues</code> returns <code>DistinctValues</code>, and <code>Serialize(DistinctValuesRequest)</code> /
+  <code>DeserializeValuesRequest</code> carry the request.</li>
 <li><code>ISemanticModel.ExecuteAsync(AnalyticQuery)</code> is replaced by <code>GetDataAsync(VisualDataRequest)</code>. A model that runs
   queries derives from <code>QuerySemanticModel</code> and overrides <code>ExecuteAsync</code> as before (with <code>override</code>); code that queried
   a model directly calls <code>ExecuteAsync</code> on a <code>QuerySemanticModel</code> (<code>QueryableSemanticModel&lt;T&gt;</code> is one), or

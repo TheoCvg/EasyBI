@@ -2202,9 +2202,20 @@ it, and every <code>VisualView</code> inside applies it.</p>
 </code></pre></div>
 <h2 id="what-can-be-filtered">What can be filtered<a class="headerlink" href="#what-can-be-filtered" title="Permanent link">&para;</a></h2>
 <h3 id="values">Values<a class="headerlink" href="#values" title="Permanent link">&para;</a></h3>
-<p>Any dimension can be filtered on a list of values, checked in a list that users can search.</p>
+<p>Any dimension can be filtered on a list of values, checked as in Excel: every value is checked at first (no filter),
+unchecking one leaves it out, and <strong>(Select all)</strong> is checked, unchecked or partly checked. The list shows thousands of
+values without slowing down and offers a search from 8 values on; while searching, <strong>(Select all search results)</strong>
+and checking a value found filter on the values found, unless <strong>Add current selection to filter</strong> keeps the others.
+A selection is saved as the shorter list: the values kept (<code>In</code>) or those left out (<code>NotIn</code>). Every value unchecked
+keeps no row (<code>In</code> without values).</p>
+<p>A filter lists the first 10,000 values (<code>DistinctValuesRequest.DefaultLimit</code>). Beyond, it says so, and its search asks
+the model for the values containing the longest word typed (<code>DistinctValuesRequest.Search</code>): a dimension of a million
+customers stays searchable. The values not listed keep the state of the filter: kept when it filters "all except",
+left out when it filters "one of". <code>QueryableSemanticModel</code> searches in the <code>IQueryable</code> (<code>value.ToLower().Contains(...)</code>,
+translated to SQL by EF Core), so the model's search follows the database's rules for accents.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">new</span><span class="w"> </span><span class="nf">FilterSpec</span><span class="p">(</span><span class="s">"Region"</span><span class="p">,</span><span class="w"> </span><span class="n">FilterOperator</span><span class="p">.</span><span class="n">In</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">"Nord"</span><span class="p">,</span><span class="w"> </span><span class="s">"Sud"</span><span class="p">])</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">new</span><span class="w"> </span><span class="nf">FilterSpec</span><span class="p">(</span><span class="s">"Channel"</span><span class="p">,</span><span class="w"> </span><span class="n">FilterOperator</span><span class="p">.</span><span class="n">NotIn</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">"Web"</span><span class="p">])</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="k">new</span><span class="w"> </span><span class="nf">FilterSpec</span><span class="p">(</span><span class="s">"Channel"</span><span class="p">,</span><span class="w"> </span><span class="n">FilterOperator</span><span class="p">.</span><span class="n">In</span><span class="p">,</span><span class="w"> </span><span class="p">[])</span><span class="w">          </span><span class="c1">// no row</span>
 </code></pre></div>
 <h3 id="periods">Periods<a class="headerlink" href="#periods" title="Permanent link">&para;</a></h3>
 <p>A date is filtered on a <strong>period</strong> rather than a list of values:</p>
