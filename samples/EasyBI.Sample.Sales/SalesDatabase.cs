@@ -1,9 +1,7 @@
-using System.IO;
-using System.Resources;
 using EasyBI.Core;
 using Microsoft.EntityFrameworkCore;
 
-namespace EasyBI.Sample;
+namespace EasyBI.Sample.Sales;
 
 public sealed class ProductRow
 {
@@ -93,7 +91,7 @@ public static class SalesDatabase
     /// The model over the database, with the same fields as <see cref="SalesData.CreateModel"/>. One context per
     /// query: the visuals of a dashboard run in parallel.
     /// </summary>
-    public static QueryableSemanticModel<SaleRow> CreateModel(int rows, ResourceManager captions)
+    public static QueryableSemanticModel<SaleRow> CreateModel(int rows)
     {
         var options = Options(rows);
         return SemanticModel.For(() => new SalesDbContext(options), db => db.Sales.AsNoTracking(), "sales", "Sales")
@@ -111,6 +109,6 @@ public static class SalesDatabase
             .Ratio(s => s.Amount, s => 1, "AverageBasket", "AverageBasket", format: "#,##0 €")
             // A formula, as end users write them: they can rewrite it in the application
             .Formula("SUM([Amount]; [Channel] = \"Web\") / [Amount]", "WebShare", "WebShare", format: "P1")
-            .Localize(captions);
+            .Localize(SalesData.Captions);
     }
 }

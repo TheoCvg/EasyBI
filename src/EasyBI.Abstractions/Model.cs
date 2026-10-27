@@ -33,8 +33,10 @@ public sealed record ModelMetadata(string Name, string Caption, IReadOnlyList<Fi
         Fields.FirstOrDefault(f => f.Name == name)
         ?? throw new KeyNotFoundException($"Unknown field '{name}' in model '{Name}'.");
 
+    [System.Text.Json.Serialization.JsonIgnore]
     public IEnumerable<FieldDescriptor> Dimensions => Fields.Where(f => f.Kind == FieldKind.Dimension);
 
+    [System.Text.Json.Serialization.JsonIgnore]
     public IEnumerable<FieldDescriptor> Measures => Fields.Where(f => f.Kind == FieldKind.Measure);
 }
 

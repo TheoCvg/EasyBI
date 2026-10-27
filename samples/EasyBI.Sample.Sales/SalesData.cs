@@ -1,7 +1,7 @@
 using System.Resources;
 using EasyBI.Core;
 
-namespace EasyBI.Sample;
+namespace EasyBI.Sample.Sales;
 
 public sealed record Product(string Name, string Category, decimal UnitPrice);
 
@@ -42,8 +42,10 @@ public static class SalesData
         return sales;
     }
 
-    /// <summary>Captions are resource keys, translated through <paramref name="captions"/>.</summary>
-    public static QueryableSemanticModel<Sale> CreateModel(IEnumerable<Sale> sales, ResourceManager captions) =>
+    /// <summary>Captions of the demo's fields in its languages: the captions given to the models are their keys.</summary>
+    public static ResourceManager Captions { get; } = new("EasyBI.Sample.Sales.Resources.Captions", typeof(SalesData).Assembly);
+
+    public static QueryableSemanticModel<Sale> CreateModel(IEnumerable<Sale> sales) =>
         SemanticModel.For(sales, "sales", "Sales")
             .Dimension(s => s.Date, "Date")
             .Dimension(s => s.Region, "Region")
@@ -59,5 +61,5 @@ public static class SalesData
             .Ratio(s => s.Amount, s => 1, "AverageBasket", "AverageBasket", format: "#,##0 €")
             // A formula, as end users write them: they can rewrite it in the application
             .Formula("SUM([Amount]; [Channel] = \"Web\") / [Amount]", "WebShare", "WebShare", format: "P1")
-            .Localize(captions);
+            .Localize(Captions);
 }
