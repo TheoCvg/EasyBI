@@ -25,6 +25,11 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   type. The sample gets the results of its visuals from an ASP.NET Core server (`samples/EasyBI.Sample.Server`).
   `ModelMetadata.Dimensions` and `Measures` are not serialized.
 
+### Fixed
+
+- Designer: typing the name or the formula of a calculated measure no longer freezes an application being debugged;
+  checking a formula throws no exception anymore, where it threw one per key typed.
+
 ### Breaking changes
 
 - `ISemanticModel.ExecuteAsync(AnalyticQuery)` is replaced by `GetDataAsync(VisualDataRequest)`. A model that runs

@@ -29,6 +29,32 @@ public class FormulaEditingTests
         Assert.Equal("", Located("[CA] +"));
     }
 
+    [Theory]
+    [InlineData("SUM([CA]; [Région] = \"Nord\") / IF([CA] > 0,5; 1; 2)")]
+    [InlineData("TOTAL([Inconnu]) + [Région] % (1.2.3 - NOT [CA]")]
+    [InlineData("DISTINCTCOUNT([Région] = \"Nord\"; [CA] > \"x\") + MIN(SUM([CA]))")]
+    public void Checking_a_formula_as_it_is_typed_throws_no_exception(string formula)
+    {
+        // A debugger slows down, or stops, at every exception thrown, even caught: once per key typed
+        var thread = Environment.CurrentManagedThreadId;
+        var thrown = new List<string>();
+        void OnThrown(object? sender, System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs e)
+        {
+            if (Environment.CurrentManagedThreadId == thread) thrown.Add(e.Exception.Message);
+        }
+        AppDomain.CurrentDomain.FirstChanceException += OnThrown;
+        try
+        {
+            for (var length = 0; length <= formula.Length; length++)
+                MeasureFormula.Check(formula[..length], Metadata, out _);
+        }
+        finally
+        {
+            AppDomain.CurrentDomain.FirstChanceException -= OnThrown;
+        }
+        Assert.Empty(thrown);
+    }
+
     [Fact]
     public void The_message_without_a_place_still_comes_with_the_text()
     {
