@@ -15,6 +15,18 @@
   <data name="FilterAll" xml:space="preserve">
     <value>(tout)</value>
   </data>
+  <data name="FilterNone" xml:space="preserve">
+    <value>(aucune)</value>
+  </data>
+  <data name="FilterSelectAll" xml:space="preserve">
+    <value>(Sélectionner tout)</value>
+  </data>
+  <data name="FilterSelectAllResults" xml:space="preserve">
+    <value>(Sélectionner tous les résultats de la recherche)</value>
+  </data>
+  <data name="FilterAddToFilter" xml:space="preserve">
+    <value>Ajouter la sélection actuelle au filtre</value>
+  </data>
   <data name="FilterExcept" xml:space="preserve">
     <value>sauf {0}</value>
   </data>

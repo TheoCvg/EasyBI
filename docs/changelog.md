@@ -24,6 +24,9 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   a model's `ModelMetadata` and the distinct values of a dimension, with dates, date periods and numbers keeping their
   type. The sample gets the results of its visuals from an ASP.NET Core server (`samples/EasyBI.Sample.Server`).
   `ModelMetadata.Dimensions` and `Measures` are not serialized.
+- **Value filters like Excel**: every value checked at first, a **(Select all)** box checked, unchecked or partly
+  checked, **(Select all search results)** and **Add current selection to filter** while searching. Lists of thousands
+  of values (suppliers...) open and search without delay, and checking them all changes the filter once.
 
 ### Fixed
 
@@ -32,6 +35,9 @@ opens older reports, and a report using a newer feature cannot be opened by an o
 
 ### Breaking changes
 
+- `FilterContext.SetFilter` keeps a filter `In` without values, which keeps no row (every value unchecked), instead of
+  removing it; a filter `NotIn` without values is still removed. A value filter is saved as the shorter list of values,
+  `In` or `NotIn`, whatever operator it was created with.
 - `ISemanticModel.ExecuteAsync(AnalyticQuery)` is replaced by `GetDataAsync(VisualDataRequest)`. A model that runs
   queries derives from `QuerySemanticModel` and overrides `ExecuteAsync` as before (with `override`); code that queried
   a model directly calls `ExecuteAsync` on a `QuerySemanticModel` (`QueryableSemanticModel<T>` is one), or

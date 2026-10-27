@@ -37,11 +37,17 @@ Filters.Load(report.Filters);                                                   
 
 ### Values
 
-Any dimension can be filtered on a list of values, checked in a list that users can search.
+Any dimension can be filtered on a list of values, checked as in Excel: every value is checked at first (no filter),
+unchecking one leaves it out, and **(Select all)** is checked, unchecked or partly checked. The list shows thousands of
+values without slowing down and offers a search from 8 values on; while searching, **(Select all search results)**
+and checking a value found filter on the values found, unless **Add current selection to filter** keeps the others.
+A selection is saved as the shorter list: the values kept (`In`) or those left out (`NotIn`). Every value unchecked
+keeps no row (`In` without values).
 
 ```csharp
 new FilterSpec("Region", FilterOperator.In, ["Nord", "Sud"])
 new FilterSpec("Channel", FilterOperator.NotIn, ["Web"])
+new FilterSpec("Channel", FilterOperator.In, [])          // no row
 ```
 
 ### Periods

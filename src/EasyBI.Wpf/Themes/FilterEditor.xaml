@@ -36,24 +36,48 @@
                             <!-- Values to check -->
                             <bi:SlotHost Slot="{x:Static designer:FilterEditorSlots.Values}" Orientation="Vertical"
                                          Visibility="{Binding IsValueList, Converter={StaticResource Visible}}">
-                                <DockPanel>
+                                <DockPanel MinWidth="250">
                                     <!-- Many values: a search box (only the values shown change, the checked ones stay checked) -->
                                     <Grid DockPanel.Dock="Top" Margin="0,0,0,6" Visibility="{Binding ShowSearch, Converter={StaticResource Visible}}">
                                         <TextBox Padding="6,3" VerticalContentAlignment="Center" ToolTip="{bi:Localize SearchValues}"
-                                                 Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" />
+                                                 Text="{Binding Search, UpdateSourceTrigger=PropertyChanged, Delay=150}" />
                                         <TextBlock x:Name="SearchPlaceholder" Text="{bi:Localize SearchValues}" Margin="9,0,0,0" VerticalAlignment="Center"
                                                    IsHitTestVisible="False" Visibility="Collapsed" FontStyle="Italic"
                                                    Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
                                     </Grid>
-                                    <ScrollViewer MaxHeight="284" VerticalScrollBarVisibility="Auto">
-                                        <ItemsControl ItemsSource="{Binding VisibleValues}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}" Margin="0,2" />
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </ScrollViewer>
+                                    <!-- As in Excel: (Select all), checked, unchecked or partly; while searching, on the values found -->
+                                    <CheckBox DockPanel.Dock="Top" Margin="0,2" IsThreeState="False" IsChecked="{Binding AllChecked}">
+                                        <Grid>
+                                            <TextBlock x:Name="SelectAll" Text="{bi:Localize FilterSelectAll}" />
+                                            <TextBlock x:Name="SelectAllResults" Text="{bi:Localize FilterSelectAllResults}" Visibility="Collapsed" />
+                                        </Grid>
+                                    </CheckBox>
+                                    <CheckBox x:Name="AddToFilter" DockPanel.Dock="Top" Margin="0,2" Visibility="Collapsed"
+                                              IsChecked="{Binding AddToFilter}" Content="{bi:Localize FilterAddToFilter}" />
+                                    <Separator DockPanel.Dock="Top" Margin="0,4" />
+                                    <!-- Virtualized: a dimension can have thousands of values -->
+                                    <ItemsControl ItemsSource="{Binding VisibleValues}" MaxHeight="284"
+                                                  VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                                                  ScrollViewer.CanContentScroll="True">
+                                        <ItemsControl.Template>
+                                            <ControlTemplate TargetType="ItemsControl">
+                                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False"
+                                                              CanContentScroll="True">
+                                                    <ItemsPresenter />
+                                                </ScrollViewer>
+                                            </ControlTemplate>
+                                        </ItemsControl.Template>
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <VirtualizingStackPanel />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}" Margin="0,2" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                 </DockPanel>
                             </bi:SlotHost>
 
@@ -90,6 +114,11 @@
                     <ControlTemplate.Triggers>
                         <DataTrigger Binding="{Binding Search}" Value="">
                             <Setter TargetName="SearchPlaceholder" Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsSearching}" Value="True">
+                            <Setter TargetName="SelectAll" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="SelectAllResults" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="AddToFilter" Property="Visibility" Value="Visible" />
                         </DataTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

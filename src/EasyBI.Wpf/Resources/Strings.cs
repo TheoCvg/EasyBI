@@ -88,6 +88,7 @@ internal static class Strings
     public static string SecondaryAxisHint => Get();
     public static string FilterAll => Get();
     public static string FilterExcept => Get();
+    public static string FilterNone => Get();
     public static string Selection => Get();
     public static string ClearSelection => Get();
     public static string Error => Get();

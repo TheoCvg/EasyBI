@@ -114,9 +114,23 @@ public class FilteringTests
         Assert.Equal(300m, await TotalAsync(filters));
         Assert.Single(filters.FiltersFor(Total));
 
-        filters.SetFilter("sales", new FilterSpec("Region", FilterOperator.In, []));
+        filters.RemoveFilter("sales", "Region");
         Assert.Equal(640m, await TotalAsync(filters));
         Assert.Single(filters.Filters);
+    }
+
+    [Fact]
+    public async Task A_global_filter_on_no_value_keeps_no_row_and_one_all_except_no_value_is_removed()
+    {
+        var filters = new FilterContext();
+
+        // Every value unchecked
+        filters.SetFilter("sales", new FilterSpec("Region", FilterOperator.In, []));
+        var total = await Model().ExecuteAsync(filters.Apply(Total).ToQuery());
+        Assert.True(total.Rows.Count == 0 || total.Rows[0][0] is null or 0m);
+
+        filters.SetFilter("sales", new FilterSpec("Region", FilterOperator.NotIn, []));
+        Assert.Empty(filters.Filters);
     }
 
     [Fact]
