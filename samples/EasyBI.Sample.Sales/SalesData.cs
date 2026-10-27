@@ -5,7 +5,10 @@ namespace EasyBI.Sample.Sales;
 
 public sealed record Product(string Name, string Category, decimal UnitPrice);
 
-public sealed record Sale(DateTime Date, string Region, string Channel, Product Product, int Quantity, decimal Amount, decimal Margin);
+public sealed record Sale(DateTime Date, string Region, string Channel, Product Product, int Quantity, decimal Amount, decimal Margin)
+{
+    public string Customer { get; init; } = "";
+}
 
 /// <summary>Fake dataset and the semantic model the developer exposes.</summary>
 public static class SalesData
@@ -20,12 +23,36 @@ public static class SalesData
     private static readonly string[] Regions = ["Île-de-France", "Nord", "Sud", "Est", "Ouest"];
     private static readonly string[] Channels = ["Magasin", "Web", "Partenaires"];
 
+    private static readonly string[] FirstNames =
+    [
+        "Alice", "Antoine", "Camille", "Chloé", "Clément", "Emma", "Étienne", "Fanny", "Gabriel", "Hugo",
+        "Inès", "Jade", "Jules", "Julie", "Léa", "Léo", "Lina", "Louis", "Lucas", "Manon",
+        "Marie", "Mathis", "Maxime", "Mila", "Nathan", "Noé", "Océane", "Paul", "Pierre", "Rose",
+        "Sacha", "Sarah", "Simon", "Sophie", "Théo", "Thomas", "Tom", "Valentin", "Victor", "Zoé",
+        "Adam", "Anna", "Arthur", "Clara", "Eva", "Lola", "Louise", "Malo", "Nina", "Raphaël",
+    ];
+
+    private static readonly string[] LastNames =
+    [
+        "Martin", "Bernard", "Thomas", "Petit", "Robert", "Richard", "Durand", "Dubois", "Moreau", "Laurent",
+        "Simon", "Michel", "Lefebvre", "Leroy", "Roux", "David", "Bertrand", "Morel", "Fournier", "Girard",
+        "Bonnet", "Dupont", "Lambert", "Fontaine", "Rousseau", "Vincent", "Muller", "Lefèvre", "Faure", "André",
+        "Mercier", "Blanc", "Guérin", "Boyer", "Garnier", "Chevalier", "François", "Legrand", "Gauthier", "Garcia",
+        "Perrin", "Robin", "Clément", "Morin", "Nicolas", "Henry", "Roussel", "Mathieu", "Gautier", "Masson",
+    ];
+
+    /// <summary>The demo's customers, thousands of them: a dimension with a long list of values to filter.</summary>
+    public static IReadOnlyList<string> Customers { get; } =
+        [.. LastNames.SelectMany(last => FirstNames.Select(first => $"{first} {last}"))];
+
     public static IReadOnlyList<Sale> Generate(int count = 20_000)
     {
         var random = new Random(42);
         var start = new DateTime(2023, 1, 1);
         var days = (new DateTime(2025, 12, 31) - start).Days;
         var sales = new List<Sale>(count);
+        // Drawn apart, so that the other values stay those of the demo before customers
+        var customers = new Random(7);
         for (var i = 0; i < count; i++)
         {
             var date = start.AddDays(random.Next(days));
@@ -37,7 +64,7 @@ public static class SalesData
             var trend = 1 + (date.Year - 2023) * 0.12 + Math.Sin((date.Month - 3) / 12.0 * Math.PI * 2) * 0.15;
             var amount = Math.Round(product.UnitPrice * quantity * (decimal)trend, 2);
             var margin = Math.Round(amount * (product.Category == "Services" ? 0.55m : 0.28m), 2);
-            sales.Add(new Sale(date, region, channel, product, quantity, amount, margin));
+            sales.Add(new Sale(date, region, channel, product, quantity, amount, margin) { Customer = Customers[customers.Next(Customers.Count)] });
         }
         return sales;
     }
@@ -52,6 +79,7 @@ public static class SalesData
             .Dimension(s => s.Channel, "Channel")
             .Dimension(s => s.Product.Category, "Category")
             .Dimension(s => s.Product.Name, "Product")
+            .Dimension(s => s.Customer, "Customer", "Customer")
             .Measure(s => s.Amount, "Revenue", format: "#,##0 €")
             .Measure(s => s.Margin, "Margin", format: "#,##0 €")
             .Measure(s => s.Quantity, "Quantity", format: "N0")
