@@ -13,11 +13,11 @@ public class FilterValueListTests
     private sealed record Purchase(string Supplier, decimal Amount);
 
     private static QueryableSemanticModel<Purchase> Model(int suppliers = 10) =>
-        SemanticModel.For(Enumerable.Range(1, suppliers).Select(i => new Purchase($"Supplier {i:0000}", i)).ToArray(), "purchases")
+        SemanticModel.For(Enumerable.Range(1, suppliers).Select(i => new Purchase($"Supplier {i:00000}", i)).ToArray(), "purchases")
             .Dimension(p => p.Supplier, "Fournisseur")
             .Measure(p => p.Amount, "Montant");
 
-    private static string Name(int i) => $"Supplier {i:0000}";
+    private static string Name(int i) => $"Supplier {i:00000}";
 
     private static FilterItemViewModel Filter(
         Action? changed = null, int suppliers = 10, IEnumerable<string?>? selection = null, FilterOperator @operator = FilterOperator.In)
@@ -90,7 +90,7 @@ public class FilterValueListTests
     public void While_searching_select_all_filters_on_the_values_found()
     {
         var filter = Filter();
-        filter.Search = "supplier 000";
+        filter.Search = "supplier 0000";
 
         Assert.True(filter.IsSearching);
         Assert.Equal(9, filter.VisibleValues.Count);
@@ -108,7 +108,7 @@ public class FilterValueListTests
     public void Add_current_selection_to_filter_keeps_the_values_not_found()
     {
         var filter = Filter(selection: [Name(10)]);
-        filter.Search = "supplier 0001";
+        filter.Search = "supplier 00001";
         filter.AddToFilter = true;
 
         filter.AllChecked = true;
@@ -137,6 +137,46 @@ public class FilterValueListTests
         var visual = new VisualDefinition { Model = "purchases", Type = VisualType.Table, Axis = [new("Supplier")], Values = [new("Amount")] };
         var data = await model.GetDataAsync(filters.Apply(visual).ToDataRequest(model.Metadata));
         Assert.Empty(data.Result.Rows);
+    }
+
+    [Fact]
+    public async Task A_list_longer_than_the_limit_finds_the_other_values_in_the_model()
+    {
+        var filter = Filter(suppliers: 12_000);
+
+        Assert.True(filter.IsTruncated);
+        Assert.Equal(DistinctValuesRequest.DefaultLimit, filter.Values.Count);
+        Assert.DoesNotContain(filter.Values, v => v.Label == Name(11_999));
+
+        filter.Search = "11999";
+        await filter.SearchTask;
+
+        // Found in the model, checked as the values not listed: without a filter, they are kept
+        var found = Assert.Single(filter.VisibleValues);
+        Assert.Equal(Name(11_999), found.Label);
+        Assert.True(found.IsChecked);
+        Assert.Null(filter.ToFilterSpec());
+
+        filter.AddToFilter = true;
+        found.IsChecked = false;
+        Assert.Equal(new FilterSpec("Supplier", FilterOperator.NotIn, [Name(11_999)]), filter.ToFilterSpec(), FilterSpecComparer.Instance);
+    }
+
+    [Fact]
+    public void Beyond_the_limit_the_values_not_listed_keep_the_state_of_the_filter()
+    {
+        // A value of the filter not among the first values is listed, so that a change keeps it
+        var filter = Filter(suppliers: 12_000, selection: [Name(11_500)]);
+
+        Assert.True(Assert.Single(filter.Values, v => v.Label == Name(11_500)).IsChecked);
+        filter.Values[0].IsChecked = true;
+        Assert.Equal(new FilterSpec("Supplier", FilterOperator.In, [Name(1), Name(11_500)]), filter.ToFilterSpec(), FilterSpecComparer.Instance);
+
+        // Every value checked keeps those not listed too, every value unchecked leaves them out
+        filter.AllChecked = true;
+        Assert.Null(filter.ToFilterSpec());
+        filter.AllChecked = false;
+        Assert.Equal(new FilterSpec("Supplier", FilterOperator.In, []), filter.ToFilterSpec(), FilterSpecComparer.Instance);
     }
 
     [Fact]

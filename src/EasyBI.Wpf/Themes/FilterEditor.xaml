@@ -45,6 +45,11 @@
                                                    IsHitTestVisible="False" Visibility="Collapsed" FontStyle="Italic"
                                                    Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
                                     </Grid>
+                                    <!-- More values than listed: the search finds the others in the model -->
+                                    <TextBlock DockPanel.Dock="Top" Margin="0,0,0,6" MaxWidth="250" HorizontalAlignment="Left" TextWrapping="Wrap"
+                                               FontStyle="Italic" Text="{bi:Localize FilterTruncated}"
+                                               Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}"
+                                               Visibility="{Binding IsTruncated, Converter={StaticResource Visible}}" />
                                     <!-- As in Excel: (Select all), checked, unchecked or partly; while searching, on the values found -->
                                     <CheckBox DockPanel.Dock="Top" Margin="0,2" IsThreeState="False" IsChecked="{Binding AllChecked}">
                                         <Grid>

@@ -222,8 +222,8 @@ that serializes; the drawing (chart data, theme, renderer) always stays in the a
         public override Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default)
             => ...; // filters, groups, aggregates, sort, Top and calculated measures
 
-        public override Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default)
-            => ...;
+        public override Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default)
+            => ...; // at most request.Limit values, those containing request.Search when it is given
     }
     ```
 
@@ -246,10 +246,12 @@ that serializes; the drawing (chart data, theme, renderer) always stays in the a
             return DataSerializer.DeserializeData(await response.Content.ReadAsStringAsync());
         }
 
-        public async Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default)
+        public async Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default)
         {
-            var json = await http.GetStringAsync($"sales/values/{Uri.EscapeDataString(field)}");
-            return DataSerializer.DeserializeValues(json, Metadata.GetField(field).DataType);
+            using var content = new StringContent(DataSerializer.Serialize(request), Encoding.UTF8, "application/json");
+            using var response = await http.PostAsync("sales/values", content, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return DataSerializer.DeserializeValues(await response.Content.ReadAsStringAsync(), Metadata.GetField(request.Field).DataType);
         }
     }
     ```
@@ -267,8 +269,11 @@ that serializes; the drawing (chart data, theme, renderer) always stays in the a
         var request = await JsonSerializer.DeserializeAsync<VisualDataRequest>(http.Body, DataSerializer.Options, cancellationToken);
         return Results.Json(await sales.GetDataAsync(request!, cancellationToken), DataSerializer.Options);
     });
-    app.MapGet("/sales/values/{field}", async (string field, CancellationToken cancellationToken) =>
-        Results.Json(await sales.GetDistinctValuesAsync(field, cancellationToken), DataSerializer.Options));
+    app.MapPost("/sales/values", async (HttpRequest http, CancellationToken cancellationToken) =>
+    {
+        var request = await JsonSerializer.DeserializeAsync<DistinctValuesRequest>(http.Body, DataSerializer.Options, cancellationToken);
+        return Results.Json(await sales.GetDistinctValuesAsync(request!, cancellationToken), DataSerializer.Options);
+    });
     ```
 
     `DataSerializer` writes the request, the data, the metadata and the distinct values as plain JSON (see

@@ -304,8 +304,8 @@ public class CalculatedMeasureUiTests
             return inner.GetDataAsync(request, cancellationToken);
         }
 
-        public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default) =>
-            inner.GetDistinctValuesAsync(field, cancellationToken);
+        public Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default) =>
+            inner.GetDistinctValuesAsync(request, cancellationToken);
     }
 
     /// <summary>Holds its queries until released, recording their cancellation tokens.</summary>
@@ -328,8 +328,8 @@ public class CalculatedMeasureUiTests
             return await inner.GetDataAsync(request, cancellationToken);
         }
 
-        public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default) =>
-            inner.GetDistinctValuesAsync(field, cancellationToken);
+        public Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default) =>
+            inner.GetDistinctValuesAsync(request, cancellationToken);
     }
 
     [Fact]

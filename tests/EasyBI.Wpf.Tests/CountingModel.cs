@@ -21,6 +21,6 @@ internal sealed class CountingModel(string name) : ISemanticModel
             [["North", (object?)(double)Queries]])));
     }
 
-    public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<object?>>([]);
+    public Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new DistinctValues([]));
 }

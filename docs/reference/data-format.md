@@ -10,7 +10,8 @@ them as plain JSON, so that the server can be written in .NET or in any other la
 | Metadata | `Serialize(ModelMetadata)` | `DeserializeMetadata(json)` |
 | Request of a visual | `Serialize(VisualDataRequest)` | `DeserializeRequest(json)` |
 | Data of a visual | `Serialize(VisualData)` | `DeserializeData(json)` |
-| Distinct values | `SerializeValues(values)` | `DeserializeValues(json, dataType)` |
+| Distinct values asked by a filter | `Serialize(DistinctValuesRequest)` | `DeserializeValuesRequest(json)` |
+| Distinct values | `Serialize(DistinctValues)` | `DeserializeValues(json, dataType)` |
 
 `DataSerializer.Options` reads and writes the same JSON with `JsonSerializer` directly: on a stream, with ASP.NET Core's
 `Results.Json`, `HttpClient`'s `ReadFromJsonAsync`...
@@ -101,8 +102,23 @@ are omitted for the server's own.
 | Date | `"2024-03-10"`, or `"2024-03-10T14:30:00.0000000"` with its time |
 | Period of a date grain (year, quarter, month) | `{ "grain": "Month", "key": 202403 }`: the key is `2024`, `20241` (Q1) or `202403` |
 
-The column's `dataType` tells a date from a text: in a `Date` column, `"2024-03-10"` is read as a date. Distinct values
-are a JSON array of values, read with the type of their dimension (`Metadata.GetField(field).DataType`).
+The column's `dataType` tells a date from a text: in a `Date` column, `"2024-03-10"` is read as a date.
+
+## Distinct values
+
+A filter asks for the values of a dimension, at most `limit` (10,000 by default); when the list was truncated, a search
+asks for the values containing a text, ignoring case:
+
+```json
+{ "field": "Customer", "search": "dupont", "limit": 10000 }
+```
+
+The answer lists the values in order, read with the type of their dimension (`Metadata.GetField(field).DataType`), and
+tells whether there were more than the limit:
+
+```json
+{ "values": [ "Alice Dupont", "Hugo Dupont", null ], "isTruncated": false }
+```
 
 ## Compatibility
 

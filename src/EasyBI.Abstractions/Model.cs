@@ -54,9 +54,34 @@ public interface ISemanticModel
     /// <summary>The data of a visual: its result and, for a matrix, its pivoted cells and totals.</summary>
     Task<VisualData> GetDataAsync(VisualDataRequest request, CancellationToken cancellationToken = default);
 
-    /// <summary>Distinct values of a dimension, used by filters.</summary>
-    Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Distinct values of a dimension, used by filters: in order, those containing the request's search, at most its
+    /// limit, telling when there are more.
+    /// </summary>
+    Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default);
 }
+
+/// <summary>What a filter asks of a dimension: its distinct values, optionally those containing a text.</summary>
+/// <param name="Field">The name of the dimension.</param>
+public sealed record DistinctValuesRequest(string Field)
+{
+    /// <summary>The values a filter lists by default: a list longer than that is searched.</summary>
+    public const int DefaultLimit = 10_000;
+
+    /// <summary>
+    /// A text the values contain, ignoring case, for a dimension of texts; null or empty for every value. A filter
+    /// asks it when the list of values was truncated, to find the others.
+    /// </summary>
+    public string? Search { get; init; }
+
+    /// <summary>The number of values at most; the others are left out (<see cref="DistinctValues.IsTruncated"/>).</summary>
+    public int Limit { get; init; } = DefaultLimit;
+}
+
+/// <summary>Distinct values of a dimension, in order.</summary>
+/// <param name="Values">The values, null standing for a missing value.</param>
+/// <param name="IsTruncated">Whether there are more values than the request's limit.</param>
+public sealed record DistinctValues(IReadOnlyList<object?> Values, bool IsTruncated = false);
 
 /// <summary>
 /// What a visual asks its <see cref="ISemanticModel"/> for. It only holds data that serializes, so that it can travel

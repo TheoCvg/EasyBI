@@ -27,6 +27,9 @@
   <data name="FilterAddToFilter" xml:space="preserve">
     <value>Ajouter la sélection actuelle au filtre</value>
   </data>
+  <data name="FilterTruncated" xml:space="preserve">
+    <value>Toutes les valeurs ne sont pas listées : cherchez pour trouver les autres.</value>
+  </data>
   <data name="FilterExcept" xml:space="preserve">
     <value>sauf {0}</value>
   </data>

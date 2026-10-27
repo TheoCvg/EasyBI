@@ -27,6 +27,9 @@ opens older reports, and a report using a newer feature cannot be opened by an o
 - **Value filters like Excel**: every value checked at first, a **(Select all)** box checked, unchecked or partly
   checked, **(Select all search results)** and **Add current selection to filter** while searching. Lists of thousands
   of values (suppliers...) open and search without delay, and checking them all changes the filter once.
+- **Long lists of values**: a filter lists up to 10,000 values of a dimension instead of 1,000, says when there are
+  more, and then searches them in the model (`DistinctValuesRequest.Search`), translated to SQL by EF Core. The sample
+  has 2,500 customers to filter on.
 
 ### Fixed
 
@@ -38,6 +41,11 @@ opens older reports, and a report using a newer feature cannot be opened by an o
 - `FilterContext.SetFilter` keeps a filter `In` without values, which keeps no row (every value unchecked), instead of
   removing it; a filter `NotIn` without values is still removed. A value filter is saved as the shorter list of values,
   `In` or `NotIn`, whatever operator it was created with.
+- `ISemanticModel.GetDistinctValuesAsync(string field)` becomes `GetDistinctValuesAsync(DistinctValuesRequest request)`
+  and returns `DistinctValues` (the values and whether there are more): a model gives at most `request.Limit` values,
+  those containing `request.Search` for a dimension of texts when it is given. `DataSerializer.SerializeValues` becomes
+  `Serialize(DistinctValues)`, `DeserializeValues` returns `DistinctValues`, and `Serialize(DistinctValuesRequest)` /
+  `DeserializeValuesRequest` carry the request.
 - `ISemanticModel.ExecuteAsync(AnalyticQuery)` is replaced by `GetDataAsync(VisualDataRequest)`. A model that runs
   queries derives from `QuerySemanticModel` and overrides `ExecuteAsync` as before (with `override`); code that queried
   a model directly calls `ExecuteAsync` on a `QuerySemanticModel` (`QueryableSemanticModel<T>` is one), or

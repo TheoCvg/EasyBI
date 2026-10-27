@@ -51,15 +51,24 @@ public static class DataSerializer
     public static ModelMetadata DeserializeMetadata(string json) =>
         JsonSerializer.Deserialize<ModelMetadata>(json, Options) ?? throw new JsonException("Empty metadata.");
 
-    /// <summary>Distinct values of a dimension (<see cref="ISemanticModel.GetDistinctValuesAsync"/>), as a JSON array.</summary>
-    public static string SerializeValues(IReadOnlyList<object?> values) => JsonSerializer.Serialize(values, Options);
+    /// <summary>What a filter asks of a dimension (<see cref="ISemanticModel.GetDistinctValuesAsync"/>).</summary>
+    public static string Serialize(DistinctValuesRequest request) => JsonSerializer.Serialize(request, Options);
 
-    /// <summary>Reads distinct values written by <see cref="SerializeValues"/>, of a dimension of type <paramref name="dataType"/>.</summary>
-    public static IReadOnlyList<object?> DeserializeValues(string json, DataType dataType)
+    public static DistinctValuesRequest DeserializeValuesRequest(string json) =>
+        JsonSerializer.Deserialize<DistinctValuesRequest>(json, Options) ?? throw new JsonException("Empty request.");
+
+    /// <summary>Distinct values of a dimension, as <c>{"values":[...],"isTruncated":false}</c>.</summary>
+    public static string Serialize(DistinctValues values) => JsonSerializer.Serialize(values, Options);
+
+    /// <summary>Reads distinct values written by <see cref="Serialize(DistinctValues)"/>, of a dimension of type <paramref name="dataType"/>.</summary>
+    public static DistinctValues DeserializeValues(string json, DataType dataType)
     {
         using var document = JsonDocument.Parse(json);
-        if (document.RootElement.ValueKind != JsonValueKind.Array) throw new JsonException("Values are written as an array.");
-        return [.. document.RootElement.EnumerateArray().Select(v => ReadValue(v, dataType))];
+        if (document.RootElement.ValueKind != JsonValueKind.Object || !document.RootElement.TryGetProperty("values", out var values)
+            || values.ValueKind != JsonValueKind.Array)
+            throw new JsonException("Distinct values are written as {\"values\":[...]}.");
+        var truncated = document.RootElement.TryGetProperty("isTruncated", out var flag) && flag.ValueKind == JsonValueKind.True;
+        return new DistinctValues([.. values.EnumerateArray().Select(v => ReadValue(v, dataType))], truncated);
     }
 
     /// <summary>

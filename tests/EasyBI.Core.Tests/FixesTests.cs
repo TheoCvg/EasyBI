@@ -19,7 +19,7 @@ public class FixesTests
             .Dimension(r => r.Region, "Région")
             .Measure(r => r.Amount, "CA");
 
-        var distinct = await model.GetDistinctValuesAsync("Region");
+        var distinct = (await model.GetDistinctValuesAsync(new("Region"))).Values;
         Assert.Contains(null, distinct);
 
         var onlyNull = new AnalyticQuery([], [new("Amount")],
@@ -185,7 +185,7 @@ public class FixesTests
             .Dimension(r => r.Region, "Région").Measure(r => r.Amount, "CA");
 
         await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => model.ExecuteAsync(new([new("Region")], [new("Amount")]))));
-        await model.GetDistinctValuesAsync("Region");
+        await model.GetDistinctValuesAsync(new("Region"));
 
         Assert.Equal(5, created);
         Assert.Equal(5, log.Disposed);

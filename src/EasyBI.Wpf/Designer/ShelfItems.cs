@@ -273,6 +273,7 @@ public sealed class SortOption(ListSortDirection? direction, string symbol, Func
 public sealed class FilterItemViewModel : ObservableObject
 {
     private readonly Action _changed;
+    private readonly ISemanticModel _model;
     private bool _isSelected;
     private ICommand? _selectCommand;
     private HashSet<string?>? _pendingSelection;
@@ -287,6 +288,12 @@ public sealed class FilterItemViewModel : ObservableObject
     private bool _addToFilter;
     // Checking several values at once changes the filter once
     private bool _toggling;
+    private bool _isTruncated;
+    // Whether the values not listed (beyond a truncated list) are kept by the filter
+    private bool _othersChecked = true;
+    // Values found by a search are announced once
+    private bool _merging;
+    private CancellationTokenSource? _searching;
     private Option<FilterOperator?> _condition;
     private string _number = "";
     private string _secondNumber = "";
@@ -305,8 +312,9 @@ public sealed class FilterItemViewModel : ObservableObject
         Field = field;
         Operator = @operator;
         _changed = changed;
+        _model = model;
         // While loading, the values are announced once at the end
-        Values.CollectionChanged += (_, _) => { if (!IsLoading) OnValuesChanged(); };
+        Values.CollectionChanged += (_, _) => { if (!IsLoading && !_merging) OnValuesChanged(); };
         PeriodKinds =
         [
             new(null, () => Strings.PeriodKindAny),
@@ -430,7 +438,22 @@ public sealed class FilterItemViewModel : ObservableObject
             if (!SetProperty(ref _search, value ?? "")) return;
             OnPropertyChanged(nameof(IsSearching));
             OnVisibleValuesChanged();
+            // The values beyond a truncated list are searched in the model
+            if (IsTruncated) SearchTask = SearchModelAsync(_search);
         }
+    }
+
+    /// <summary>The values being searched in the model (tests wait for it).</summary>
+    public Task SearchTask { get; private set; } = Task.CompletedTask;
+
+    /// <summary>
+    /// Whether the model has more values than listed (<see cref="DistinctValuesRequest.DefaultLimit"/>): a search
+    /// asks the model for those containing it, and the values not listed keep the state of the filter.
+    /// </summary>
+    public bool IsTruncated
+    {
+        get => _isTruncated;
+        private set => SetProperty(ref _isTruncated, value);
     }
 
     public bool IsSearching => _search.Trim().Length > 0;
@@ -456,6 +479,7 @@ public sealed class FilterItemViewModel : ObservableObject
             Toggle(() =>
             {
                 foreach (var item in VisibleValues) item.SetChecked(isChecked);
+                if (!IsSearching) _othersChecked = isChecked;
             });
         }
     }
@@ -571,8 +595,10 @@ public sealed class FilterItemViewModel : ObservableObject
         if (IsLoading) return _pendingSelection is { } pending ? new FilterSpec(Field.Name, Operator, [.. pending]) : null;
         // As in Excel, every value checked does not filter; otherwise the shorter list: the values kept, or those left out
         var (kept, left) = (Values.Where(v => v.IsChecked).ToArray(), Values.Where(v => !v.IsChecked).ToArray());
-        if (left.Length == 0) return null;
-        return left.Length < kept.Length
+        // Beyond a truncated list, the values not listed keep their state: "all except" when they are kept
+        var allExcept = IsTruncated ? _othersChecked : left.Length < kept.Length;
+        if (left.Length == 0 && (allExcept || !IsTruncated)) return null;
+        return allExcept
             ? new FilterSpec(Field.Name, FilterOperator.NotIn, left.Select(v => InvariantValue.Format(v.Value)).ToArray())
             : new FilterSpec(Field.Name, FilterOperator.In, kept.Select(v => InvariantValue.Format(v.Value)).ToArray());
     }
@@ -623,12 +649,19 @@ public sealed class FilterItemViewModel : ObservableObject
     {
         try
         {
-            foreach (var value in await model.GetDistinctValuesAsync(Field.Name))
+            var found = await model.GetDistinctValuesAsync(new DistinctValuesRequest(Field.Name));
+            IsTruncated = found.IsTruncated;
+            // Without a filter, every value is checked; "one of" leaves out the others, "all except" keeps them
+            _othersChecked = _pendingSelection is null || Operator == FilterOperator.NotIn;
+            foreach (var value in found.Values)
+                Values.Add(new FilterValueViewModel(value, ValueFormatter.Display(value), IsCheckedByFilter(value), OnValueToggled));
+            // A truncated list may miss values of the filter: listed too, so that a change keeps them
+            if (found.IsTruncated && _pendingSelection is { } pending)
             {
-                // Without a filter, every value is checked; "all except" (NotIn) checks the others
-                var isChecked = _pendingSelection is not { } pending
-                    || pending.Contains(InvariantValue.Format(value)) != (Operator == FilterOperator.NotIn);
-                Values.Add(new FilterValueViewModel(value, ValueFormatter.Display(value), isChecked, OnValueToggled));
+                var listed = Values.Select(v => InvariantValue.Format(v.Value)).ToHashSet();
+                var type = Field.DataType switch { DataType.Number => typeof(double), DataType.Boolean => typeof(bool), _ => typeof(string) };
+                foreach (var value in pending.Where(t => !listed.Contains(t)).Select(t => InvariantValue.Parse(t, type)))
+                    Insert(new FilterValueViewModel(value, ValueFormatter.Display(value), IsCheckedByFilter(value), OnValueToggled));
             }
         }
         finally
@@ -637,6 +670,57 @@ public sealed class FilterItemViewModel : ObservableObject
             _pendingSelection = null;
             OnPropertyChanged(nameof(Summary));
             OnValuesChanged();
+        }
+    }
+
+    private bool IsCheckedByFilter(object? value) =>
+        _pendingSelection is not { } pending || pending.Contains(InvariantValue.Format(value)) != (Operator == FilterOperator.NotIn);
+
+    // In the order of the values, as the model gives them
+    private void Insert(FilterValueViewModel item)
+    {
+        var index = 0;
+        while (index < Values.Count && Compare(Values[index].Value, item.Value) <= 0) index++;
+        Values.Insert(index, item);
+    }
+
+    private static int Compare(object? a, object? b) => (a, b) switch
+    {
+        (null, null) => 0,
+        (null, _) => -1,
+        (_, null) => 1,
+        (string x, string y) => string.CompareOrdinal(x, y),
+        _ when a.GetType() == b.GetType() && a is IComparable comparable => comparable.CompareTo(b),
+        _ => string.CompareOrdinal(a.ToString(), b.ToString()),
+    };
+
+    // The model's values containing the longest word searched: the list keeps those matching every word
+    private async Task SearchModelAsync(string search)
+    {
+        _searching?.Cancel();
+        if (search.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).OrderByDescending(w => w.Length).FirstOrDefault() is not { } word)
+            return;
+        var cancellation = _searching = new CancellationTokenSource();
+        try
+        {
+            var found = await _model.GetDistinctValuesAsync(new DistinctValuesRequest(Field.Name) { Search = word }, cancellation.Token);
+            if (cancellation.IsCancellationRequested) return;
+            var listed = Values.Select(v => InvariantValue.Format(v.Value)).ToHashSet();
+            _merging = true;
+            try
+            {
+                foreach (var value in found.Values.Where(v => !listed.Contains(InvariantValue.Format(v))))
+                    Insert(new FilterValueViewModel(value, ValueFormatter.Display(value), _othersChecked, OnValueToggled));
+            }
+            finally
+            {
+                _merging = false;
+            }
+            OnValuesChanged();
+        }
+        catch (Exception) when (cancellation.IsCancellationRequested)
+        {
+            // A newer search replaces it
         }
     }
 
@@ -670,6 +754,7 @@ public sealed class FilterItemViewModel : ObservableObject
             {
                 var found = VisibleValues.ToHashSet();
                 foreach (var item in Values.Where(v => !found.Contains(v))) item.SetChecked(false);
+                _othersChecked = false;
             }
         }
         finally
