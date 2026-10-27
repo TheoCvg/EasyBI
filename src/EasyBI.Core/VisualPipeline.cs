@@ -10,8 +10,8 @@ public static class VisualPipeline
     private static readonly HashSet<VisualType> Cartesian =
         new HashSet<VisualType> { VisualType.Bar, VisualType.StackedBar, VisualType.Line, VisualType.Area, VisualType.Scatter };
 
-    /// <summary>True for the types that show their own content (text, image) instead of querying a model.</summary>
-    public static bool IsContent(this VisualType type) => type == VisualType.Text || type == VisualType.Image;
+    /// <summary>True for the types that show their own content (text, image, variable) instead of querying a model.</summary>
+    public static bool IsContent(this VisualType type) => type == VisualType.Text || type == VisualType.Image || type == VisualType.Variable;
 
     /// <summary>True for the types drawn on category and value axes, which can be mixed in one chart.</summary>
     public static bool IsCartesian(this VisualType type) => Cartesian.Contains(type);

@@ -14,7 +14,8 @@ namespace EasyBI.Core;
 /// + - * /, the comparisons = &lt;&gt; &lt; &lt;= &gt; &gt;=, AND, OR and NOT; numbers take a decimal point, texts and
 /// dates go in double quotes (<c>"2024-12-31"</c>), arguments are separated by <c>;</c> or <c>,</c>. A formula is
 /// stored with field names and shown with captions; a <c>]</c> inside brackets is written <c>]]</c>, a <c>"</c>
-/// inside quotes <c>""</c>.
+/// inside quotes <c>""</c>. A parameter of the report is written <c>[@Name]</c> (<see cref="ReportVariable"/>): its
+/// value replaces it before the query (<see cref="WithValues"/>).
 /// </summary>
 public static class MeasureFormula
 {
@@ -38,10 +39,12 @@ public static class MeasureFormula
     /// The name of the measure the formula defines: a measure cannot use itself, even through others, but the
     /// redefinition of a model's measure reads the model's one under its own name.
     /// </param>
+    /// <param name="variables">The report's variables, whose parameters it may use.</param>
     /// <returns>Null when the formula is valid, otherwise the problem worded for the end user.</returns>
-    public static string? Validate(string formula, ModelMetadata metadata, IEnumerable<CalculatedMeasure>? measures = null, string? name = null)
+    public static string? Validate(string formula, ModelMetadata metadata, IEnumerable<CalculatedMeasure>? measures = null, string? name = null,
+        IEnumerable<ReportVariable>? variables = null)
     {
-        var scope = new Scope(metadata, measures, name);
+        var scope = new Scope(metadata, measures, name, variables);
         return Analyze(formula, metadata, scope, byCaption: false, out _)?.Message;
     }
 
@@ -54,11 +57,38 @@ public static class MeasureFormula
     /// It accepts a formula that is not valid.
     /// </summary>
     public static IReadOnlyList<string> References(string formula) =>
+        Names(formula).Where(n => !IsVariable(n)).ToArray();
+
+    /// <summary>The names of the variables a stored formula uses (<c>[@Rate]</c>: Rate), once each.</summary>
+    public static IReadOnlyList<string> Variables(string formula) =>
+        Names(formula).Where(IsVariable).Select(n => n.Substring(1)).ToArray();
+
+    /// <summary>
+    /// The formula with each variable (<c>[@Rate]</c>) replaced by the text <paramref name="literal"/> gives for its name:
+    /// a number, a text in quotes...
+    /// </summary>
+    public static string WithValues(string formula, Func<string, string> literal)
+    {
+        var text = new StringBuilder();
+        var position = 0;
+        foreach (var token in FormulaEditing.Tokenize(formula).Where(t => t.Kind == FormulaTokenKind.Field))
+        {
+            var name = FieldText(formula.Substring(token.Start, token.Length));
+            if (!IsVariable(name)) continue;
+            text.Append(formula, position, token.Start - position).Append(literal(name.Substring(1)));
+            position = token.Start + token.Length;
+        }
+        return text.Append(formula, position, formula.Length - position).ToString();
+    }
+
+    // A reference to a variable of the report rather than to a field: [@Rate]
+    private static bool IsVariable(string reference) => reference.StartsWith("@", StringComparison.Ordinal);
+
+    private static IEnumerable<string> Names(string formula) =>
         FormulaEditing.Tokenize(formula)
             .Where(t => t.Kind == FormulaTokenKind.Field)
             .Select(t => FieldText(formula.Substring(t.Start, t.Length)))
-            .Distinct()
-            .ToArray();
+            .Distinct();
 
     /// <summary>
     /// The formula as the user reads it: names replaced by captions, those of the report's <paramref name="measures"/>
@@ -82,14 +112,15 @@ public static class MeasureFormula
         ModelMetadata metadata,
         out string? error,
         IEnumerable<CalculatedMeasure>? measures = null,
-        string? name = null)
+        string? name = null,
+        IEnumerable<ReportVariable>? variables = null)
     {
-        error = Check(text, metadata, out var stored, measures, name)?.Message;
+        error = Check(text, metadata, out var stored, measures, name, variables)?.Message;
         return stored;
     }
 
     /// <summary>
-    /// Checks the formula typed by the user (see <see cref="FromDisplay(string, ModelMetadata, out string?, IEnumerable{CalculatedMeasure}?, string?)"/>
+    /// Checks the formula typed by the user (see <see cref="FromDisplay(string, ModelMetadata, out string?, IEnumerable{CalculatedMeasure}?, string?, IEnumerable{ReportVariable}?)"/>
     /// and <see cref="Validate"/>).
     /// </summary>
     /// <returns>
@@ -101,9 +132,10 @@ public static class MeasureFormula
         ModelMetadata metadata,
         out string? stored,
         IEnumerable<CalculatedMeasure>? measures = null,
-        string? name = null)
+        string? name = null,
+        IEnumerable<ReportVariable>? variables = null)
     {
-        var scope = new Scope(metadata, measures, name);
+        var scope = new Scope(metadata, measures, name, variables);
         // Checked as typed, so that the problems name the fields by their captions
         if (Analyze(text, metadata, scope, byCaption: true, out var tree) is { } fault)
         {
@@ -113,9 +145,9 @@ public static class MeasureFormula
                 ? new FormulaProblem(fault.Message, 0, text.Length)
                 : new FormulaProblem(fault.Message, fault.Start, Math.Max(fault.End - fault.Start, 0));
         }
-        var references = References(tree!).Select(r => r.Text).Distinct()
+        var references = References(tree!).Select(r => r.Text).Where(r => !IsVariable(r)).Distinct()
             .ToDictionary(reference => reference, reference => scope.Resolve(reference, byCaption: true, out _)!.Name);
-        stored = Rewrite(text, reference => references[reference]);
+        stored = Rewrite(text, reference => references.TryGetValue(reference, out var named) ? named : reference);
         return null;
     }
 
@@ -123,7 +155,7 @@ public static class MeasureFormula
     private static Fault? Analyze(string formula, ModelMetadata metadata, Scope scope, bool byCaption, out Node? tree)
     {
         if (Parse(formula, out tree) is { } fault) return fault;
-        fault = new Checker(formula, metadata, (string reference, out string? problem) => scope.Resolve(reference, byCaption, out problem)).Check(tree!)
+        fault = new Checker(formula, metadata, (string reference, out string? problem) => scope.Resolve(reference, byCaption, out problem), scope.Variable).Check(tree!)
             ?? scope.CheckCycles(tree!, byCaption);
         if (fault is not null) tree = null;
         return fault;
@@ -158,10 +190,13 @@ public static class MeasureFormula
         private readonly string? _name;
         private readonly CalculatedMeasure[] _measures;
 
-        public Scope(ModelMetadata metadata, IEnumerable<CalculatedMeasure>? measures, string? name)
+        private readonly ReportVariable[] _variables;
+
+        public Scope(ModelMetadata metadata, IEnumerable<CalculatedMeasure>? measures, string? name, IEnumerable<ReportVariable>? variables = null)
         {
             _metadata = metadata;
             _name = name;
+            _variables = variables?.ToArray() ?? [];
             _measures = (measures ?? []).Where(m => m.Model == metadata.Name && m.Name != name).ToArray();
             Fields =
             [
@@ -173,6 +208,9 @@ public static class MeasureFormula
         }
 
         public IReadOnlyList<FieldDescriptor> Fields { get; }
+
+        /// <returns>The variable named by a reference (<c>@Rate</c>), or null.</returns>
+        public ReportVariable? Variable(string reference) => _variables.FirstOrDefault(v => v.Name == reference.Substring(1));
 
         /// <returns>The field, or null with the <paramref name="problem"/> of an unknown or ambiguous reference.</returns>
         public FieldDescriptor? Resolve(string reference, bool byCaption, out string? problem)
@@ -199,7 +237,7 @@ public static class MeasureFormula
         /// </summary>
         public Fault? CheckCycles(Node tree, bool byCaption)
         {
-            foreach (var reference in References(tree))
+            foreach (var reference in References(tree).Where(r => !IsVariable(r.Text)))
             {
                 List<string> path = _name is null ? [] : [_name];
                 // Checked once every reference resolves
@@ -263,7 +301,7 @@ public static class MeasureFormula
     /// Checks the kinds of values: a formula gives a number, a condition is a comparison, a dimension is only read row
     /// by row inside an aggregation function.
     /// </summary>
-    private sealed class Checker(string formula, ModelMetadata metadata, Resolver resolve)
+    private sealed class Checker(string formula, ModelMetadata metadata, Resolver resolve, Func<string, ReportVariable?> variable)
     {
         // The first problem found: once it is, the checking only unwinds
         private Fault? _fault;
@@ -286,6 +324,17 @@ public static class MeasureFormula
                     return ValueKind.Text;
                 case BooleanNode:
                     return ValueKind.Boolean;
+                case FieldNode reference when IsVariable(reference.Text):
+                    // A parameter's value, the same for every row and every group
+                    return variable(reference.Text) switch
+                    {
+                        null => Fail(Strings.Format(Strings.VariableUnknown, reference.Text.Substring(1)), reference),
+                        { Kind: VariableKind.Set } set => Fail(Strings.Format(Strings.FormulaSetVariable, set.DisplayName), reference),
+                        { DataType: DataType.Text } => ValueKind.Text,
+                        { DataType: DataType.Date } => ValueKind.Date,
+                        { DataType: DataType.Boolean } => ValueKind.Boolean,
+                        _ => ValueKind.Number,
+                    };
                 case FieldNode reference:
                     // An unknown or ambiguous field is shown where it is written
                     if (resolve(reference.Text, out var unknown) is not { } field) return Fail(unknown!, reference);

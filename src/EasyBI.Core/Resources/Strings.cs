@@ -103,6 +103,17 @@ internal static class Strings
     public static string CompareLessThan => Get();
     public static string CompareLessThanOrEqual => Get();
     public static string CompareRange => Get();
+    public static string VariableUnknown => Get();
+    public static string VariableNotParameter => Get();
+    public static string VariableNotSet => Get();
+    public static string VariableNotNumber => Get();
+    public static string FormulaSetVariable => Get();
+    public static string SetOthers => Get();
+    public static string VisualTypeVariable => Get();
+    public static string ValidationNoVariable => Get();
+    public static string ReportUnknownVariable => Get();
+    public static string ReportVariable => Get();
+    public static string ReportInvalidVariableName => Get();
 
     /// <summary>A text whose key is built (PeriodLastMonth...).</summary>
     public static string Named(string key) => Get(key);

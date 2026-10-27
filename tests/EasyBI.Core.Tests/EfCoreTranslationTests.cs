@@ -78,4 +78,13 @@ public sealed class EfCoreTranslationTests : IDisposable
 
         Assert.Equal(3, result.Rows.Count);
     }
+
+    [Fact]
+    public async Task A_field_grouped_by_a_set_runs_in_the_database()
+    {
+        var result = await Model().ExecuteAsync(new([new("Day") { Set = "s", SetMembers = ["2024-02-10"] }], [new("Amount")]));
+
+        Assert.Equal([true, false], result.Rows.Select(r => r[0]));
+        Assert.Equal([1d, 6d], result.Rows.Select(r => r[1]));
+    }
 }

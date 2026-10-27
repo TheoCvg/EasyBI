@@ -420,4 +420,37 @@
   <data name="ValidationWellMaximum" xml:space="preserve">
     <value>« {0} » contient au plus {1} champs</value>
   </data>
+  <data name="VariableUnknown" xml:space="preserve">
+    <value>La variable « {0} » n'existe pas</value>
+  </data>
+  <data name="VariableNotParameter" xml:space="preserve">
+    <value>« {0} » est un ensemble de valeurs, pas un paramètre</value>
+  </data>
+  <data name="VariableNotSet" xml:space="preserve">
+    <value>« {0} » est un paramètre, pas un ensemble de valeurs</value>
+  </data>
+  <data name="VariableNotNumber" xml:space="preserve">
+    <value>Le paramètre « {0} » n'est pas un nombre</value>
+  </data>
+  <data name="FormulaSetVariable" xml:space="preserve">
+    <value>« {0} » est un ensemble de valeurs : une formule n'utilise que des paramètres</value>
+  </data>
+  <data name="SetOthers" xml:space="preserve">
+    <value>Autres</value>
+  </data>
+  <data name="VisualTypeVariable" xml:space="preserve">
+    <value>Variable</value>
+  </data>
+  <data name="ValidationNoVariable" xml:space="preserve">
+    <value>Choisissez la variable à afficher</value>
+  </data>
+  <data name="ReportUnknownVariable" xml:space="preserve">
+    <value>{0} : la variable « {1} » n'existe pas</value>
+  </data>
+  <data name="ReportVariable" xml:space="preserve">
+    <value>Variable « {0} »</value>
+  </data>
+  <data name="ReportInvalidVariableName" xml:space="preserve">
+    <value>{0} : un nom ne contient que des lettres, des chiffres et des tirets bas</value>
+  </data>
 </root>

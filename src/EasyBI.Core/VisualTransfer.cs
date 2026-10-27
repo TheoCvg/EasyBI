@@ -7,8 +7,8 @@ public sealed record PastedVisual(string CopiedId, VisualDefinition Visual);
 
 /// <summary>
 /// Copies visuals from one report to another (copy and paste, possibly between dashboards). The copied content is a
-/// report in the <see cref="ReportDefinition.CurrentSchema"/> format holding the visuals and the calculated measures they
-/// use, so that the target gets everything the visuals need.
+/// report in the <see cref="ReportDefinition.CurrentSchema"/> format holding the visuals and the calculated measures and
+/// variables they use, so that the target gets everything the visuals need.
 /// </summary>
 public static class VisualTransfer
 {
@@ -17,16 +17,30 @@ public static class VisualTransfer
 
     /// <summary>
     /// The visuals and the calculated measures they use, with those these use (see <see cref="MeasureContext.UsedBy"/>),
-    /// as report JSON.
+    /// and the <paramref name="variables"/> the visuals and these measures use, as report JSON.
     /// </summary>
-    public static string Copy(IEnumerable<VisualDefinition> visuals, MeasureContext measures, Func<string, ModelMetadata?>? metadata = null)
+    public static string Copy(IEnumerable<VisualDefinition> visuals, MeasureContext measures, Func<string, ModelMetadata?>? metadata = null,
+        VariableContext? variables = null)
     {
         var copied = visuals.ToArray();
+        var used = copied.SelectMany(v => measures.UsedBy(v, metadata?.Invoke(v.Model))).Distinct().ToArray();
         return ReportSerializer.Serialize(new ReportDefinition
         {
             Visuals = copied,
-            Measures = copied.SelectMany(v => measures.UsedBy(v, metadata?.Invoke(v.Model))).Distinct().ToArray(),
+            Measures = used,
+            Variables = variables is null ? [] : UsedVariables(copied, used, variables),
         });
+    }
+
+    // With the parameters giving the count of the sets
+    private static ReportVariable[] UsedVariables(IEnumerable<VisualDefinition> visuals, IEnumerable<CalculatedMeasure> measures, VariableContext variables)
+    {
+        var found = visuals.SelectMany(VariableReferences.UsedBy)
+            .Concat(measures.SelectMany(m => MeasureFormula.Variables(m.Formula)))
+            .Select(variables.Find).OfType<ReportVariable>()
+            .ToList();
+        found.AddRange(found.Select(v => v.Rule?.CountVariable).OfType<string>().Select(variables.Find).OfType<ReportVariable>().ToArray());
+        return [.. found.Distinct()];
     }
 
     /// <summary>
@@ -36,13 +50,15 @@ public static class VisualTransfer
     /// a new name, which its visuals follow. A copied redefinition of a model's measure (<paramref name="metadata"/> tells
     /// which fields a model declares) is added as a calculated measure of its own unless the target redefines the measure
     /// the same way, so that pasting never changes the target's measures. The formulas of the pasted measures follow the
-/// renamed ones. Content that is not copied visuals gives nothing.
+/// renamed ones. The copied variables the target does not have are added to <paramref name="variables"/>; where it has
+    /// one of the same name, the visuals use it. Content that is not copied visuals gives nothing.
     /// </summary>
     public static IReadOnlyList<PastedVisual> Paste(
         string json,
         MeasureContext measures,
         Func<string, bool> hasModel,
-        Func<string, ModelMetadata?>? metadata = null)
+        Func<string, ModelMetadata?>? metadata = null,
+        VariableContext? variables = null)
     {
         ReportDefinition copied;
         try
@@ -52,6 +68,12 @@ public static class VisualTransfer
         catch (Exception e) when (e is System.Text.Json.JsonException or NotSupportedException)
         {
             return [];
+        }
+
+        if (variables is not null)
+        {
+            foreach (var variable in copied.Variables.Where(v => variables.Find(v.Name) is null))
+                variables.Set(variable);
         }
 
         // First the names, then the formulas: a pasted measure may use another one that is renamed
