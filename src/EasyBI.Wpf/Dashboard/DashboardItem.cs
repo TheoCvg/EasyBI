@@ -4,7 +4,7 @@ using EasyBI.Abstractions;
 
 namespace EasyBI.Wpf.Dashboard;
 
-public enum DashboardItemKind { Empty, Visual, Text, Image }
+public enum DashboardItemKind { Empty, Visual, Text, Image, Variable }
 
 /// <summary>
 /// A cell of a <see cref="DashboardView"/>: shows a <see cref="Visual"/> (chart, text or image) or, without one,
@@ -79,6 +79,7 @@ public class DashboardItem : Control
         null => DashboardItemKind.Empty,
         var type when type == VisualType.Text => DashboardItemKind.Text,
         var type when type == VisualType.Image => DashboardItemKind.Image,
+        var type when type == VisualType.Variable => DashboardItemKind.Variable,
         _ => DashboardItemKind.Visual,
     };
 }

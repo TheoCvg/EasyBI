@@ -31,6 +31,14 @@ public sealed record ModelField(ISemanticModel Model, FieldDescriptor Field, Cal
     private bool IsDeclared => Model.Metadata.Fields.Any(f => f.Name == Field.Name);
 }
 
+/// <summary>A variable of the report in a <see cref="FieldList"/>, with a <paramref name="Summary"/> of what it holds.</summary>
+public sealed record VariableItem(ReportVariable Variable, string Summary)
+{
+    public string Caption => Variable.DisplayName;
+
+    public bool IsSet => Variable.Kind == VariableKind.Set;
+}
+
 /// <summary>
 /// Visuals made from fields dropped by the user: a first visual for a field, and the visual a field added to an
 /// existing one gives. Pure functions, so that an application can reuse or replace them.

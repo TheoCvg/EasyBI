@@ -266,9 +266,47 @@ public partial class MainWindow : Window
             Filters = [PeriodFilters.Between("Date", new DateOnly(2025, 1, 1), new DateOnly(2025, 12, 31))],
         };
 
+        // Variables: the number of customers N, a slider on the dashboard, gives the set of the top N customers by revenue
+        ReportVariable customerCount = new() { Name = "N", Caption = Text("CustomerCount"), Value = "10", Minimum = 3, Maximum = 25, Format = "N0" };
+        ReportVariable topCustomers = new()
+        {
+            Name = "TopCustomers",
+            Caption = Text("TopCustomersSet"),
+            Kind = VariableKind.Set,
+            Model = "sales",
+            Field = "Customer",
+            Rule = new SetRule("Amount") { CountVariable = customerCount.Name },
+        };
+        VisualDefinition countControl = new() { Type = VisualType.Variable, Variable = customerCount.Name };
+        VisualDefinition customers = new()
+        {
+            Title = Text("TopCustomersChart"),
+            Model = "sales",
+            Type = VisualType.Bar,
+            Axis = [new("Customer")],
+            Values = [new("Amount")],
+            Sort = new("Amount", Descending: true),
+            TopVariable = customerCount.Name,
+        };
+        // The set's customers on one side, all the others on the other
+        VisualDefinition customerShare = new()
+        {
+            Title = Text("TopCustomersShare"),
+            Model = "sales",
+            Type = VisualType.Donut,
+            Axis = [new("Customer") { Set = topCustomers.Name }],
+            Values = [new("Amount")],
+        };
+        VisualDefinition customerList = new() { Type = VisualType.Variable, Variable = topCustomers.Name };
+
         return new DashboardDocument
         {
-            Report = new ReportDefinition { Title = Text("ReportTitle"), Visuals = [title, kpis, quarters, regions, categories, topProducts, lastYear, matrix, note] },
+            Report = new ReportDefinition
+            {
+                Title = Text("ReportTitle"),
+                Visuals = [title, kpis, quarters, regions, categories, topProducts, lastYear, matrix, note, countControl, customers, customerShare, customerList],
+                Variables = [customerCount, topCustomers],
+            },
             Layout = new DashboardLayoutDefinition
             {
                 Bands =
@@ -287,6 +325,16 @@ public partial class MainWindow : Window
                     {
                         Mode = BandMode.Scroll,
                         Items = [LayoutNode.Item(categories.Id), LayoutNode.Item(topProducts.Id), LayoutNode.Item(lastYear.Id), new LayoutNode { VisualId = note.Id, Width = 360 }],
+                    },
+                    new BandLayout
+                    {
+                        Items =
+                        [
+                            LayoutNode.Row(
+                                LayoutNode.Column(new LayoutNode { VisualId = countControl.Id, RowSpan = 1 }, LayoutNode.Item(customerList.Id)) with { ColumnSpan = 3 },
+                                new LayoutNode { VisualId = customers.Id, RowSpan = 4 },
+                                LayoutNode.Item(customerShare.Id)),
+                        ],
                     },
                 ],
             },

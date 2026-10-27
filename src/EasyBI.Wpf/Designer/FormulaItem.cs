@@ -5,7 +5,7 @@ using EasyBI.Wpf.Resources;
 namespace EasyBI.Wpf.Designer;
 
 /// <summary>What a <see cref="FormulaItem"/> inserts into a formula.</summary>
-public enum FormulaItemKind { Function, Measure, Dimension, Keyword, Operator, Value }
+public enum FormulaItemKind { Function, Measure, Dimension, Keyword, Operator, Value, Variable }
 
 /// <summary>
 /// Something the calculated measure editor inserts into a formula (a function, a field, an operator, a value of a
@@ -30,6 +30,7 @@ public sealed record FormulaItem(FormulaItemKind Kind, string Caption, string Te
         FormulaItemKind.Function => "ƒ",
         FormulaItemKind.Measure => IsReportMeasure ? "ƒx" : "Σ",
         FormulaItemKind.Dimension => Field?.DataType switch { DataType.Date => "◷", DataType.Number => "#", DataType.Boolean => "◑", _ => "Aa" },
+        FormulaItemKind.Variable => "@",
         _ => "",
     };
 
@@ -41,6 +42,14 @@ public sealed record FormulaItem(FormulaItemKind Kind, string Caption, string Te
 
     public static FormulaItem For(FormulaFunction function) =>
         new(FormulaItemKind.Function, function.Name, function.Name + "()", function.Usage, function.Description) { Summary = function.Summary };
+
+    /// <summary>A parameter of the report, inserted as <c>[@Name]</c>; its value replaces it when the measure is computed.</summary>
+    public static FormulaItem ForVariable(ReportVariable parameter)
+    {
+        var reference = VariableReferences.Reference(parameter.Name);
+        return new(FormulaItemKind.Variable, parameter.DisplayName, reference, reference,
+            Strings.Format(Strings.FormulaVariableHelp, VariableContext.Display(parameter))) { Summary = VariableContext.Display(parameter) };
+    }
 
     public static FormulaItem ForKeyword(string keyword) =>
         new(FormulaItemKind.Keyword, keyword, keyword is "TRUE" or "FALSE" ? keyword : $" {keyword} ",

@@ -59,6 +59,7 @@ public sealed class ShelfItemViewModel : ObservableObject
     private VisualType? _seriesType;
     private bool _secondaryAxis;
     private bool _showSeriesOptions;
+    private string? _set;
 
     public ShelfItemViewModel(FieldDescriptor field, Shelf shelf, Action changed)
     {
@@ -110,6 +111,7 @@ public sealed class ShelfItemViewModel : ObservableObject
             if (ShowSeriesOptions && SeriesType is not null) badges.Add(SeriesTypeOption.Label);
             if (ShowSeriesOptions && SecondaryAxis) badges.Add(Strings.SecondaryAxis);
             if (CanSort && SortDirection is not null) badges.Add(SortOption.Symbol);
+            if (Set is not null) badges.Add("{ }");
             return badges;
         }
     }
@@ -214,7 +216,20 @@ public sealed class ShelfItemViewModel : ObservableObject
         internal set => SetProperty(ref _showSeriesOptions, value);
     }
 
-    public FieldRef ToFieldRef() => new(Field.Name, Grain) { Labels = _labels };
+    public FieldRef ToFieldRef() => new(Field.Name, Grain) { Labels = _labels, Set = _set };
+
+    /// <summary>
+    /// A set of the report grouping the values of this dimension in two, the set's and the others (see
+    /// <see cref="FieldRef.Set"/>); null for the values themselves.
+    /// </summary>
+    public string? Set
+    {
+        get => _set;
+        set { if (SetProperty(ref _set, value)) _changed(); }
+    }
+
+    /// <summary>A dimension of the Axis or Legend shelf: it can be grouped by a set.</summary>
+    public bool CanGroupBySet => Field.Kind == FieldKind.Dimension && Shelf is Shelf.Axis or Shelf.Legend;
 
     /// <summary>
     /// The texts the visual shows instead of some values of this dimension (keyed by the value's invariant text).
@@ -264,14 +279,42 @@ public sealed class SortOption(ListSortDirection? direction, string symbol, Func
     public string Symbol { get; } = symbol;
 }
 
+/// <summary>How a filter uses a variable of the report instead of the values it is given.</summary>
+public enum FilterVariableUse
+{
+    /// <summary>The values of a set: "one of" them.</summary>
+    InSet,
+
+    /// <summary>All values except those of a set.</summary>
+    NotInSet,
+
+    /// <summary>The value of a parameter: "equal to" it.</summary>
+    Equal,
+
+    /// <summary>A number compared with the value of a number parameter (the filter's condition: greater than...).</summary>
+    Compare,
+
+    /// <summary>A date since the value of a date parameter.</summary>
+    Since,
+
+    /// <summary>The last n periods, n being the value of a number parameter.</summary>
+    Count,
+}
+
+/// <summary>A variable a filter uses (<paramref name="Name"/>), and how.</summary>
+public sealed record FilterVariable(string Name, FilterVariableUse Use);
+
 /// <summary>
 /// A filter on a dimension. Most dimensions list their values to check, as in Excel: every value checked does not
 /// filter, unchecking one leaves it out, and "(Select all)" checks or unchecks every value shown. The filter is the
 /// shorter list: "one of" the checked values (In) or "all except" the others (NotIn). A date dimension filters on a
-/// period instead: between two dates, or relative to today (the current, last or previous months...).
+/// period instead: between two dates, or relative to today (the current, last or previous months...). With the
+/// report's variables, a filter can use one instead (<see cref="VariableChoices"/>): the values of a set, the value of
+/// a parameter.
 /// </summary>
 public sealed class FilterItemViewModel : ObservableObject
 {
+    private Option<FilterVariable?> _variable;
     private readonly Action _changed;
     private readonly ISemanticModel _model;
     private bool _isSelected;
@@ -307,12 +350,21 @@ public sealed class FilterItemViewModel : ObservableObject
         Action changed,
         IEnumerable<string?>? selection = null,
         FilterOperator @operator = FilterOperator.In,
-        DateGrain grain = DateGrain.None)
+        DateGrain grain = DateGrain.None,
+        VariableContext? variables = null)
     {
         Field = field;
         Operator = @operator;
         _changed = changed;
         _model = model;
+        VariableChoices = [new(null, () => Strings.FilterNoVariable), .. VariableOptions(field, model, variables)];
+        _variable = VariableChoices[0];
+        // A filter using a variable: the rest of the editor starts empty
+        if (selection?.Select(VariableReferences.NameOf).FirstOrDefault() is { } used
+            && VariableChoices.FirstOrDefault(c => c.Value?.Name == used && c.Value.Use == UseOf(@operator, variables?.Find(used))) is { } choice)
+        {
+            _variable = choice;
+        }
         // While loading, the values are announced once at the end
         Values.CollectionChanged += (_, _) => { if (!IsLoading && !_merging) OnValuesChanged(); };
         PeriodKinds =
@@ -340,8 +392,16 @@ public sealed class FilterItemViewModel : ObservableObject
         _condition = Conditions.FirstOrDefault(c => c.Value == @operator) ?? Conditions.FirstOrDefault()!;
         if (IsPeriod)
         {
-            LoadPeriod(new FilterSpec(field.Name, @operator, selection?.ToArray() ?? [], grain));
+            if (UsesVariable) LoadVariableUnit(grain);
+            else LoadPeriod(new FilterSpec(field.Name, @operator, selection?.ToArray() ?? [], grain));
             _isLoading = false;
+            return;
+        }
+        if (UsesVariable && !@operator.IsComparison())
+        {
+            // The values are not needed, but loaded to change the filter back to a list
+            _pendingSelection = null;
+            _ = LoadAsync(model);
             return;
         }
         if (@operator.IsComparison())
@@ -357,6 +417,73 @@ public sealed class FilterItemViewModel : ObservableObject
     }
 
     public FieldDescriptor Field { get; }
+
+    /// <summary>
+    /// What the filter can use instead of the values it is given: nothing, the sets of the dimension's values ("in" or
+    /// "not in"), the parameters of its type ("equal to"), number parameters to compare with or giving a number of
+    /// periods, date parameters giving the start of a period.
+    /// </summary>
+    public IReadOnlyList<Option<FilterVariable?>> VariableChoices { get; }
+
+    public bool HasVariableChoices => VariableChoices.Count > 1;
+
+    public Option<FilterVariable?> VariableChoice
+    {
+        get => _variable;
+        set
+        {
+            if (value is null || !SetProperty(ref _variable, value)) return;
+            // A parameter compared with: a comparison, greater than or equal by default
+            if (value.Value?.Use == FilterVariableUse.Compare && !IsComparison)
+                _condition = Conditions.First(c => c.Value == FilterOperator.GreaterThanOrEqual);
+            foreach (var name in new[] { nameof(UsesVariable), nameof(Condition), nameof(IsComparison), nameof(IsValueList), nameof(ShowNumber),
+                         nameof(ShowSecondNumber), nameof(ShowPeriod), nameof(ShowUnit), nameof(ShowCount), nameof(ShowDates) })
+                OnPropertyChanged(name);
+            OnConditionChanged();
+        }
+    }
+
+    /// <summary>The filter uses a variable (<see cref="VariableChoice"/>) instead of the values it is given.</summary>
+    public bool UsesVariable => _variable.Value is not null;
+
+    private FilterVariableUse? Use => _variable.Value?.Use;
+
+    private static FilterVariableUse? UseOf(FilterOperator @operator, ReportVariable? variable) => (@operator, variable?.Kind) switch
+    {
+        (_, null) => null,
+        (FilterOperator.In, VariableKind.Set) => FilterVariableUse.InSet,
+        (FilterOperator.NotIn, VariableKind.Set) => FilterVariableUse.NotInSet,
+        (FilterOperator.In, _) => FilterVariableUse.Equal,
+        (FilterOperator.Between, _) => FilterVariableUse.Since,
+        (FilterOperator.Last, _) => FilterVariableUse.Count,
+        (var comparison, _) when comparison.IsComparison() => FilterVariableUse.Compare,
+        _ => null,
+    };
+
+    private static IEnumerable<Option<FilterVariable?>> VariableOptions(FieldDescriptor field, ISemanticModel model, VariableContext? variables)
+    {
+        if (variables is null) yield break;
+        Option<FilterVariable?> Choice(ReportVariable variable, FilterVariableUse use, Func<string> format) =>
+            new(new FilterVariable(variable.Name, use), () => Strings.Format(format(), variable.DisplayName));
+        var parameters = variables.Parameters.ToArray();
+        if (field.Kind == FieldKind.Dimension && field.DataType == DataType.Date)
+        {
+            foreach (var parameter in parameters.Where(p => p.DataType == DataType.Date)) yield return Choice(parameter, FilterVariableUse.Since, () => Strings.FilterVariableSince);
+            foreach (var parameter in parameters.Where(p => p.DataType == DataType.Number)) yield return Choice(parameter, FilterVariableUse.Count, () => Strings.FilterVariableCount);
+            yield break;
+        }
+        if (field.Kind == FieldKind.Dimension)
+        {
+            foreach (var set in variables.SetsOf(model.Metadata.Name, field.Name))
+            {
+                yield return Choice(set, FilterVariableUse.InSet, () => Strings.FilterVariableInSet);
+                yield return Choice(set, FilterVariableUse.NotInSet, () => Strings.FilterVariableNotInSet);
+            }
+            foreach (var parameter in parameters.Where(p => p.DataType == field.DataType)) yield return Choice(parameter, FilterVariableUse.Equal, () => Strings.FilterVariableEqual);
+        }
+        if (field.DataType == DataType.Number)
+            foreach (var parameter in parameters.Where(p => p.DataType == DataType.Number)) yield return Choice(parameter, FilterVariableUse.Compare, () => Strings.FilterVariableCompare);
+    }
 
     /// <summary>True while the filter is the designer's <see cref="DesignerViewModel.SelectedItem"/>.</summary>
     public bool IsSelected
@@ -381,7 +508,13 @@ public sealed class FilterItemViewModel : ObservableObject
     /// <summary>A measure of the visual: its groups are kept by comparing the measure with numbers.</summary>
     public bool IsMeasure => Field.Kind == FieldKind.Measure;
 
-    public bool IsValueList => !IsPeriod && !IsMeasure && !IsComparison;
+    public bool IsValueList => !IsPeriod && !IsMeasure && !IsComparison && !UsesVariable;
+
+    /// <summary>A period typed in the editor rather than given by a variable.</summary>
+    public bool ShowPeriod => IsPeriod && !UsesVariable;
+
+    /// <summary>The number compared with is typed, not given by a variable.</summary>
+    public bool IsNumberTyped => !UsesVariable;
 
     /// <summary>Compared with numbers (see <see cref="Condition"/>).</summary>
     public bool IsComparison => Condition?.Value?.IsComparison() == true;
@@ -546,16 +679,19 @@ public sealed class FilterItemViewModel : ObservableObject
         set { if (SetProperty(ref _unit, value)) OnPeriodChanged(); }
     }
 
-    public bool ShowDates => PeriodKind.Value == FilterOperator.Between;
+    public bool ShowDates => !UsesVariable && PeriodKind.Value == FilterOperator.Between;
 
-    public bool ShowCount => PeriodKind.Value is FilterOperator.Last or FilterOperator.Previous;
+    public bool ShowCount => !UsesVariable && PeriodKind.Value is FilterOperator.Last or FilterOperator.Previous;
 
-    public bool ShowUnit => PeriodKind.Value is FilterOperator.Current or FilterOperator.Last or FilterOperator.Previous;
+    public bool ShowUnit => Use == FilterVariableUse.Count || !UsesVariable && PeriodKind.Value is FilterOperator.Current or FilterOperator.Last or FilterOperator.Previous;
 
     public string Summary
     {
         get
         {
+            if (Use is FilterVariableUse.Compare) return $"{Condition.Label} {_variable.Label}";
+            if (Use is FilterVariableUse.Count) return $"{_variable.Label} ({Unit.Label})";
+            if (UsesVariable) return _variable.Label;
             if (IsPeriod) return ToFilterSpec() is { } period ? PeriodFilters.Describe(period) : Strings.FilterAll;
             if (IsComparison || IsMeasure) return ToFilterSpec() is { } comparison ? NumericFilters.Describe(comparison, Field.Format) : Strings.FilterAll;
             if (ToFilterSpec() is not { } filter) return Strings.FilterAll;
@@ -570,6 +706,20 @@ public sealed class FilterItemViewModel : ObservableObject
 
     public FilterSpec? ToFilterSpec()
     {
+        if (_variable.Value is { } variable)
+        {
+            var reference = VariableReferences.Reference(variable.Name);
+            return variable.Use switch
+            {
+                FilterVariableUse.InSet or FilterVariableUse.Equal => new FilterSpec(Field.Name, FilterOperator.In, [reference]),
+                FilterVariableUse.NotInSet => new FilterSpec(Field.Name, FilterOperator.NotIn, [reference]),
+                FilterVariableUse.Since => new FilterSpec(Field.Name, FilterOperator.Between, [reference, null]),
+                FilterVariableUse.Count => new FilterSpec(Field.Name, FilterOperator.Last, [reference], Unit.Value),
+                _ when Condition.Value == FilterOperator.Range =>
+                    new FilterSpec(Field.Name, FilterOperator.Range, [reference, ParseNumber(SecondNumber)?.ToString("R", CultureInfo.InvariantCulture)]),
+                _ => new FilterSpec(Field.Name, Condition.Value ?? FilterOperator.GreaterThanOrEqual, [reference]),
+            };
+        }
         if (IsPeriod)
         {
             return PeriodKind.Value switch
@@ -638,6 +788,9 @@ public sealed class FilterItemViewModel : ObservableObject
         _count = PeriodFilters.Count(filter);
         _unit = Units.FirstOrDefault(u => u.Value == filter.Grain) ?? _unit;
     }
+
+    // The unit of the last periods counted by a variable
+    private void LoadVariableUnit(DateGrain grain) => _unit = Units.FirstOrDefault(u => u.Value == grain) ?? _unit;
 
     private void OnPeriodChanged()
     {

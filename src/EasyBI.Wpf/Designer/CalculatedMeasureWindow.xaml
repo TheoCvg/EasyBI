@@ -48,6 +48,9 @@
                     <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.FormulaDimensionBrushKey}}" />
                     <Setter TargetName="Glyph" Property="FontSize" Value="10" />
                 </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Variable">
+                    <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
+                </DataTrigger>
                 <DataTrigger Binding="{Binding Kind}" Value="Value">
                     <Setter TargetName="Glyph" Property="Text" Value="&quot;" />
                     <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.FormulaTextBrushKey}}" />

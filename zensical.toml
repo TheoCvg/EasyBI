@@ -23,6 +23,7 @@ nav = [
     ] },
     { "Calculated measures" = "guide/calculated-measures.md" },
     { "Filters" = "guide/filtering.md" },
+    { "Variables" = "guide/variables.md" },
     { "Cross-filtering" = "guide/cross-filtering.md" },
   ] },
   { "Visuals" = [

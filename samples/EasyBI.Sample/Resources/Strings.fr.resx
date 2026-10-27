@@ -177,4 +177,16 @@
   <data name="SalesServerNotAnswering" xml:space="preserve">
     <value>Le serveur des ventes ne répond pas. Réessayez dans un instant.</value>
   </data>
+  <data name="CustomerCount" xml:space="preserve">
+    <value>Nombre de clients</value>
+  </data>
+  <data name="TopCustomersSet" xml:space="preserve">
+    <value>Meilleurs clients</value>
+  </data>
+  <data name="TopCustomersChart" xml:space="preserve">
+    <value>Les {N} meilleurs clients</value>
+  </data>
+  <data name="TopCustomersShare" xml:space="preserve">
+    <value>Part des {N} meilleurs clients</value>
+  </data>
 </root>

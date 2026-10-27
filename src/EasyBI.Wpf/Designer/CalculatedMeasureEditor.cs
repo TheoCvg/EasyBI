@@ -85,13 +85,16 @@ public sealed class CalculatedMeasureEditor : ObservableObject
             .ToArray();
         Insertable = measures.Select(m => m.Text).ToArray();
         InsertableDimensions = model.Metadata.Dimensions.Select(Reference).ToArray();
-        _items = [.. MeasureFormula.Functions.Select(FormulaItem.For), .. measures, .. model.Metadata.Dimensions.Select(FormulaItem.For)];
+        var parameters = context.Variables.Parameters.Select(FormulaItem.ForVariable).ToArray();
+        _items = [.. MeasureFormula.Functions.Select(FormulaItem.For), .. measures, .. model.Metadata.Dimensions.Select(FormulaItem.For), .. parameters];
         _catalog = _items;
         Tabs =
         [
             new(FormulaItemKind.Function, Strings.FormulaTabFunctions, "ƒ", _items.Where(i => i.Kind == FormulaItemKind.Function).ToArray()),
             new(FormulaItemKind.Measure, Strings.FormulaTabMeasures, "Σ", _items.Where(i => i.Kind == FormulaItemKind.Measure).ToArray()),
             new(FormulaItemKind.Dimension, Strings.FormulaTabDimensions, "Aa", _items.Where(i => i.Kind == FormulaItemKind.Dimension).ToArray()),
+            // The report's parameters, when it has some
+            .. parameters.Length > 0 ? [new FormulaCatalogTab(FormulaItemKind.Variable, Strings.FormulaTabVariables, "@", parameters)] : Array.Empty<FormulaCatalogTab>(),
         ];
         _selectedTab = Tabs[0];
         OperatorGroups = FormulaItem.OperatorGroups();
@@ -269,18 +272,19 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     {
         bool Of(FormulaItem item, FormulaItemKind kind) => item.Kind == kind;
         bool RowMeasure(FormulaItem item) => Of(item, FormulaItemKind.Measure) && item.Field?.IsCalculated != true;
+        var parameters = _items.Where(i => Of(i, FormulaItemKind.Variable));
         var items = context.Slot switch
         {
-            FormulaSlot.Value => _items.Where(i => Of(i, FormulaItemKind.Function) || Of(i, FormulaItemKind.Measure)),
+            FormulaSlot.Value => _items.Where(i => Of(i, FormulaItemKind.Function) || Of(i, FormulaItemKind.Measure)).Concat(parameters),
             FormulaSlot.RowValue => [.. _items.Where(RowMeasure), .. _items.Where(i => Of(i, FormulaItemKind.Dimension) && i.Field?.DataType == DataType.Number),
-                .. _items.Where(i => i.Caption == "IF")],
-            FormulaSlot.Condition => [.. _items.Where(i => Of(i, FormulaItemKind.Dimension)), .. _items.Where(RowMeasure), FormulaItem.ForKeyword("NOT")],
+                .. _items.Where(i => i.Caption == "IF"), .. parameters],
+            FormulaSlot.Condition => [.. _items.Where(i => Of(i, FormulaItemKind.Dimension)), .. _items.Where(RowMeasure), FormulaItem.ForKeyword("NOT"), .. parameters],
             FormulaSlot.DistinctField => [.. _items.Where(i => Of(i, FormulaItemKind.Dimension)), .. _items.Where(RowMeasure)],
             FormulaSlot.AfterOperand when context.InCondition => [FormulaItem.ForKeyword("AND"), FormulaItem.ForKeyword("OR")],
             _ => [],
         };
-        // After "[", only fields
-        return context.IsField ? items.Where(i => i.Field is not null) : items;
+        // After "[", only fields and parameters
+        return context.IsField ? items.Where(i => i.Field is not null || Of(i, FormulaItemKind.Variable)) : items;
     }
 
     // Starting like what is typed; a field may also contain it, after those starting like it
@@ -377,7 +381,7 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     {
         Result = null;
         var caption = Caption.Trim();
-        var problem = MeasureFormula.Check(Formula, Model.Metadata, out var stored, _others, _name);
+        var problem = MeasureFormula.Check(Formula, Model.Metadata, out var stored, _others, _name, _context.Variables.Variables);
         // Nothing to point out in an empty formula
         Problem = Formula.Trim().Length == 0 ? null : problem;
         Error = caption.Length == 0 ? Strings.MeasureCaptionRequired
@@ -432,7 +436,7 @@ public sealed class CalculatedMeasureEditor : ObservableObject
                 {
                     // Its total, as a KPI would show it, with the measures it uses
                     var kpi = new VisualDefinition { Model = Model.Metadata.Name, Type = VisualType.Kpi, Values = [new(measure.Name)] };
-                    var data = await Model.GetDataAsync(kpi.ToDataRequest(Model.Metadata, [.. _others, measure]));
+                    var data = await Model.GetDataAsync(kpi.ToDataRequest(Model.Metadata, _context.Variables.Resolve([.. _others, measure])));
                     total = data.Result.Rows.FirstOrDefault()?[0];
                 }
                 catch (Exception ex)

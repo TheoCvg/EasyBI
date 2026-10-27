@@ -840,4 +840,211 @@
   <data name="Close" xml:space="preserve">
     <value>Fermer</value>
   </data>
+  <data name="VariableMissing" xml:space="preserve">
+    <value>La variable « {0} » n'existe pas</value>
+  </data>
+  <data name="SetRuleTopBy" xml:space="preserve">
+    <value>premiers par {0}</value>
+  </data>
+  <data name="SetRuleBottomBy" xml:space="preserve">
+    <value>derniers par {0}</value>
+  </data>
+  <data name="SetRuleTopCount" xml:space="preserve">
+    <value>Les {0} premiers par {1}</value>
+  </data>
+  <data name="SetRuleBottomCount" xml:space="preserve">
+    <value>Les {0} derniers par {1}</value>
+  </data>
+  <data name="SetChooseValues" xml:space="preserve">
+    <value>Choisir les valeurs…</value>
+  </data>
+  <data name="SetValueCount" xml:space="preserve">
+    <value>{0} valeurs</value>
+  </data>
+  <data name="NewVariable" xml:space="preserve">
+    <value>Nouvelle variable…</value>
+  </data>
+  <data name="AddVariable" xml:space="preserve">
+    <value>Variable</value>
+  </data>
+  <data name="EditVariable" xml:space="preserve">
+    <value>Modifier la variable</value>
+  </data>
+  <data name="DeleteVariable" xml:space="preserve">
+    <value>Supprimer la variable</value>
+  </data>
+  <data name="DeleteVariableConfirm" xml:space="preserve">
+    <value>Supprimer la variable « {0} » ? Les visuels et les formules qui l'utilisent afficheront une erreur.</value>
+  </data>
+  <data name="VariablesHeader" xml:space="preserve">
+    <value>VARIABLES</value>
+  </data>
+  <data name="NewParameter" xml:space="preserve">
+    <value>+ Paramètre</value>
+  </data>
+  <data name="NewSet" xml:space="preserve">
+    <value>+ Ensemble de valeurs</value>
+  </data>
+  <data name="VariableKindParameter" xml:space="preserve">
+    <value>Paramètre</value>
+  </data>
+  <data name="VariableKindSet" xml:space="preserve">
+    <value>Ensemble de valeurs</value>
+  </data>
+  <data name="DataTypeNumber" xml:space="preserve">
+    <value>Nombre</value>
+  </data>
+  <data name="DataTypeText" xml:space="preserve">
+    <value>Texte</value>
+  </data>
+  <data name="DataTypeDate" xml:space="preserve">
+    <value>Date</value>
+  </data>
+  <data name="DataTypeBoolean" xml:space="preserve">
+    <value>Oui / Non</value>
+  </data>
+  <data name="SetOrderTop" xml:space="preserve">
+    <value>Les premiers</value>
+  </data>
+  <data name="SetOrderBottom" xml:space="preserve">
+    <value>Les derniers</value>
+  </data>
+  <data name="SetCountFixed" xml:space="preserve">
+    <value>Nombre saisi</value>
+  </data>
+  <data name="SetCountHint" xml:space="preserve">
+    <value>Un nombre saisi ici, ou un paramètre numérique qui le donne</value>
+  </data>
+  <data name="SetBy" xml:space="preserve">
+    <value>par</value>
+  </data>
+  <data name="SetByMeasure" xml:space="preserve">
+    <value>Valeurs choisies selon une mesure</value>
+  </data>
+  <data name="SetByMeasureHint" xml:space="preserve">
+    <value>Calculées sur les données que gardent les filtres du rapport sur ce modèle</value>
+  </data>
+  <data name="SetFixed" xml:space="preserve">
+    <value>Valeurs cochées une à une</value>
+  </data>
+  <data name="VariableReferenceHint" xml:space="preserve">
+    <value>S'écrit {0} dans les filtres et les formules, {1} dans les titres et les textes</value>
+  </data>
+  <data name="VariableInvalidName" xml:space="preserve">
+    <value>Un nom ne contient que des lettres, des chiffres et des tirets bas, et ne commence pas par un chiffre</value>
+  </data>
+  <data name="VariableNameTaken" xml:space="preserve">
+    <value>Une variable s'appelle déjà « {0} »</value>
+  </data>
+  <data name="VariableInvalidNumber" xml:space="preserve">
+    <value>Saisissez un nombre</value>
+  </data>
+  <data name="VariableChooseField" xml:space="preserve">
+    <value>Choisissez une dimension</value>
+  </data>
+  <data name="VariableChooseMeasure" xml:space="preserve">
+    <value>Choisissez une mesure</value>
+  </data>
+  <data name="VariableInvalidCount" xml:space="preserve">
+    <value>Saisissez un nombre entier de valeurs</value>
+  </data>
+  <data name="VariableTitle" xml:space="preserve">
+    <value>Variable</value>
+  </data>
+  <data name="VariableKind" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="VariableName" xml:space="preserve">
+    <value>Nom</value>
+  </data>
+  <data name="VariableCaption" xml:space="preserve">
+    <value>Libellé</value>
+  </data>
+  <data name="VariableDataType" xml:space="preserve">
+    <value>Type de valeur</value>
+  </data>
+  <data name="VariableValue" xml:space="preserve">
+    <value>Valeur</value>
+  </data>
+  <data name="VariableRange" xml:space="preserve">
+    <value>Curseur</value>
+  </data>
+  <data name="VariableMinimum" xml:space="preserve">
+    <value>Minimum</value>
+  </data>
+  <data name="VariableMaximum" xml:space="preserve">
+    <value>Maximum</value>
+  </data>
+  <data name="VariableStep" xml:space="preserve">
+    <value>pas</value>
+  </data>
+  <data name="VariableRangeHint" xml:space="preserve">
+    <value>Avec un minimum et un maximum, le tableau de bord affiche un curseur</value>
+  </data>
+  <data name="VariableChoices" xml:space="preserve">
+    <value>Choix</value>
+  </data>
+  <data name="VariableChoicesHint" xml:space="preserve">
+    <value>Un par ligne ; aucun pour un texte libre</value>
+  </data>
+  <data name="VariableFormat" xml:space="preserve">
+    <value>Format</value>
+  </data>
+  <data name="VariableFormatHint" xml:space="preserve">
+    <value>Format .NET de la valeur là où elle s'affiche : N0, P1, d…</value>
+  </data>
+  <data name="VariableModel" xml:space="preserve">
+    <value>Modèle</value>
+  </data>
+  <data name="VariableField" xml:space="preserve">
+    <value>Dimension</value>
+  </data>
+  <data name="TopFixed" xml:space="preserve">
+    <value>Nombre saisi</value>
+  </data>
+  <data name="TopVariableHint" xml:space="preserve">
+    <value>N'afficher que les premières lignes : autant que le nombre saisi ou qu'un paramètre</value>
+  </data>
+  <data name="SetNone" xml:space="preserve">
+    <value>Ses valeurs</value>
+  </data>
+  <data name="PropertySet" xml:space="preserve">
+    <value>Regroupé par</value>
+  </data>
+  <data name="SetHint" xml:space="preserve">
+    <value>Un ensemble de valeurs du rapport : ses valeurs d'un côté, les autres de l'autre</value>
+  </data>
+  <data name="TitleVariablesHint" xml:space="preserve">
+    <value>Une variable s'affiche par son nom entre accolades : {0}</value>
+  </data>
+  <data name="FilterVariable" xml:space="preserve">
+    <value>Variable</value>
+  </data>
+  <data name="FilterNoVariable" xml:space="preserve">
+    <value>Aucune : les valeurs ci-dessous</value>
+  </data>
+  <data name="FilterVariableInSet" xml:space="preserve">
+    <value>Dans « {0} »</value>
+  </data>
+  <data name="FilterVariableNotInSet" xml:space="preserve">
+    <value>Hors de « {0} »</value>
+  </data>
+  <data name="FilterVariableEqual" xml:space="preserve">
+    <value>= {0}</value>
+  </data>
+  <data name="FilterVariableCompare" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="FilterVariableSince" xml:space="preserve">
+    <value>Depuis {0}</value>
+  </data>
+  <data name="FilterVariableCount" xml:space="preserve">
+    <value>Les {0} derniers</value>
+  </data>
+  <data name="FormulaTabVariables" xml:space="preserve">
+    <value>Paramètres</value>
+  </data>
+  <data name="FormulaVariableHelp" xml:space="preserve">
+    <value>Un paramètre du rapport, que le tableau de bord change (actuellement {0})</value>
+  </data>
 </root>

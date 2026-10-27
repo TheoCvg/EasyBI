@@ -17,9 +17,10 @@ namespace EasyBI.Wpf;
 /// </summary>
 /// <remarks>
 /// Lookless: the default template (in <c>Themes/FieldList.xaml</c>) shows <see cref="ModelOptions"/>,
-/// <see cref="Dimensions"/> and <see cref="Measures"/>, declares the <see cref="FieldListSlots"/> and acts through
-/// <see cref="AddMeasureCommand"/>, <see cref="EditMeasureCommand"/>, <see cref="DeleteMeasureCommand"/> and
-/// <see cref="ResetMeasureCommand"/>.
+/// <see cref="Dimensions"/>, <see cref="Measures"/> and the report's <see cref="Variables"/>, declares the
+/// <see cref="FieldListSlots"/> and acts through <see cref="AddMeasureCommand"/>, <see cref="EditMeasureCommand"/>,
+/// <see cref="DeleteMeasureCommand"/>, <see cref="ResetMeasureCommand"/>, <see cref="AddVariableCommand"/>,
+/// <see cref="EditVariableCommand"/> and <see cref="DeleteVariableCommand"/>.
 /// </remarks>
 public class FieldList : Control
 {
@@ -64,6 +65,20 @@ public class FieldList : Control
 
     public static readonly DependencyProperty CanAddMeasureProperty = CanAddMeasurePropertyKey.DependencyProperty;
 
+    private static readonly DependencyPropertyKey VariablesPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(Variables), typeof(IReadOnlyList<VariableItem>), typeof(FieldList), new PropertyMetadata(Array.Empty<VariableItem>()));
+
+    public static readonly DependencyProperty VariablesProperty = VariablesPropertyKey.DependencyProperty;
+
+    /// <summary>Creates a variable of the report (parameter: its <see cref="VariableKind"/>, a parameter by default).</summary>
+    public static RoutedCommand AddVariableCommand { get; } = new(nameof(AddVariableCommand), typeof(FieldList));
+
+    /// <summary>Edits a variable; the parameter (or the data context of the source) is its <see cref="VariableItem"/>.</summary>
+    public static RoutedCommand EditVariableCommand { get; } = new(nameof(EditVariableCommand), typeof(FieldList));
+
+    /// <summary>Deletes a variable after a confirmation; same parameter as <see cref="EditVariableCommand"/>.</summary>
+    public static RoutedCommand DeleteVariableCommand { get; } = new(nameof(DeleteVariableCommand), typeof(FieldList));
+
     /// <summary>Opens the editor of a new calculated measure of the <see cref="SelectedModel"/>.</summary>
     public static RoutedCommand AddMeasureCommand { get; } = new(nameof(AddMeasureCommand), typeof(FieldList));
 
@@ -96,6 +111,19 @@ public class FieldList : Control
         CommandBindings.Add(new CommandBinding(DeleteMeasureCommand,
             (_, e) => { if (FieldOf(e) is { IsReportMeasure: true, Measure: { } measure }) DeleteMeasure(measure); },
             (_, e) => e.CanExecute = Context is not null && FieldOf(e) is { IsReportMeasure: true }));
+        CommandBindings.Add(new CommandBinding(AddVariableCommand,
+            (_, e) =>
+            {
+                if (Context is { } context)
+                    VariableWindow.Create(context, Window.GetWindow(this), e.Parameter is VariableKind kind ? kind : VariableKind.Parameter, SelectedModel);
+            },
+            (_, e) => e.CanExecute = Context is not null));
+        CommandBindings.Add(new CommandBinding(EditVariableCommand,
+            (_, e) => { if (Context is { } context && VariableOf(e) is { } item) VariableWindow.Edit(context, item.Variable.Name, Window.GetWindow(this)); },
+            (_, e) => e.CanExecute = Context is not null && VariableOf(e) is not null));
+        CommandBindings.Add(new CommandBinding(DeleteVariableCommand,
+            (_, e) => { if (VariableOf(e) is { } item) DeleteVariable(item.Variable); },
+            (_, e) => e.CanExecute = Context is not null && VariableOf(e) is not null));
         CommandBindings.Add(new CommandBinding(ResetMeasureCommand,
             (_, e) => { if (FieldOf(e) is { IsRedefined: true } field) ResetMeasure(field); },
             (_, e) => e.CanExecute = Context is not null && FieldOf(e) is { IsRedefined: true }));
@@ -139,6 +167,9 @@ public class FieldList : Control
     /// <summary>Whether a calculated measure can be added: there is a context and a model.</summary>
     public bool CanAddMeasure => (bool)GetValue(CanAddMeasureProperty);
 
+    /// <summary>The report's parameters, and its sets of values of the <see cref="SelectedModel"/>'s dimensions, matching the <see cref="Search"/>.</summary>
+    public IReadOnlyList<VariableItem> Variables => (IReadOnlyList<VariableItem>)GetValue(VariablesProperty);
+
     protected override void OnMouseDoubleClick(MouseButtonEventArgs e)
     {
         base.OnMouseDoubleClick(e);
@@ -156,9 +187,17 @@ public class FieldList : Control
         // The report's calculated measures are listed with the model's (weak: the list may be shorter-lived than the context)
         if (_followed != Context)
         {
-            if (_followed is not null) WeakEventManager<MeasureContext, EventArgs>.RemoveHandler(_followed.Measures, nameof(MeasureContext.Changed), OnMeasuresChanged);
+            if (_followed is not null)
+            {
+                WeakEventManager<MeasureContext, EventArgs>.RemoveHandler(_followed.Measures, nameof(MeasureContext.Changed), OnMeasuresChanged);
+                WeakEventManager<VariableContext, EventArgs>.RemoveHandler(_followed.Variables, nameof(VariableContext.Changed), OnMeasuresChanged);
+            }
             _followed = Context;
-            if (_followed is not null) WeakEventManager<MeasureContext, EventArgs>.AddHandler(_followed.Measures, nameof(MeasureContext.Changed), OnMeasuresChanged);
+            if (_followed is not null)
+            {
+                WeakEventManager<MeasureContext, EventArgs>.AddHandler(_followed.Measures, nameof(MeasureContext.Changed), OnMeasuresChanged);
+                WeakEventManager<VariableContext, EventArgs>.AddHandler(_followed.Variables, nameof(VariableContext.Changed), OnMeasuresChanged);
+            }
         }
         var models = Context?.Models ?? [];
         SetValue(ModelOptionsPropertyKey, models.Select(m => new Option<ISemanticModel>(m, () => m.Metadata.Caption)).ToArray());
@@ -178,6 +217,11 @@ public class FieldList : Control
             .Where(f => TextMatch.Matches(f.Caption, search))
             .ToArray());
         SetValue(CanAddMeasurePropertyKey, model is not null && Context is not null);
+        SetValue(VariablesPropertyKey, Context is not { } context ? Array.Empty<VariableItem>() : context.Variables.Variables
+            .Where(v => v.Kind == VariableKind.Parameter || v.Model == model?.Metadata.Name)
+            .Select(v => new VariableItem(v, Summary(context, v)))
+            .Where(v => TextMatch.Matches(v.Caption, search))
+            .ToArray());
         // The buttons of the template ask their commands again
         CommandManager.InvalidateRequerySuggested();
     }
@@ -189,6 +233,29 @@ public class FieldList : Control
         (e as ExecutedRoutedEventArgs)?.Parameter as ModelField
         ?? (e as CanExecuteRoutedEventArgs)?.Parameter as ModelField
         ?? (e.OriginalSource as FrameworkElement)?.DataContext as ModelField;
+
+    private static VariableItem? VariableOf(RoutedEventArgs e) =>
+        (e as ExecutedRoutedEventArgs)?.Parameter as VariableItem
+        ?? (e as CanExecuteRoutedEventArgs)?.Parameter as VariableItem
+        ?? (e.OriginalSource as FrameworkElement)?.DataContext as VariableItem;
+
+    /// <summary>What a variable holds, in short: a parameter's value, a set's rule or number of values.</summary>
+    internal static string Summary(EasyBIContext context, ReportVariable variable)
+    {
+        if (variable.Kind == VariableKind.Parameter) return VariableContext.Display(variable);
+        if (variable.Rule is not { } rule) return Strings.Format(Strings.SetValueCount, variable.Members?.Count ?? 0);
+        var model = context.Models.FirstOrDefault(m => m.Metadata.Name == variable.Model);
+        var measure = model is null ? rule.Measure : context.Measures.GetField(model.Metadata, rule.Measure).Caption;
+        var count = rule.CountVariable is { } name ? context.Variables.Find(name)?.DisplayName ?? name : rule.Count.ToString(EasyBILocalization.FormatCulture);
+        return Strings.Format(rule.Bottom ? Strings.SetRuleBottomCount : Strings.SetRuleTopCount, count, measure);
+    }
+
+    private void DeleteVariable(ReportVariable variable)
+    {
+        var answer = MessageBox.Show(Window.GetWindow(this)!, Strings.Format(Strings.DeleteVariableConfirm, variable.DisplayName),
+            Strings.DeleteVariable, MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (answer == MessageBoxResult.OK) Context?.Variables.Remove(variable.Name);
+    }
 
     private void DeleteMeasure(CalculatedMeasure measure)
     {

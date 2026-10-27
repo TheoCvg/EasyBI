@@ -85,6 +85,7 @@ public class DashboardView : Control
 
     private ReportDefinition _report = new();
     private IReadOnlyList<CalculatedMeasure>? _pendingMeasures;
+    private IReadOnlyList<ReportVariable>? _pendingVariables;
     private DashboardDocument _committed = new();
     private int _editDepth;
     private bool _pushing;
@@ -228,16 +229,21 @@ public class DashboardView : Control
     /// </summary>
     public void Load(DashboardDocument document)
     {
-        // The report's calculated measures become the context's, before its visuals query them
-        if (Context is { } context) context.Measures.Load(document.Report.Measures);
-        else _pendingMeasures = document.Report.Measures;
+        // The report's calculated measures and variables become the context's, before its visuals query them
+        if (Context is { } context)
+        {
+            context.Measures.Load(document.Report.Measures);
+            context.Variables.Load(document.Report.Variables);
+        }
+        else (_pendingMeasures, _pendingVariables) = (document.Report.Measures, document.Report.Variables);
         Show(document);
         DocumentLoaded?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
     /// Puts the dashboard back to a previous state (undo/redo): like <see cref="Load"/>, without starting a new history.
-    /// Calculated measures are left as they are: undoing a move must not remove a measure created since.
+    /// Calculated measures and variables are left as they are: undoing a move must not remove a measure created since,
+    /// nor put a parameter back to an older value.
     /// </summary>
     public void Restore(DashboardDocument document) => Show(document);
 
@@ -285,7 +291,8 @@ public class DashboardView : Control
         var visuals = Enumerable.Range(0, Panel.BandCount).SelectMany(Panel.ChildrenOf)
             .OfType<DashboardItem>().Select(i => i.Visual).OfType<VisualDefinition>().ToArray();
         var measures = Context?.Measures.Measures.ToArray() ?? _pendingMeasures ?? _report.Measures;
-        return new DashboardDocument { Report = _report with { Visuals = visuals, Measures = measures }, Layout = layout };
+        var variables = Context?.Variables.Variables.ToArray() ?? _pendingVariables ?? _report.Variables;
+        return new DashboardDocument { Report = _report with { Visuals = visuals, Measures = measures, Variables = variables }, Layout = layout };
     }
 
     /// <summary>
@@ -339,11 +346,16 @@ public class DashboardView : Control
 
     private void OnContextChanged(EasyBIContext? context)
     {
-        // A document loaded before the context brought its calculated measures
+        // A document loaded before the context brought its calculated measures and variables
         if (context is not null && _pendingMeasures is { } measures)
         {
             _pendingMeasures = null;
             context.Measures.Load(measures);
+        }
+        if (context is not null && _pendingVariables is { } variables)
+        {
+            _pendingVariables = null;
+            context.Variables.Load(variables);
         }
         foreach (var item in Items) item.Context = context;
     }
@@ -486,6 +498,7 @@ public class DashboardView : Control
         {
             case DashboardItemKind.Text: RequestTextEdit(item); break;
             case DashboardItemKind.Image: PickImage(item); break;
+            case DashboardItemKind.Variable: EditVariable(item); break;
             default: EditVisual(item); break;
         }
     }
@@ -509,6 +522,40 @@ public class DashboardView : Control
     {
         SetVisual(item, new VisualDefinition { Type = VisualType.Text, Text = new TextContent() });
         RequestTextEdit(item);
+    }
+
+    /// <summary>
+    /// Turns an item into a variable of the report: a menu offers the variables, and to create one (see
+    /// <see cref="Designer.VariableWindow"/>).
+    /// </summary>
+    public void AddVariable(DashboardItem item)
+    {
+        if (Context is not { } context) return;
+        var menu = new ContextMenu { PlacementTarget = item, Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint };
+        foreach (var variable in context.Variables.Variables)
+        {
+            var name = variable.Name;
+            var entry = new MenuItem { Header = variable.DisplayName };
+            entry.Click += (_, _) => SetVisual(item, new VisualDefinition { Type = VisualType.Variable, Variable = name });
+            menu.Items.Add(entry);
+        }
+        if (menu.Items.Count > 0) menu.Items.Add(new Separator());
+        var create = new MenuItem { Header = Strings.NewVariable };
+        create.Click += (_, _) =>
+        {
+            if (Designer.VariableWindow.Create(context, Window.GetWindow(this)) is { } created)
+                SetVisual(item, new VisualDefinition { Type = VisualType.Variable, Variable = created.Name });
+        };
+        menu.Items.Add(create);
+        menu.IsOpen = true;
+    }
+
+    /// <summary>Edits the variable an item shows (see <see cref="Designer.VariableWindow"/>); a renamed variable stays shown.</summary>
+    public void EditVariable(DashboardItem item)
+    {
+        if (Context is not { } context || item.Visual is not { Variable: { } name } visual) return;
+        if (Designer.VariableWindow.Edit(context, name, Window.GetWindow(this)) is { } edited && edited.Name != name)
+            SetVisual(item, visual with { Variable = edited.Name });
     }
 
     /// <summary>Raises <see cref="TextEditRequested"/> (handled by <see cref="TextEditBehavior"/>).</summary>
@@ -644,7 +691,7 @@ public class DashboardView : Control
         if (visuals.Length == 0) return null;
         var data = new DataObject();
         data.SetData(VisualTransfer.ClipboardFormat, VisualTransfer.Copy(visuals, Context?.Measures ?? new MeasureContext(),
-            model => Context?.Models.FirstOrDefault(m => m.Metadata.Name == model)?.Metadata));
+            model => Context?.Models.FirstOrDefault(m => m.Metadata.Name == model)?.Metadata, Context?.Variables));
         data.SetText(string.Join(Environment.NewLine, visuals.Select(v => v.Title).Where(t => !string.IsNullOrEmpty(t))));
         // Their arrangement and sizes, so that they are pasted as they were laid out
         var layout = DashboardLayoutEngine.Extract(Capture().Layout ?? new DashboardLayoutDefinition(), visuals.Select(v => v.Id).ToHashSet());
@@ -680,14 +727,14 @@ public class DashboardView : Control
     /// one change, and selects them. Copied with their layout, they keep their arrangement and sizes and go after the
     /// line of the last selected item, or at the end (see <see cref="DashboardLayoutEngine.Insert"/>); otherwise each one
     /// goes to the right of the previous one. Visuals of a model the <see cref="Context"/> does not know are left out;
-    /// the calculated measures they use are added (see <see cref="VisualTransfer.Paste"/>). Returns the new items.
+    /// the calculated measures and variables they use are added (see <see cref="VisualTransfer.Paste"/>). Returns the new items.
     /// </summary>
     public IReadOnlyList<DashboardItem> Paste(IDataObject? data = null)
     {
         if (IsReadOnly || Copied(data) is not { } json) return [];
         var measures = Context?.Measures ?? new MeasureContext();
         var visuals = VisualTransfer.Paste(json, measures, model => Context?.Models.Any(m => m.Metadata.Name == model) ?? false,
-            model => Context?.Models.FirstOrDefault(m => m.Metadata.Name == model)?.Metadata);
+            model => Context?.Models.FirstOrDefault(m => m.Metadata.Name == model)?.Metadata, Context?.Variables);
         if (visuals.Count == 0) return [];
         if (CopiedLayout(data) is { } copiedLayout) return PasteWithLayout(visuals, copiedLayout);
 
@@ -826,6 +873,7 @@ public class DashboardView : Control
         BindItem(DashboardCommands.AddVisual, EditVisual);
         BindItem(DashboardCommands.AddText, AddText);
         BindItem(DashboardCommands.AddImage, PickImage);
+        BindItem(DashboardCommands.AddVariable, AddVariable);
         BindItem(DashboardCommands.EditItem, EditItem);
         BindItem(DashboardCommands.RemoveItem, item => Remove(item));
         BindItem(DashboardCommands.ResetSize, SetAutoSize);

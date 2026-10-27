@@ -20,7 +20,9 @@ namespace EasyBI.Wpf;
 /// (palette, text, grid lines, background), and redraw when the theme changes; a palette set on
 /// <see cref="EasyBIContext.Theme"/> takes precedence over the resources'. With a <see cref="FilterContext"/> (inherited property,
 /// set once on the dashboard container), the visual applies the global filters and becomes
-/// interactive: clicking an element filters the other visuals.
+/// interactive: clicking an element filters the other visuals. References to the report's variables
+/// (<see cref="EasyBIContext.Variables"/>) are replaced by their values before querying, and the visual follows their
+/// changes; a <see cref="VisualType.Variable"/> visual shows a <see cref="VariableView"/>.
 /// </remarks>
 public class VisualView : ContentControl
 {
@@ -66,6 +68,10 @@ public class VisualView : ContentControl
     private bool _redrawQueued;
     private RenderRequest? _last;
     private string? _lastQueryKey;
+    // The visual as last queried: filters of the dashboard applied, variables replaced by their values
+    private VisualDefinition? _resolved;
+    private int _refreshes;
+    private VariableView? _variableView;
 
     public VisualView()
     {
@@ -173,6 +179,7 @@ public class VisualView : ContentControl
             context.Changed += OnContextUpdated;
             context.DataChanged += OnDataChanged;
             context.Measures.Changed += OnMeasuresUpdated;
+            context.Variables.Changed += OnVariablesUpdated;
         }
         if (filters is not null) filters.Changed += OnFiltersUpdated;
     }
@@ -184,6 +191,7 @@ public class VisualView : ContentControl
             context.Changed -= OnContextUpdated;
             context.DataChanged -= OnDataChanged;
             context.Measures.Changed -= OnMeasuresUpdated;
+            context.Variables.Changed -= OnVariablesUpdated;
         }
         if (filters is not null) filters.Changed -= OnFiltersUpdated;
     }
@@ -204,6 +212,18 @@ public class VisualView : ContentControl
     // A calculated measure changed: only the visuals showing it get another query (it is part of the query key)
     private void OnMeasuresUpdated(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Refresh);
 
+    // Only the visuals using a variable, directly or through their measures, query again: the others are not even redrawn.
+    // A variable visual updates its own view.
+    private void OnVariablesUpdated(object? sender, EventArgs e) => Dispatcher.InvokeAsync(() =>
+    {
+        if (Context is { } context && Definition is { } visual && visual.Type != VisualType.Variable && UsesVariables(context, visual)) Refresh();
+    });
+
+    private bool UsesVariables(EasyBIContext context, VisualDefinition visual) =>
+        VariableReferences.UsedBy(FilterContext?.Apply(visual) ?? visual).Count > 0
+        || context.Measures.UsedBy(visual, context.Models.FirstOrDefault(m => m.Metadata.Name == visual.Model)?.Metadata)
+            .Any(m => MeasureFormula.Variables(m.Formula).Count > 0);
+
     // Captions and formatted values come with the result: the culture is part of the query key
     private void OnCultureChanged(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Refresh);
 
@@ -219,6 +239,8 @@ public class VisualView : ContentControl
         if (!IsLoaded || !IsActive || Context is not { } context || Definition is not { } visual)
             return;
 
+        // A slower resolution of the variables started before must not show its visual after this one
+        var refresh = ++_refreshes;
         if (VisualValidator.Validate(visual, context.VisualTypes) is { } problem)
         {
             Cancel();
@@ -226,20 +248,40 @@ public class VisualView : ContentControl
             return;
         }
 
+        // The values of the variables: right away, unless a set chosen by a rule has to query its values first
+        VisualDefinition effective;
+        try
+        {
+            effective = await context.Variables.ResolveAsync(visual.Type.IsContent() ? visual : FilterContext?.Apply(visual) ?? visual,
+                context.SetSource(FilterContext));
+        }
+        catch (Exception ex)
+        {
+            if (refresh != _refreshes) return;
+            Cancel();
+            _last = null;
+            _resolved = null;
+            ShowFailure(context, visual, ex, VisualFailureStage.Query, null);
+            return;
+        }
+        // A later refresh took over
+        if (refresh != _refreshes) return;
+        _resolved = effective;
+
         if (visual.Type.IsContent())
         {
-            // Text and image: nothing to query
+            // Text, image and variable: nothing to query
             Cancel();
-            _last = VisualPipeline.PrepareContent(visual, ChartTheme(context));
+            _last = VisualPipeline.PrepareContent(effective, ChartTheme(context));
             Draw();
             return;
         }
 
-        var effective = FilterContext?.Apply(visual) ?? visual;
+        var measures = context.Variables.Resolve(context.Measures.Measures);
         var queryKey = JsonSerializer.Serialize(new
         {
             effective.Model,
-            Query = effective.ToQuery(context.Measures.Measures, context.Models.FirstOrDefault(m => m.Metadata.Name == effective.Model)?.Metadata, context.VisualTypes),
+            Query = effective.ToQuery(measures, context.Models.FirstOrDefault(m => m.Metadata.Name == effective.Model)?.Metadata, context.VisualTypes),
             Culture = EasyBILocalization.UICulture.Name,
             Format = EasyBILocalization.FormatCulture.Name,
         }, ReportSerializer.Options);
@@ -256,7 +298,7 @@ public class VisualView : ContentControl
         try
         {
             var model = context.GetModel(visual.Model);
-            var request = await VisualPipeline.PrepareAsync(model, effective, ChartTheme(context), context.Measures.Measures, context.VisualTypes, cts.Token);
+            var request = await VisualPipeline.PrepareAsync(model, effective, ChartTheme(context), measures, context.VisualTypes, cts.Token);
             if (cts.IsCancellationRequested) return;
             _last = request;
             _pending = null;
@@ -294,6 +336,22 @@ public class VisualView : ContentControl
         if (!IsLoaded || _pending is not null || _last is null || Context is not { } context || Definition is not { } visual)
             return;
 
+        var filters = FilterContext;
+        var shown = _resolved ?? filters?.Apply(visual) ?? visual;
+        if (visual.Type == VisualType.Variable)
+        {
+            // The same view while the variable is the same: changing its value must not interrupt the user
+            if (_variableView is null || _variableView.Variable != visual.Variable)
+                _variableView = new VariableView { Variable = visual.Variable };
+            _variableView.Context = context;
+            if (Content is not DockPanel shownPanel || !shownPanel.Children.Contains(_variableView) || _shownTitle != shown.Title)
+            {
+                (_variableView.Parent as Panel)?.Children.Remove(_variableView);
+                Show(shown, _variableView);
+            }
+            return;
+        }
+
         var renderer = context.ResolveRenderer(visual);
         if (renderer is null)
         {
@@ -301,8 +359,7 @@ public class VisualView : ContentControl
             return;
         }
 
-        var filters = FilterContext;
-        var request = VisualPipeline.Redraw(_last, filters?.Apply(visual) ?? visual) with { Theme = ChartTheme(context) };
+        var request = VisualPipeline.Redraw(_last, shown) with { Theme = ChartTheme(context) };
         if (filters is not null)
             request = request with
             {
@@ -325,7 +382,7 @@ public class VisualView : ContentControl
         {
             RenderedBy = renderer.Name;
             var body = renderer.Render(request);
-            Show(visual, pager is null ? body : new Grid { Children = { body, new ChartLegendPager { Pager = pager } } });
+            Show(shown, pager is null ? body : new Grid { Children = { body, new ChartLegendPager { Pager = pager } } });
         }
         catch (Exception ex)
         {
@@ -383,9 +440,12 @@ public class VisualView : ContentControl
         Failure = failure;
     }
 
+    private string? _shownTitle;
+
     private void Show(VisualDefinition visual, UIElement body)
     {
         Failure = null;
+        _shownTitle = visual.Title;
         var root = new DockPanel { LastChildFill = true };
         if (ShowTitle && !string.IsNullOrWhiteSpace(visual.Title))
         {

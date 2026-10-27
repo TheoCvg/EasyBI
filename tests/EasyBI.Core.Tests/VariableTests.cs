@@ -206,6 +206,20 @@ public class VariableTests
     }
 
     [Fact]
+    public async Task A_field_grouped_by_a_set_travels_to_a_remote_source_with_its_values()
+    {
+        var visual = new VisualDefinition { Model = "m", Type = VisualType.Table, Axis = [new("Region") { Set = "TopRegions" }], Values = [new("Amount")] };
+        var resolved = await Variables(TopRegions()).ResolveAsync(visual, Source(Model()));
+
+        // What a client sends, and what a server answers
+        var request = DataSerializer.DeserializeRequest(DataSerializer.Serialize(resolved.ToDataRequest(Model().Metadata)));
+        var data = DataSerializer.DeserializeData(DataSerializer.Serialize(await Model().GetDataAsync(request)));
+
+        Assert.Equal(["Nord", "Sud"], request.Visual.Axis[0].SetMembers);
+        Assert.Equal([true, false], data.Result.Rows.Select(r => r[0]));
+    }
+
+    [Fact]
     public async Task A_visual_keeps_its_own_labels_for_a_set()
     {
         var visual = ByRegion() with { Axis = [new FieldRef("Region") { Set = "TopRegions" }.WithLabel(false, "Le reste")] };

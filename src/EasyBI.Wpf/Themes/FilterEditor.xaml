@@ -14,6 +14,11 @@
             <Setter.Value>
                 <ControlTemplate TargetType="designer:FilterEditor">
                     <DockPanel>
+                        <!-- A variable of the report instead of the values: a set, a parameter -->
+                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8" Visibility="{Binding HasVariableChoices, Converter={StaticResource Visible}}">
+                            <TextBlock Text="{bi:Localize FilterVariable}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <ComboBox ItemsSource="{Binding VariableChoices}" SelectedItem="{Binding VariableChoice}" DisplayMemberPath="Label" />
+                        </DockPanel>
                         <!-- A number: a list of values (dimension) or any value (measure), or a comparison -->
                         <ComboBox DockPanel.Dock="Top" Margin="0,0,0,8" MinWidth="250"
                                   ItemsSource="{Binding Conditions}" SelectedItem="{Binding Condition}" DisplayMemberPath="Label"
@@ -24,7 +29,8 @@
                                          Visibility="{Binding IsComparison, Converter={StaticResource Visible}}">
                                 <DockPanel>
                                     <TextBox Width="110" Padding="4,2" VerticalContentAlignment="Center" ToolTip="{bi:Localize ConditionNumber}"
-                                             Text="{Binding Number, UpdateSourceTrigger=PropertyChanged}" />
+                                             Text="{Binding Number, UpdateSourceTrigger=PropertyChanged}"
+                                             Visibility="{Binding IsNumberTyped, Converter={StaticResource Visible}}" />
                                     <StackPanel Orientation="Horizontal" Visibility="{Binding ShowSecondNumber, Converter={StaticResource Visible}}">
                                         <TextBlock Text="{bi:Localize ConditionAnd}" VerticalAlignment="Center" Margin="8,0" />
                                         <TextBox Width="110" Padding="4,2" VerticalContentAlignment="Center" ToolTip="{bi:Localize ConditionNumber}"
@@ -90,7 +96,8 @@
                             <bi:SlotHost Slot="{x:Static designer:FilterEditorSlots.Period}" Orientation="Vertical"
                                          Visibility="{Binding IsPeriod, Converter={StaticResource Visible}}">
                                 <StackPanel MinWidth="250">
-                                    <ComboBox ItemsSource="{Binding PeriodKinds}" SelectedItem="{Binding PeriodKind}" DisplayMemberPath="Label" />
+                                    <ComboBox ItemsSource="{Binding PeriodKinds}" SelectedItem="{Binding PeriodKind}" DisplayMemberPath="Label"
+                                              Visibility="{Binding ShowPeriod, Converter={StaticResource Visible}}" />
                                     <Grid Margin="0,8,0,0" Visibility="{Binding ShowDates, Converter={StaticResource Visible}}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
