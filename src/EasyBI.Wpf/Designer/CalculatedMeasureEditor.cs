@@ -402,8 +402,8 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     {
         try
         {
-            var values = await Model.GetDistinctValuesAsync(field.Name);
-            _values[field.Name] = values.OfType<object>().Take(MaxValues).Select(FormulaItem.ForValue).ToArray();
+            var values = await Model.GetDistinctValuesAsync(new DistinctValuesRequest(field.Name) { Limit = MaxValues });
+            _values[field.Name] = values.Values.OfType<object>().Take(MaxValues).Select(FormulaItem.ForValue).ToArray();
             loaded();
         }
         catch (Exception)

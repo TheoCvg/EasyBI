@@ -18,6 +18,6 @@ public sealed class UnavailableModel(ModelMetadata metadata) : ISemanticModel
     }
 
     // The filter bar offers no values rather than failing
-    public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<object?>>([]);
+    public Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new DistinctValues([]));
 }

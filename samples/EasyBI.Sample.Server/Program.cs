@@ -34,7 +34,20 @@ app.MapPost("/sales/data", async (HttpRequest http, CancellationToken cancellati
     return Results.Json(await sales.GetDataAsync(request, cancellationToken), DataSerializer.Options);
 });
 
-app.MapGet("/sales/values/{field}", async (string field, CancellationToken cancellationToken) =>
-    Results.Json(await sales.GetDistinctValuesAsync(field, cancellationToken), DataSerializer.Options));
+// The values of a dimension listed by a filter, or those containing what the user searches
+app.MapPost("/sales/values", async (HttpRequest http, CancellationToken cancellationToken) =>
+{
+    DistinctValuesRequest? request;
+    try
+    {
+        request = await JsonSerializer.DeserializeAsync<DistinctValuesRequest>(http.Body, DataSerializer.Options, cancellationToken);
+    }
+    catch (JsonException ex)
+    {
+        return Results.BadRequest(ex.Message);
+    }
+    if (request is null) return Results.BadRequest();
+    return Results.Json(await sales.GetDistinctValuesAsync(request, cancellationToken), DataSerializer.Options);
+});
 
 app.Run(args.Length > 0 ? args[0] : "http://localhost:5180");

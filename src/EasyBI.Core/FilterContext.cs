@@ -91,11 +91,14 @@ public sealed class FilterContext
     /// <summary>The selection made in a visual, if any.</summary>
     public CrossFilter? SelectionOf(string visualId) => _selections.FirstOrDefault(s => s.SourceVisualId == visualId);
 
-    /// <summary>Adds or replaces the global filter on this field; a filter without values is removed.</summary>
+    /// <summary>
+    /// Adds or replaces the global filter on this field. A filter without values is removed, except "one of no value"
+    /// (<see cref="FilterOperator.In"/>), which keeps no row: every value unchecked.
+    /// </summary>
     public void SetFilter(string model, FilterSpec filter)
     {
         var index = _filters.FindIndex(f => f.Model == model && f.Filter.Field == filter.Field);
-        if (filter.Values.Count == 0)
+        if (filter.Values.Count == 0 && filter.Operator != FilterOperator.In)
         {
             if (index >= 0) RemoveFilter(model, filter.Field);
             return;

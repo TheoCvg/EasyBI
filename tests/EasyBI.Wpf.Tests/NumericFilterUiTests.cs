@@ -21,10 +21,10 @@ public class NumericFilterUiTests
         public Task<VisualData> GetDataAsync(VisualDataRequest request, CancellationToken cancellationToken = default) =>
             inner.GetDataAsync(request, cancellationToken);
 
-        public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default)
+        public Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default)
         {
             DistinctQueries++;
-            return inner.GetDistinctValuesAsync(field, cancellationToken);
+            return inner.GetDistinctValuesAsync(request, cancellationToken);
         }
     }
 

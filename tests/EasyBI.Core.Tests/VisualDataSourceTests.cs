@@ -45,8 +45,8 @@ public class VisualDataSourceTests
             return Task.FromResult(data);
         }
 
-        public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<object?>>([]);
+        public Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new DistinctValues([]));
     }
 
     private static CalculatedMeasure Measure(string name, string formula) =>

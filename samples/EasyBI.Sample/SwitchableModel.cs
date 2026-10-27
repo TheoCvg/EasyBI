@@ -63,6 +63,6 @@ public sealed class SwitchableModel(ISemanticModel source) : ISemanticModel
         }
     }
 
-    public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default) =>
-        Source.GetDistinctValuesAsync(field, cancellationToken);
+    public Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default) =>
+        Source.GetDistinctValuesAsync(request, cancellationToken);
 }

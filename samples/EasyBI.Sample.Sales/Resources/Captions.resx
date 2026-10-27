@@ -27,6 +27,9 @@
   <data name="Category" xml:space="preserve">
     <value>Category</value>
   </data>
+  <data name="Customer" xml:space="preserve">
+    <value>Customer</value>
+  </data>
   <data name="Product" xml:space="preserve">
     <value>Product</value>
   </data>

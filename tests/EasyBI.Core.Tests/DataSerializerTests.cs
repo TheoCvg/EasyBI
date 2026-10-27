@@ -43,10 +43,10 @@ public class DataSerializerTests
             return DataSerializer.DeserializeData(DataSerializer.Serialize(data));
         }
 
-        public async Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default)
+        public async Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default)
         {
-            var values = await server.GetDistinctValuesAsync(field, cancellationToken);
-            return DataSerializer.DeserializeValues(DataSerializer.SerializeValues(values), Metadata.GetField(field).DataType);
+            var values = await server.GetDistinctValuesAsync(DataSerializer.DeserializeValuesRequest(DataSerializer.Serialize(request)), cancellationToken);
+            return DataSerializer.DeserializeValues(DataSerializer.Serialize(values), Metadata.GetField(request.Field).DataType);
         }
     }
 
@@ -116,10 +116,10 @@ public class DataSerializerTests
     {
         var model = new JsonModel(Model());
 
-        Assert.Equal(Sales.Select(s => (object?)s.Shipped).Distinct(), await model.GetDistinctValuesAsync("Shipped"));
-        Assert.Equal(Sales.Select(s => (object?)s.Date).Distinct(), await model.GetDistinctValuesAsync("Date"));
-        Assert.Equal([1, 2, 3], await model.GetDistinctValuesAsync("Store"));
-        Assert.Equal([false, true], await model.GetDistinctValuesAsync("Online"));
+        Assert.Equal(Sales.Select(s => (object?)s.Shipped).Distinct(), (await model.GetDistinctValuesAsync(new("Shipped"))).Values);
+        Assert.Equal(Sales.Select(s => (object?)s.Date).Distinct(), (await model.GetDistinctValuesAsync(new("Date"))).Values);
+        Assert.Equal([1, 2, 3], (await model.GetDistinctValuesAsync(new("Store"))).Values);
+        Assert.Equal([false, true], (await model.GetDistinctValuesAsync(new("Online"))).Values);
     }
 
     [Fact]

@@ -166,8 +166,8 @@ public sealed class QueryableSemanticModel<T> : QuerySemanticModel
     public override Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default) =>
         RunAsync(source => QueryEngine<T>.ExecuteAsync(source, Metadata, _selectors, query, cancellationToken), cancellationToken);
 
-    public override Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default) =>
-        RunAsync(source => QueryEngine<T>.DistinctValuesAsync(source, _selectors[Metadata.GetField(field).Name], cancellationToken), cancellationToken);
+    public override Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default) =>
+        RunAsync(source => QueryEngine<T>.DistinctValuesAsync(source, _selectors[Metadata.GetField(request.Field).Name], request, cancellationToken), cancellationToken);
 
     private Task<TResult> RunAsync<TResult>(Func<IQueryable<T>, Task<TResult>> run, CancellationToken cancellationToken) =>
         Task.Run(async () =>

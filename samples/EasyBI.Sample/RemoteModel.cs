@@ -60,10 +60,12 @@ public sealed class RemoteModel : ISemanticModel
         return DataSerializer.DeserializeData(await response.Content.ReadAsStringAsync(cancellationToken));
     }
 
-    public async Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default)
+    public async Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default)
     {
-        var json = await _http.GetStringAsync($"sales/values/{Uri.EscapeDataString(field)}", cancellationToken);
+        using var content = new StringContent(DataSerializer.Serialize(request), Encoding.UTF8, "application/json");
+        using var response = await _http.PostAsync("sales/values", content, cancellationToken);
+        response.EnsureSuccessStatusCode();
         // The JSON tells a number from a text, the field's type a date from a text
-        return DataSerializer.DeserializeValues(json, Metadata.GetField(field).DataType);
+        return DataSerializer.DeserializeValues(await response.Content.ReadAsStringAsync(cancellationToken), Metadata.GetField(request.Field).DataType);
     }
 }

@@ -72,7 +72,7 @@ public sealed class ValueLabelsViewModel : ObservableObject
         try
         {
             var labels = _chip.Labels ?? new Dictionary<string, string>();
-            foreach (var value in await model.GetDistinctValuesAsync(_chip.Field.Name))
+            foreach (var value in (await model.GetDistinctValuesAsync(new DistinctValuesRequest(_chip.Field.Name))).Values)
             {
                 var option = new ValueOption(value, ValueFormatter.Display(value));
                 _values.Add(option);

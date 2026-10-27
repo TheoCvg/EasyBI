@@ -15,7 +15,7 @@ public abstract class QuerySemanticModel : ISemanticModel
     /// <summary>Runs a query: its filters, groups, aggregates, sort and Top, and the calculated measures it defines.</summary>
     public abstract Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default);
 
-    public abstract Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default);
+    public abstract Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>Runs the queries of the visual, in the request's cultures and on its date of today.</summary>
     public virtual async Task<VisualData> GetDataAsync(VisualDataRequest request, CancellationToken cancellationToken = default)
