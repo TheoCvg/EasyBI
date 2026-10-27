@@ -411,6 +411,8 @@
       
         
       
+        
+      
     
     
     
@@ -1614,6 +1616,8 @@
       
         
       
+        
+      
     
     
     
@@ -1673,6 +1677,33 @@
     
   
   Report format
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/data-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Data format
 
     
   </span>
@@ -2432,6 +2463,11 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   (a server, a cache...). <code>QuerySemanticModel</code> is the base of models that run <code>AnalyticQuery</code>s, from which EasyBI
   composes comparisons with a year earlier, year-to-date totals and matrices; <code>QueryableSemanticModel&lt;T&gt;</code> derives from
   it. <code>VisualPipeline.Prepare</code> draws data obtained otherwise.</li>
+<li><strong>Data format for remote sources</strong>: <code>DataSerializer</code> writes and reads, as transport-neutral JSON, what travels
+  between an application and a data source it reaches remotely: the <code>VisualDataRequest</code> of a visual, its <code>VisualData</code>,
+  a model's <code>ModelMetadata</code> and the distinct values of a dimension, with dates, date periods and numbers keeping their
+  type. The sample gets the results of its visuals from an ASP.NET Core server (<code>samples/EasyBI.Sample.Server</code>).
+  <code>ModelMetadata.Dimensions</code> and <code>Measures</code> are not serialized.</li>
 </ul>
 <h3 id="breaking-changes">Breaking changes<a class="headerlink" href="#breaking-changes" title="Permanent link">&para;</a></h3>
 <ul>
