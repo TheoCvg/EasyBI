@@ -63,6 +63,9 @@ public static class FormulaEditing
     /// <summary>The words of the formulas other than the functions.</summary>
     public static IReadOnlyList<string> Keywords { get; } = ["AND", "OR", "NOT", "TRUE", "FALSE"];
 
+    /// <summary>The words of the variables' formulas (see <see cref="VariableFormula"/>), colored as keywords.</summary>
+    public static IReadOnlyList<string> VariableKeywords { get; } = ["SELECT", "TOP", "WHERE", "ORDER", "BY", "ASC", "DESC", "IN", "BETWEEN", "STEP"];
+
     /// <summary>The parts of a formula, in order; spaces are left out.</summary>
     public static IReadOnlyList<FormulaToken> Tokenize(string text)
     {
@@ -105,7 +108,8 @@ public static class FormulaEditing
                 while (i < text.Length && (Compat.IsAsciiLetterOrDigit(text[i]) || text[i] == '_')) i++;
                 var word = text[start..i];
                 kind = MeasureFormula.FindFunction(word) is not null ? FormulaTokenKind.Function
-                    : Keywords.Contains(word, StringComparer.OrdinalIgnoreCase) ? FormulaTokenKind.Keyword
+                    : Keywords.Contains(word, StringComparer.OrdinalIgnoreCase) || VariableKeywords.Contains(word, StringComparer.OrdinalIgnoreCase)
+                        ? FormulaTokenKind.Keyword
                     : FormulaTokenKind.Unknown;
             }
             else

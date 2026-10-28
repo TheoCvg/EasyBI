@@ -32,15 +32,18 @@ public static class VisualTransfer
         });
     }
 
-    // With the parameters giving the count of the sets
+    // With the variables their formulas use, and so on
     private static ReportVariable[] UsedVariables(IEnumerable<VisualDefinition> visuals, IEnumerable<CalculatedMeasure> measures, VariableContext variables)
     {
-        var found = visuals.SelectMany(VariableReferences.UsedBy)
-            .Concat(measures.SelectMany(m => MeasureFormula.Variables(m.Formula)))
-            .Select(variables.Find).OfType<ReportVariable>()
-            .ToList();
-        found.AddRange(found.Select(v => v.Rule?.CountVariable).OfType<string>().Select(variables.Find).OfType<ReportVariable>().ToArray());
-        return [.. found.Distinct()];
+        var pending = new Queue<string>(visuals.SelectMany(VariableReferences.UsedBy).Concat(measures.SelectMany(m => MeasureFormula.Variables(m.Formula))));
+        var found = new List<ReportVariable>();
+        while (pending.Count > 0)
+        {
+            if (variables.Find(pending.Dequeue()) is not { } variable || found.Contains(variable)) continue;
+            found.Add(variable);
+            foreach (var used in VariableFormula.Variables(variable.Formula)) pending.Enqueue(used);
+        }
+        return [.. found];
     }
 
     /// <summary>

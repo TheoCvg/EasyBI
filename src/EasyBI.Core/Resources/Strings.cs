@@ -114,6 +114,18 @@ internal static class Strings
     public static string ReportUnknownVariable => Get();
     public static string ReportVariable => Get();
     public static string ReportInvalidVariableName => Get();
+    public static string VariableTop => Get();
+    public static string VariableSelectField => Get();
+    public static string VariableExpected => Get();
+    public static string VariableSetNotDimension => Get();
+    public static string VariableMemberType => Get();
+    public static string VariableCycle => Get();
+    public static string VariableRowCondition => Get();
+    public static string VariableBetweenNumbers => Get();
+    public static string VariableBetween => Get();
+    public static string VariableOutOfRange => Get();
+    public static string VariableChoiceType => Get();
+    public static string VariableNotAChoice => Get();
 
     /// <summary>A text whose key is built (PeriodLastMonth...).</summary>
     public static string Named(string key) => Get(key);

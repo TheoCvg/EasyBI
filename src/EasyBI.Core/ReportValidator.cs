@@ -68,23 +68,21 @@ public static class ReportValidator
 
         foreach (var variable in report.Variables)
         {
-            var where = Strings.Format(Strings.ReportVariable, variable.DisplayName);
+            var where = Strings.Format(Strings.ReportVariable, variable.Name);
             if (!ReportVariable.IsValidName(variable.Name))
                 problems.Add(Strings.Format(Strings.ReportInvalidVariableName, where));
-            if (variable.Kind != VariableKind.Set) continue;
+            // A parameter reads no field: its model does not matter
             if (!byName.TryGetValue(variable.Model, out var model))
             {
-                problems.Add(Strings.Format(Strings.ReportUnknownModel, where, variable.Model));
-                continue;
+                if (VariableFormula.Read(variable.Formula)?.Kind != VariableKind.Parameter)
+                {
+                    problems.Add(Strings.Format(Strings.ReportUnknownModel, where, variable.Model));
+                    continue;
+                }
+                model = new ModelMetadata(variable.Model, "", []);
             }
-            CheckField(model, variable.Field, FieldKind.Dimension, where, problems);
-            if (variable.Rule is { } rule)
-            {
-                if (!report.Measures.Any(m => m.Model == variable.Model && m.Name == rule.Measure))
-                    CheckField(model, rule.Measure, FieldKind.Measure, where, problems);
-                if (rule.CountVariable is { } count && !report.Variables.Any(v => v.Name == count))
-                    problems.Add(Strings.Format(Strings.ReportUnknownVariable, where, count));
-            }
+            if (VariableFormula.Validate(variable.Formula, model, report.Measures, variable.Name, report.Variables) is { } problem)
+                problems.Add(Strings.Format(Strings.ReportInvalidFormula, where, problem));
         }
         return problems;
     }

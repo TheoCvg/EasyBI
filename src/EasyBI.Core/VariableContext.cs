@@ -99,29 +99,36 @@ public static class VariableReferences
     }
 }
 
-/// <summary>Where the values of a set chosen by a rule (<see cref="SetRule"/>) come from.</summary>
+/// <summary>Where the values of the computed variables and of the sets come from.</summary>
 /// <param name="Model">The model of a name, or null when there is none.</param>
 public sealed record SetSource(Func<string, ISemanticModel?> Model)
 {
-    /// <summary>The report's filters of a model, which the rule's data goes through.</summary>
+    /// <summary>The report's filters of a model, which the data of the variables go through.</summary>
     public Func<string, IEnumerable<FilterSpec>> Filters { get; init; } = _ => [];
 
-    /// <summary>The end user's calculated measures, which a rule may use.</summary>
+    /// <summary>The end user's calculated measures, which a variable may use.</summary>
     public IEnumerable<CalculatedMeasure> Measures { get; init; } = [];
 }
 
 /// <summary>
 /// The variables of the open report (<see cref="ReportDefinition.Variables"/>), shared by the dashboard, the designers
 /// and the visuals: adding, changing or removing one, or changing its value, raises <see cref="Changed"/>. It replaces
-/// the references to them in a visual before it is queried (<see cref="ResolveAsync"/>) and in formulas
-/// (<see cref="Resolve(IEnumerable{CalculatedMeasure})"/>), and computes the values of sets chosen by a rule, keeping
-/// them until a variable changes or <see cref="Refresh"/>.
+/// the references to them in a visual before it is queried (<see cref="ResolveAsync(VisualDefinition, SetSource, CancellationToken)"/>)
+/// and in formulas (<see cref="ResolveAsync(IEnumerable{CalculatedMeasure}, SetSource, CancellationToken)"/>), and
+/// computes the values of the computed variables and of the sets, keeping them until a variable changes or
+/// <see cref="Refresh"/>.
 /// </summary>
 public sealed class VariableContext
 {
     private readonly List<ReportVariable> _variables = [];
-    private readonly Dictionary<string, Task<IReadOnlyList<string?>>> _members = [];
+    private readonly Dictionary<string, Task<IReadOnlyList<string?>>> _computed = [];
     private readonly object _gate = new();
+
+    // The names of the measures a set or a computed value is queried with
+    private const string OrderMeasure = "__variable_order";
+    private const string ConditionMeasure = "__variable_condition";
+    private const string RowsMeasure = "__variable_rows";
+    private const string ValueMeasure = "__variable_value";
 
     public event EventHandler? Changed;
 
@@ -129,14 +136,17 @@ public sealed class VariableContext
 
     public ReportVariable? Find(string name) => _variables.FirstOrDefault(v => v.Name == name);
 
-    /// <summary>The parameters, without the sets.</summary>
-    public IEnumerable<ReportVariable> Parameters => _variables.Where(v => v.Kind == VariableKind.Parameter);
+    /// <summary>What a variable holds; null when there is none of that name.</summary>
+    public VariableDefinition? Definition(string name) => Find(name) is { } variable ? VariableFormula.Definition(variable) : null;
 
-    /// <summary>The sets of values of a dimension of a model.</summary>
-    public IEnumerable<ReportVariable> SetsOf(string model, string field) =>
-        _variables.Where(v => v.Kind == VariableKind.Set && v.Model == model && v.Field == field);
+    /// <summary>The parameters and the computed values: the variables a formula can use.</summary>
+    public IEnumerable<ReportVariable> Values => _variables.Where(v => VariableFormula.Definition(v).Kind != VariableKind.Set);
 
-    /// <summary>A name no variable has, from <paramref name="prefix"/> (Parameter, Parameter2...).</summary>
+    /// <summary>The sets of values of the dimensions of a model.</summary>
+    public IEnumerable<ReportVariable> SetsOf(string model) =>
+        _variables.Where(v => v.Model == model && VariableFormula.Definition(v).Kind == VariableKind.Set);
+
+    /// <summary>A name no variable has, from <paramref name="prefix"/> (N, N2...).</summary>
     public string NewName(string prefix)
     {
         var name = prefix;
@@ -153,10 +163,12 @@ public sealed class VariableContext
         OnChanged();
     }
 
-    /// <summary>Changes the value of a parameter.</summary>
+    /// <summary>Changes the value of a parameter; null gives it back the value of its formula.</summary>
     public void SetValue(string name, string? value)
     {
-        if (Find(name) is { Kind: VariableKind.Parameter } parameter && parameter.Value != value) Set(parameter with { Value = value });
+        if (Find(name) is not { } parameter || VariableFormula.Definition(parameter) is not ParameterDefinition definition) return;
+        if (value == definition.Value) value = null;
+        if (parameter.Value != value) Set(parameter with { Value = value });
     }
 
     public void Remove(string name)
@@ -172,10 +184,10 @@ public sealed class VariableContext
         OnChanged();
     }
 
-    /// <summary>Forgets the values of the sets chosen by a rule, which are computed again: the data changed.</summary>
+    /// <summary>Forgets the computed values and the values of the sets, which are computed again: the data changed.</summary>
     public void Refresh()
     {
-        lock (_gate) _members.Clear();
+        lock (_gate) _computed.Clear();
     }
 
     private void OnChanged()
@@ -184,18 +196,22 @@ public sealed class VariableContext
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    // --- Resolution ---
+    // --- Values
 
-    /// <summary>The value of a parameter as a visual shows it: formatted in <see cref="EasyBILocalization.FormatCulture"/>.</summary>
-    public static string Display(ReportVariable parameter)
+    /// <summary>A parameter's value in invariant form: the end user's, or its formula's.</summary>
+    public static string? ValueOf(ReportVariable parameter) =>
+        parameter.Value ?? (VariableFormula.Definition(parameter) as ParameterDefinition)?.Value;
+
+    /// <summary>A value of a variable as a visual shows it: formatted in <see cref="EasyBILocalization.FormatCulture"/>.</summary>
+    public static string Display(string? value, DataType type, string? format = null)
     {
-        if (parameter.Value is not { } value) return "";
+        if (value is null) return "";
         try
         {
-            return parameter.DataType switch
+            return type switch
             {
-                DataType.Number => ValueFormatter.Format(double.Parse(value, CultureInfo.InvariantCulture), parameter.Format),
-                DataType.Date => ((DateTime)InvariantValue.Parse(value, typeof(DateTime))!).ToString(parameter.Format ?? "d", EasyBILocalization.FormatCulture),
+                DataType.Number => ValueFormatter.Format(double.Parse(value, CultureInfo.InvariantCulture), format),
+                DataType.Date => ((DateTime)InvariantValue.Parse(value, typeof(DateTime))!).ToString(format ?? "d", EasyBILocalization.FormatCulture),
                 DataType.Boolean => ValueFormatter.Display(bool.Parse(value)),
                 _ => value,
             };
@@ -206,10 +222,15 @@ public sealed class VariableContext
         }
     }
 
+    /// <summary>A parameter's value as a visual shows it.</summary>
+    public static string Display(ReportVariable parameter) =>
+        Display(ValueOf(parameter), VariableFormula.Definition(parameter).DataType, parameter.Format);
+
     /// <summary>A value of a set as a visual shows it, read with the type of its dimension in <paramref name="metadata"/>.</summary>
     public static string DisplayMember(string? member, ReportVariable set, ModelMetadata? metadata)
     {
-        var type = metadata?.Fields.FirstOrDefault(f => f.Name == set.Field)?.DataType switch
+        var field = (VariableFormula.Definition(set) as SetDefinition)?.Field;
+        var type = metadata?.Fields.FirstOrDefault(f => f.Name == field)?.DataType switch
         {
             DataType.Number => typeof(double),
             DataType.Date => typeof(DateTime),
@@ -226,86 +247,165 @@ public sealed class VariableContext
         }
     }
 
-    /// <summary>The number a number parameter holds, rounded down to a count; null without a value.</summary>
-    private int? Count(string name)
-    {
-        var parameter = Require(name, VariableKind.Parameter);
-        if (parameter.DataType != DataType.Number) throw new InvalidOperationException(Strings.Format(Strings.VariableNotNumber, parameter.DisplayName));
-        return parameter.Value is { } value && double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
-            ? (int)Math.Max(0, Math.Floor(number))
-            : null;
-    }
-
     private ReportVariable Require(string name, VariableKind? kind = null)
     {
         var variable = Find(name) ?? throw new InvalidOperationException(Strings.Format(Strings.VariableUnknown, name));
-        if (kind is { } expected && variable.Kind != expected)
-            throw new InvalidOperationException(Strings.Format(expected == VariableKind.Set ? Strings.VariableNotSet : Strings.VariableNotParameter, variable.DisplayName));
+        var actual = VariableFormula.Definition(variable).Kind;
+        if (kind is { } expected && (actual == VariableKind.Set) != (expected == VariableKind.Set))
+            throw new InvalidOperationException(Strings.Format(expected == VariableKind.Set ? Strings.VariableNotSet : Strings.VariableNotParameter, name));
         return variable;
     }
 
     /// <summary>
-    /// The measures with the values of the parameters their formulas use in place of the references (<c>[@Rate]</c>):
-    /// a number, a text or a date in quotes, TRUE or FALSE; a parameter without a value gives an empty value.
+    /// The value of a parameter or of a computed variable, in invariant form; null without a value.
+    /// A computed value is queried once until a variable changes or <see cref="Refresh"/>.
     /// </summary>
-    public IReadOnlyList<CalculatedMeasure> Resolve(IEnumerable<CalculatedMeasure> measures) =>
-        [.. measures.Select(m => MeasureFormula.Variables(m.Formula).Count == 0 ? m : m with { Formula = MeasureFormula.WithValues(m.Formula, Literal) })];
-
-    private string Literal(string name)
+    public async Task<string?> ValueAsync(string name, SetSource source, CancellationToken cancellationToken = default)
     {
-        if (Find(name) is not { Kind: VariableKind.Parameter } parameter) return VariableReferences.Reference(name);
-        var value = parameter.Value;
-        return parameter.DataType switch
-        {
-            // A division by zero is the formulas' empty value
-            DataType.Number => value is not null && double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
-                ? "(" + number.ToString("R", CultureInfo.InvariantCulture) + ")"
-                : "(0/0)",
-            DataType.Boolean => bool.TryParse(value, out var flag) && flag ? "TRUE" : "FALSE",
-            DataType.Date when value is not null && DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var date) =>
-                "\"" + date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + "\"",
-            _ => "\"" + (value ?? "").Replace("\"", "\"\"") + "\"",
-        };
+        var variable = Require(name, VariableKind.Parameter);
+        if (VariableFormula.Definition(variable).Kind == VariableKind.Parameter) return ValueOf(variable);
+        var values = await ComputeAsync(variable, source, cancellationToken).ConfigureAwait(false);
+        return values.FirstOrDefault();
+    }
+
+    /// <summary>The value of a variable as a visual shows it: a parameter's or a computed value, the values of a set.</summary>
+    public async Task<string> DisplayAsync(string name, SetSource source, CancellationToken cancellationToken = default)
+    {
+        var variable = Require(name);
+        var definition = VariableFormula.Definition(variable);
+        if (definition.Kind != VariableKind.Set)
+            return Display(await ValueAsync(name, source, cancellationToken).ConfigureAwait(false), definition.DataType, variable.Format);
+        var members = await MembersAsync(name, source, cancellationToken).ConfigureAwait(false);
+        var metadata = source.Model(variable.Model)?.Metadata;
+        return string.Join(", ", members.Select(m => DisplayMember(m, variable, metadata)));
+    }
+
+    // A number variable as a count
+    private async Task<int?> CountAsync(string name, SetSource source, CancellationToken cancellationToken)
+    {
+        var variable = Require(name, VariableKind.Parameter);
+        if (VariableFormula.Definition(variable).DataType != DataType.Number)
+            throw new InvalidOperationException(Strings.Format(Strings.VariableNotNumber, name));
+        var value = await ValueAsync(name, source, cancellationToken).ConfigureAwait(false);
+        return value is not null && double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
+            ? (int)Math.Max(0, Math.Floor(number))
+            : null;
     }
 
     /// <summary>
-    /// The values of a set, in invariant form: its list, or those its rule chooses over the data the report's filters of
-    /// its model keep (except those on sets). Computed once until a variable changes or <see cref="Refresh"/>.
+    /// The measures with the values of the variables their formulas use in place of the references (<c>[@Rate]</c>):
+    /// a number, a text or a date in quotes, TRUE or FALSE; a variable without a value gives an empty value.
     /// </summary>
-    public Task<IReadOnlyList<string?>> MembersAsync(string name, SetSource source, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<CalculatedMeasure>> ResolveAsync(IEnumerable<CalculatedMeasure> measures, SetSource source,
+        CancellationToken cancellationToken = default)
+    {
+        var all = measures.ToArray();
+        var literals = new Dictionary<string, string>();
+        foreach (var name in all.SelectMany(m => MeasureFormula.Variables(m.Formula)).Distinct())
+        {
+            if (Find(name) is not { } variable || VariableFormula.Definition(variable) is not { Kind: not VariableKind.Set } definition)
+                continue;
+            literals[name] = Literal(await ValueAsync(name, source, cancellationToken).ConfigureAwait(false), definition.DataType);
+        }
+        return [.. all.Select(m => MeasureFormula.Variables(m.Formula).Count == 0 ? m
+            : m with { Formula = MeasureFormula.WithValues(m.Formula, n => literals.TryGetValue(n, out var literal) ? literal : VariableReferences.Reference(n)) })];
+    }
+
+    private static string Literal(string? value, DataType type) => type switch
+    {
+        // A division by zero is the formulas' empty value
+        DataType.Number => value is not null && double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
+            ? "(" + number.ToString("R", CultureInfo.InvariantCulture) + ")"
+            : "(0/0)",
+        DataType.Boolean => bool.TryParse(value, out var flag) && flag ? "TRUE" : "FALSE",
+        DataType.Date when value is not null && DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var date) =>
+            "\"" + date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + "\"",
+        _ => "\"" + (value ?? "").Replace("\"", "\"\"") + "\"",
+    };
+
+    /// <summary>
+    /// The values of a set, in invariant form: those it lists, or those its conditions, order and count choose over the
+    /// data the report's filters of its model keep (except those on sets). Computed once until a variable changes or
+    /// <see cref="Refresh"/>.
+    /// </summary>
+    public async Task<IReadOnlyList<string?>> MembersAsync(string name, SetSource source, CancellationToken cancellationToken = default)
     {
         var set = Require(name, VariableKind.Set);
-        if (set.Rule is not { } rule) return Task.FromResult<IReadOnlyList<string?>>(set.Members ?? []);
+        var definition = (SetDefinition)VariableFormula.Definition(set);
+        if (definition.IsList) return definition.Members!;
+        return await ComputeAsync(set, source, cancellationToken).ConfigureAwait(false);
+    }
 
-        var count = rule.CountVariable is { } variable ? Count(variable) : rule.Count;
-        var model = source.Model(set.Model) ?? throw new InvalidOperationException($"Unknown model '{set.Model}'.");
-        var filters = source.Filters(set.Model)
-            .Where(f => !Names(f).Any(n => Find(n)?.Kind == VariableKind.Set))
-            .Select(ResolveParameters)
-            .ToArray();
-        var measures = Resolve(MeasureContext.Needed([rule.Measure], source.Measures.Where(m => m.Model == set.Model), model.Metadata));
-        var visual = new VisualDefinition
+    // The values of a set, or the value of a computed variable, queried once
+    private async Task<IReadOnlyList<string?>> ComputeAsync(ReportVariable variable, SetSource source, CancellationToken cancellationToken)
+    {
+        var model = source.Model(variable.Model) ?? throw new InvalidOperationException($"Unknown model '{variable.Model}'.");
+        var metadata = model.Metadata;
+        var reportMeasures = source.Measures.Where(m => m.Model == variable.Model).ToArray();
+        var filters = new List<FilterSpec>();
+        foreach (var filter in source.Filters(variable.Model).Where(f => !Names(f).Any(n => Definition(n)?.Kind == VariableKind.Set)))
+            filters.Add(await ResolveValuesAsync(filter, source, cancellationToken).ConfigureAwait(false));
+
+        VisualDefinition visual;
+        List<CalculatedMeasure> extra = [];
+        CalculatedMeasure Measure(string measureName, string formula) =>
+            new() { Name = measureName, Model = variable.Model, Formula = formula };
+        if (VariableFormula.Definition(variable) is SetDefinition set)
         {
-            Id = "set:" + set.Name,
-            Model = set.Model,
-            Type = VisualType.Table,
-            Axis = [new FieldRef(set.Field)],
-            Values = [new MeasureRef(rule.Measure)],
-            Filters = filters,
-            Sort = new SortSpec(rule.Measure, Descending: !rule.Bottom),
-            Top = count,
-        };
+            bool IsMeasure(string field) =>
+                metadata.Fields.Any(f => f.Name == field && f.Kind == FieldKind.Measure) || reportMeasures.Any(m => m.Name == field);
+            var (rows, groups, order) = MeasureFormula.SetParts(variable.Formula, IsMeasure);
+            var values = new Dictionary<string, string?>();
+            foreach (var used in rows.SelectMany(MeasureFormula.Variables).Distinct())
+                values[used] = await ValueAsync(used, source, cancellationToken).ConfigureAwait(false);
+            filters.AddRange(rows.Select(r => MeasureFormula.ToRowFilter(r, n => metadata.Fields.FirstOrDefault(f => f.Name == n), n => values[n])));
+            if (set.Members is { } members) filters.Add(new FilterSpec(set.Field, FilterOperator.In, members));
+            if (order is not null) extra.Add(Measure(OrderMeasure, order));
+            if (groups.Count > 0)
+            {
+                // The values whose groups match every condition
+                extra.Add(Measure(ConditionMeasure, "IF(" + string.Join(" AND ", groups.Select(g => "(" + g + ")")) + "; 1; 0)"));
+                filters.Add(new FilterSpec(ConditionMeasure, FilterOperator.GreaterThanOrEqual, ["1"]));
+            }
+            if (extra.Count == 0) extra.Add(Measure(RowsMeasure, "COUNT()"));
+            var top = set.TopVariable is { } count ? await CountAsync(count, source, cancellationToken).ConfigureAwait(false) : set.Top;
+            var axis = new FieldRef(set.Field);
+            visual = new VisualDefinition
+            {
+                Id = "set:" + variable.Name,
+                Model = variable.Model,
+                Type = VisualType.Table,
+                Axis = [axis],
+                Values = [.. extra.Select(m => new MeasureRef(m.Name))],
+                Filters = filters,
+                Sort = order is null ? new SortSpec(axis.Key) : new SortSpec(OrderMeasure, set.Descending),
+                Top = top,
+            };
+        }
+        else
+        {
+            extra.Add(Measure(ValueMeasure, variable.Formula));
+            visual = new VisualDefinition
+            {
+                Id = "value:" + variable.Name,
+                Model = variable.Model,
+                Type = VisualType.Kpi,
+                Values = [new MeasureRef(ValueMeasure)],
+                Filters = filters,
+            };
+        }
+        var measures = await ResolveAsync([.. reportMeasures, .. extra], source, cancellationToken).ConfigureAwait(false);
         var key = JsonSerializer.Serialize(new { visual, measures, Culture = EasyBILocalization.FormatCulture.Name }, ReportSerializer.Options);
         Task<IReadOnlyList<string?>> task;
         lock (_gate)
         {
-            if (!_members.TryGetValue(key, out task!))
+            if (!_computed.TryGetValue(key, out task!))
             {
-                // Shared by every visual using the set: none of them cancels it for the others
-                _members[key] = task = Compute(model, visual, measures);
+                // Shared by every visual using the variable: none of them cancels it for the others
+                _computed[key] = task = Compute(model, visual, measures);
             }
         }
-        return WithCancellation(task, cancellationToken);
+        return await WithCancellation(task, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<IReadOnlyList<string?>> Compute(ISemanticModel model, VisualDefinition visual, IReadOnlyList<CalculatedMeasure> measures)
@@ -314,7 +414,7 @@ public sealed class VariableContext
         try
         {
             var data = await model.GetDataAsync(visual.ToDataRequest(model.Metadata, measures)).ConfigureAwait(false);
-            var column = data.Result.IndexOf(visual.Axis[0].Key);
+            var column = visual.Axis.Count > 0 ? data.Result.IndexOf(visual.Axis[0].Key) : data.Result.IndexOf(ValueMeasure);
             return [.. data.Result.Rows.Select(r => InvariantValue.Format(r[column]))];
         }
         catch
@@ -322,8 +422,8 @@ public sealed class VariableContext
             // Asked again next time
             lock (_gate)
             {
-                foreach (var failed in _members.Where(m => m.Value.IsFaulted || m.Value.IsCanceled).Select(m => m.Key).ToArray())
-                    _members.Remove(failed);
+                foreach (var failed in _computed.Where(m => m.Value.IsFaulted || m.Value.IsCanceled).Select(m => m.Key).ToArray())
+                    _computed.Remove(failed);
             }
             throw;
         }
@@ -344,7 +444,7 @@ public sealed class VariableContext
     /// <summary>
     /// The visual as it is queried: references to variables replaced by their values in its filters, its Top, its title
     /// and text; its fields grouped by a set get the set's values (<see cref="FieldRef.SetMembers"/>) and show "in the
-    /// set" as the set's caption and the others as "Others", unless the visual labels them otherwise.
+    /// set" as the set's name and the others as "Others", unless the visual labels them otherwise.
     /// </summary>
     /// <exception cref="InvalidOperationException">The visual references a variable that does not exist, or of the wrong kind.</exception>
     public async Task<VisualDefinition> ResolveAsync(VisualDefinition visual, SetSource source, CancellationToken cancellationToken = default)
@@ -352,69 +452,67 @@ public sealed class VariableContext
         var used = VariableReferences.UsedBy(visual);
         if (used.Count == 0) return visual;
 
-        // Sets referenced by a text only show their values when they exist
-        var members = new Dictionary<string, IReadOnlyList<string?>>();
-        var texts = VariableReferences.InText(visual.Title).Concat(VariableReferences.InText(visual.Text?.Text)).ToHashSet();
-        foreach (var name in used)
+        // Texts only show the variables that exist: a text may write braces
+        var texts = new Dictionary<string, string>();
+        foreach (var name in VariableReferences.InText(visual.Title).Concat(VariableReferences.InText(visual.Text?.Text)).Distinct())
         {
-            var variable = texts.Contains(name) ? Find(name) : Require(name);
-            if (variable?.Kind == VariableKind.Set && name != visual.Variable)
-                members[name] = await MembersAsync(name, source, cancellationToken).ConfigureAwait(false);
+            if (Find(name) is not null) texts[name] = await DisplayAsync(name, source, cancellationToken).ConfigureAwait(false);
         }
 
-        string? Text(string name) => Find(name) switch
-        {
-            { Kind: VariableKind.Parameter } parameter => Display(parameter),
-            { } set when members.TryGetValue(name, out var values) =>
-                string.Join(", ", values.Select(v => DisplayMember(v, set, source.Model(set.Model)?.Metadata))),
-            _ => null,
-        };
-
-        FilterSpec Filter(FilterSpec filter)
-        {
-            if (filter.Alternatives is { } alternatives)
-                filter = filter with { Alternatives = [.. alternatives.Select(g => (IReadOnlyList<FilterSpec>)[.. g.Select(Filter)])] };
-            if (!filter.Values.Any(v => VariableReferences.NameOf(v) is not null)) return filter;
-            var values = new List<string?>();
-            foreach (var value in filter.Values)
-            {
-                if (VariableReferences.NameOf(value) is not { } name) values.Add(value);
-                else if (Require(name).Kind == VariableKind.Parameter) values.Add(Find(name)!.Value);
-                else if (filter.Operator is FilterOperator.In or FilterOperator.NotIn) values.AddRange(members[name]);
-                else throw new InvalidOperationException(Strings.Format(Strings.VariableNotParameter, Find(name)!.DisplayName));
-            }
-            return filter with { Values = values };
-        }
-
-        FieldRef Field(FieldRef field)
+        async Task<FieldRef> Field(FieldRef field)
         {
             if (field.Set is not { } name) return field;
-            var set = Require(name, VariableKind.Set);
-            var labels = new Dictionary<string, string> { [bool.TrueString] = set.DisplayName, [bool.FalseString] = Strings.SetOthers };
+            Require(name, VariableKind.Set);
+            var labels = new Dictionary<string, string> { [bool.TrueString] = name, [bool.FalseString] = Strings.SetOthers };
             foreach (var label in field.Labels ?? new Dictionary<string, string>()) labels[label.Key] = label.Value;
-            return field with { SetMembers = members[name], Labels = labels };
+            return field with { SetMembers = await MembersAsync(name, source, cancellationToken).ConfigureAwait(false), Labels = labels };
         }
 
+        var filters = new List<FilterSpec>();
+        foreach (var filter in visual.Filters) filters.Add(await ResolveValuesAsync(filter, source, cancellationToken).ConfigureAwait(false));
+        var axis = new List<FieldRef>();
+        foreach (var field in visual.Axis) axis.Add(await Field(field).ConfigureAwait(false));
         return visual with
         {
-            Title = VariableReferences.Interpolate(visual.Title, Text),
-            Text = visual.Text is { } text ? text with { Text = VariableReferences.Interpolate(text.Text, Text) } : null,
-            Filters = [.. visual.Filters.Select(Filter)],
-            Top = visual.TopVariable is { } top ? Count(top) : visual.Top,
+            Title = VariableReferences.Interpolate(visual.Title, n => texts.TryGetValue(n, out var text) ? text : null),
+            Text = visual.Text is { } text ? text with { Text = VariableReferences.Interpolate(text.Text, n => texts.TryGetValue(n, out var shown) ? shown : null) } : null,
+            Filters = filters,
+            Top = visual.TopVariable is { } top ? await CountAsync(top, source, cancellationToken).ConfigureAwait(false) : visual.Top,
             TopVariable = null,
-            Axis = [.. visual.Axis.Select(Field)],
-            Legend = visual.Legend is { } legend ? Field(legend) : null,
+            Axis = axis,
+            Legend = visual.Legend is { } legend ? await Field(legend).ConfigureAwait(false) : null,
         };
     }
 
-    // The values of a parameter in a filter
-    private FilterSpec ResolveParameters(FilterSpec filter) => filter with
+    // The values of the variables a filter uses: a value, or the values of a set ("one of" or "none of")
+    private async Task<FilterSpec> ResolveValuesAsync(FilterSpec filter, SetSource source, CancellationToken cancellationToken)
     {
-        Values = [.. filter.Values.Select(v => VariableReferences.NameOf(v) is { } name && Find(name) is { Kind: VariableKind.Parameter } p ? p.Value : v)],
-        Alternatives = filter.Alternatives is { } alternatives
-            ? [.. alternatives.Select(g => (IReadOnlyList<FilterSpec>)[.. g.Select(ResolveParameters)])]
-            : null,
-    };
+        if (filter.Alternatives is { } alternatives)
+        {
+            var groups = new List<IReadOnlyList<FilterSpec>>();
+            foreach (var group in alternatives)
+            {
+                var resolved = new List<FilterSpec>();
+                foreach (var f in group) resolved.Add(await ResolveValuesAsync(f, source, cancellationToken).ConfigureAwait(false));
+                groups.Add(resolved);
+            }
+            filter = filter with { Alternatives = groups };
+        }
+        if (!filter.Values.Any(v => VariableReferences.NameOf(v) is not null)) return filter;
+        var values = new List<string?>();
+        foreach (var value in filter.Values)
+        {
+            if (VariableReferences.NameOf(value) is not { } name) values.Add(value);
+            else if (Definition(name) is { Kind: VariableKind.Set })
+            {
+                if (filter.Operator is not (FilterOperator.In or FilterOperator.NotIn))
+                    throw new InvalidOperationException(Strings.Format(Strings.VariableNotParameter, name));
+                values.AddRange(await MembersAsync(name, source, cancellationToken).ConfigureAwait(false));
+            }
+            else values.Add(await ValueAsync(name, source, cancellationToken).ConfigureAwait(false));
+        }
+        return filter with { Values = values };
+    }
 
     private static IEnumerable<string> Names(FilterSpec filter) =>
         filter.Values.Select(VariableReferences.NameOf).OfType<string>()

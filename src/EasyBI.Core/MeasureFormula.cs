@@ -17,7 +17,7 @@ namespace EasyBI.Core;
 /// inside quotes <c>""</c>. A parameter of the report is written <c>[@Name]</c> (<see cref="ReportVariable"/>): its
 /// value replaces it before the query (<see cref="WithValues"/>).
 /// </summary>
-public static class MeasureFormula
+public static partial class MeasureFormula
 {
     /// <summary>The functions of the formulas, in the order the designer offers them.</summary>
     public static IReadOnlyList<FormulaFunction> Functions { get; } =
@@ -209,8 +209,9 @@ public static class MeasureFormula
 
         public IReadOnlyList<FieldDescriptor> Fields { get; }
 
-        /// <returns>The variable named by a reference (<c>@Rate</c>), or null.</returns>
-        public ReportVariable? Variable(string reference) => _variables.FirstOrDefault(v => v.Name == reference.Substring(1));
+        /// <returns>What the variable named by a reference (<c>@Rate</c>) holds, or null when there is none.</returns>
+        public VariableDefinition? Variable(string reference) =>
+            _variables.FirstOrDefault(v => v.Name == reference.Substring(1)) is { } variable ? VariableFormula.Definition(variable) : null;
 
         /// <returns>The field, or null with the <paramref name="problem"/> of an unknown or ambiguous reference.</returns>
         public FieldDescriptor? Resolve(string reference, bool byCaption, out string? problem)
@@ -301,7 +302,7 @@ public static class MeasureFormula
     /// Checks the kinds of values: a formula gives a number, a condition is a comparison, a dimension is only read row
     /// by row inside an aggregation function.
     /// </summary>
-    private sealed class Checker(string formula, ModelMetadata metadata, Resolver resolve, Func<string, ReportVariable?> variable)
+    private sealed class Checker(string formula, ModelMetadata metadata, Resolver resolve, Func<string, VariableDefinition?> variable)
     {
         // The first problem found: once it is, the checking only unwinds
         private Fault? _fault;
@@ -309,6 +310,13 @@ public static class MeasureFormula
         public Fault? Check(Node node)
         {
             Require(node, Kind(node, null), ValueKind.Number);
+            return _fault;
+        }
+
+        /// <summary>Checks a condition on the groups, or read row by row with an <paramref name="aggregation"/>.</summary>
+        public Fault? CheckCondition(Node node, string? aggregation)
+        {
+            Require(node, Kind(node, aggregation), ValueKind.Boolean);
             return _fault;
         }
 
@@ -325,11 +333,11 @@ public static class MeasureFormula
                 case BooleanNode:
                     return ValueKind.Boolean;
                 case FieldNode reference when IsVariable(reference.Text):
-                    // A parameter's value, the same for every row and every group
+                    // A variable's value, the same for every row and every group
                     return variable(reference.Text) switch
                     {
                         null => Fail(Strings.Format(Strings.VariableUnknown, reference.Text.Substring(1)), reference),
-                        { Kind: VariableKind.Set } set => Fail(Strings.Format(Strings.FormulaSetVariable, set.DisplayName), reference),
+                        { Kind: VariableKind.Set } => Fail(Strings.Format(Strings.FormulaSetVariable, reference.Text.Substring(1)), reference),
                         { DataType: DataType.Text } => ValueKind.Text,
                         { DataType: DataType.Date } => ValueKind.Date,
                         { DataType: DataType.Boolean } => ValueKind.Boolean,

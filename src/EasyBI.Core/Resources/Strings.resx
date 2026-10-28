@@ -424,16 +424,16 @@
     <value>The variable "{0}" does not exist</value>
   </data>
   <data name="VariableNotParameter" xml:space="preserve">
-    <value>"{0}" is a set of values, not a parameter</value>
+    <value>"{0}" is a set of values, not a value</value>
   </data>
   <data name="VariableNotSet" xml:space="preserve">
-    <value>"{0}" is a parameter, not a set of values</value>
+    <value>"{0}" is a value, not a set of values</value>
   </data>
   <data name="VariableNotNumber" xml:space="preserve">
-    <value>The parameter "{0}" is not a number</value>
+    <value>The variable "{0}" is not a number</value>
   </data>
   <data name="FormulaSetVariable" xml:space="preserve">
-    <value>"{0}" is a set of values: a formula only uses parameters</value>
+    <value>"{0}" is a set of values: a formula only uses values</value>
   </data>
   <data name="SetOthers" xml:space="preserve">
     <value>Others</value>
@@ -451,6 +451,42 @@
     <value>Variable "{0}"</value>
   </data>
   <data name="ReportInvalidVariableName" xml:space="preserve">
-    <value>{0}: a name only has letters, digits and underscores</value>
+    <value>{0}: a name is not empty, has no space around it, nor [ ] {{ }} @ "</value>
+  </data>
+  <data name="VariableTop" xml:space="preserve">
+    <value>After TOP, write a number of values or a number variable: TOP 10, TOP [@N]</value>
+  </data>
+  <data name="VariableSelectField" xml:space="preserve">
+    <value>After SELECT, write the dimension whose values the set keeps: SELECT [Customer]</value>
+  </data>
+  <data name="VariableExpected" xml:space="preserve">
+    <value>{0} is missing at position {1}</value>
+  </data>
+  <data name="VariableSetNotDimension" xml:space="preserve">
+    <value>[{0}] is not a dimension: a set keeps values of a dimension</value>
+  </data>
+  <data name="VariableMemberType" xml:space="preserve">
+    <value>{0} is not a value of [{1}]</value>
+  </data>
+  <data name="VariableCycle" xml:space="preserve">
+    <value>A variable cannot use itself: {0}</value>
+  </data>
+  <data name="VariableRowCondition" xml:space="preserve">
+    <value>On dimensions, write a dimension compared with a value: [Region] = "North"</value>
+  </data>
+  <data name="VariableBetweenNumbers" xml:space="preserve">
+    <value>Only a number has a minimum and a maximum</value>
+  </data>
+  <data name="VariableBetween" xml:space="preserve">
+    <value>Write the bounds from the smallest, with a positive step: 10 BETWEEN 1 AND 20 STEP 1</value>
+  </data>
+  <data name="VariableOutOfRange" xml:space="preserve">
+    <value>{0} is not between {1} and {2}</value>
+  </data>
+  <data name="VariableChoiceType" xml:space="preserve">
+    <value>{0} is not of the same type as {1}</value>
+  </data>
+  <data name="VariableNotAChoice" xml:space="preserve">
+    <value>{0} is not one of the choices</value>
   </data>
 </root>

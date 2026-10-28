@@ -150,7 +150,7 @@ public class FilterBar : Control
         SlicerViewModel? slicer = null;
         var caption = Context!.Models.Count > 1 ? $"{model.Metadata.Caption} › {field.Caption}" : field.Caption;
         slicer = new SlicerViewModel(model.Metadata.Name, caption,
-            new FilterItemViewModel(field, model, () => Apply(slicer!), values, @operator, grain, Context.Variables));
+            new FilterItemViewModel(field, model, () => Apply(slicer!), values, @operator, grain));
         return slicer;
     }
 

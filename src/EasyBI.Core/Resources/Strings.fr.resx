@@ -424,16 +424,16 @@
     <value>La variable « {0} » n'existe pas</value>
   </data>
   <data name="VariableNotParameter" xml:space="preserve">
-    <value>« {0} » est un ensemble de valeurs, pas un paramètre</value>
+    <value>« {0} » est un ensemble de valeurs, pas une valeur</value>
   </data>
   <data name="VariableNotSet" xml:space="preserve">
-    <value>« {0} » est un paramètre, pas un ensemble de valeurs</value>
+    <value>« {0} » est une valeur, pas un ensemble de valeurs</value>
   </data>
   <data name="VariableNotNumber" xml:space="preserve">
-    <value>Le paramètre « {0} » n'est pas un nombre</value>
+    <value>La variable « {0} » n'est pas un nombre</value>
   </data>
   <data name="FormulaSetVariable" xml:space="preserve">
-    <value>« {0} » est un ensemble de valeurs : une formule n'utilise que des paramètres</value>
+    <value>« {0} » est un ensemble de valeurs : une formule n'utilise que des valeurs</value>
   </data>
   <data name="SetOthers" xml:space="preserve">
     <value>Autres</value>
@@ -451,6 +451,42 @@
     <value>Variable « {0} »</value>
   </data>
   <data name="ReportInvalidVariableName" xml:space="preserve">
-    <value>{0} : un nom ne contient que des lettres, des chiffres et des tirets bas</value>
+    <value>{0} : un nom n'est pas vide, sans espace autour, ni [ ] {{ }} @ "</value>
+  </data>
+  <data name="VariableTop" xml:space="preserve">
+    <value>Après TOP, écrivez un nombre de valeurs ou une variable nombre : TOP 10, TOP [@N]</value>
+  </data>
+  <data name="VariableSelectField" xml:space="preserve">
+    <value>Après SELECT, écrivez la dimension dont l'ensemble garde des valeurs : SELECT [Client]</value>
+  </data>
+  <data name="VariableExpected" xml:space="preserve">
+    <value>{0} manque à la position {1}</value>
+  </data>
+  <data name="VariableSetNotDimension" xml:space="preserve">
+    <value>[{0}] n'est pas une dimension : un ensemble garde des valeurs d'une dimension</value>
+  </data>
+  <data name="VariableMemberType" xml:space="preserve">
+    <value>{0} n'est pas une valeur de [{1}]</value>
+  </data>
+  <data name="VariableCycle" xml:space="preserve">
+    <value>Une variable ne peut pas s'utiliser elle-même : {0}</value>
+  </data>
+  <data name="VariableRowCondition" xml:space="preserve">
+    <value>Sur les dimensions, écrivez une dimension comparée à une valeur : [Région] = "Nord"</value>
+  </data>
+  <data name="VariableBetweenNumbers" xml:space="preserve">
+    <value>Seul un nombre a un minimum et un maximum</value>
+  </data>
+  <data name="VariableBetween" xml:space="preserve">
+    <value>Écrivez les bornes de la plus petite à la plus grande, avec un pas positif : 10 BETWEEN 1 AND 20 STEP 1</value>
+  </data>
+  <data name="VariableOutOfRange" xml:space="preserve">
+    <value>{0} n'est pas entre {1} et {2}</value>
+  </data>
+  <data name="VariableChoiceType" xml:space="preserve">
+    <value>{0} n'est pas du même type que {1}</value>
+  </data>
+  <data name="VariableNotAChoice" xml:space="preserve">
+    <value>{0} ne fait pas partie des choix</value>
   </data>
 </root>
