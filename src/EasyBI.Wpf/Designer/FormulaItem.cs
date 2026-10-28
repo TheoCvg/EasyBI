@@ -69,6 +69,7 @@ public sealed record FormulaItem(FormulaItemKind Kind, string Caption, string Te
         Keyword("IN", "SELECT [A] IN (\"x\"; \"y\")"),
         Keyword("BETWEEN", "10 BETWEEN 3 AND 25"),
         Keyword("STEP", "0.2 BETWEEN 0 AND 1 STEP 0.05"),
+        Keyword("BY", "MAX([C] BY [A])"),
     ];
 
     private static FormulaItem Keyword(string keyword, string example) => ForKeyword(keyword) with { Example = example };

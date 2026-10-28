@@ -255,6 +255,8 @@ public class VariableUiTests
     [InlineData("SELECT [Région] WHERE [Canal] = \"Web\" ", "AND,OR,ORDER BY")]
     [InlineData("SELECT [Région] ORDER BY [CA] ", "DESC,ASC")]
     [InlineData("10 ", "BETWEEN,IN")]
+    [InlineData("MAX([CA] ", "BY")]
+    [InlineData("MAX([CA] BY ", "Région,Canal")]
     public void The_variable_editor_suggests_the_words_of_the_formula(string formula, string expected) => Sta.Run(() =>
     {
         var (context, model) = Context();
@@ -294,6 +296,50 @@ public class VariableUiTests
         loaded.Load(designer.Visual);
         Assert.Equal(("TopRegions", true), (loaded.Filters.Single().Set, loaded.Filters.Single().ExcludeSet));
         Assert.Equal("TopRegions", loaded.Axis.Single().Set);
+    });
+
+    [Fact]
+    public void A_variable_dropped_on_the_dashboard_shows_it_and_a_set_dropped_on_a_visual_groups_or_filters_it() => Sta.Run(() =>
+    {
+        var (context, _) = Context(N(2), TopRegions());
+        var behavior = new Dashboard.Behaviors.FieldDropBehavior();
+        var n = context.Variables.Find("N")!;
+        var set = context.Variables.Find("TopRegions")!;
+        var byChannel = new VisualDefinition { Model = "sales", Type = VisualType.Bar, Axis = [new("Channel")], Values = [new("Amount")] };
+
+        // On a free place: the variable's control, value or values
+        var control = behavior.CreateVariableVisual(n)!;
+        Assert.Equal((VisualType.Variable, "N"), (control.Type, control.Variable));
+        // On a visual showing the set's dimension, the set filters it; otherwise it groups its dimension
+        var filtered = behavior.AddVariable(ByRegion(), set)!;
+        Assert.Equal(new FilterSpec("Region", FilterOperator.In, ["[@TopRegions]"]).Values, filtered.Filters.Single().Values);
+        Assert.Null(behavior.AddVariable(filtered, set)); // already filtered
+        Assert.Equal(new FieldRef("Region") { Set = "TopRegions" }, behavior.AddVariable(byChannel, set)!.Legend);
+        // A value is used in formulas; a visual of another model does not take the set
+        Assert.Null(behavior.AddVariable(ByRegion(), n));
+        Assert.Null(behavior.AddVariable(ByRegion() with { Model = "other" }, set));
+    });
+
+    [Fact]
+    public void The_field_list_scrolls_its_sections_as_one_so_that_each_shows_all_its_items() => Sta.Run(() =>
+    {
+        var (context, _) = Context([.. Enumerable.Range(1, 30).Select(i => Variable("V" + i, i.ToString(System.Globalization.CultureInfo.InvariantCulture)))]);
+        var list = new FieldList { Context = context };
+        var window = Show(list);
+
+        var variables = (ListBox)list.Template.FindName("VariableList", list);
+        var scroller = (ScrollViewer)list.Template.FindName("PART_Scroller", list);
+        Assert.Equal(30, variables.Items.Count);
+        Assert.True(variables.ActualHeight > 30 * 15, $"variable list height {variables.ActualHeight}");
+        Assert.True(scroller.ScrollableHeight > 0);
+
+        // The wheel over a list scrolls the whole field list
+        var item = (ListBoxItem)variables.ItemContainerGenerator.ContainerFromIndex(0);
+        item.RaiseEvent(new System.Windows.Input.MouseWheelEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, -120)
+            { RoutedEvent = UIElement.PreviewMouseWheelEvent });
+        Pump();
+        Assert.True(scroller.VerticalOffset > 0);
+        window.Close();
     });
 
     [Fact]

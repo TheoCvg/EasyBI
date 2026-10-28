@@ -957,4 +957,7 @@
   <data name="FormulaKeywordSTEP" xml:space="preserve">
     <value>Le pas du curseur</value>
   </data>
+  <data name="FormulaKeywordBY" xml:space="preserve">
+    <value>Lit une valeur pour chaque valeur d'une dimension, puis les agrège : le plus haut CA d'un client</value>
+  </data>
 </root>

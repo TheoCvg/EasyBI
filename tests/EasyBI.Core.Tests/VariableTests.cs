@@ -1,3 +1,4 @@
+using System.Globalization;
 using EasyBI.Abstractions;
 using EasyBI.Core;
 
@@ -228,6 +229,43 @@ public class VariableTests
         Assert.Equal("154", await variables.ValueAsync("Average", Source(model)));
         Assert.Equal(1, model.Requests);
         Assert.Equal("140", await variables.ValueAsync("Average", Source(Model(), new FilterSpec("Channel", FilterOperator.In, ["Web"]))));
+    }
+
+    [Fact]
+    public async Task A_computed_value_aggregates_a_value_read_for_each_value_of_a_dimension()
+    {
+        // By region: Nord 400, Sud 200, Ouest 120, Est 50
+        async Task<string?> Value(string formula, params FilterSpec[] filters) =>
+            await Variables(Variable("V", formula)).ValueAsync("V", Source(Model(), filters));
+
+        Assert.Equal("400", await Value("MAX([Amount] BY [Region])"));
+        Assert.Equal("300", await Value("MAX([Amount])")); // a sale, not a region
+        Assert.Equal("50", await Value("MIN([Amount] BY [Region])"));
+        Assert.Equal("192.5", await Value("AVERAGE([Amount] BY [Region])"));
+        Assert.Equal(400d / 770, double.Parse((await Value("MAX([Amount] BY [Region]) / SUM([Amount])"))!, CultureInfo.InvariantCulture), 6);
+        Assert.Equal("200", await Value("MAX([Amount] BY [Region])", new FilterSpec("Channel", FilterOperator.In, ["Web"])));
+        Assert.Equal("200", await Value("MAX(SUM([Amount]; [Channel] = \"Web\") BY [Region])"));
+    }
+
+    [Theory]
+    [InlineData("MAX([CA] BY [Région])", null)]
+    [InlineData("COUNT([CA] BY [Région])", "BY goes in")]
+    [InlineData("MAX([CA] BY [CA])", "not a dimension")]
+    [InlineData("MAX([CA] BY)", "Write MAX([value] BY [dimension])")]
+    [InlineData("MAX([CA] BY [Région]; [Canal] = \"Web\")", "Write MAX([value] BY [dimension])")]
+    [InlineData("SUM(MAX([CA] BY [Région]))", "cannot be used inside")]
+    [InlineData("SELECT [Région] WHERE [CA] > MAX([CA] BY [Canal])", "only written in a variable")]
+    public void By_reads_a_value_for_each_value_of_a_dimension_in_a_computed_value_only(string formula, string? expected)
+    {
+        var problem = VariableFormula.Check(formula, Model().Metadata, out var stored);
+
+        if (expected is null)
+        {
+            Assert.Null(problem);
+            Assert.Equal("MAX([Amount] BY [Region])", stored);
+        }
+        else Assert.Contains(expected, problem!.Message);
+        Assert.Contains("only written in a variable", MeasureFormula.Validate("MAX([Amount] BY [Region])", Model().Metadata));
     }
 
     [Fact]

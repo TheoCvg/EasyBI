@@ -290,7 +290,7 @@ public static partial class MeasureFormula
         NegateNode negate => References(negate.Operand),
         NotNode not => References(not.Operand),
         BinaryNode binary => References(binary.Left).Concat(References(binary.Right)),
-        CallNode call => call.Arguments.SelectMany(References),
+        CallNode call => call.Arguments.SelectMany(References).Concat(call.By is { } by ? [by] : []),
         _ => [],
     };
 
@@ -300,9 +300,10 @@ public static partial class MeasureFormula
 
     /// <summary>
     /// Checks the kinds of values: a formula gives a number, a condition is a comparison, a dimension is only read row
-    /// by row inside an aggregation function.
+    /// by row inside an aggregation function. With <c>groupsBy</c>, as in a variable's value computed once, an aggregation
+    /// may read its value for each value of a dimension: <c>MAX([Revenue] BY [Customer])</c>.
     /// </summary>
-    private sealed class Checker(string formula, ModelMetadata metadata, Resolver resolve, Func<string, VariableDefinition?> variable)
+    private sealed class Checker(string formula, ModelMetadata metadata, Resolver resolve, Func<string, VariableDefinition?> variable, bool groupsBy = false)
     {
         // The first problem found: once it is, the checking only unwinds
         private Fault? _fault;
@@ -395,6 +396,7 @@ public static partial class MeasureFormula
             var function = call.Function;
             if (call.Arguments.Count < function.MinArguments || call.Arguments.Count > function.MaxArguments)
                 return Fail(Strings.Format(Strings.FormulaUsage, function.Usage), call);
+            if (call.By is { } by) return GroupedBy(call, by, aggregation);
             if (function.Name == "IF")
             {
                 Require(call.Arguments[0], Kind(call.Arguments[0], aggregation), ValueKind.Boolean);
@@ -413,6 +415,21 @@ public static partial class MeasureFormula
             }
             if (call.Arguments.Skip(hasValue ? 1 : 0).FirstOrDefault() is { } condition)
                 Require(condition, Kind(condition, function.Name), ValueKind.Boolean);
+            return ValueKind.Number;
+        }
+
+        // AGGREGATION(value BY [dimension]): the value of each of the dimension's values, aggregated
+        private ValueKind GroupedBy(CallNode call, FieldNode by, string? aggregation)
+        {
+            var function = call.Function;
+            if (!groupsBy) return Fail(Strings.FormulaByInVariables, by);
+            if (function.Name is not ("SUM" or "AVERAGE" or "MIN" or "MAX")) return Fail(Strings.FormulaByFunction, by);
+            if (call.Arguments.Count != 1) return Fail(Strings.Format(Strings.FormulaByUsage, function.Name), call);
+            if (aggregation is not null) return Fail(Strings.Format(Strings.FormulaNestedAggregation, function.Name, aggregation), call);
+            if (resolve(by.Text, out var unknown) is not { } field) return Fail(unknown!, by);
+            if (field.Kind != FieldKind.Dimension) return Fail(Strings.Format(Strings.FormulaByNotDimension, Text(by)), by);
+            // The value is read for each of the dimension's values, as a measure is for each group
+            Require(call.Arguments[0], Kind(call.Arguments[0], null), ValueKind.Number);
             return ValueKind.Number;
         }
 
@@ -739,9 +756,17 @@ public static partial class MeasureFormula
             if (Current.Kind != TokenKind.Open) return Fail(Strings.Format(Strings.FormulaUsage, function.Usage), name);
             Next();
             var arguments = new List<Node>();
+            FieldNode? by = null;
             if (Current.Kind != TokenKind.Close)
             {
                 arguments.Add(Condition());
+                if (IsWord("BY"))
+                {
+                    Next();
+                    if (Current.Kind != TokenKind.Field) return Fail(Strings.Format(Strings.FormulaByUsage, function.Name), Current);
+                    var dimension = Next();
+                    by = new FieldNode(dimension.Text, dimension.Start, dimension.End);
+                }
                 while (Current.Kind == TokenKind.Separator)
                 {
                     Next();
@@ -750,7 +775,7 @@ public static partial class MeasureFormula
             }
             if (Current.Kind != TokenKind.Close) return MissingParenthesis();
             Next();
-            return new CallNode(function, arguments, name.Start, End);
+            return new CallNode(function, arguments, name.Start, End) { By = by };
         }
 
         private Node MissingParenthesis() =>
@@ -883,7 +908,11 @@ public static partial class MeasureFormula
     /// <summary>An arithmetic operator, a comparison, AND or OR.</summary>
     private sealed record BinaryNode(string Operator, Node Left, Node Right, int Start, int End) : Node(Start, End);
 
-    private sealed record CallNode(FormulaFunction Function, IReadOnlyList<Node> Arguments, int Start, int End) : Node(Start, End);
+    private sealed record CallNode(FormulaFunction Function, IReadOnlyList<Node> Arguments, int Start, int End) : Node(Start, End)
+    {
+        /// <summary>The dimension for each value of which the argument is read: <c>MAX([Revenue] BY [Customer])</c>.</summary>
+        public FieldNode? By { get; init; }
+    }
 
     /// <summary>A problem of the formula, worded for the end user, with where it is written (-1 when unknown).</summary>
     private sealed record Fault(string Message, int Start = -1, int End = -1);

@@ -252,6 +252,18 @@
   <data name="FormulaNestedAggregation" xml:space="preserve">
     <value>{0}(...) cannot be used inside {1}(...).</value>
   </data>
+  <data name="FormulaByUsage" xml:space="preserve">
+    <value>Write {0}([value] BY [dimension]).</value>
+  </data>
+  <data name="FormulaByFunction" xml:space="preserve">
+    <value>BY goes in SUM, AVERAGE, MIN or MAX: MAX([Revenue] BY [Customer]).</value>
+  </data>
+  <data name="FormulaByNotDimension" xml:space="preserve">
+    <value>{0} is not a dimension: BY reads the value for each value of a dimension.</value>
+  </data>
+  <data name="FormulaByInVariables" xml:space="preserve">
+    <value>BY is only written in a variable, whose value is computed once.</value>
+  </data>
   <data name="FormulaUsage" xml:space="preserve">
     <value>Write {0}.</value>
   </data>

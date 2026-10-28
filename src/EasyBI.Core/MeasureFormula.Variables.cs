@@ -353,7 +353,7 @@ public static partial class MeasureFormula
     private static Fault? CheckVariable(string text, ModelMetadata metadata, Scope scope, ParsedVariable parsed, bool byCaption)
     {
         Resolver resolve = (string reference, out string? problem) => scope.Resolve(reference, byCaption, out problem);
-        var checker = new Checker(text, metadata, resolve, scope.Variable);
+        var checker = new Checker(text, metadata, resolve, scope.Variable, groupsBy: parsed.Computed is not null);
         if (parsed.Computed is { } computed) return checker.Check(computed) ?? scope.CheckCycles(computed, byCaption);
         if (parsed.Field is not { } dimension) return null;
 
@@ -413,6 +413,34 @@ public static partial class MeasureFormula
             return null;
         }
         return Cycle(text, [name]) is { } cycle ? new Fault(Strings.Format(Strings.VariableCycle, string.Join(" → ", cycle.Select(c => "[@" + c + "]")))) : null;
+    }
+
+    // --- Querying a computed value: its aggregations BY a dimension first
+
+    /// <summary>
+    /// The aggregations by a dimension of a stored computed value's formula (<c>MAX([Revenue] BY [Customer])</c>): where
+    /// each is written, its function, the formula of its value and the dimension.
+    /// </summary>
+    internal static IReadOnlyList<(int Start, int End, string Function, string Value, string By)> GroupedParts(string formula)
+    {
+        if (ParseVariable(formula, out var parsed) is not null || parsed!.Computed is not { } computed) return [];
+        var parts = new List<(int, int, string, string, string)>();
+        void Visit(Node node)
+        {
+            switch (node)
+            {
+                case CallNode { By: { } by } call:
+                    var value = call.Arguments[0];
+                    parts.Add((call.Start, call.End, call.Function.Name, formula[value.Start..value.End], by.Text));
+                    break;
+                case CallNode call: foreach (var argument in call.Arguments) Visit(argument); break;
+                case NegateNode negate: Visit(negate.Operand); break;
+                case NotNode not: Visit(not.Operand); break;
+                case BinaryNode binary: Visit(binary.Left); Visit(binary.Right); break;
+            }
+        }
+        Visit(computed);
+        return parts;
     }
 
     // --- Querying a set: its conditions as filters and measures

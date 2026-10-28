@@ -92,7 +92,31 @@ public static class FieldVisuals
         }
 
         if (visual.Axis.Any(a => a.Field == field.Name) || visual.Legend?.Field == field.Name) return null;
-        var axis = AxisOf(field);
+        return WithAxis(visual, definition, AxisOf(field));
+    }
+
+    /// <summary>A visual showing a variable: a parameter's control, a computed value or a set's values.</summary>
+    public static VisualDefinition Create(ReportVariable variable) => new() { Type = VisualType.Variable, Variable = variable.Name };
+
+    /// <summary>
+    /// The visual with a set of values added, or null when it does not take it (not a set, another model, no room). On
+    /// a visual showing the set's dimension, the set filters it on its values; otherwise the dimension joins the visual
+    /// as a field does, grouped into the set's values and the others.
+    /// </summary>
+    public static VisualDefinition? AddVariable(VisualDefinition visual, ReportVariable variable, VisualTypeCatalog? types = null)
+    {
+        if (visual.Type.IsContent() || visual.Model != variable.Model || VariableFormula.Definition(variable) is not SetDefinition set) return null;
+        if (visual.Axis.Any(a => a.Field == set.Field) || visual.Legend?.Field == set.Field)
+        {
+            var values = new[] { "[@" + variable.Name + "]" };
+            if (visual.Filters.Any(f => f.Field == set.Field && f.Values.SequenceEqual(values))) return null;
+            return visual with { Filters = [.. visual.Filters, new FilterSpec(set.Field, FilterOperator.In, values)] };
+        }
+        return WithAxis(visual, (types ?? VisualTypeCatalog.Default).Get(visual.Type), new FieldRef(set.Field) { Set = variable.Name });
+    }
+
+    private static VisualDefinition? WithAxis(VisualDefinition visual, VisualTypeDefinition definition, FieldRef axis)
+    {
         if (visual.Type == VisualType.Kpi || visual.Type == VisualType.Gauge) return visual with { Type = VisualType.Bar, Axis = [axis], Gauge = null };
         if (definition.Axis.IsUsed && visual.Axis.Count == 0) return visual with { Axis = [axis] };
         if (definition.Legend.IsUsed && visual.Legend is null) return visual with { Legend = axis };

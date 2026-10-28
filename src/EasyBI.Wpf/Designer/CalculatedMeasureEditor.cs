@@ -330,7 +330,11 @@ public sealed class CalculatedMeasureEditor : ObservableObject
         if (Text(tokens[0]) != "SELECT")
         {
             // After a value alone: its bounds or its choices
-            return tokens.Length == 1 && tokens[0].Kind is FormulaTokenKind.Number or FormulaTokenKind.Text ? [Word("BETWEEN"), Word("IN")] : null;
+            if (tokens.Length == 1 && tokens[0].Kind is FormulaTokenKind.Number or FormulaTokenKind.Text) return [Word("BETWEEN"), Word("IN")];
+            // A computed value: an aggregation's value read BY a dimension, MAX([Revenue] BY [Customer])
+            if (Text(tokens[^1]) == "BY") return dimensions;
+            return tokens.Length >= 3 && context.Slot == FormulaSlot.AfterOperand && tokens[^1].Kind == FormulaTokenKind.Field
+                && Text(tokens[^2]) == "(" && Text(tokens[^3]) is "SUM" or "AVERAGE" or "AVG" or "MIN" or "MAX" ? [Word("BY")] : null;
         }
         // The last word of the set's formula tells the clause
         var clause = tokens.Last(t => t.Kind == FormulaTokenKind.Keyword && Text(t) is "SELECT" or "TOP" or "WHERE" or "BY" or "IN");

@@ -173,6 +173,16 @@ public class FieldList : Control
     /// </summary>
     public IReadOnlyList<VariableItem> Variables => (IReadOnlyList<VariableItem>)GetValue(VariablesProperty);
 
+    protected override void OnPreviewMouseWheel(MouseWheelEventArgs e)
+    {
+        base.OnPreviewMouseWheel(e);
+        // A list box's scroll viewer takes the wheel even when it has nothing to scroll: the sections scroll as one
+        if (e.Handled || GetTemplateChild("PART_Scroller") is not ScrollViewer scroller
+            || e.OriginalSource is not Visual source || !scroller.IsAncestorOf(source)) return;
+        scroller.ScrollToVerticalOffset(scroller.VerticalOffset - e.Delta / 3.0);
+        e.Handled = true;
+    }
+
     protected override void OnMouseDoubleClick(MouseButtonEventArgs e)
     {
         base.OnMouseDoubleClick(e);

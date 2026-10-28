@@ -957,4 +957,7 @@
   <data name="FormulaKeywordSTEP" xml:space="preserve">
     <value>The step of the slider</value>
   </data>
+  <data name="FormulaKeywordBY" xml:space="preserve">
+    <value>Reads a value for each value of a dimension, then aggregates them: the highest revenue of a customer</value>
+  </data>
 </root>

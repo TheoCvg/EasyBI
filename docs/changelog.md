@@ -33,10 +33,12 @@ opens older reports, and a report using a newer feature cannot be opened by an o
 - **Variables**, written as formulas in the formula editor (`VariableFormula`): parameters (`10 BETWEEN 3 AND 25`, a
   slider; `"Web" IN ("Web"; "Store")`, a list; a text, a date, yes/no), sets of a dimension's values
   (`SELECT TOP [@N] [Customer] WHERE [Region] = "North" ORDER BY [Revenue] DESC`, conditions on dimensions keeping rows
-  and on measures keeping values; `SELECT [Customer] IN (...)`) and values computed once (`AVERAGE([Revenue])`), saved
+  and on measures keeping values; `SELECT [Customer] IN (...)`) and values computed once (`AVERAGE([Revenue])`, or by a dimension:
+  `MAX([Revenue] BY [Customer])`), saved
   with the report (`ReportDefinition.Variables`) with the values the end user gave. Visuals use them in their Top
   (`VisualDefinition.TopVariable`), their formulas (`[@Rate]`), their titles and texts (`{N}`), and sets dragged onto
-  Filters (their values) or onto Axis and Legend (the set's values and the others, `FieldRef.Set`). The new `Variable`
+  Filters (their values) or onto Axis and Legend (the set's values and the others, `FieldRef.Set`); dragged onto a
+  dashboard, a variable shows its control or its values, and a set filters or groups the visual it is dropped on. The new `Variable`
   visual type (`VariableView`) shows a parameter's control, a computed value or a set's values. Models never see
   variables: `VariableContext` (`EasyBIContext.Variables`) replaces them before asking for data, inside the
   `IQueryable`. See [Variables](guide/variables.md).

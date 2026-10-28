@@ -22,9 +22,6 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <bi:SlotHost Slot="{x:Static bi:FieldListSlots.Model}" Orientation="Vertical">
                             <StackPanel>
@@ -47,7 +44,12 @@
                             </Grid>
                         </bi:SlotHost>
 
-                        <bi:SlotHost Grid.Row="2" Slot="{x:Static bi:FieldListSlots.Dimensions}" Orientation="Vertical">
+                        <!-- The sections scroll together, so that each list shows all its items: the lists' own scroll viewers never
+                             scroll, and the field list passes the mouse wheel on to this one -->
+                        <ScrollViewer x:Name="PART_Scroller" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                      Focusable="False">
+                        <StackPanel>
+                        <bi:SlotHost Slot="{x:Static bi:FieldListSlots.Dimensions}" Orientation="Vertical">
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Top" Text="{bi:Localize DimensionsHeader}" Style="{StaticResource SectionHeader}" />
                                 <ListBox x:Name="DimensionList" ItemsSource="{TemplateBinding Dimensions}" BorderThickness="0" Background="Transparent"
@@ -66,7 +68,7 @@
                             </DockPanel>
                         </bi:SlotHost>
 
-                        <bi:SlotHost Grid.Row="3" Slot="{x:Static bi:FieldListSlots.Measures}" Orientation="Vertical">
+                        <bi:SlotHost Slot="{x:Static bi:FieldListSlots.Measures}" Orientation="Vertical">
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Top" Text="{bi:Localize MeasuresHeader}" Style="{StaticResource SectionHeader}" />
                                 <ListBox x:Name="MeasureList" ItemsSource="{TemplateBinding Measures}" BorderThickness="0" Background="Transparent"
@@ -115,18 +117,18 @@
                             </DockPanel>
                         </bi:SlotHost>
 
-                        <bi:SlotHost x:Name="AddMeasure" Grid.Row="4" Slot="{x:Static bi:FieldListSlots.AddMeasureButton}" HorizontalAlignment="Left">
+                        <bi:SlotHost x:Name="AddMeasure" Slot="{x:Static bi:FieldListSlots.AddMeasureButton}" HorizontalAlignment="Left">
                             <Button Content="{bi:Localize NewCalculatedMeasure}" Command="{x:Static bi:FieldList.AddMeasureCommand}"
                                     Margin="0,8,0,0" Padding="8,3" FontSize="12" />
                         </bi:SlotHost>
 
                         <!-- The report's variables: parameters (@), computed values (ƒ) and sets of values ({ }), which are dragged like dimensions -->
-                        <bi:SlotHost Grid.Row="5" Slot="{x:Static bi:FieldListSlots.Variables}" Orientation="Vertical">
+                        <bi:SlotHost Slot="{x:Static bi:FieldListSlots.Variables}" Orientation="Vertical">
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Top" Text="{bi:Localize VariablesHeader}" Style="{StaticResource SectionHeader}" />
                                 <Button DockPanel.Dock="Bottom" HorizontalAlignment="Left" Content="{bi:Localize NewVariableButton}"
                                         Command="{x:Static bi:FieldList.AddVariableCommand}" Margin="0,4,0,0" Padding="8,3" FontSize="12" />
-                                <ListBox ItemsSource="{TemplateBinding Variables}" BorderThickness="0" Background="Transparent" MaxHeight="160"
+                                <ListBox x:Name="VariableList" ItemsSource="{TemplateBinding Variables}" BorderThickness="0" Background="Transparent"
                                          Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}"
                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                          dnd:DragSource.IsEnabled="True" dnd:DragSource.AllowedEffects="Copy">
@@ -162,6 +164,8 @@
                                 </ListBox>
                             </DockPanel>
                         </bi:SlotHost>
+                        </StackPanel>
+                        </ScrollViewer>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="Search" Value="">

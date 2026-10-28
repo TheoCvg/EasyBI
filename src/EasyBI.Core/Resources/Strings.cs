@@ -80,6 +80,10 @@ internal static class Strings
     public static string FormulaNotAggregatable => Get();
     public static string FormulaNestedAggregation => Get();
     public static string FormulaUsage => Get();
+    public static string FormulaByUsage => Get();
+    public static string FormulaByFunction => Get();
+    public static string FormulaByNotDimension => Get();
+    public static string FormulaByInVariables => Get();
     public static string FormulaUnknownFunction => Get();
     public static string FormulaMismatch => Get();
     public static string FormulaEqualityOnly => Get();

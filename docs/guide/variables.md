@@ -10,6 +10,7 @@ Rate         = 0.2
 Channel      = "Web" IN ("Web"; "Store")                 -- a list
 Start        = "2025-01-01"                              -- a date
 Average      = AVERAGE([Revenue])                        -- computed once
+Best         = MAX([Revenue] BY [Customer])              -- the revenue of the best customer
 TopCustomers = SELECT TOP [@N] [Customer] ORDER BY [Revenue] DESC
 NorthBuyers  = SELECT [Customer] WHERE [Region] = "North" AND [Revenue] > [@Average]
 Mine         = SELECT [Customer] IN ("Smith"; "Jones")
@@ -38,6 +39,17 @@ SELECT [TOP n] [Dimension] [IN (values)] [WHERE conditions] [ORDER BY expression
   `SUM([Revenue]; [Channel] = "Web") > 100`), computed on the rows kept, as SQL's `WHERE` and `HAVING`.
 - `ORDER BY` takes any expression of the measures' language; without it, the values come in their order.
 
+### Values by a dimension
+
+In a computed value, `SUM`, `AVERAGE`, `MIN` and `MAX` take a value **by** a dimension: the value is computed for each
+of the dimension's values, then aggregated. `MAX([Revenue])` is the largest row; `MAX([Revenue] BY [Customer])` is the
+revenue of the best customer, `AVERAGE([Revenue] BY [Month])` the average month. They combine with the rest of the
+formula: `MAX([Revenue] BY [Customer]) / SUM([Revenue])` is the share of the best customer. `BY` is only written in a
+variable: a measure's value depends on each group of a visual.
+
+The value of each of the dimension's values is queried in the `IQueryable`; their aggregation is done on the values
+returned, one for each of the dimension's values.
+
 A set and a computed value are computed on the data the report's filters of their model keep, then cached until a
 variable, a filter or the data changes. Everything stays in the `IQueryable`: EF Core translates it to SQL.
 
@@ -63,6 +75,11 @@ renames it in the formulas using it.
 
 Sets are dragged like dimensions onto **Axis**, **Legend** and **Filters**; a set filter has a check box to leave the
 set's values out instead.
+
+On a dashboard, a variable dragged from the field list onto a free place, or onto an empty item, shows it: a
+parameter's control, a computed value, a set's values. A set dragged onto a visual filters it on its values when the
+visual shows its dimension, and otherwise adds its dimension grouped into the set's values and the others
+(`FieldVisuals.AddVariable`).
 
 ## On the dashboard
 

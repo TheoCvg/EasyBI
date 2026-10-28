@@ -129,6 +129,7 @@ public sealed class VariableContext
     private const string ConditionMeasure = "__variable_condition";
     private const string RowsMeasure = "__variable_rows";
     private const string ValueMeasure = "__variable_value";
+    private const string GroupMeasure = "__variable_group";
 
     public event EventHandler? Changed;
 
@@ -315,7 +316,7 @@ public sealed class VariableContext
     {
         // A division by zero is the formulas' empty value
         DataType.Number => value is not null && double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
-            ? "(" + number.ToString("R", CultureInfo.InvariantCulture) + ")"
+            ? "(" + number.ToString("0.#################", CultureInfo.InvariantCulture) + ")"
             : "(0/0)",
         DataType.Boolean => bool.TryParse(value, out var flag) && flag ? "TRUE" : "FALSE",
         DataType.Date when value is not null && DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var date) =>
@@ -384,7 +385,7 @@ public sealed class VariableContext
         }
         else
         {
-            extra.Add(Measure(ValueMeasure, variable.Formula));
+            extra.Add(Measure(ValueMeasure, await WithGroupsAsync(variable, model, filters, reportMeasures, source, cancellationToken).ConfigureAwait(false)));
             visual = new VisualDefinition
             {
                 Id = "value:" + variable.Name,
@@ -395,26 +396,73 @@ public sealed class VariableContext
             };
         }
         var measures = await ResolveAsync([.. reportMeasures, .. extra], source, cancellationToken).ConfigureAwait(false);
-        var key = JsonSerializer.Serialize(new { visual, measures, Culture = EasyBILocalization.FormatCulture.Name }, ReportSerializer.Options);
+        return await CachedAsync(model, visual, measures, visual.Axis.Count > 0 ? visual.Axis[0].Key : ValueMeasure, cancellationToken).ConfigureAwait(false);
+    }
+
+    // A computed value's formula with each aggregation BY a dimension replaced by its value: the value is queried for
+    // each of the dimension's values (inside the IQueryable), then those values are aggregated
+    private async Task<string> WithGroupsAsync(ReportVariable variable, ISemanticModel model, IReadOnlyList<FilterSpec> filters,
+        IReadOnlyList<CalculatedMeasure> reportMeasures, SetSource source, CancellationToken cancellationToken)
+    {
+        var formula = variable.Formula;
+        var parts = MeasureFormula.GroupedParts(formula);
+        for (var i = parts.Count - 1; i >= 0; i--)
+        {
+            var (start, end, function, value, by) = parts[i];
+            var axis = new FieldRef(by);
+            var visual = new VisualDefinition
+            {
+                Id = "by:" + variable.Name,
+                Model = variable.Model,
+                Type = VisualType.Table,
+                Axis = [axis],
+                Values = [new MeasureRef(GroupMeasure)],
+                Filters = filters,
+                Sort = new SortSpec(axis.Key),
+            };
+            CalculatedMeasure[] measures = [.. reportMeasures, new() { Name = GroupMeasure, Model = variable.Model, Formula = value }];
+            var resolved = await ResolveAsync(measures, source, cancellationToken).ConfigureAwait(false);
+            var values = (await CachedAsync(model, visual, resolved, GroupMeasure, cancellationToken).ConfigureAwait(false))
+                .Select(v => double.TryParse(v, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) ? number : (double?)null)
+                .OfType<double>().ToArray();
+            double? result = values.Length == 0 ? null : function switch
+            {
+                "SUM" => values.Sum(),
+                "AVERAGE" => values.Average(),
+                "MIN" => values.Min(),
+                _ => values.Max(),
+            };
+            // An empty value stays empty in the formula: IF without its else
+            var literal = result is { } number ? "(" + number.ToString("0.#################", CultureInfo.InvariantCulture) + ")" : "IF(FALSE; 0)";
+            formula = formula.Substring(0, start) + literal + formula.Substring(end);
+        }
+        return formula;
+    }
+
+    // The values of a column of a visual, queried once while the cache holds them
+    private async Task<IReadOnlyList<string?>> CachedAsync(ISemanticModel model, VisualDefinition visual, IReadOnlyList<CalculatedMeasure> measures,
+        string column, CancellationToken cancellationToken)
+    {
+        var key = JsonSerializer.Serialize(new { visual, measures, column, Culture = EasyBILocalization.FormatCulture.Name }, ReportSerializer.Options);
         Task<IReadOnlyList<string?>> task;
         lock (_gate)
         {
             if (!_computed.TryGetValue(key, out task!))
             {
                 // Shared by every visual using the variable: none of them cancels it for the others
-                _computed[key] = task = Compute(model, visual, measures);
+                _computed[key] = task = Compute(model, visual, measures, column);
             }
         }
         return await WithCancellation(task, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<IReadOnlyList<string?>> Compute(ISemanticModel model, VisualDefinition visual, IReadOnlyList<CalculatedMeasure> measures)
+    private async Task<IReadOnlyList<string?>> Compute(ISemanticModel model, VisualDefinition visual, IReadOnlyList<CalculatedMeasure> measures, string key)
     {
         if (visual.Top == 0) return [];
         try
         {
             var data = await model.GetDataAsync(visual.ToDataRequest(model.Metadata, measures)).ConfigureAwait(false);
-            var column = visual.Axis.Count > 0 ? data.Result.IndexOf(visual.Axis[0].Key) : data.Result.IndexOf(ValueMeasure);
+            var column = data.Result.IndexOf(key);
             return [.. data.Result.Rows.Select(r => InvariantValue.Format(r[column]))];
         }
         catch
