@@ -31,12 +31,20 @@ public sealed record ModelField(ISemanticModel Model, FieldDescriptor Field, Cal
     private bool IsDeclared => Model.Metadata.Fields.Any(f => f.Name == Field.Name);
 }
 
-/// <summary>A variable of the report in a <see cref="FieldList"/>, with a <paramref name="Summary"/> of what it holds.</summary>
+/// <summary>
+/// A variable of the report in a <see cref="FieldList"/>, with a <paramref name="Summary"/> of what it holds: what a
+/// field list drags for a set of values, which the designer takes like a dimension.
+/// </summary>
 public sealed record VariableItem(ReportVariable Variable, string Summary)
 {
-    public string Caption => Variable.DisplayName;
+    public string Caption => Variable.Name;
 
-    public bool IsSet => Variable.Kind == VariableKind.Set;
+    public VariableKind Kind => VariableFormula.Definition(Variable).Kind;
+
+    public bool IsSet => Kind == VariableKind.Set;
+
+    /// <summary>@ for a parameter, ƒ for a computed value, { } for a set.</summary>
+    public string Glyph => Kind switch { VariableKind.Set => "{ }", VariableKind.Computed => "ƒ", _ => "@" };
 }
 
 /// <summary>

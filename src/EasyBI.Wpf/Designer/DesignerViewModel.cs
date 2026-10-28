@@ -333,26 +333,18 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         set { if (SetProperty(ref _top, value is > 0 ? value : null)) Rebuild(); }
     }
 
-    /// <summary>A number parameter of the report giving <see cref="Top"/>; null for <see cref="Top"/> itself.</summary>
+    /// <summary>A number variable of the report giving <see cref="Top"/>; null for <see cref="Top"/> itself.</summary>
     public string? TopVariable
     {
         get => _topVariable;
         set { if (SetProperty(ref _topVariable, value)) Rebuild(); }
     }
 
-    /// <summary>The number parameters that can give <see cref="Top"/>, after "a number".</summary>
+    /// <summary>The number variables that can give <see cref="Top"/>, after "a number".</summary>
     private IReadOnlyList<Option<string?>> TopVariableOptions() =>
     [
         new(null, () => Strings.TopFixed),
-        .. Context.Variables.Parameters.Where(p => p.DataType == DataType.Number).Select(p => new Option<string?>(p.Name, () => p.DisplayName)),
-    ];
-
-    /// <summary>The sets of a dimension's values a chip can group it by, after "its values".</summary>
-    private IReadOnlyList<Option<string?>> SetOptions(ShelfItemViewModel chip) =>
-    [
-        new(null, () => Strings.SetNone),
-        .. (_selectedModel is { } model ? Context.Variables.SetsOf(model.Metadata.Name, chip.Field.Name) : [])
-            .Select(s => new Option<string?>(s.Name, () => s.DisplayName)),
+        .. Context.Variables.Values.Where(v => VariableFormula.Definition(v).DataType == DataType.Number).Select(v => new Option<string?>(v.Name, () => v.Name)),
     ];
 
     /// <summary>The minimum of a gauge; null: 0.</summary>
@@ -507,6 +499,14 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             _ => false,
         },
         FilterItemViewModel filter => shelf == Shelf.Filters && Filters.Contains(filter),
+        // A set: like its dimension, once per well
+        VariableItem set => SetField(set) is not null && shelf switch
+        {
+            Shelf.Axis => Axis.Count < Limit(shelf) && Axis.All(a => a.Set != set.Variable.Name),
+            Shelf.Legend => true,
+            Shelf.Filters => Filters.All(f => f.Set != set.Variable.Name),
+            _ => false,
+        },
         _ => false,
     };
 
@@ -521,7 +521,13 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         switch (item)
         {
             case FieldDescriptor field when shelf == Shelf.Filters:
-                Insert(Filters, index, new FilterItemViewModel(field, _selectedModel, Rebuild, variables: Context.Variables));
+                Insert(Filters, index, new FilterItemViewModel(field, _selectedModel, Rebuild));
+                break;
+            case VariableItem set when shelf == Shelf.Filters:
+                Insert(Filters, index, new FilterItemViewModel(SetField(set)!, _selectedModel, Rebuild, set: set.Variable.Name));
+                break;
+            case VariableItem set:
+                Insert(Collection(shelf), index, new ShelfItemViewModel(SetField(set)!, shelf, Rebuild) { Set = set.Variable.Name });
                 break;
             case FieldDescriptor field:
                 Insert(Collection(shelf), index, new ShelfItemViewModel(field, shelf, Rebuild));
@@ -542,8 +548,21 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
 
     DragDropEffects IDropHandler.DragOver(DropInfo drop) =>
         drop.Key is Shelf shelf && drop.Item is { } item && CanDrop(item, shelf)
-            ? Unwrap(item) is FieldDescriptor ? DragDropEffects.Copy : DragDropEffects.Move
+            ? Unwrap(item) is FieldDescriptor or VariableItem ? DragDropEffects.Copy : DragDropEffects.Move
             : DragDropEffects.None;
+
+    // The set a filter keeps or leaves out (a set dropped on Filters): "one of" or "none of" its values
+    private string? SetFilter(FilterSpec filter) =>
+        filter is { Operator: FilterOperator.In or FilterOperator.NotIn, Values: [var value] } && VariableReferences.NameOf(value) is { } name
+        && Context.Variables.Definition(name) is SetDefinition { } set && set.Field == filter.Field
+            ? name
+            : null;
+
+    // The dimension of a set of the selected model, null for another variable
+    private FieldDescriptor? SetField(VariableItem item) =>
+        VariableFormula.Definition(item.Variable) is SetDefinition set && item.Variable.Model == _selectedModel?.Metadata.Name
+            ? _selectedModel.Metadata.Fields.FirstOrDefault(f => f.Name == set.Field && f.Kind == FieldKind.Dimension)
+            : null;
 
     void IDropHandler.Drop(DropInfo drop)
     {
@@ -569,6 +588,10 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             ShelfItemViewModel chip when Collection(chip.Shelf).Contains(chip) => FieldRefusal(chip.Field, shelf)
                 ?? (shelf == Shelf.Filters ? Strings.Format(Strings.DropFilterFromList, chip.Caption) : null),
             FilterItemViewModel => Strings.DropFilterStays,
+            VariableItem { IsSet: false } value => Strings.Format(Strings.DropVariableValue, value.Variable.Name),
+            VariableItem set when set.Variable.Model != _selectedModel?.Metadata.Name => Strings.DropSetOtherModel,
+            VariableItem set when shelf is Shelf.Values or Shelf.Tooltip => Strings.DropMeasuresOnly,
+            VariableItem set => Strings.Format(Strings.DropAlreadyThere, set.Caption, ShelfName(shelf)),
             _ => null,
         };
     }
@@ -725,9 +748,13 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             sorted.SortDirection = sort.Descending ? ListSortDirection.Descending : ListSortDirection.Ascending;
         foreach (var f in visual.Filters)
         {
-            // Filters on period keys (a clicked quarter...) or on several fields have no shelf: they are kept without being shown
-            if (f.Operator != FilterOperator.AnyOf && (f.Grain == DateGrain.None || f.Operator.IsPeriod()))
-                Filters.Add(new(Context.GetField(model, f.Field), model, Rebuild, f.Values, f.Operator, f.Grain, Context.Variables));
+            // Filters on period keys (a clicked quarter...), on several fields or on a variable's value (written in code) have
+            // no shelf: they are kept without being shown
+            if (SetFilter(f) is { } set)
+                Filters.Add(new(Context.GetField(model, f.Field), model, Rebuild, f.Values, f.Operator, set: set));
+            else if (f.Operator != FilterOperator.AnyOf && (f.Grain == DateGrain.None || f.Operator.IsPeriod())
+                     && !f.Values.Any(v => VariableReferences.NameOf(v) is not null))
+                Filters.Add(new(Context.GetField(model, f.Field), model, Rebuild, f.Values, f.Operator, f.Grain));
             else
                 _hiddenFilters = [.. _hiddenFilters, f];
         }
@@ -827,6 +854,9 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             case FieldDescriptor field:
                 lists[shelf].Add(new ShelfItemViewModel(field, shelf, () => { }));
                 break;
+            case VariableItem set:
+                lists[shelf].Add(new ShelfItemViewModel(SetField(set)!, shelf, () => { }) { Set = set.Variable.Name });
+                break;
             case ShelfItemViewModel chip when chip.Shelf != shelf:
                 lists[chip.Shelf].Remove(chip);
                 lists[shelf].Add(new ShelfItemViewModel(chip.Field, shelf, () => { }) { Grain = chip.Grain, Labels = chip.Labels, Set = chip.Set });
@@ -923,8 +953,6 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
                         () => chip.SecondaryAxis, v => chip.SecondaryAxis = v, () => chip.ShowSeriesOptions, () => Strings.SecondaryAxisHint),
                     DesignerProperty.Choice("Sort", () => Strings.Sort, ShelfItemViewModel.SortOptions,
                         () => chip.SortDirection, v => chip.SortDirection = v, () => chip.CanSort, () => Strings.SortHint),
-                    DesignerProperty.Choice("Set", () => Strings.PropertySet, SetOptions(chip),
-                        () => chip.Set, v => chip.Set = v, () => chip.CanGroupBySet && (chip.Set is not null || SetOptions(chip).Count > 1), () => Strings.SetHint),
                 ]));
                 if (chip.HasValueLabels && _selectedModel is { } model)
                     sections.Add(new DesignerPropertySection(DesignerPropertySections.ValueLabels, () => Strings.PropertiesValueLabels,

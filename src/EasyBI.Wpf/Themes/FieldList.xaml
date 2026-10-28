@@ -1,8 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:bi="clr-namespace:EasyBI.Wpf"
-                    xmlns:dnd="clr-namespace:EasyBI.Wpf.DragAndDrop"
-                    xmlns:abstractions="clr-namespace:EasyBI.Abstractions;assembly=EasyBI.Abstractions">
+                    xmlns:dnd="clr-namespace:EasyBI.Wpf.DragAndDrop">
 
     <Style TargetType="bi:FieldList">
         <Style.Resources>
@@ -121,19 +120,16 @@
                                     Margin="0,8,0,0" Padding="8,3" FontSize="12" />
                         </bi:SlotHost>
 
-                        <!-- The report's variables: parameters (@) and sets of values ({ }) of the model's dimensions -->
+                        <!-- The report's variables: parameters (@), computed values (ƒ) and sets of values ({ }), which are dragged like dimensions -->
                         <bi:SlotHost Grid.Row="5" Slot="{x:Static bi:FieldListSlots.Variables}" Orientation="Vertical">
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Top" Text="{bi:Localize VariablesHeader}" Style="{StaticResource SectionHeader}" />
-                                <WrapPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
-                                    <Button Content="{bi:Localize NewParameter}" Command="{x:Static bi:FieldList.AddVariableCommand}"
-                                            CommandParameter="{x:Static abstractions:VariableKind.Parameter}" Margin="0,0,6,0" Padding="8,3" FontSize="12" />
-                                    <Button Content="{bi:Localize NewSet}" Command="{x:Static bi:FieldList.AddVariableCommand}"
-                                            CommandParameter="{x:Static abstractions:VariableKind.Set}" Padding="8,3" FontSize="12" />
-                                </WrapPanel>
+                                <Button DockPanel.Dock="Bottom" HorizontalAlignment="Left" Content="{bi:Localize NewVariableButton}"
+                                        Command="{x:Static bi:FieldList.AddVariableCommand}" Margin="0,4,0,0" Padding="8,3" FontSize="12" />
                                 <ListBox ItemsSource="{TemplateBinding Variables}" BorderThickness="0" Background="Transparent" MaxHeight="160"
                                          Foreground="{DynamicResource {x:Static bi:EasyBITheme.ForegroundBrushKey}}"
-                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         dnd:DragSource.IsEnabled="True" dnd:DragSource.AllowedEffects="Copy">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <DockPanel ToolTip="{Binding Summary}">
@@ -145,7 +141,7 @@
                                                             Padding="4,0" Background="Transparent" BorderThickness="0" Cursor="Hand"
                                                             Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
                                                 </StackPanel>
-                                                <TextBlock x:Name="Glyph" Text="@" Width="18" FontWeight="Bold" VerticalAlignment="Center"
+                                                <TextBlock Text="{Binding Glyph}" Width="18" FontWeight="Bold" VerticalAlignment="Center"
                                                            Foreground="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
                                                 <TextBlock Text="{Binding Summary}" DockPanel.Dock="Right" Margin="8,0,4,0" FontSize="11" VerticalAlignment="Center"
                                                            MaxWidth="110" TextTrimming="CharacterEllipsis"
@@ -153,9 +149,6 @@
                                                 <TextBlock Text="{Binding Caption}" Padding="0,3" TextTrimming="CharacterEllipsis" />
                                             </DockPanel>
                                             <DataTemplate.Triggers>
-                                                <DataTrigger Binding="{Binding IsSet}" Value="True">
-                                                    <Setter TargetName="Glyph" Property="Text" Value="{}{ }" />
-                                                </DataTrigger>
                                                 <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
                                                     <Setter TargetName="Actions" Property="Visibility" Value="Visible" />
                                                 </DataTrigger>

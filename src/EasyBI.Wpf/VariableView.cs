@@ -12,10 +12,10 @@ using EasyBI.Wpf.Resources;
 namespace EasyBI.Wpf;
 
 /// <summary>
-/// Shows a variable of the report (<see cref="EasyBIContext.Variables"/>) and lets the end user change it. A parameter
-/// shows a slider (a number between a minimum and a maximum), a number box, a date picker, a check box, a list of its
-/// choices or a text box; a set shows its values, the number of values its rule keeps, and the values to check for a
-/// fixed set. <see cref="VisualType.Variable"/> visuals show one; an application can place one anywhere.
+/// Shows a variable of the report (<see cref="EasyBIContext.Variables"/>) and lets the end user change a parameter. As
+/// its formula says (see <see cref="VariableFormula"/>), a parameter shows a slider (<c>10 BETWEEN 3 AND 25</c>), a
+/// list of its choices (<c>"Web" IN ("Web"; "Store")</c>), a date picker, a check box, or a box; a computed value shows
+/// its value, a set its values. <see cref="VisualType.Variable"/> visuals show one; an application can place one anywhere.
 /// </summary>
 /// <remarks>
 /// Standard controls get no explicit style, so that the application's control library applies. A change of the value
@@ -31,7 +31,7 @@ public class VariableView : ContentControl
     public static readonly DependencyProperty VariableProperty = DependencyProperty.Register(
         nameof(Variable), typeof(string), typeof(VariableView), new PropertyMetadata(null, (d, _) => ((VariableView)d).Update(rebuild: true)));
 
-    /// <summary>The dashboard's filters (inherited): a set chosen by a rule follows its report filters.</summary>
+    /// <summary>The dashboard's filters (inherited): a set or a computed value follows its report filters.</summary>
     public static readonly DependencyProperty FilterContextProperty = VisualView.FilterContextProperty.AddOwner(
         typeof(VariableView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.Inherits,
             (d, e) => ((VariableView)d).OnFilterContextChanged((FilterContext?)e.OldValue)));
@@ -81,7 +81,7 @@ public class VariableView : ContentControl
         set => SetValue(FilterContextProperty, value);
     }
 
-    /// <summary>The values of the set shown, as last loaded (tests read them).</summary>
+    /// <summary>The values of the set, or the computed value, shown as last loaded (tests read them).</summary>
     internal IReadOnlyList<string> Members { get; private set; } = [];
 
     /// <summary>The values of the set being loaded (tests wait for it).</summary>
@@ -123,10 +123,10 @@ public class VariableView : ContentControl
 
     private void OnDataChanged(object? sender, DataChangedEventArgs e) => Dispatcher.InvokeAsync(() => Update(rebuild: false));
 
-    // The report filters change the values of a set chosen by a rule
+    // The report filters change the values of a set or a computed value
     private void OnFiltersChanged(object? sender, EventArgs e) => Dispatcher.InvokeAsync(() => Update(rebuild: false));
 
-    /// <summary>Shows the variable: the same controls with its new value while it keeps its kind and settings.</summary>
+    /// <summary>Shows the variable: the same controls with its new value while its formula stays.</summary>
     private void Update(bool rebuild)
     {
         if (!IsLoaded) return;
@@ -139,7 +139,9 @@ public class VariableView : ContentControl
         if (rebuild || _built is null || Shape(_built) != Shape(variable))
         {
             _built = variable;
-            Content = variable.Kind == VariableKind.Set ? BuildSet(context, variable) : BuildParameter(context, variable);
+            Content = VariableFormula.Definition(variable) is ParameterDefinition parameter
+                ? BuildParameter(context, variable, parameter)
+                : BuildValues(variable);
         }
         else
         {
@@ -154,46 +156,45 @@ public class VariableView : ContentControl
                 _syncing = false;
             }
         }
-        if (variable.Kind == VariableKind.Set) MembersTask = LoadMembersAsync(context, variable);
+        if (VariableFormula.Definition(variable).Kind != VariableKind.Parameter) MembersTask = LoadMembersAsync(context, variable);
     }
 
-    // What the controls are built from: everything but the value (and a rule's count, which a box edits)
-    private static ReportVariable Shape(ReportVariable variable) =>
-        variable with { Value = null, Members = null, Rule = variable.Rule is { } rule ? rule with { Count = 0 } : null };
+    // What the controls are built from: everything but the value
+    private static ReportVariable Shape(ReportVariable variable) => variable with { Value = null };
 
     // --- Parameters ---
 
-    private FrameworkElement BuildParameter(EasyBIContext context, ReportVariable parameter)
+    private FrameworkElement BuildParameter(EasyBIContext context, ReportVariable parameter, ParameterDefinition definition)
     {
         var panel = new StackPanel();
-        panel.Children.Add(Caption(parameter.DisplayName));
-        panel.Children.Add(parameter.DataType switch
+        panel.Children.Add(Caption(parameter.Name));
+        panel.Children.Add(definition switch
         {
-            DataType.Number when parameter is { Minimum: { } min, Maximum: { } max } && max > min => Slider(context, parameter, min, max),
-            DataType.Date => DatePicker(context, parameter),
-            DataType.Boolean => CheckBox(context, parameter),
-            DataType.Text when parameter.Choices is { Count: > 0 } choices => Choices(context, parameter, choices),
-            _ => TextBox(context, parameter),
+            { DataType: DataType.Number, Minimum: { } min, Maximum: { } max } => Slider(context, parameter, min, max, definition.Step),
+            { Choices: { Count: > 0 } choices } => Choices(context, parameter, definition, choices),
+            { DataType: DataType.Date } => DatePicker(context, parameter),
+            { DataType: DataType.Boolean } => CheckBox(context, parameter),
+            _ => TextBox(context, parameter, definition.DataType),
         });
         return panel;
     }
 
-    private FrameworkElement Slider(EasyBIContext context, ReportVariable parameter, double min, double max)
+    private FrameworkElement Slider(EasyBIContext context, ReportVariable parameter, double min, double max, double? step)
     {
-        var step = parameter.Step is > 0 and var s ? s : 1;
+        step = step is > 0 ? step : 1;
         var slider = new Slider
         {
             Minimum = min,
             Maximum = max,
-            SmallChange = step,
-            LargeChange = step,
-            TickFrequency = step,
+            SmallChange = step.Value,
+            LargeChange = step.Value,
+            TickFrequency = step.Value,
             IsSnapToTickEnabled = true,
             VerticalAlignment = VerticalAlignment.Center,
-            Value = Number(parameter.Value) ?? min,
+            Value = Number(VariableContext.ValueOf(parameter)) ?? min,
         };
         var shown = new TextBlock { MinWidth = 40, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, TextAlignment = TextAlignment.Right };
-        void Show(double value) => shown.Text = VariableContext.Display(parameter with { Value = Invariant(value) });
+        void Show(double value) => shown.Text = VariableContext.Display(Invariant(value), DataType.Number, parameter.Format);
         Show(slider.Value);
         slider.ValueChanged += (_, e) =>
         {
@@ -202,7 +203,7 @@ public class VariableView : ContentControl
         };
         _sync = variable =>
         {
-            slider.Value = Number(variable.Value) ?? min;
+            slider.Value = Number(VariableContext.ValueOf(variable)) ?? min;
             Show(slider.Value);
         };
         var row = new DockPanel();
@@ -214,39 +215,42 @@ public class VariableView : ContentControl
 
     private FrameworkElement DatePicker(EasyBIContext context, ReportVariable parameter)
     {
-        var picker = new DatePicker { SelectedDate = Date(parameter.Value), HorizontalAlignment = HorizontalAlignment.Left, MinWidth = 140 };
+        var picker = new DatePicker { SelectedDate = Date(VariableContext.ValueOf(parameter)), HorizontalAlignment = HorizontalAlignment.Left, MinWidth = 140 };
         picker.SelectedDateChanged += (_, _) =>
         {
             if (!_syncing) context.Variables.SetValue(parameter.Name, picker.SelectedDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         };
-        _sync = variable => picker.SelectedDate = Date(variable.Value);
+        _sync = variable => picker.SelectedDate = Date(VariableContext.ValueOf(variable));
         return picker;
     }
 
     private FrameworkElement CheckBox(EasyBIContext context, ReportVariable parameter)
     {
-        var box = new CheckBox { Content = parameter.DisplayName, IsChecked = parameter.Value == bool.TrueString };
+        var box = new CheckBox { Content = parameter.Name, IsChecked = VariableContext.ValueOf(parameter) == bool.TrueString };
         box.Click += (_, _) => context.Variables.SetValue(parameter.Name, box.IsChecked == true ? bool.TrueString : bool.FalseString);
-        _sync = variable => box.IsChecked = variable.Value == bool.TrueString;
+        _sync = variable => box.IsChecked = VariableContext.ValueOf(variable) == bool.TrueString;
         return box;
     }
 
-    private FrameworkElement Choices(EasyBIContext context, ReportVariable parameter, IReadOnlyList<string> choices)
+    // The choices shown formatted, set in invariant form
+    private FrameworkElement Choices(EasyBIContext context, ReportVariable parameter, ParameterDefinition definition, IReadOnlyList<string> choices)
     {
-        var combo = new ComboBox { ItemsSource = choices, SelectedItem = parameter.Value, MinWidth = 140, HorizontalAlignment = HorizontalAlignment.Left };
+        var options = choices.Select(c => new Option<string>(c, () => VariableContext.Display(c, definition.DataType, parameter.Format))).ToArray();
+        Option<string>? Selected(ReportVariable variable) => options.FirstOrDefault(o => o.Value == VariableContext.ValueOf(variable));
+        var combo = new ComboBox { ItemsSource = options, DisplayMemberPath = nameof(Option<string>.Label), SelectedItem = Selected(parameter), MinWidth = 140, HorizontalAlignment = HorizontalAlignment.Left };
         combo.SelectionChanged += (_, _) =>
         {
-            if (!_syncing && combo.SelectedItem is string choice) context.Variables.SetValue(parameter.Name, choice);
+            if (!_syncing && combo.SelectedItem is Option<string> choice) context.Variables.SetValue(parameter.Name, choice.Value);
         };
-        _sync = variable => combo.SelectedItem = variable.Value;
+        _sync = variable => combo.SelectedItem = Selected(variable);
         return combo;
     }
 
     // A number without bounds, or a text: set when the user presses Enter or leaves the box
-    private FrameworkElement TextBox(EasyBIContext context, ReportVariable parameter)
+    private FrameworkElement TextBox(EasyBIContext context, ReportVariable parameter, DataType type)
     {
-        var isNumber = parameter.DataType == DataType.Number;
-        string Shown(ReportVariable variable) => isNumber ? VariableContext.Display(variable with { Format = null }) : variable.Value ?? "";
+        var isNumber = type == DataType.Number;
+        string Shown(ReportVariable variable) => isNumber ? VariableContext.Display(VariableContext.ValueOf(variable), type) : VariableContext.ValueOf(variable) ?? "";
         var box = new TextBox { Text = Shown(parameter), MinWidth = 80, Padding = new Thickness(4, 2, 4, 2), HorizontalAlignment = HorizontalAlignment.Left };
         void Apply()
         {
@@ -266,82 +270,15 @@ public class VariableView : ContentControl
         return box;
     }
 
-    // --- Sets ---
+    // --- Sets and computed values ---
 
-    private FrameworkElement BuildSet(EasyBIContext context, ReportVariable set)
+    // The values, loaded by LoadMembersAsync
+    private FrameworkElement BuildValues(ReportVariable variable)
     {
+        _sync = null;
         var root = new DockPanel();
-        var header = new StackPanel();
+        var header = Caption(variable.Name);
         DockPanel.SetDock(header, Dock.Top);
-        header.Children.Add(Caption(set.DisplayName));
-        var model = context.Models.FirstOrDefault(m => m.Metadata.Name == set.Model);
-        var summary = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 4) }.Themed(TextBlock.ForegroundProperty, EasyBITheme.MutedForegroundBrushKey);
-        if (set.Rule is { } rule)
-        {
-            var measure = model is null ? rule.Measure : context.Measures.GetField(model.Metadata, rule.Measure).Caption;
-            var line = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
-            if (rule.CountVariable is null)
-            {
-                // The count of a rule can be changed here; a parameter giving it has its own view
-                var count = new TextBox { Text = rule.Count.ToString(EasyBILocalization.FormatCulture), Width = 48, Padding = new Thickness(4, 1, 4, 1), Margin = new Thickness(0, 0, 6, 0) };
-                void Apply()
-                {
-                    if (context.Variables.Find(set.Name) is not { Rule: { } current } latest) return;
-                    if (int.TryParse(count.Text, NumberStyles.Integer, EasyBILocalization.FormatCulture, out var n) && n >= 0 && n != current.Count)
-                        context.Variables.Set(latest with { Rule = current with { Count = n } });
-                    else count.Text = current.Count.ToString(EasyBILocalization.FormatCulture);
-                }
-                count.KeyDown += (_, e) =>
-                {
-                    if (e.Key == Key.Enter) Apply();
-                };
-                count.LostKeyboardFocus += (_, _) => Apply();
-                line.Children.Add(count);
-                summary.Text = Strings.Format(rule.Bottom ? Strings.SetRuleBottomBy : Strings.SetRuleTopBy, measure);
-                summary.VerticalAlignment = VerticalAlignment.Center;
-                summary.Margin = new Thickness();
-                _sync = variable =>
-                {
-                    if (variable.Rule is { } changed) count.Text = changed.Count.ToString(EasyBILocalization.FormatCulture);
-                };
-            }
-            else
-            {
-                var countBy = context.Variables.Find(rule.CountVariable)?.DisplayName ?? rule.CountVariable;
-                summary.Text = Strings.Format(rule.Bottom ? Strings.SetRuleBottomCount : Strings.SetRuleTopCount, countBy, measure);
-                _sync = null;
-            }
-            line.Children.Add(summary);
-            header.Children.Add(line);
-        }
-        else if (model is not null)
-        {
-            // A fixed set: its values are checked like a filter's
-            var choose = new ToggleButton { Content = Strings.SetChooseValues, Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(0, 0, 0, 6), HorizontalAlignment = HorizontalAlignment.Left };
-            var popup = new Popup { PlacementTarget = choose, StaysOpen = false, AllowsTransparency = true };
-            choose.SetBinding(ToggleButton.IsCheckedProperty, new System.Windows.Data.Binding(nameof(Popup.IsOpen)) { Source = popup, Mode = System.Windows.Data.BindingMode.TwoWay });
-            FilterItemViewModel? editing = null;
-            popup.Opened += (_, _) =>
-            {
-                var current = context.Variables.Find(set.Name) ?? set;
-                editing = new FilterItemViewModel(model.Metadata.GetField(set.Field), model, () => { }, current.Members ?? []);
-                popup.Child = new Border
-                {
-                    Padding = new Thickness(10),
-                    BorderThickness = new Thickness(1),
-                    Child = new FilterEditor { DataContext = editing },
-                }.Themed(Border.BackgroundProperty, EasyBITheme.SurfaceBrushKey).Themed(Border.BorderBrushProperty, EasyBITheme.BorderBrushKey);
-            };
-            popup.Closed += (_, _) =>
-            {
-                if (editing is { IsLoading: false } closed && context.Variables.Find(set.Name) is { } latest)
-                    context.Variables.Set(latest with { Members = CheckedValues(closed) });
-                editing = null;
-            };
-            header.Children.Add(choose);
-            header.Children.Add(popup);
-            _sync = null;
-        }
         root.Children.Add(header);
 
         var list = new ItemsControl { Focusable = false };
@@ -358,11 +295,14 @@ public class VariableView : ContentControl
                 f.AppendChild(new FrameworkElementFactory(typeof(ItemsPresenter)));
             }),
         };
+        // A computed value reads as a figure
+        var isValue = VariableFormula.Definition(variable).Kind == VariableKind.Computed;
         list.ItemTemplate = new DataTemplate { VisualTree = Factory<TextBlock>(f =>
         {
             f.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding());
             f.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
             f.SetValue(MarginProperty, new Thickness(0, 1, 0, 1));
+            if (isValue) f.SetValue(TextBlock.FontSizeProperty, 20d);
         }) };
         _members = list;
         root.Children.Add(list);
@@ -371,20 +311,23 @@ public class VariableView : ContentControl
 
     private ItemsControl? _members;
 
-    /// <summary>The values a fixed set keeps from a list of values checked as a filter's.</summary>
-    internal static IReadOnlyList<string?> CheckedValues(FilterItemViewModel values) =>
-        [.. values.Values.Where(v => v.IsChecked).Select(v => InvariantValue.Format(v.Value))];
-
-    private async Task LoadMembersAsync(EasyBIContext context, ReportVariable set)
+    private async Task LoadMembersAsync(EasyBIContext context, ReportVariable variable)
     {
         _loading?.Cancel();
         var cts = _loading = new CancellationTokenSource();
         try
         {
-            var members = await context.Variables.MembersAsync(set.Name, context.SetSource(FilterContext), cts.Token);
+            var source = context.SetSource(FilterContext);
+            IReadOnlyList<string> shown;
+            if (VariableFormula.Definition(variable).Kind == VariableKind.Set)
+            {
+                var members = await context.Variables.MembersAsync(variable.Name, source, cts.Token);
+                var metadata = context.Models.FirstOrDefault(m => m.Metadata.Name == variable.Model)?.Metadata;
+                shown = [.. members.Select(m => VariableContext.DisplayMember(m, variable, metadata))];
+            }
+            else shown = [await context.Variables.DisplayAsync(variable.Name, source, cts.Token)];
             if (cts.IsCancellationRequested) return;
-            var metadata = context.Models.FirstOrDefault(m => m.Metadata.Name == set.Model)?.Metadata;
-            Members = [.. members.Select(m => VariableContext.DisplayMember(m, set, metadata))];
+            Members = shown;
             if (_members is not null) _members.ItemsSource = Members;
         }
         catch (OperationCanceledException)

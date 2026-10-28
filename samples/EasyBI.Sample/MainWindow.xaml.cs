@@ -266,21 +266,20 @@ public partial class MainWindow : Window
             Filters = [PeriodFilters.Between("Date", new DateOnly(2025, 1, 1), new DateOnly(2025, 12, 31))],
         };
 
-        // Variables: the number of customers N, a slider on the dashboard, gives the set of the top N customers by revenue
-        ReportVariable customerCount = new() { Name = "N", Caption = Text("CustomerCount"), Value = "10", Minimum = 3, Maximum = 25, Format = "N0" };
+        // Variables, written as formulas: a number of customers, a slider on the dashboard, and the set of the best
+        // customers by revenue it gives
+        ReportVariable customerCount = new() { Name = Text("CustomerCount"), Model = "sales", Formula = "10 BETWEEN 3 AND 25", Format = "N0" };
         ReportVariable topCustomers = new()
         {
-            Name = "TopCustomers",
-            Caption = Text("TopCustomersSet"),
-            Kind = VariableKind.Set,
+            Name = Text("TopCustomersSet"),
             Model = "sales",
-            Field = "Customer",
-            Rule = new SetRule("Amount") { CountVariable = customerCount.Name },
+            Formula = $"SELECT TOP [@{customerCount.Name}] [Customer] ORDER BY [Amount] DESC",
         };
+        var shownCount = "{" + customerCount.Name + "}";
         VisualDefinition countControl = new() { Type = VisualType.Variable, Variable = customerCount.Name };
         VisualDefinition customers = new()
         {
-            Title = Text("TopCustomersChart"),
+            Title = string.Format(CultureInfo.InvariantCulture, Text("TopCustomersChart"), shownCount),
             Model = "sales",
             Type = VisualType.Bar,
             Axis = [new("Customer")],
@@ -291,7 +290,7 @@ public partial class MainWindow : Window
         // The set's customers on one side, all the others on the other
         VisualDefinition customerShare = new()
         {
-            Title = Text("TopCustomersShare"),
+            Title = string.Format(CultureInfo.InvariantCulture, Text("TopCustomersShare"), shownCount),
             Model = "sales",
             Type = VisualType.Donut,
             Axis = [new("Customer") { Set = topCustomers.Name }],

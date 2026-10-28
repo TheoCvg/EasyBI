@@ -184,9 +184,9 @@
     <value>Top customers</value>
   </data>
   <data name="TopCustomersChart" xml:space="preserve">
-    <value>Top {N} customers</value>
+    <value>Top {0} customers</value>
   </data>
   <data name="TopCustomersShare" xml:space="preserve">
-    <value>Share of the top {N} customers</value>
+    <value>Share of the top {0} customers</value>
   </data>
 </root>

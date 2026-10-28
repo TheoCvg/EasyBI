@@ -30,14 +30,16 @@ opens older reports, and a report using a newer feature cannot be opened by an o
 - **Long lists of values**: a filter lists up to 10,000 values of a dimension instead of 1,000, says when there are
   more, and then searches them in the model (`DistinctValuesRequest.Search`), translated to SQL by EF Core. The sample
   has 2,500 customers to filter on.
-- **Variables**: parameters (a number, a text, a date, yes/no) and sets of a dimension's values (chosen by a measure,
-  such as the top N customers by revenue, or checked one by one), saved with the report (`ReportDefinition.Variables`)
-  with their current values. Visuals use them in their Top (`VisualDefinition.TopVariable`), their filters (`[@N]`, a
-  set's values), their formulas (`[@Rate]`), their titles and texts (`{N}`), and to group a dimension in a set's values
-  and the others (`FieldRef.Set`). The new `Variable` visual type (`VariableView`) shows a slider, a box, a date picker
-  or a list to change a parameter, and the values of a set; the designer's field list creates and edits them. Models
-  never see variables: `VariableContext` (`EasyBIContext.Variables`) replaces them before asking for data. See
-  [Variables](guide/variables.md).
+- **Variables**, written as formulas in the formula editor (`VariableFormula`): parameters (`10 BETWEEN 3 AND 25`, a
+  slider; `"Web" IN ("Web"; "Store")`, a list; a text, a date, yes/no), sets of a dimension's values
+  (`SELECT TOP [@N] [Customer] WHERE [Region] = "North" ORDER BY [Revenue] DESC`, conditions on dimensions keeping rows
+  and on measures keeping values; `SELECT [Customer] IN (...)`) and values computed once (`AVERAGE([Revenue])`), saved
+  with the report (`ReportDefinition.Variables`) with the values the end user gave. Visuals use them in their Top
+  (`VisualDefinition.TopVariable`), their formulas (`[@Rate]`), their titles and texts (`{N}`), and sets dragged onto
+  Filters (their values) or onto Axis and Legend (the set's values and the others, `FieldRef.Set`). The new `Variable`
+  visual type (`VariableView`) shows a parameter's control, a computed value or a set's values. Models never see
+  variables: `VariableContext` (`EasyBIContext.Variables`) replaces them before asking for data, inside the
+  `IQueryable`. See [Variables](guide/variables.md).
 
 ### Fixed
 

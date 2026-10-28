@@ -248,12 +248,20 @@ public class VisualView : ContentControl
             return;
         }
 
-        // The values of the variables: right away, unless a set chosen by a rule has to query its values first
+        // The values of the variables: right away, unless a set or a computed value has to be queried first
         VisualDefinition effective;
+        IReadOnlyList<CalculatedMeasure> measures = context.Measures.Measures;
         try
         {
-            effective = await context.Variables.ResolveAsync(visual.Type.IsContent() ? visual : FilterContext?.Apply(visual) ?? visual,
-                context.SetSource(FilterContext));
+            var source = context.SetSource(FilterContext);
+            effective = await context.Variables.ResolveAsync(visual.Type.IsContent() ? visual : FilterContext?.Apply(visual) ?? visual, source);
+            if (!visual.Type.IsContent())
+            {
+                // Only the measures the visual uses: a variable failing elsewhere must not break it
+                var used = context.Measures.UsedBy(visual, context.Models.FirstOrDefault(m => m.Metadata.Name == visual.Model)?.Metadata);
+                var resolved = (await context.Variables.ResolveAsync(used, source)).ToDictionary(m => (m.Model, m.Name));
+                measures = [.. measures.Select(m => resolved.TryGetValue((m.Model, m.Name), out var value) ? value : m)];
+            }
         }
         catch (Exception ex)
         {
@@ -277,7 +285,6 @@ public class VisualView : ContentControl
             return;
         }
 
-        var measures = context.Variables.Resolve(context.Measures.Measures);
         var queryKey = JsonSerializer.Serialize(new
         {
             effective.Model,

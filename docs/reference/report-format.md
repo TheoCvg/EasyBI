@@ -58,13 +58,13 @@ there are none). Values are invariant, like filter values:
 
 ```json
 "variables": [
-  { "name": "N", "caption": "Number of customers", "kind": "Parameter", "dataType": "Number", "value": "10", "minimum": 3, "maximum": 25 },
-  { "name": "TopCustomers", "caption": "Top customers", "kind": "Set", "model": "sales", "field": "Customer",
-    "rule": { "measure": "Amount", "count": 10, "countVariable": "N" } }
+  { "name": "N", "model": "sales", "formula": "10 BETWEEN 3 AND 25", "value": "12", "format": "N0" },
+  { "name": "TopCustomers", "model": "sales", "formula": "SELECT TOP [@N] [Customer] ORDER BY [Amount] DESC" }
 ]
 ```
 
-A fixed set lists its `members` instead of a `rule` (`"bottom": true` keeps the last values). Visuals reference
+A variable is its `formula`, stored with field names (see [the formulas of variables](../guide/variables.md#what-a-formula-gives));
+`value` is the value the end user gave a parameter, omitted while it is its formula's. Visuals reference
 variables by name: a filter value `"[@N]"` (a set's values with `In` and `NotIn`), `"topVariable": "N"`, a field
 `{ "field": "Customer", "set": "TopCustomers" }` grouped in true (the set's values) and false (the others), `[@N]` in a
 formula, `{N}` in a title or a text, and `{ "type": "Variable", "variable": "N" }` shows one on the dashboard.

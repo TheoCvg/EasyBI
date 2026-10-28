@@ -59,6 +59,7 @@ public sealed class ShelfItemViewModel : ObservableObject
     private VisualType? _seriesType;
     private bool _secondaryAxis;
     private bool _showSeriesOptions;
+    private string? _set;
 
     public ShelfItemViewModel(FieldDescriptor field, Shelf shelf, Action changed)
     {
@@ -110,6 +111,7 @@ public sealed class ShelfItemViewModel : ObservableObject
             if (ShowSeriesOptions && SeriesType is not null) badges.Add(SeriesTypeOption.Label);
             if (ShowSeriesOptions && SecondaryAxis) badges.Add(Strings.SecondaryAxis);
             if (CanSort && SortDirection is not null) badges.Add(SortOption.Symbol);
+            if (Set is not null) badges.Add("{ }");
             return badges;
         }
     }
@@ -118,7 +120,8 @@ public sealed class ShelfItemViewModel : ObservableObject
 
     public Shelf Shelf { get; }
 
-    public string Caption => Field.Caption;
+    /// <summary>The field's caption, or the name of the set grouping it.</summary>
+    public string Caption => Set ?? Field.Caption;
 
     public bool HasGrain => Field.Kind == FieldKind.Dimension && Field.DataType == DataType.Date;
 
@@ -214,7 +217,22 @@ public sealed class ShelfItemViewModel : ObservableObject
         internal set => SetProperty(ref _showSeriesOptions, value);
     }
 
-    public FieldRef ToFieldRef() => new(Field.Name, Grain) { Labels = _labels };
+    public FieldRef ToFieldRef() => new(Field.Name, Grain) { Labels = _labels, Set = _set };
+
+    /// <summary>
+    /// A set of the report grouping the values of this dimension in two, the set's and the others (see
+    /// <see cref="FieldRef.Set"/>): the chip of a set dropped on Axis or Legend. Null for the values themselves.
+    /// </summary>
+    public string? Set
+    {
+        get => _set;
+        set
+        {
+            if (!SetProperty(ref _set, value)) return;
+            OnPropertyChanged(nameof(Caption));
+            _changed();
+        }
+    }
 
     /// <summary>
     /// The texts the visual shows instead of some values of this dimension (keyed by the value's invariant text).
@@ -297,6 +315,7 @@ public sealed class FilterItemViewModel : ObservableObject
     private Option<FilterOperator?> _condition;
     private string _number = "";
     private string _secondNumber = "";
+    private bool _excludeSet;
 
     /// <summary>A list of values shows a search box from this number of values on.</summary>
     public const int SearchThreshold = 8;
@@ -307,10 +326,13 @@ public sealed class FilterItemViewModel : ObservableObject
         Action changed,
         IEnumerable<string?>? selection = null,
         FilterOperator @operator = FilterOperator.In,
-        DateGrain grain = DateGrain.None)
+        DateGrain grain = DateGrain.None,
+        string? set = null)
     {
         Field = field;
         Operator = @operator;
+        Set = set;
+        _excludeSet = @operator == FilterOperator.NotIn;
         _changed = changed;
         _model = model;
         // While loading, the values are announced once at the end
@@ -328,7 +350,7 @@ public sealed class FilterItemViewModel : ObservableObject
         _periodKind = PeriodKinds[0];
         _unit = Units[1];
         // A number dimension is filtered on a list of values or compared; a measure is only compared
-        Conditions = field.DataType != DataType.Number ? [] :
+        Conditions = field.DataType != DataType.Number || set is not null ? [] :
         [
             IsMeasure ? new(null, () => Strings.ConditionAny) : new(@operator.IsComparison() ? FilterOperator.In : @operator, () => Strings.ConditionValues),
             new(FilterOperator.Range, () => Strings.ConditionRange),
@@ -338,6 +360,12 @@ public sealed class FilterItemViewModel : ObservableObject
             new(FilterOperator.LessThanOrEqual, () => Strings.ConditionLessThanOrEqual),
         ];
         _condition = Conditions.FirstOrDefault(c => c.Value == @operator) ?? Conditions.FirstOrDefault()!;
+        if (IsSet)
+        {
+            // The set gives the values
+            _isLoading = false;
+            return;
+        }
         if (IsPeriod)
         {
             LoadPeriod(new FilterSpec(field.Name, @operator, selection?.ToArray() ?? [], grain));
@@ -358,6 +386,27 @@ public sealed class FilterItemViewModel : ObservableObject
 
     public FieldDescriptor Field { get; }
 
+    /// <summary>
+    /// The set of the report whose values the filter keeps, or leaves out with <see cref="ExcludeSet"/> (a set dropped
+    /// on Filters); null for a filter on the values of <see cref="Field"/>.
+    /// </summary>
+    public string? Set { get; }
+
+    /// <summary>A filter on the values of a <see cref="Set"/>.</summary>
+    public bool IsSet => Set is not null;
+
+    /// <summary>Whether the filter leaves out the values of its <see cref="Set"/> rather than keeping them.</summary>
+    public bool ExcludeSet
+    {
+        get => _excludeSet;
+        set
+        {
+            if (!SetProperty(ref _excludeSet, value)) return;
+            OnPropertyChanged(nameof(Summary));
+            _changed();
+        }
+    }
+
     /// <summary>True while the filter is the designer's <see cref="DesignerViewModel.SelectedItem"/>.</summary>
     public bool IsSelected
     {
@@ -373,15 +422,16 @@ public sealed class FilterItemViewModel : ObservableObject
     /// <summary>The operator the filter was created with; <see cref="Condition"/> tells how it filters now.</summary>
     public FilterOperator Operator { get; }
 
-    public string Caption => Field.Caption;
+    /// <summary>The field's caption, or the name of its <see cref="Set"/>.</summary>
+    public string Caption => Set ?? Field.Caption;
 
     /// <summary>A date dimension: filtered on a period rather than on a list of values.</summary>
-    public bool IsPeriod => Field.DataType == DataType.Date;
+    public bool IsPeriod => !IsSet && Field.DataType == DataType.Date;
 
     /// <summary>A measure of the visual: its groups are kept by comparing the measure with numbers.</summary>
     public bool IsMeasure => Field.Kind == FieldKind.Measure;
 
-    public bool IsValueList => !IsPeriod && !IsMeasure && !IsComparison;
+    public bool IsValueList => !IsSet && !IsPeriod && !IsMeasure && !IsComparison;
 
     /// <summary>Compared with numbers (see <see cref="Condition"/>).</summary>
     public bool IsComparison => Condition?.Value?.IsComparison() == true;
@@ -556,6 +606,7 @@ public sealed class FilterItemViewModel : ObservableObject
     {
         get
         {
+            if (IsSet) return Strings.Format(ExcludeSet ? Strings.FilterSetExcluded : Strings.FilterSetKept, Field.Caption);
             if (IsPeriod) return ToFilterSpec() is { } period ? PeriodFilters.Describe(period) : Strings.FilterAll;
             if (IsComparison || IsMeasure) return ToFilterSpec() is { } comparison ? NumericFilters.Describe(comparison, Field.Format) : Strings.FilterAll;
             if (ToFilterSpec() is not { } filter) return Strings.FilterAll;
@@ -570,6 +621,7 @@ public sealed class FilterItemViewModel : ObservableObject
 
     public FilterSpec? ToFilterSpec()
     {
+        if (Set is { } set) return new FilterSpec(Field.Name, ExcludeSet ? FilterOperator.NotIn : FilterOperator.In, [VariableReferences.Reference(set)]);
         if (IsPeriod)
         {
             return PeriodKind.Value switch

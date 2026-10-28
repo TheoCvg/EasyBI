@@ -525,8 +525,8 @@ public class DashboardView : Control
     }
 
     /// <summary>
-    /// Turns an item into a variable of the report: a menu offers the variables, and to create one (see
-    /// <see cref="Designer.VariableWindow"/>).
+    /// Turns an item into a variable of the report: a menu offers the variables, and to write a new one in the formula
+    /// editor (over the first model of the <see cref="Context"/>).
     /// </summary>
     public void AddVariable(DashboardItem item)
     {
@@ -535,26 +535,27 @@ public class DashboardView : Control
         foreach (var variable in context.Variables.Variables)
         {
             var name = variable.Name;
-            var entry = new MenuItem { Header = variable.DisplayName };
+            var entry = new MenuItem { Header = variable.Name };
             entry.Click += (_, _) => SetVisual(item, new VisualDefinition { Type = VisualType.Variable, Variable = name });
             menu.Items.Add(entry);
         }
         if (menu.Items.Count > 0) menu.Items.Add(new Separator());
-        var create = new MenuItem { Header = Strings.NewVariable };
+        var create = new MenuItem { Header = Strings.NewVariable, IsEnabled = context.Models.Count > 0 };
         create.Click += (_, _) =>
         {
-            if (Designer.VariableWindow.Create(context, Window.GetWindow(this)) is { } created)
+            if (Designer.CalculatedMeasureWindow.EditVariable(context, context.Models[0], Window.GetWindow(this)) is { } created)
                 SetVisual(item, new VisualDefinition { Type = VisualType.Variable, Variable = created.Name });
         };
         menu.Items.Add(create);
         menu.IsOpen = true;
     }
 
-    /// <summary>Edits the variable an item shows (see <see cref="Designer.VariableWindow"/>); a renamed variable stays shown.</summary>
+    /// <summary>Edits the variable an item shows in the formula editor; a renamed variable stays shown.</summary>
     public void EditVariable(DashboardItem item)
     {
-        if (Context is not { } context || item.Visual is not { Variable: { } name } visual) return;
-        if (Designer.VariableWindow.Edit(context, name, Window.GetWindow(this)) is { } edited && edited.Name != name)
+        if (Context is not { } context || item.Visual is not { Variable: { } name } visual || context.Variables.Find(name) is not { } variable) return;
+        if ((context.Models.FirstOrDefault(m => m.Metadata.Name == variable.Model) ?? context.Models.FirstOrDefault()) is not { } model) return;
+        if (Designer.CalculatedMeasureWindow.EditVariable(context, model, Window.GetWindow(this), variable) is { } edited && edited.Name != name)
             SetVisual(item, visual with { Variable = edited.Name });
     }
 

@@ -43,18 +43,11 @@ public class VariableUiTests
             _inner.GetDistinctValuesAsync(request, cancellationToken);
     }
 
-    private static ReportVariable N(double value) =>
-        new() { Name = "N", Caption = "Nombre", Value = value.ToString(System.Globalization.CultureInfo.InvariantCulture), Minimum = 1, Maximum = 5 };
+    private static ReportVariable Variable(string name, string formula) => new() { Name = name, Model = "sales", Formula = formula };
 
-    private static ReportVariable TopRegions() => new()
-    {
-        Name = "TopRegions",
-        Caption = "Meilleures régions",
-        Kind = VariableKind.Set,
-        Model = "sales",
-        Field = "Region",
-        Rule = new SetRule("Amount") { CountVariable = "N" },
-    };
+    private static ReportVariable N(int value) => Variable("N", $"{value} BETWEEN 1 AND 5");
+
+    private static ReportVariable TopRegions() => Variable("TopRegions", "SELECT TOP [@N] [Region] ORDER BY [Amount] DESC");
 
     private static VisualDefinition ByRegion() =>
         new() { Model = "sales", Type = VisualType.Table, Axis = [new("Region")], Values = [new("Amount")] };
@@ -182,116 +175,162 @@ public class VariableUiTests
             Report = new ReportDefinition { Variables = [N(2)], Visuals = [new VisualDefinition { Type = VisualType.Variable, Variable = "N" }] },
         });
 
-        Assert.Equal("2", context.Variables.Find("N")!.Value);
+        Assert.Equal("2", VariableContext.ValueOf(context.Variables.Find("N")!));
         Assert.Equal(DashboardItemKind.Variable, dashboard.Items.Single(i => i.Visual is not null).Kind);
         context.Variables.SetValue("N", "4");
         Assert.Equal("4", dashboard.Capture().Report.Variables.Single().Value);
     });
 
     [Fact]
-    public void The_variable_editor_creates_parameters_and_sets() => Sta.Run(() =>
+    public void A_variable_visual_shows_a_list_for_choices_and_the_value_of_a_computed_variable() => Sta.Run(() =>
     {
-        var (context, _) = Context(N(2));
+        var (context, _) = Context(Variable("Canal", "\"Web\" IN (\"Web\"; \"Shop\")"), Variable("Moyenne", "AVERAGE([Amount])"));
+        var choice = new VariableView { Context = context, Variable = "Canal" };
+        var value = new VariableView { Context = context, Variable = "Moyenne" };
+        var window = Show(new StackPanel { Children = { choice, value } });
+        PumpUntil(() => value.Members.Count == 1);
 
-        var parameter = new VariableEditor(context) { Name = "Rate", Caption = "Taux", Value = "0.2", Format = "P0" };
-        Assert.Null(parameter.Error);
-        Assert.Equal(new ReportVariable { Name = "Rate", Caption = "Taux", Value = "0.2", Format = "P0" }, parameter.Save());
-
-        var taken = new VariableEditor(context) { Name = "N" };
-        Assert.NotNull(taken.Error);
-        Assert.NotNull(new VariableEditor(context) { Name = "2bad" }.Error);
-
-        var set = new VariableEditor(context, kind: VariableKind.Set) { Name = "Best" };
-        set.CountVariable = set.CountVariables.Single(c => c.Value == "N");
-        set.Order = set.Orders.Single(o => o.Value);
-        var saved = set.Save()!;
-        Assert.Equal(VariableKind.Set, saved.Kind);
-        Assert.Equal(("sales", "Region"), (saved.Model, saved.Field));
-        Assert.Equal(new SetRule("Amount") { CountVariable = "N", Bottom = true }, saved.Rule);
-        Assert.Equal(3, context.Variables.Variables.Count);
+        var combo = Find<ComboBox>(choice)!;
+        Assert.Equal(["Web", "Shop"], combo.Items.Cast<Option<string>>().Select(o => o.Value));
+        combo.SelectedIndex = 1;
+        Assert.Equal("Shop", context.Variables.Find("Canal")!.Value);
+        Assert.Equal(["162.5"], value.Members);
+        window.Close();
     });
 
     [Fact]
-    public void A_fixed_set_keeps_the_values_checked_in_the_editor() => Sta.Run(() =>
-    {
-        var (context, _) = Context();
-        var editor = new VariableEditor(context, kind: VariableKind.Set) { Name = "Mine", IsFixed = true };
-        Assert.True(SpinWait.SpinUntil(() => { Pump(); return editor.Members is { IsLoading: false }; }, TimeSpan.FromSeconds(5)));
-
-        editor.Members!.Values.Single(v => Equals(v.Value, "South")).IsChecked = true;
-
-        Assert.Equal(["South"], editor.ToVariable()!.Members);
-    });
-
-    [Fact]
-    public void A_filter_can_use_a_set_or_a_parameter_instead_of_values() => Sta.Run(() =>
-    {
-        var (context, model) = Context(N(2), TopRegions(), new ReportVariable { Name = "Region", DataType = DataType.Text, Value = "East" });
-        var field = model.Metadata.GetField("Region");
-        var filter = new FilterItemViewModel(field, model, () => { }, variables: context.Variables);
-
-        Assert.Equal(["(none)", "InSet", "NotInSet", "Equal"], filter.VariableChoices.Select(c => c.Value?.Use.ToString() ?? "(none)"));
-        filter.VariableChoice = filter.VariableChoices.Single(c => c.Value?.Use == FilterVariableUse.NotInSet);
-
-        Assert.False(filter.IsValueList);
-        Assert.Equal(new FilterSpec("Region", FilterOperator.NotIn, ["[@TopRegions]"]).Values, filter.ToFilterSpec()!.Values);
-        Assert.Equal(FilterOperator.NotIn, filter.ToFilterSpec()!.Operator);
-
-        // Loaded back, the filter shows the same choice
-        var loaded = new FilterItemViewModel(field, model, () => { }, ["[@TopRegions]"], FilterOperator.NotIn, variables: context.Variables);
-        Assert.Equal(new FilterVariable("TopRegions", FilterVariableUse.NotInSet), loaded.VariableChoice.Value);
-    });
-
-    [Fact]
-    public void A_number_filter_can_compare_with_a_parameter() => Sta.Run(() =>
+    public void The_formula_editor_writes_parameters_sets_and_computed_values() => Sta.Run(() =>
     {
         var (context, model) = Context(N(2));
-        var measure = model.Metadata.GetField("Amount");
-        var filter = new FilterItemViewModel(measure, model, () => { }, variables: context.Variables);
 
-        filter.VariableChoice = filter.VariableChoices.Single(c => c.Value?.Use == FilterVariableUse.Compare);
+        var rate = CalculatedMeasureEditor.ForVariable(context, model);
+        rate.Caption = "Taux";
+        rate.Formula = "0.2 BETWEEN 0 AND 1 STEP 0.05";
+        Assert.Null(rate.Error);
+        Assert.True(rate.Save());
+        Assert.Equal("0.2 BETWEEN 0 AND 1 STEP 0.05", context.Variables.Find("Taux")!.Formula);
 
-        var spec = filter.ToFilterSpec()!;
-        Assert.Equal(FilterOperator.GreaterThanOrEqual, spec.Operator);
-        Assert.Equal(["[@N]"], spec.Values);
+        var best = CalculatedMeasureEditor.ForVariable(context, model);
+        best.Caption = "Meilleures";
+        best.Formula = "SELECT TOP [@N] [Région] WHERE [Canal] = \"Web\" ORDER BY [CA] DESC";
+        Assert.Null(best.Error);
+        Assert.Contains(best.Tabs, t => t.Kind == FormulaItemKind.Keyword);
+        Assert.True(SpinWait.SpinUntil(() => { Pump(); return best.Preview is not null; }, TimeSpan.FromSeconds(5)));
+        Assert.Equal("South, North (2 values)", best.Preview);
+        best.Save();
+        Assert.Equal(("sales", "SELECT TOP [@N] [Region] WHERE [Channel] = \"Web\" ORDER BY [Amount] DESC"),
+            (context.Variables.Find("Meilleures")!.Model, context.Variables.Find("Meilleures")!.Formula));
+
+        var taken = CalculatedMeasureEditor.ForVariable(context, model);
+        taken.Caption = "N";
+        taken.Formula = "1";
+        Assert.NotNull(taken.Error);
+        taken.Caption = "a[b]";
+        Assert.NotNull(taken.Error);
+        taken.Caption = "Ok";
+        taken.Formula = "SELECT [CA]";
+        Assert.NotNull(taken.Problem);
     });
 
     [Fact]
-    public void The_designer_takes_its_top_from_a_parameter_and_groups_a_dimension_by_a_set() => Sta.Run(() =>
+    public void A_renamed_variable_is_renamed_in_the_formulas_using_it() => Sta.Run(() =>
+    {
+        var (context, model) = Context(N(2), TopRegions());
+        context.Measures.Set(new CalculatedMeasure { Name = "calc_x", Model = "sales", Formula = "[Amount] * [@N]" });
+
+        var editor = CalculatedMeasureEditor.ForVariable(context, model, context.Variables.Find("N"));
+        editor.Caption = "Count";
+        Assert.True(editor.Save());
+
+        Assert.Null(context.Variables.Find("N"));
+        Assert.Equal("SELECT TOP [@Count] [Region] ORDER BY [Amount] DESC", context.Variables.Find("TopRegions")!.Formula);
+        Assert.Equal("[Amount] * [@Count]", context.Measures.Find("sales", "calc_x")!.Formula);
+    });
+
+    [Theory]
+    [InlineData("", "SELECT")]
+    [InlineData("SELECT ", "TOP,Région,Canal")]
+    [InlineData("SELECT TOP 3 ", "Région,Canal")]
+    [InlineData("SELECT [Région] ", "IN,WHERE,ORDER BY")]
+    [InlineData("SELECT [Région] WHERE [Canal] = \"Web\" ", "AND,OR,ORDER BY")]
+    [InlineData("SELECT [Région] ORDER BY [CA] ", "DESC,ASC")]
+    [InlineData("10 ", "BETWEEN,IN")]
+    public void The_variable_editor_suggests_the_words_of_the_formula(string formula, string expected) => Sta.Run(() =>
+    {
+        var (context, model) = Context();
+        var editor = CalculatedMeasureEditor.ForVariable(context, model);
+        editor.Formula = formula;
+
+        editor.Suggest(formula.Length, all: true);
+
+        Assert.Equal(expected.Split(','), editor.Suggestions.Select(s => s.Caption).Take(expected.Split(',').Length));
+    });
+
+    [Fact]
+    public void A_set_dropped_on_the_designer_groups_its_dimension_or_filters_on_its_values() => Sta.Run(() =>
+    {
+        var (context, model) = Context(N(2), TopRegions());
+        var list = new FieldList { Context = context };
+        var set = list.Variables.Single(v => v.IsSet);
+        var designer = new DesignerViewModel(context);
+        designer.Drop(new ModelField(model, model.Metadata.GetField("Amount")), Shelf.Values);
+
+        designer.Drop(set, Shelf.Axis);
+        designer.Drop(set, Shelf.Filters);
+
+        Assert.Equal(new FieldRef("Region") { Set = "TopRegions" }, designer.Visual!.Axis.Single());
+        Assert.Equal("TopRegions", designer.Axis.Single().Caption);
+        Assert.Equal(new FilterSpec("Region", FilterOperator.In, ["[@TopRegions]"]).Values, designer.Visual.Filters.Single().Values);
+        designer.Filters.Single().ExcludeSet = true;
+        Assert.Equal(FilterOperator.NotIn, designer.Visual.Filters.Single().Operator);
+        // Once per well; a value is used in formulas, not dropped
+        Assert.False(designer.CanDrop(set, Shelf.Axis));
+        var value = list.Variables.Single(v => v.Caption == "N");
+        Assert.False(designer.CanDrop(value, Shelf.Axis));
+        Assert.Contains("[@N]", designer.RefusalReason(value, Shelf.Axis));
+
+        // Loaded back, the filter is the set's
+        var loaded = new DesignerViewModel(context);
+        loaded.Load(designer.Visual);
+        Assert.Equal(("TopRegions", true), (loaded.Filters.Single().Set, loaded.Filters.Single().ExcludeSet));
+        Assert.Equal("TopRegions", loaded.Axis.Single().Set);
+    });
+
+    [Fact]
+    public void The_designer_takes_its_top_from_a_number_variable() => Sta.Run(() =>
     {
         var (context, _) = Context(N(2), TopRegions());
         var designer = new DesignerViewModel(context);
-        designer.Load(ByRegion() with { TopVariable = "N", Axis = [new FieldRef("Region") { Set = "TopRegions" }] });
+        designer.Load(ByRegion() with { TopVariable = "N" });
 
         Assert.Equal("N", designer.Visual!.TopVariable);
-        Assert.Equal("TopRegions", designer.Visual.Axis[0].Set);
-        designer.Axis[0].Set = null;
         designer.TopVariable = null;
-        Assert.Null(designer.Visual.Axis[0].Set);
         Assert.Null(designer.Visual.TopVariable);
     });
 
     [Fact]
-    public void A_calculated_measure_can_use_a_parameter() => Sta.Run(() =>
+    public void A_calculated_measure_can_use_a_variable() => Sta.Run(() =>
     {
-        var (context, model) = Context(new ReportVariable { Name = "Rate", Value = "0.5" });
+        var (context, model) = Context(Variable("Rate", "0.5"));
         var editor = new CalculatedMeasureEditor(context, model) { Caption = "Remise", Formula = "[CA] * [@Rate]" };
 
         Assert.Null(editor.Error);
         Assert.Contains(editor.Tabs, t => t.Kind == FormulaItemKind.Variable);
+        Assert.DoesNotContain(editor.Tabs, t => t.Kind == FormulaItemKind.Keyword);
         Assert.True(SpinWait.SpinUntil(() => { Pump(); return editor.Preview is not null; }, TimeSpan.FromSeconds(5)));
         Assert.Equal("325", editor.Preview);
     });
 
     [Fact]
-    public void The_field_list_shows_the_parameters_and_the_sets_of_its_model() => Sta.Run(() =>
+    public void The_field_list_shows_the_variables_of_its_model() => Sta.Run(() =>
     {
-        var (context, _) = Context(N(2), TopRegions());
+        var (context, _) = Context(N(2), TopRegions(), Variable("Moyenne", "AVERAGE([Amount])") with { Model = "other" });
         var list = new FieldList { Context = context };
 
-        Assert.Equal(["Nombre", "Meilleures régions"], list.Variables.Select(v => v.Caption));
+        Assert.Equal(["N", "TopRegions"], list.Variables.Select(v => v.Caption));
+        Assert.Equal(["@", "{ }"], list.Variables.Select(v => v.Glyph));
         context.Variables.Remove("TopRegions");
-        Assert.Equal(["Nombre"], list.Variables.Select(v => v.Caption));
+        Assert.Equal(["N"], list.Variables.Select(v => v.Caption));
     });
 
     private static T? Find<T>(DependencyObject root) where T : DependencyObject

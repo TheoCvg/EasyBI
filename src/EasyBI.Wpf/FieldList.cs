@@ -70,7 +70,7 @@ public class FieldList : Control
 
     public static readonly DependencyProperty VariablesProperty = VariablesPropertyKey.DependencyProperty;
 
-    /// <summary>Creates a variable of the report (parameter: its <see cref="VariableKind"/>, a parameter by default).</summary>
+    /// <summary>Opens the formula editor of a new variable of the report, over the <see cref="SelectedModel"/>.</summary>
     public static RoutedCommand AddVariableCommand { get; } = new(nameof(AddVariableCommand), typeof(FieldList));
 
     /// <summary>Edits a variable; the parameter (or the data context of the source) is its <see cref="VariableItem"/>.</summary>
@@ -112,14 +112,14 @@ public class FieldList : Control
             (_, e) => { if (FieldOf(e) is { IsReportMeasure: true, Measure: { } measure }) DeleteMeasure(measure); },
             (_, e) => e.CanExecute = Context is not null && FieldOf(e) is { IsReportMeasure: true }));
         CommandBindings.Add(new CommandBinding(AddVariableCommand,
+            (_, _) => { if (Context is { } context && SelectedModel is { } model) CalculatedMeasureWindow.EditVariable(context, model, Window.GetWindow(this)); },
+            (_, e) => e.CanExecute = CanAddMeasure));
+        CommandBindings.Add(new CommandBinding(EditVariableCommand,
             (_, e) =>
             {
-                if (Context is { } context)
-                    VariableWindow.Create(context, Window.GetWindow(this), e.Parameter is VariableKind kind ? kind : VariableKind.Parameter, SelectedModel);
+                if (Context is { } context && VariableOf(e) is { } item && (context.Models.FirstOrDefault(m => m.Metadata.Name == item.Variable.Model) ?? SelectedModel) is { } model)
+                    CalculatedMeasureWindow.EditVariable(context, model, Window.GetWindow(this), item.Variable);
             },
-            (_, e) => e.CanExecute = Context is not null));
-        CommandBindings.Add(new CommandBinding(EditVariableCommand,
-            (_, e) => { if (Context is { } context && VariableOf(e) is { } item) VariableWindow.Edit(context, item.Variable.Name, Window.GetWindow(this)); },
             (_, e) => e.CanExecute = Context is not null && VariableOf(e) is not null));
         CommandBindings.Add(new CommandBinding(DeleteVariableCommand,
             (_, e) => { if (VariableOf(e) is { } item) DeleteVariable(item.Variable); },
@@ -167,7 +167,10 @@ public class FieldList : Control
     /// <summary>Whether a calculated measure can be added: there is a context and a model.</summary>
     public bool CanAddMeasure => (bool)GetValue(CanAddMeasureProperty);
 
-    /// <summary>The report's parameters, and its sets of values of the <see cref="SelectedModel"/>'s dimensions, matching the <see cref="Search"/>.</summary>
+    /// <summary>
+    /// The report's parameters, and its computed values and sets of values over the <see cref="SelectedModel"/>, matching
+    /// the <see cref="Search"/>. A set is dragged like a dimension.
+    /// </summary>
     public IReadOnlyList<VariableItem> Variables => (IReadOnlyList<VariableItem>)GetValue(VariablesProperty);
 
     protected override void OnMouseDoubleClick(MouseButtonEventArgs e)
@@ -218,7 +221,7 @@ public class FieldList : Control
             .ToArray());
         SetValue(CanAddMeasurePropertyKey, model is not null && Context is not null);
         SetValue(VariablesPropertyKey, Context is not { } context ? Array.Empty<VariableItem>() : context.Variables.Variables
-            .Where(v => v.Kind == VariableKind.Parameter || v.Model == model?.Metadata.Name)
+            .Where(v => v.Model == model?.Metadata.Name || VariableFormula.Definition(v).Kind == VariableKind.Parameter)
             .Select(v => new VariableItem(v, Summary(context, v)))
             .Where(v => TextMatch.Matches(v.Caption, search))
             .ToArray());
@@ -239,20 +242,17 @@ public class FieldList : Control
         ?? (e as CanExecuteRoutedEventArgs)?.Parameter as VariableItem
         ?? (e.OriginalSource as FrameworkElement)?.DataContext as VariableItem;
 
-    /// <summary>What a variable holds, in short: a parameter's value, a set's rule or number of values.</summary>
+    /// <summary>What a variable holds, in short: a parameter's value, otherwise its formula as the user reads it.</summary>
     internal static string Summary(EasyBIContext context, ReportVariable variable)
     {
-        if (variable.Kind == VariableKind.Parameter) return VariableContext.Display(variable);
-        if (variable.Rule is not { } rule) return Strings.Format(Strings.SetValueCount, variable.Members?.Count ?? 0);
+        if (VariableFormula.Definition(variable).Kind == VariableKind.Parameter) return VariableContext.Display(variable);
         var model = context.Models.FirstOrDefault(m => m.Metadata.Name == variable.Model);
-        var measure = model is null ? rule.Measure : context.Measures.GetField(model.Metadata, rule.Measure).Caption;
-        var count = rule.CountVariable is { } name ? context.Variables.Find(name)?.DisplayName ?? name : rule.Count.ToString(EasyBILocalization.FormatCulture);
-        return Strings.Format(rule.Bottom ? Strings.SetRuleBottomCount : Strings.SetRuleTopCount, count, measure);
+        return model is null ? variable.Formula : MeasureFormula.ToDisplay(variable.Formula, model.Metadata, context.Measures.For(variable.Model));
     }
 
     private void DeleteVariable(ReportVariable variable)
     {
-        var answer = MessageBox.Show(Window.GetWindow(this)!, Strings.Format(Strings.DeleteVariableConfirm, variable.DisplayName),
+        var answer = MessageBox.Show(Window.GetWindow(this)!, Strings.Format(Strings.DeleteVariableConfirm, variable.Name),
             Strings.DeleteVariable, MessageBoxButton.OKCancel, MessageBoxImage.Question);
         if (answer == MessageBoxResult.OK) Context?.Variables.Remove(variable.Name);
     }

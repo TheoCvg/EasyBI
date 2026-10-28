@@ -1,50 +1,74 @@
 # Variables
 
-A number of customers that a slider changes, a rate in a formula, the start of a period, the top 10 suppliers: the
-variables of a report are values the end user changes on the dashboard, and every visual using them follows.
+A number of customers that a slider changes, a rate in a formula, the top 10 suppliers, the average basket: the
+variables of a report are **written as formulas**, in the same editor as the calculated measures, and every visual
+using them follows when they change.
 
-| Kind | Holds | For example |
+```sql
+N            = 10 BETWEEN 3 AND 25                       -- a slider from 3 to 25
+Rate         = 0.2
+Channel      = "Web" IN ("Web"; "Store")                 -- a list
+Start        = "2025-01-01"                              -- a date
+Average      = AVERAGE([Revenue])                        -- computed once
+TopCustomers = SELECT TOP [@N] [Customer] ORDER BY [Revenue] DESC
+NorthBuyers  = SELECT [Customer] WHERE [Region] = "North" AND [Revenue] > [@Average]
+Mine         = SELECT [Customer] IN ("Smith"; "Jones")
+```
+
+## What a formula gives
+
+| Formula | Variable | On the dashboard |
 |---|---|---|
-| **Parameter** | One value: a number, a text, a date or yes/no | `N = 10`, `Rate = 0.2`, `Start = 2025-01-01` |
-| **Set of values** | Values of a dimension: chosen by a measure, or checked one by one | The top `N` customers by revenue |
+| A value: `10`, `"Web"`, `"2025-01-01"`, `TRUE` | A **parameter** (a text written yyyy-MM-dd is a date) | A box, a date picker, a check box |
+| `10 BETWEEN 3 AND 25`, optionally `STEP 0.5` | A number parameter between two bounds | A slider |
+| `"Web" IN ("Web"; "Store")` | A parameter chosen from a list | A list |
+| `SELECT ...` | A **set**: values of a dimension | Its values |
+| Any other formula: `AVERAGE([Revenue])`, `[@Rate] * 100` | A **computed value**, a number computed once | The value |
+
+### Sets
+
+```sql
+SELECT [TOP n] [Dimension] [IN (values)] [WHERE conditions] [ORDER BY expression [ASC | DESC]]
+```
+
+- `TOP` keeps the first values, as many as a number or a number variable (`TOP [@N]`), in the order of `ORDER BY`.
+- `IN` lists values; alone, the set is that list.
+- `WHERE` takes conditions joined by `AND`, like a formula's: those on **dimensions** keep rows (`[Region] = "North"`,
+  `[Date] >= "2025-01-01"`, with `OR` and `NOT`), those on **measures** keep values (`[Revenue] > 1000`,
+  `SUM([Revenue]; [Channel] = "Web") > 100`), computed on the rows kept, as SQL's `WHERE` and `HAVING`.
+- `ORDER BY` takes any expression of the measures' language; without it, the values come in their order.
+
+A set and a computed value are computed on the data the report's filters of their model keep, then cached until a
+variable, a filter or the data changes. Everything stays in the `IQueryable`: EF Core translates it to SQL.
 
 ## Where they are used
 
-A variable is referenced by its name: `[@N]` in filters and formulas, `{N}` in titles and texts.
-
 | Where | How | Example |
 |---|---|---|
-| Top N of a visual | The visual's **Top** property takes a number parameter | The `N` best customers |
-| Filters | A filter's **Variable** choice: in a set, not in a set, equal to a parameter, compared with a number, since a date, the last `N` periods | `Revenue ≥ [@Threshold]` |
-| Formulas | `[@Name]` stands for the value, in any calculated measure | `[Amount] * (1 + [@Rate])` |
+| Formulas | `[@Name]` stands for a parameter's or a computed value, in calculated measures and other variables | `[Amount] * (1 + [@Rate])` |
 | Titles and texts | `{Name}` shows the value, or the values of a set | `Top {N} customers` |
-| Axis and legend | A dimension chip **grouped by** a set: the set's values on one side, **Others** on the other | Share of the top `N` customers |
+| Top N of a visual | The visual's **Top** property takes a number variable | The `N` best customers |
+| Filters | A set dragged onto **Filters** keeps its values, or leaves them out | The top customers only |
+| Axis and legend | A set dragged onto them groups its dimension: the set's values on one side, **Others** on the other | Share of the top `N` customers |
 
-A set chosen by a measure is computed on the data the report's filters of its model keep, then cached until a
-variable, a filter or the data changes. Its count can itself be a parameter: one slider then changes the set and every
-visual using it.
-
-## On the dashboard
-
-An empty item offers **Variable**: pick a variable, or create one. The item shows the variable's control:
-
-| Variable | Control |
-|---|---|
-| Number with a minimum and a maximum | A slider (it sets the value once the user pauses) |
-| Number, text | A box, set on Enter |
-| Text with choices | A list |
-| Date | A date picker |
-| Yes / no | A check box |
-| Set chosen by a measure | Its count, editable unless a parameter gives it, and its values |
-| Fixed set | **Choose the values…**, checked like a filter's, and its values |
-
-The values are saved with the report: reopening it shows the dashboard as the user left it.
+A variable does not use itself, even through others: *A variable cannot use itself: [@A] → [@B] → [@A]*.
 
 ## In the designer
 
-The field list's **Variables** section lists the parameters and the sets of the model's dimensions: **+ Parameter** and
-**+ Set of values** create one, ✎ and ✕ on hover edit and delete it. The calculated measure editor offers the
-parameters in its **Parameters** tab and in its suggestions.
+The field list's **Variables** section lists the report's parameters, and the computed values and sets of its model:
+**+ Variable** opens the formula editor, ✎ and ✕ on hover edit and delete one. The editor colors the formula, points
+out its problem, suggests what comes next (after `SELECT`, the dimensions; after the dimension, `IN`, `WHERE`,
+`ORDER BY`...), lists the words in a tab, and previews the value or the first values of a set. Renaming a variable
+renames it in the formulas using it.
+
+Sets are dragged like dimensions onto **Axis**, **Legend** and **Filters**; a set filter has a check box to leave the
+set's values out instead.
+
+## On the dashboard
+
+An empty item offers **Variable**: pick a variable, or write one. The item shows a parameter's control, a computed
+value or the values of a set. The values the end user gives are saved with the report: reopening it shows the
+dashboard as the user left it.
 
 ## In code
 
@@ -54,20 +78,15 @@ document. Set or change them yourself:
 ```csharp
 context.Variables.Load(
 [
-    new ReportVariable { Name = "N", Caption = "Number of customers", Value = "10", Minimum = 3, Maximum = 25 },
-    new ReportVariable
-    {
-        Name = "TopCustomers",
-        Caption = "Top customers",
-        Kind = VariableKind.Set,
-        Model = "sales",
-        Field = "Customer",
-        Rule = new SetRule("Amount") { CountVariable = "N" },
-    },
+    new ReportVariable { Name = "N", Model = "sales", Formula = "10 BETWEEN 3 AND 25", Format = "N0" },
+    new ReportVariable { Name = "TopCustomers", Model = "sales", Formula = "SELECT TOP [@N] [Customer] ORDER BY [Amount] DESC" },
 ]);
 
-context.Variables.SetValue("N", "15");    // invariant form, like filter values
+context.Variables.SetValue("N", "15");    // invariant form, like filter values; null goes back to the formula's
 ```
+
+Formulas are stored with field names, like the measures'. `VariableFormula.Read` tells what a formula defines
+(`ParameterDefinition`, `ComputedDefinition`, `SetDefinition`), `VariableFormula.Check` and `Validate` check one.
 
 ```csharp
 var top = new VisualDefinition
@@ -89,5 +108,6 @@ A `VariableView` shows the control of a variable anywhere in your application (a
 
 !!! info "Models never see variables"
     EasyBI replaces the references before asking a model for data (`VariableContext.ResolveAsync`): a source, local or
-    remote, receives plain values. A field grouped by a set comes with the set's values (`FieldRef.SetMembers`), and a
-    source groups on them: `QueryableSemanticModel` does it inside the `IQueryable`, translated to SQL by EF Core.
+    remote, receives plain values and plain queries. A set is queried as a table of its dimension; a field grouped by a
+    set comes with the set's values (`FieldRef.SetMembers`), and a source groups on them: `QueryableSemanticModel` does
+    it inside the `IQueryable`, translated to SQL by EF Core.

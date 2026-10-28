@@ -31,6 +31,7 @@ public sealed record FormulaItem(FormulaItemKind Kind, string Caption, string Te
         FormulaItemKind.Measure => IsReportMeasure ? "ƒx" : "Σ",
         FormulaItemKind.Dimension => Field?.DataType switch { DataType.Date => "◷", DataType.Number => "#", DataType.Boolean => "◑", _ => "Aa" },
         FormulaItemKind.Variable => "@",
+        FormulaItemKind.Keyword => "≡",
         _ => "",
     };
 
@@ -43,17 +44,38 @@ public sealed record FormulaItem(FormulaItemKind Kind, string Caption, string Te
     public static FormulaItem For(FormulaFunction function) =>
         new(FormulaItemKind.Function, function.Name, function.Name + "()", function.Usage, function.Description) { Summary = function.Summary };
 
-    /// <summary>A parameter of the report, inserted as <c>[@Name]</c>; its value replaces it when the measure is computed.</summary>
-    public static FormulaItem ForVariable(ReportVariable parameter)
+    /// <summary>
+    /// A parameter or a computed value of the report, inserted as <c>[@Name]</c>; its value replaces it when the formula
+    /// is computed.
+    /// </summary>
+    public static FormulaItem ForVariable(ReportVariable variable)
     {
-        var reference = VariableReferences.Reference(parameter.Name);
-        return new(FormulaItemKind.Variable, parameter.DisplayName, reference, reference,
-            Strings.Format(Strings.FormulaVariableHelp, VariableContext.Display(parameter))) { Summary = VariableContext.Display(parameter) };
+        var reference = VariableReferences.Reference(variable.Name);
+        if (VariableFormula.Definition(variable).Kind == VariableKind.Computed)
+            return new(FormulaItemKind.Variable, variable.Name, reference, reference, Strings.FormulaComputedVariableHelp) { Summary = "ƒ" };
+        var value = VariableContext.Display(variable);
+        return new(FormulaItemKind.Variable, variable.Name, reference, reference, Strings.Format(Strings.FormulaVariableHelp, value)) { Summary = value };
     }
+
+    /// <summary>The words of the variables' formulas, with an example each.</summary>
+    public static IReadOnlyList<FormulaItem> VariableKeywords() =>
+    [
+        Keyword("SELECT", "SELECT [A]"),
+        Keyword("TOP", "SELECT TOP 10 [A]"),
+        Keyword("WHERE", "SELECT [A] WHERE [B] = \"x\" AND [C] > 1000"),
+        Keyword("ORDER BY", "SELECT [A] ORDER BY [C] DESC"),
+        Keyword("DESC", "ORDER BY [C] DESC"),
+        Keyword("ASC", "ORDER BY [C] ASC"),
+        Keyword("IN", "SELECT [A] IN (\"x\"; \"y\")"),
+        Keyword("BETWEEN", "10 BETWEEN 3 AND 25"),
+        Keyword("STEP", "0.2 BETWEEN 0 AND 1 STEP 0.05"),
+    ];
+
+    private static FormulaItem Keyword(string keyword, string example) => ForKeyword(keyword) with { Example = example };
 
     public static FormulaItem ForKeyword(string keyword) =>
         new(FormulaItemKind.Keyword, keyword, keyword is "TRUE" or "FALSE" ? keyword : $" {keyword} ",
-            keyword, Strings.Named("FormulaKeyword" + keyword));
+            keyword, Strings.Named("FormulaKeyword" + keyword.Replace(" ", "")));
 
     /// <summary>A measure or a dimension of the model, inserted by its caption.</summary>
     public static FormulaItem For(FieldDescriptor field)

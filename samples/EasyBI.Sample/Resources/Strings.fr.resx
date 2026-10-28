@@ -184,9 +184,9 @@
     <value>Meilleurs clients</value>
   </data>
   <data name="TopCustomersChart" xml:space="preserve">
-    <value>Les {N} meilleurs clients</value>
+    <value>Les {0} meilleurs clients</value>
   </data>
   <data name="TopCustomersShare" xml:space="preserve">
-    <value>Part des {N} meilleurs clients</value>
+    <value>Part des {0} meilleurs clients</value>
   </data>
 </root>

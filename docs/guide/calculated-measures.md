@@ -55,7 +55,7 @@ The editor helps them as they type:
 | `COUNT([Channel] = "Web" AND [Date] >= "2024-01-01")` | The rows matching a condition |
 | `DISTINCTCOUNT([Customer])` | The number of distinct customers |
 | `IF([Revenue] > 1000; [Margin]; 0)` | A value by condition |
-| `[Revenue] * (1 + [@Rate])` | With the value of a [parameter](variables.md) the dashboard changes |
+| `[Revenue] * (1 + [@Rate])` | With the value of a [variable](variables.md) the dashboard changes |
 
 ### Functions
 
