@@ -177,4 +177,16 @@
   <data name="SalesServerNotAnswering" xml:space="preserve">
     <value>The sales server is not answering. Try again in a moment.</value>
   </data>
+  <data name="CustomerCount" xml:space="preserve">
+    <value>Number of customers</value>
+  </data>
+  <data name="TopCustomersSet" xml:space="preserve">
+    <value>Top customers</value>
+  </data>
+  <data name="TopCustomersChart" xml:space="preserve">
+    <value>Top {0} customers</value>
+  </data>
+  <data name="TopCustomersShare" xml:space="preserve">
+    <value>Share of the top {0} customers</value>
+  </data>
 </root>

@@ -30,6 +30,18 @@ opens older reports, and a report using a newer feature cannot be opened by an o
 - **Long lists of values**: a filter lists up to 10,000 values of a dimension instead of 1,000, says when there are
   more, and then searches them in the model (`DistinctValuesRequest.Search`), translated to SQL by EF Core. The sample
   has 2,500 customers to filter on.
+- **Variables**, written as formulas in the formula editor (`VariableFormula`): parameters (`10 BETWEEN 3 AND 25`, a
+  slider; `"Web" IN ("Web"; "Store")`, a list; a text, a date, yes/no), sets of a dimension's values
+  (`SELECT TOP [@N] [Customer] WHERE [Region] = "North" ORDER BY [Revenue] DESC`, conditions on dimensions keeping rows
+  and on measures keeping values; `SELECT [Customer] IN (...)`) and values computed once (`AVERAGE([Revenue])`, or by a dimension:
+  `MAX([Revenue] BY [Customer])`), saved
+  with the report (`ReportDefinition.Variables`) with the values the end user gave. Visuals use them in their Top
+  (`VisualDefinition.TopVariable`), their formulas (`[@Rate]`), their titles and texts (`{N}`), and sets dragged onto
+  Filters (their values) or onto Axis and Legend (the set's values and the others, `FieldRef.Set`); dragged onto a
+  dashboard, a variable shows its control or its values, and a set filters or groups the visual it is dropped on. The new `Variable`
+  visual type (`VariableView`) shows a parameter's control, a computed value or a set's values. Models never see
+  variables: `VariableContext` (`EasyBIContext.Variables`) replaces them before asking for data, inside the
+  `IQueryable`. See [Variables](guide/variables.md).
 
 ### Fixed
 

@@ -60,8 +60,8 @@ public static class MatrixBuilder
     {
         var keys = rows.Rows.Select(r => axis.Select((_, i) => InvariantValue.Format(r[i])).ToArray()).ToList();
         if (axis.Count == 1)
-            return new FilterSpec(axis[0].Field, FilterOperator.In, [.. keys.Select(k => k[0])], axis[0].Grain);
-        return FilterSpec.AnyOf([.. keys.Select(k => (IReadOnlyList<FilterSpec>)[.. axis.Select((a, i) => new FilterSpec(a.Field, FilterOperator.In, [k[i]], a.Grain))])]);
+            return axis[0].Matching([.. keys.Select(k => k[0])], members: true);
+        return FilterSpec.AnyOf([.. keys.Select(k => (IReadOnlyList<FilterSpec>)[.. axis.Select((a, i) => a.Matching([k[i]], members: true))])]);
     }
 
     private static MatrixData Pivot(

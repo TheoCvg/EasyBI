@@ -40,11 +40,15 @@ internal static class QueryEngine<T>
         foreach (var fieldRef in query.GroupBy)
         {
             var field = RequireKind(metadata.GetField(fieldRef.Field), FieldKind.Dimension);
-            var body = ApplyGrain(field, Rebind(selectors[field.Name], parameter), fieldRef.Grain);
-            var dataType = fieldRef.Grain switch
+            // Grouped by a set: true for its values, false for the others
+            var body = fieldRef.Set is not null
+                ? Predicate(metadata, selectors, new FilterSpec(field.Name, FilterOperator.In, fieldRef.SetMembers ?? [], fieldRef.Grain), parameter)
+                : ApplyGrain(field, Rebind(selectors[field.Name], parameter), fieldRef.Grain);
+            var dataType = (fieldRef.Set, fieldRef.Grain) switch
             {
-                DateGrain.None => field.DataType,
-                DateGrain.Day => DataType.Date,
+                ({ }, _) => DataType.Boolean,
+                (_, DateGrain.None) => field.DataType,
+                (_, DateGrain.Day) => DataType.Date,
                 _ => DataType.Text,
             };
             keyBodies.Add(body);
@@ -186,7 +190,8 @@ internal static class QueryEngine<T>
         List<Expression> cells,
         AnalyticQuery query)
     {
-        var sorts = query.Sort is { Count: > 0 } ? query.Sort : query.GroupBy.Select(g => new SortSpec(g.Key)).ToList();
+        // The values of a set come before the others
+        var sorts = query.Sort is { Count: > 0 } ? query.Sort : query.GroupBy.Select(g => new SortSpec(g.Key, Descending: g.Set is not null)).ToList();
         var result = grouped;
         var first = true;
         foreach (var sort in sorts)
@@ -415,7 +420,7 @@ internal static class QueryEngine<T>
         for (var i = 0; i < groupBy.Count; i++)
         {
             var grain = groupBy[i].Grain;
-            if (grain is DateGrain.None or DateGrain.Day) continue;
+            if (grain is DateGrain.None or DateGrain.Day || groupBy[i].Set is not null) continue;
             foreach (var row in rows)
                 row[i] = row[i] is int key ? new DatePeriod(grain, key) : null;
         }

@@ -12,7 +12,8 @@ namespace EasyBI.Abstractions;
 /// (columns), with totals. A <see cref="Pie"/> is a full disc, a <see cref="Donut"/> a ring with the total in its center.
 /// A <see cref="Gauge"/> shows one value on an arc between a minimum and a maximum, with an optional target
 /// (<see cref="VisualDefinition.Gauge"/>). A <see cref="Waterfall"/> stacks each category's value on the running total,
-/// up or down, and ends with the total.
+/// up or down, and ends with the total. A <see cref="Variable"/> shows a variable of the report
+/// (<see cref="VisualDefinition.Variable"/>) and lets the end user change it.
 /// </summary>
 [JsonConverter(typeof(VisualTypeJsonConverter))]
 public sealed record VisualType
@@ -41,10 +42,11 @@ public sealed record VisualType
     public static VisualType Donut { get; } = new("Donut");
     public static VisualType Gauge { get; } = new("Gauge");
     public static VisualType Waterfall { get; } = new("Waterfall");
+    public static VisualType Variable { get; } = new("Variable");
 
     /// <summary>EasyBI's own types.</summary>
     public static IReadOnlyList<VisualType> BuiltIn { get; } =
-        [Bar, Line, Pie, Kpi, Table, Text, Image, Area, Scatter, StackedBar, Matrix, Donut, Gauge, Waterfall];
+        [Bar, Line, Pie, Kpi, Table, Text, Image, Area, Scatter, StackedBar, Matrix, Donut, Gauge, Waterfall, Variable];
 
     public bool IsBuiltIn => BuiltIn.Contains(this);
 
@@ -90,7 +92,10 @@ public sealed record VisualDefinition
 
     public string Title { get; init; } = "";
 
-    /// <summary>Name of the queried semantic model; empty for a <see cref="VisualType.Text"/> or <see cref="VisualType.Image"/> visual.</summary>
+    /// <summary>
+    /// Name of the queried semantic model; empty for a <see cref="VisualType.Text"/>, <see cref="VisualType.Image"/> or
+    /// <see cref="VisualType.Variable"/> visual.
+    /// </summary>
     public string Model { get; init; } = "";
 
     /// <summary>
@@ -113,11 +118,19 @@ public sealed record VisualDefinition
 
     public int? Top { get; init; }
 
+    /// <summary>A number parameter of the report (<see cref="ReportVariable"/>) giving <see cref="Top"/>; null for <see cref="Top"/> itself.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? TopVariable { get; init; }
+
     /// <summary>Content of a <see cref="VisualType.Text"/> visual.</summary>
     public TextContent? Text { get; init; }
 
     /// <summary>Content of a <see cref="VisualType.Image"/> visual.</summary>
     public ImageContent? Image { get; init; }
+
+    /// <summary>The name of the report's variable a <see cref="VisualType.Variable"/> visual shows.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Variable { get; init; }
 
     /// <summary>Where the legend of a chart goes; <see cref="ChartLegend.Auto"/> (the default) follows the chart's size.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
@@ -154,6 +167,9 @@ public sealed record ReportDefinition
 
     /// <summary>Measures the end user defined with a formula; any visual of their model can show them.</summary>
     public IReadOnlyList<CalculatedMeasure> Measures { get; init; } = [];
+
+    /// <summary>The parameters and sets of values the visuals use, with their current values (see <see cref="ReportVariable"/>).</summary>
+    public IReadOnlyList<ReportVariable> Variables { get; init; } = [];
 }
 
 /// <summary>

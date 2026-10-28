@@ -254,6 +254,36 @@ internal static class Strings
     public static string FormulaTabDimensions => Get();
     public static string MeasuresHeader => Get();
     public static string DimensionsHeader => Get();
+    public static string VariableMissing => Get();
+    public static string NewVariable => Get();
+    public static string AddVariable => Get();
+    public static string EditVariable => Get();
+    public static string DeleteVariable => Get();
+    public static string DeleteVariableConfirm => Get();
+    public static string VariablesHeader => Get();
+    public static string VariableInvalidName => Get();
+    public static string VariableNameTaken => Get();
+    public static string VariableName => Get();
+    public static string TopFixed => Get();
+    public static string TopVariableHint => Get();
+    public static string TitleVariablesHint => Get();
+    public static string FormulaTabVariables => Get();
+    public static string FormulaVariableHelp => Get();
+    public static string FormulaTabKeywords => Get();
+    public static string VariableNameRequired => Get();
+    public static string SetEmpty => Get();
+    public static string SetPreview => Get();
+    public static string VariableEditorTitle => Get();
+    public static string VariableFormulaHint => Get();
+    public static string VariableFormulaPlaceholder => Get();
+    public static string VariablePreview => Get();
+    public static string DropVariableValue => Get();
+    public static string DropSetOtherModel => Get();
+    public static string FormulaComputedVariableHelp => Get();
+    public static string FilterSetKept => Get();
+    public static string FilterSetExcluded => Get();
+    public static string FilterExcludeSet => Get();
+    public static string NewVariableButton => Get();
 
     /// <summary>A text whose key is built (OperatorAdd, FormulaKeywordAND...).</summary>
     public static string Named(string key) => Get(key);

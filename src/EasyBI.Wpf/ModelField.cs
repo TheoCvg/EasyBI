@@ -32,6 +32,22 @@ public sealed record ModelField(ISemanticModel Model, FieldDescriptor Field, Cal
 }
 
 /// <summary>
+/// A variable of the report in a <see cref="FieldList"/>, with a <paramref name="Summary"/> of what it holds: what a
+/// field list drags for a set of values, which the designer takes like a dimension.
+/// </summary>
+public sealed record VariableItem(ReportVariable Variable, string Summary)
+{
+    public string Caption => Variable.Name;
+
+    public VariableKind Kind => VariableFormula.Definition(Variable).Kind;
+
+    public bool IsSet => Kind == VariableKind.Set;
+
+    /// <summary>@ for a parameter, ƒ for a computed value, { } for a set.</summary>
+    public string Glyph => Kind switch { VariableKind.Set => "{ }", VariableKind.Computed => "ƒ", _ => "@" };
+}
+
+/// <summary>
 /// Visuals made from fields dropped by the user: a first visual for a field, and the visual a field added to an
 /// existing one gives. Pure functions, so that an application can reuse or replace them.
 /// </summary>
@@ -76,7 +92,31 @@ public static class FieldVisuals
         }
 
         if (visual.Axis.Any(a => a.Field == field.Name) || visual.Legend?.Field == field.Name) return null;
-        var axis = AxisOf(field);
+        return WithAxis(visual, definition, AxisOf(field));
+    }
+
+    /// <summary>A visual showing a variable: a parameter's control, a computed value or a set's values.</summary>
+    public static VisualDefinition Create(ReportVariable variable) => new() { Type = VisualType.Variable, Variable = variable.Name };
+
+    /// <summary>
+    /// The visual with a set of values added, or null when it does not take it (not a set, another model, no room). On
+    /// a visual showing the set's dimension, the set filters it on its values; otherwise the dimension joins the visual
+    /// as a field does, grouped into the set's values and the others.
+    /// </summary>
+    public static VisualDefinition? AddVariable(VisualDefinition visual, ReportVariable variable, VisualTypeCatalog? types = null)
+    {
+        if (visual.Type.IsContent() || visual.Model != variable.Model || VariableFormula.Definition(variable) is not SetDefinition set) return null;
+        if (visual.Axis.Any(a => a.Field == set.Field) || visual.Legend?.Field == set.Field)
+        {
+            var values = new[] { "[@" + variable.Name + "]" };
+            if (visual.Filters.Any(f => f.Field == set.Field && f.Values.SequenceEqual(values))) return null;
+            return visual with { Filters = [.. visual.Filters, new FilterSpec(set.Field, FilterOperator.In, values)] };
+        }
+        return WithAxis(visual, (types ?? VisualTypeCatalog.Default).Get(visual.Type), new FieldRef(set.Field) { Set = variable.Name });
+    }
+
+    private static VisualDefinition? WithAxis(VisualDefinition visual, VisualTypeDefinition definition, FieldRef axis)
+    {
         if (visual.Type == VisualType.Kpi || visual.Type == VisualType.Gauge) return visual with { Type = VisualType.Bar, Axis = [axis], Gauge = null };
         if (definition.Axis.IsUsed && visual.Axis.Count == 0) return visual with { Axis = [axis] };
         if (definition.Legend.IsUsed && visual.Legend is null) return visual with { Legend = axis };

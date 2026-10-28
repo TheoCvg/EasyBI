@@ -13,6 +13,9 @@ public static class DashboardCommands
     public static RoutedCommand AddText { get; } = new(nameof(AddText), typeof(DashboardCommands));
     public static RoutedCommand AddImage { get; } = new(nameof(AddImage), typeof(DashboardCommands));
 
+    /// <summary>Shows a variable of the report in an item (parameter: the item).</summary>
+    public static RoutedCommand AddVariable { get; } = new(nameof(AddVariable), typeof(DashboardCommands));
+
     /// <summary>Edits the content of an item: designer for a visual, in-place editing for a text, file picker for an image.</summary>
     public static RoutedCommand EditItem { get; } = new(nameof(EditItem), typeof(DashboardCommands));
 

@@ -840,4 +840,124 @@
   <data name="Close" xml:space="preserve">
     <value>Fermer</value>
   </data>
+  <data name="VariableMissing" xml:space="preserve">
+    <value>La variable « {0} » n'existe pas</value>
+  </data>
+  <data name="NewVariable" xml:space="preserve">
+    <value>Nouvelle variable…</value>
+  </data>
+  <data name="AddVariable" xml:space="preserve">
+    <value>Variable</value>
+  </data>
+  <data name="EditVariable" xml:space="preserve">
+    <value>Modifier la variable</value>
+  </data>
+  <data name="DeleteVariable" xml:space="preserve">
+    <value>Supprimer la variable</value>
+  </data>
+  <data name="DeleteVariableConfirm" xml:space="preserve">
+    <value>Supprimer la variable « {0} » ? Les visuels et formules qui l'utilisent afficheront une erreur.</value>
+  </data>
+  <data name="VariablesHeader" xml:space="preserve">
+    <value>VARIABLES</value>
+  </data>
+  <data name="VariableInvalidName" xml:space="preserve">
+    <value>Un nom n'a pas d'espace autour, ni [ ] { } @ "</value>
+  </data>
+  <data name="VariableNameTaken" xml:space="preserve">
+    <value>Une variable s'appelle déjà « {0} »</value>
+  </data>
+  <data name="VariableName" xml:space="preserve">
+    <value>Nom</value>
+  </data>
+  <data name="TopFixed" xml:space="preserve">
+    <value>Nombre saisi</value>
+  </data>
+  <data name="TopVariableHint" xml:space="preserve">
+    <value>N'afficher que les premières lignes : autant que le nombre saisi ou qu'un paramètre</value>
+  </data>
+  <data name="TitleVariablesHint" xml:space="preserve">
+    <value>Une variable s'affiche par son nom entre accolades : {0}</value>
+  </data>
+  <data name="FormulaTabVariables" xml:space="preserve">
+    <value>Variables</value>
+  </data>
+  <data name="FormulaVariableHelp" xml:space="preserve">
+    <value>Un paramètre du rapport, que le tableau de bord change (actuellement {0})</value>
+  </data>
+  <data name="FormulaTabKeywords" xml:space="preserve">
+    <value>Mots-clés</value>
+  </data>
+  <data name="VariableNameRequired" xml:space="preserve">
+    <value>Donnez un nom à la variable</value>
+  </data>
+  <data name="SetEmpty" xml:space="preserve">
+    <value>Aucune valeur</value>
+  </data>
+  <data name="SetPreview" xml:space="preserve">
+    <value>{0} ({1} valeurs)</value>
+  </data>
+  <data name="VariableEditorTitle" xml:space="preserve">
+    <value>Variable</value>
+  </data>
+  <data name="VariableFormulaHint" xml:space="preserve">
+    <value>Une valeur est un paramètre que le tableau de bord change : 10, "Web", "2025-01-01", TRUE ; avec BETWEEN minimum AND maximum, un curseur ; avec IN (...), une liste. SELECT garde des valeurs d'une dimension : SELECT TOP 10 [Client] WHERE [Région] = "Nord" ORDER BY [CA] DESC ; une condition sur des dimensions garde des lignes, sur des mesures des valeurs. Toute autre formule est un nombre calculé une fois : AVERAGE([CA]). Les autres variables s'écrivent [@Nom].</value>
+  </data>
+  <data name="VariableFormulaPlaceholder" xml:space="preserve">
+    <value>10 BETWEEN 3 AND 25    ou    SELECT TOP [@N] [Client] ORDER BY [CA] DESC</value>
+  </data>
+  <data name="VariablePreview" xml:space="preserve">
+    <value>Donne : {0}</value>
+  </data>
+  <data name="DropVariableValue" xml:space="preserve">
+    <value>{0} est une valeur : utilisez-la dans une formule, [@{0}], ou dans un titre, {{{0}}}</value>
+  </data>
+  <data name="DropSetOtherModel" xml:space="preserve">
+    <value>Cet ensemble porte sur un autre modèle</value>
+  </data>
+  <data name="FormulaComputedVariableHelp" xml:space="preserve">
+    <value>Une valeur calculée une fois sur les données du rapport</value>
+  </data>
+  <data name="FilterSetKept" xml:space="preserve">
+    <value>{0} de l'ensemble</value>
+  </data>
+  <data name="FilterSetExcluded" xml:space="preserve">
+    <value>{0} hors de l'ensemble</value>
+  </data>
+  <data name="FilterExcludeSet" xml:space="preserve">
+    <value>Exclure les valeurs de l'ensemble</value>
+  </data>
+  <data name="NewVariableButton" xml:space="preserve">
+    <value>+ Variable</value>
+  </data>
+  <data name="FormulaKeywordSELECT" xml:space="preserve">
+    <value>Commence un ensemble : des valeurs d'une dimension</value>
+  </data>
+  <data name="FormulaKeywordTOP" xml:space="preserve">
+    <value>Garde les premières valeurs, autant qu'un nombre ou une variable</value>
+  </data>
+  <data name="FormulaKeywordWHERE" xml:space="preserve">
+    <value>Garde les valeurs vérifiant des conditions : sur des dimensions, les lignes ; sur des mesures, les valeurs</value>
+  </data>
+  <data name="FormulaKeywordORDERBY" xml:space="preserve">
+    <value>Trie les valeurs selon une expression, pour TOP</value>
+  </data>
+  <data name="FormulaKeywordDESC" xml:space="preserve">
+    <value>De la plus grande à la plus petite</value>
+  </data>
+  <data name="FormulaKeywordASC" xml:space="preserve">
+    <value>De la plus petite à la plus grande</value>
+  </data>
+  <data name="FormulaKeywordIN" xml:space="preserve">
+    <value>Les valeurs proposées, ou celles que liste un ensemble</value>
+  </data>
+  <data name="FormulaKeywordBETWEEN" xml:space="preserve">
+    <value>Les bornes d'un nombre : le tableau de bord affiche un curseur</value>
+  </data>
+  <data name="FormulaKeywordSTEP" xml:space="preserve">
+    <value>Le pas du curseur</value>
+  </data>
+  <data name="FormulaKeywordBY" xml:space="preserve">
+    <value>Lit une valeur pour chaque valeur d'une dimension, puis les agrège : le plus haut CA d'un client</value>
+  </data>
 </root>

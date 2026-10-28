@@ -16,6 +16,11 @@ namespace EasyBI.Wpf.Designer;
 /// a dimension after <c>[Région] =</c>...), the function at the caret (<see cref="CurrentCall"/>) and where the
 /// formula's problem is written (<see cref="Problem"/>).
 /// </para>
+/// <para>
+/// The same editor writes the report's variables (<see cref="ForVariable"/>): a name and a formula
+/// (<c>10 BETWEEN 3 AND 25</c>, <c>SELECT TOP [@N] [Client] ORDER BY [CA] DESC</c>, see <see cref="VariableFormula"/>),
+/// previewed as its value or the values of its set.
+/// </para>
 /// </summary>
 public sealed class CalculatedMeasureEditor : ObservableObject
 {
@@ -48,18 +53,31 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     private FormulaCall? _currentCall;
     private FormulaCompletion? _completion;
     private IReadOnlyList<FormulaItem> _suggestions = [];
+    // The variable edited, as it was
+    private readonly ReportVariable? _variable;
 
     /// <summary>
     /// Edits <c>measure</c>, or a new measure of <c>model</c> when it is null. A measure named like a measure of the
     /// model (see <see cref="MeasureContext.Definition"/>) redefines it.
     /// </summary>
     public CalculatedMeasureEditor(EasyBIContext context, ISemanticModel model, CalculatedMeasure? measure = null)
+        : this(context, model, measure, null, isVariable: false)
+    {
+    }
+
+    /// <summary>Edits a variable of the report (see <see cref="VariableFormula"/>), or a new one over <paramref name="model"/> when it is null.</summary>
+    public static CalculatedMeasureEditor ForVariable(EasyBIContext context, ISemanticModel model, ReportVariable? variable = null) =>
+        new(context, model, null, variable, isVariable: true);
+
+    private CalculatedMeasureEditor(EasyBIContext context, ISemanticModel model, CalculatedMeasure? measure, ReportVariable? variable, bool isVariable)
     {
         _context = context;
         Model = model;
-        _name = measure?.Name ?? MeasureContext.NewName();
-        _declared = model.Metadata.Fields.FirstOrDefault(f => f.Kind == FieldKind.Measure && f.Name == _name);
-        IsNew = measure is null;
+        IsVariable = isVariable;
+        _variable = variable;
+        _name = isVariable ? variable?.Name ?? "" : measure?.Name ?? MeasureContext.NewName();
+        _declared = isVariable ? null : model.Metadata.Fields.FirstOrDefault(f => f.Kind == FieldKind.Measure && f.Name == _name);
+        IsNew = isVariable ? variable is null : measure is null;
         FormatOptions =
         [
             new(null, () => Strings.FormatNumber),
@@ -68,12 +86,15 @@ public sealed class CalculatedMeasureEditor : ObservableObject
             new("C2", () => Strings.FormatCurrency),
         ];
         // A format set by the developer ("#,##0 €") is kept as an option of its own
-        if (measure?.Format is { } format && FormatOptions.All(o => o.Value != format))
+        var initialFormat = measure?.Format ?? variable?.Format;
+        if (initialFormat is { } format && FormatOptions.All(o => o.Value != format))
             FormatOptions = [.. FormatOptions, new(format, () => Strings.Format(Strings.FormatCustom, format))];
-        _format = FormatOptions.FirstOrDefault(o => o.Value == measure?.Format) ?? FormatOptions[0];
-        _caption = measure is null ? "" : measure.Caption.Length > 0 ? measure.Caption : _declared?.Caption ?? "";
-        _others = context.Measures.For(model.Metadata.Name).Where(m => m.Name != _name).ToArray();
-        _formula = measure is null ? "" : MeasureFormula.ToDisplay(measure.Formula, model.Metadata, _others, _name);
+        _format = FormatOptions.FirstOrDefault(o => o.Value == initialFormat) ?? FormatOptions[0];
+        _caption = isVariable ? _name : measure is null ? "" : measure.Caption.Length > 0 ? measure.Caption : _declared?.Caption ?? "";
+        // A variable may use every measure of the report
+        _others = context.Measures.For(model.Metadata.Name).Where(m => isVariable || m.Name != _name).ToArray();
+        _formula = isVariable ? variable is null ? "" : MeasureFormula.ToDisplay(variable.Formula, model.Metadata, _others)
+            : measure is null ? "" : MeasureFormula.ToDisplay(measure.Formula, model.Metadata, _others, _name);
         // Formulas use the model's fields and the report's other measures; under its own name, a redefinition reads the
         // model's measure
         static string Reference(FieldDescriptor field) => "[" + field.Caption.Replace("]", "]]") + "]";
@@ -85,13 +106,19 @@ public sealed class CalculatedMeasureEditor : ObservableObject
             .ToArray();
         Insertable = measures.Select(m => m.Text).ToArray();
         InsertableDimensions = model.Metadata.Dimensions.Select(Reference).ToArray();
-        _items = [.. MeasureFormula.Functions.Select(FormulaItem.For), .. measures, .. model.Metadata.Dimensions.Select(FormulaItem.For)];
+        // The report's values (a variable does not use itself)
+        var values = context.Variables.Values.Where(v => !isVariable || v.Name != _name).Select(FormulaItem.ForVariable).ToArray();
+        var keywords = isVariable ? FormulaItem.VariableKeywords() : [];
+        _items = [.. keywords, .. MeasureFormula.Functions.Select(FormulaItem.For), .. measures, .. model.Metadata.Dimensions.Select(FormulaItem.For), .. values];
         _catalog = _items;
         Tabs =
         [
+            .. keywords.Count > 0 ? [new FormulaCatalogTab(FormulaItemKind.Keyword, Strings.FormulaTabKeywords, "≡", keywords)] : Array.Empty<FormulaCatalogTab>(),
             new(FormulaItemKind.Function, Strings.FormulaTabFunctions, "ƒ", _items.Where(i => i.Kind == FormulaItemKind.Function).ToArray()),
             new(FormulaItemKind.Measure, Strings.FormulaTabMeasures, "Σ", _items.Where(i => i.Kind == FormulaItemKind.Measure).ToArray()),
             new(FormulaItemKind.Dimension, Strings.FormulaTabDimensions, "Aa", _items.Where(i => i.Kind == FormulaItemKind.Dimension).ToArray()),
+            // The report's variables, when it has some
+            .. values.Length > 0 ? [new FormulaCatalogTab(FormulaItemKind.Variable, Strings.FormulaTabVariables, "@", values)] : Array.Empty<FormulaCatalogTab>(),
         ];
         _selectedTab = Tabs[0];
         OperatorGroups = FormulaItem.OperatorGroups();
@@ -99,6 +126,9 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     }
 
     public ISemanticModel Model { get; }
+
+    /// <summary>Whether the editor writes a variable of the report rather than a measure (see <see cref="ForVariable"/>).</summary>
+    public bool IsVariable { get; }
 
     public bool IsNew { get; }
 
@@ -240,7 +270,11 @@ public sealed class CalculatedMeasureEditor : ObservableObject
         }
 
         IReadOnlyList<FormulaItem> found;
-        if (context.Slot == FormulaSlot.ComparedValue && !context.IsField)
+        if (IsVariable && VariableAllowed(context) is { } allowed)
+        {
+            found = Matching(allowed, context.Prefix);
+        }
+        else if (context.Slot == FormulaSlot.ComparedValue && !context.IsField)
         {
             if (FieldNamed(context.ComparedField) is not { } field) found = [];
             else if (_values.TryGetValue(field.Name, out var values)) found = values;
@@ -269,18 +303,56 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     {
         bool Of(FormulaItem item, FormulaItemKind kind) => item.Kind == kind;
         bool RowMeasure(FormulaItem item) => Of(item, FormulaItemKind.Measure) && item.Field?.IsCalculated != true;
+        var parameters = _items.Where(i => Of(i, FormulaItemKind.Variable));
         var items = context.Slot switch
         {
-            FormulaSlot.Value => _items.Where(i => Of(i, FormulaItemKind.Function) || Of(i, FormulaItemKind.Measure)),
+            FormulaSlot.Value => _items.Where(i => Of(i, FormulaItemKind.Function) || Of(i, FormulaItemKind.Measure)).Concat(parameters),
             FormulaSlot.RowValue => [.. _items.Where(RowMeasure), .. _items.Where(i => Of(i, FormulaItemKind.Dimension) && i.Field?.DataType == DataType.Number),
-                .. _items.Where(i => i.Caption == "IF")],
-            FormulaSlot.Condition => [.. _items.Where(i => Of(i, FormulaItemKind.Dimension)), .. _items.Where(RowMeasure), FormulaItem.ForKeyword("NOT")],
+                .. _items.Where(i => i.Caption == "IF"), .. parameters],
+            FormulaSlot.Condition => [.. _items.Where(i => Of(i, FormulaItemKind.Dimension)), .. _items.Where(RowMeasure), FormulaItem.ForKeyword("NOT"), .. parameters],
             FormulaSlot.DistinctField => [.. _items.Where(i => Of(i, FormulaItemKind.Dimension)), .. _items.Where(RowMeasure)],
             FormulaSlot.AfterOperand when context.InCondition => [FormulaItem.ForKeyword("AND"), FormulaItem.ForKeyword("OR")],
             _ => [],
         };
-        // After "[", only fields
-        return context.IsField ? items.Where(i => i.Field is not null) : items;
+        // After "[", only fields and parameters
+        return context.IsField ? items.Where(i => i.Field is not null || Of(i, FormulaItemKind.Variable)) : items;
+    }
+
+    // In a variable's formula, what its words call for where the caret is; null where a measure's formula goes (a
+    // condition after WHERE, an expression after ORDER BY, a computed value)
+    private IEnumerable<FormulaItem>? VariableAllowed(FormulaContext context)
+    {
+        var tokens = FormulaEditing.Tokenize(Formula).Where(t => t.Start + t.Length <= context.Start).ToArray();
+        string Text(FormulaToken token) => Formula.Substring(token.Start, token.Length).ToUpperInvariant();
+        FormulaItem Word(string word) => _items.First(i => i.Kind == FormulaItemKind.Keyword && i.Caption == word);
+        var dimensions = _items.Where(i => i.Kind == FormulaItemKind.Dimension);
+        if (tokens.Length == 0) return [Word("SELECT"), .. _items.Where(i => i.Kind is FormulaItemKind.Function or FormulaItemKind.Measure or FormulaItemKind.Variable)];
+        if (Text(tokens[0]) != "SELECT")
+        {
+            // After a value alone: its bounds or its choices
+            if (tokens.Length == 1 && tokens[0].Kind is FormulaTokenKind.Number or FormulaTokenKind.Text) return [Word("BETWEEN"), Word("IN")];
+            // A computed value: an aggregation's value read BY a dimension, MAX([Revenue] BY [Customer])
+            if (Text(tokens[^1]) == "BY") return dimensions;
+            return tokens.Length >= 3 && context.Slot == FormulaSlot.AfterOperand && tokens[^1].Kind == FormulaTokenKind.Field
+                && Text(tokens[^2]) == "(" && Text(tokens[^3]) is "SUM" or "AVERAGE" or "AVG" or "MIN" or "MAX" ? [Word("BY")] : null;
+        }
+        // The last word of the set's formula tells the clause
+        var clause = tokens.Last(t => t.Kind == FormulaTokenKind.Keyword && Text(t) is "SELECT" or "TOP" or "WHERE" or "BY" or "IN");
+        var after = tokens.SkipWhile(t => t != clause).Skip(1).ToArray();
+        var afterField = after.Length > 0 && after[^1].Kind == FormulaTokenKind.Field;
+        return Text(clause) switch
+        {
+            "SELECT" when after.Length == 0 => [Word("TOP"), .. dimensions],
+            "TOP" when after.Length == 0 => _items.Where(i => i.Kind == FormulaItemKind.Variable),
+            "TOP" when after.Length == 1 => dimensions,
+            "SELECT" or "TOP" when afterField => [Word("IN"), Word("WHERE"), Word("ORDER BY")],
+            "IN" when after.Length > 0 && Formula.Substring(after[^1].Start, after[^1].Length) == ")" => [Word("WHERE"), Word("ORDER BY")],
+            "WHERE" when context.Slot == FormulaSlot.AfterOperand => [FormulaItem.ForKeyword("AND"), FormulaItem.ForKeyword("OR"), Word("ORDER BY")],
+            "WHERE" when context.Slot == FormulaSlot.Value =>
+                [.. dimensions, .. _items.Where(i => i.Kind is FormulaItemKind.Measure or FormulaItemKind.Function or FormulaItemKind.Variable), FormulaItem.ForKeyword("NOT")],
+            "BY" when context.Slot == FormulaSlot.AfterOperand => [Word("DESC"), Word("ASC")],
+            _ => null,
+        };
     }
 
     // Starting like what is typed; a field may also contain it, after those starting like it
@@ -352,6 +424,9 @@ public sealed class CalculatedMeasureEditor : ObservableObject
         private set => SetProperty(ref _preview, value);
     }
 
+    /// <summary>The variable as edited, in its stored form; null while it cannot be saved (see <see cref="ForVariable"/>).</summary>
+    public ReportVariable? VariableResult { get; private set; }
+
     /// <summary>The preview being computed (tests wait for it).</summary>
     public Task PreviewTask { get; private set; } = Task.CompletedTask;
 
@@ -364,6 +439,7 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     /// </summary>
     public bool Save()
     {
+        if (IsVariable) return SaveVariable();
         if (Result is null) return false;
         if (_declared is not null && Result == MeasureContext.Definition(_declared, Model.Metadata.Name)) Reset();
         else _context.Measures.Set(Result);
@@ -373,11 +449,60 @@ public sealed class CalculatedMeasureEditor : ObservableObject
     /// <summary>Restores the model's measure: the report no longer redefines it.</summary>
     public void Reset() => _context.Measures.Remove(Model.Metadata.Name, _name);
 
+    // Adds or replaces the variable; renamed, the formulas using it follow
+    private bool SaveVariable()
+    {
+        if (VariableResult is not { } variable) return false;
+        var renamed = !IsNew && variable.Name != _name;
+        _context.Variables.Set(variable, IsNew ? null : _name);
+        if (!renamed) return true;
+        string Rename(string formula) => MeasureFormula.Rename(formula, r => r == "@" + _name ? "@" + variable.Name : r);
+        foreach (var other in _context.Variables.Variables.Where(v => VariableFormula.Variables(v.Formula).Contains(_name)).ToArray())
+            _context.Variables.Set(other with { Formula = Rename(other.Formula) });
+        foreach (var measure in _context.Measures.Measures.Where(m => MeasureFormula.Variables(m.Formula).Contains(_name)).ToArray())
+            _context.Measures.Set(measure with { Formula = Rename(measure.Formula) });
+        return true;
+    }
+
+    private void CheckVariable()
+    {
+        VariableResult = null;
+        var name = Caption.Trim();
+        var others = _context.Variables.Variables.Where(v => v.Name != _name).ToArray();
+        var problem = VariableFormula.Check(Formula, Model.Metadata, out var stored, _others, name.Length > 0 ? name : null, others);
+        Problem = Formula.Trim().Length == 0 ? null : problem;
+        Error = name.Length == 0 ? Strings.VariableNameRequired
+            : !ReportVariable.IsValidName(name) ? Strings.VariableInvalidName
+            : others.Any(v => v.Name == name) ? Strings.Format(Strings.VariableNameTaken, name)
+            : problem?.Message;
+        CurrentCall = FormulaEditing.CallAt(Formula, Math.Min(CaretIndex, Formula.Length));
+        _wanted = stored;
+        if (stored is not null && Error is null)
+        {
+            // The value the dashboard gave a parameter stays while its formula does
+            VariableResult = new ReportVariable
+            {
+                Name = name,
+                Model = Model.Metadata.Name,
+                Formula = stored,
+                Format = Format.Value,
+                Value = _variable?.Formula == stored ? _variable.Value : null,
+            };
+        }
+        ShowPreview();
+        if (stored is not null && stored != _computed && !_previewing) PreviewTask = ComputePreviewsAsync();
+    }
+
     private void Check()
     {
+        if (IsVariable)
+        {
+            CheckVariable();
+            return;
+        }
         Result = null;
         var caption = Caption.Trim();
-        var problem = MeasureFormula.Check(Formula, Model.Metadata, out var stored, _others, _name);
+        var problem = MeasureFormula.Check(Formula, Model.Metadata, out var stored, _others, _name, _context.Variables.Variables);
         // Nothing to point out in an empty formula
         Problem = Formula.Trim().Length == 0 ? null : problem;
         Error = caption.Length == 0 ? Strings.MeasureCaptionRequired
@@ -396,7 +521,29 @@ public sealed class CalculatedMeasureEditor : ObservableObject
         Preview = _wanted is null || _wanted != _computed ? null
             : _failure is not null ? Strings.Format(Strings.Error, _failure)
             : _total is null ? "—"
+            : _total is IReadOnlyList<string> members ? members.Count == 0 ? Strings.SetEmpty
+                : Strings.Format(Strings.SetPreview, string.Join(", ", members.Take(PreviewMembers)) + (members.Count > PreviewMembers ? ", …" : ""), members.Count)
+            : _total is ValuePreview value ? VariableContext.Display(value.Value, value.Type, Format.Value) is { Length: > 0 } shown ? shown : "—"
             : ValueFormatter.Format(Convert.ToDouble(_total, EasyBILocalization.FormatCulture), Format.Value);
+
+    private const int PreviewMembers = 5;
+
+    // The value of a parameter or a computed variable, formatted as the format chosen
+    private sealed record ValuePreview(string? Value, DataType Type);
+
+    // What a variable's formula gives, with the report's other variables
+    private async Task<object?> PreviewVariableAsync(string formula)
+    {
+        const string name = "\u0001preview";
+        var variable = new ReportVariable { Name = name, Model = Model.Metadata.Name, Formula = formula };
+        var variables = new VariableContext();
+        variables.Load([.. _context.Variables.Variables.Where(v => v.Name != _name), variable]);
+        var source = _context.SetSource(null);
+        var definition = VariableFormula.Definition(variable);
+        if (definition.Kind != VariableKind.Set) return new ValuePreview(await variables.ValueAsync(name, source), definition.DataType);
+        var members = await variables.MembersAsync(name, source);
+        return members.Select(m => VariableContext.DisplayMember(m, variable, Model.Metadata)).ToArray();
+    }
 
     private async Task LoadValuesAsync(FieldDescriptor field, Action loaded)
     {
@@ -430,10 +577,15 @@ public sealed class CalculatedMeasureEditor : ObservableObject
                 (object? total, string? failure) = (null, null);
                 try
                 {
-                    // Its total, as a KPI would show it, with the measures it uses
-                    var kpi = new VisualDefinition { Model = Model.Metadata.Name, Type = VisualType.Kpi, Values = [new(measure.Name)] };
-                    var data = await Model.GetDataAsync(kpi.ToDataRequest(Model.Metadata, [.. _others, measure]));
-                    total = data.Result.Rows.FirstOrDefault()?[0];
+                    if (IsVariable) total = await PreviewVariableAsync(formula);
+                    else
+                    {
+                        // Its total, as a KPI would show it, with the measures it uses
+                        var kpi = new VisualDefinition { Model = Model.Metadata.Name, Type = VisualType.Kpi, Values = [new(measure.Name)] };
+                        var measures = await _context.Variables.ResolveAsync([.. _others, measure], _context.SetSource(null));
+                        var data = await Model.GetDataAsync(kpi.ToDataRequest(Model.Metadata, measures));
+                        total = data.Result.Rows.FirstOrDefault()?[0];
+                    }
                 }
                 catch (Exception ex)
                 {

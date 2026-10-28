@@ -14,15 +14,15 @@ public static class ReportSerializer
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Converters = { new JsonStringEnumConverter() },
-        // Reports without calculated measures stay as they were before measures existed
-        TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { OmitEmptyMeasures } },
+        // Reports without calculated measures or variables stay as they were before those existed
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { OmitEmptyLists } },
     };
 
-    private static void OmitEmptyMeasures(JsonTypeInfo type)
+    private static void OmitEmptyLists(JsonTypeInfo type)
     {
         if (type.Type != typeof(ReportDefinition)) return;
-        foreach (var property in type.Properties.Where(p => p.Name == "measures"))
-            property.ShouldSerialize = (_, value) => value is IReadOnlyCollection<CalculatedMeasure> { Count: > 0 };
+        foreach (var property in type.Properties.Where(p => p.Name is "measures" or "variables"))
+            property.ShouldSerialize = (_, value) => value is System.Collections.ICollection { Count: > 0 };
     }
 
     public static string Serialize(ReportDefinition report) => JsonSerializer.Serialize(report, Options);

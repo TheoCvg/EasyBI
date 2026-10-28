@@ -143,6 +143,10 @@ public sealed class VisualTypeCatalog
         {
             Validate = v => v.Image is null ? Strings.ValidationNoImage : null,
         };
+        yield return Content(VisualType.Variable, () => Strings.VisualTypeVariable) with
+        {
+            Validate = v => string.IsNullOrEmpty(v.Variable) ? Strings.ValidationNoVariable : null,
+        };
     }
 
     private static VisualTypeDefinition Chart(VisualType type, Func<string> caption, VisualTypeGroup group) =>

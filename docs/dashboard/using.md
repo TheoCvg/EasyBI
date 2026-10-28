@@ -26,7 +26,7 @@ makes a visual; the other items make room live around a placeholder.
 - **"+"** on the right and bottom edges of an item adds an item next to it; "+" between lines and between bands adds a
   line or a band.
 - A **free space** (room left by items of fixed size) shows a placeholder that adds an item there.
-- An **empty item** offers a visual (opens the designer), a text or an image.
+- An **empty item** offers a visual (opens the designer), a text, an image or a [variable](../guide/variables.md) to change.
 
 ## Move
 

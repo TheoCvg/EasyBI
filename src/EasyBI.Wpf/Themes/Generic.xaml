@@ -58,6 +58,9 @@
                                         <Button Content="{bi:Localize AddImage}" Margin="4" Padding="12,6" Cursor="Hand"
                                                 Command="{x:Static local:DashboardCommands.AddImage}"
                                                 CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
+                                        <Button Content="{bi:Localize AddVariable}" Margin="4" Padding="12,6" Cursor="Hand"
+                                                Command="{x:Static local:DashboardCommands.AddVariable}"
+                                                CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
                                     </WrapPanel>
                                 </bi:SlotHost>
                             </Grid>

@@ -14,6 +14,11 @@
             <Setter.Value>
                 <ControlTemplate TargetType="designer:FilterEditor">
                     <DockPanel>
+                        <!-- A set of the report: its values, kept or left out -->
+                        <StackPanel DockPanel.Dock="Top" MinWidth="250" Visibility="{Binding IsSet, Converter={StaticResource Visible}}">
+                            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <CheckBox Content="{bi:Localize FilterExcludeSet}" IsChecked="{Binding ExcludeSet}" />
+                        </StackPanel>
                         <!-- A number: a list of values (dimension) or any value (measure), or a comparison -->
                         <ComboBox DockPanel.Dock="Top" Margin="0,0,0,8" MinWidth="250"
                                   ItemsSource="{Binding Conditions}" SelectedItem="{Binding Condition}" DisplayMemberPath="Label"
