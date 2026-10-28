@@ -24,7 +24,7 @@ public class LibraryThemeTests
 
     // kept: the keys a library has no color for, declared as such
     private static void AssertMapsEveryBrush(IReadOnlyDictionary<ComponentResourceKey, object> map, ResourceDictionary library, string name,
-        IReadOnlySet<ComponentResourceKey>? kept = null)
+        IReadOnlyCollection<ComponentResourceKey>? kept = null)
     {
         var unmapped = BrushKeys
             .Select(p => (p.Name, Key: (ComponentResourceKey)p.GetValue(null)!))
@@ -54,7 +54,11 @@ public class LibraryThemeTests
         var library = new ResourceDictionary();
         library.MergedDictionaries.Add(new BundledTheme { BaseTheme = BaseTheme.Light, PrimaryColor = PrimaryColor.DeepPurple, SecondaryColor = SecondaryColor.Lime });
         var element = new System.Windows.Controls.Border();
-        element.Resources.MergedDictionaries.Add(new MaterialDesignTheme(library));
+        // Internal constructor, called by reflection: InternalsVisibleTo from two libraries would clash on .NET Framework,
+        // where both carry the same compiler polyfills
+        var mapping = (MaterialDesignTheme)Activator.CreateInstance(
+            typeof(MaterialDesignTheme), BindingFlags.Instance | BindingFlags.NonPublic, null, [library], null)!;
+        element.Resources.MergedDictionaries.Add(mapping);
         element.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, EasyBITheme.BackgroundBrushKey);
         var light = ((SolidColorBrush)element.Background).Color;
 

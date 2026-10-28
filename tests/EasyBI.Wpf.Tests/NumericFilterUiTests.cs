@@ -18,13 +18,13 @@ public class NumericFilterUiTests
 
         public ModelMetadata Metadata => inner.Metadata;
 
-        public Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default) =>
-            inner.ExecuteAsync(query, cancellationToken);
+        public Task<VisualData> GetDataAsync(VisualDataRequest request, CancellationToken cancellationToken = default) =>
+            inner.GetDataAsync(request, cancellationToken);
 
-        public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default)
+        public Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default)
         {
             DistinctQueries++;
-            return inner.GetDistinctValuesAsync(field, cancellationToken);
+            return inner.GetDistinctValuesAsync(request, cancellationToken);
         }
     }
 

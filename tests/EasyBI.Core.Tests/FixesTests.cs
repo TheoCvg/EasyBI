@@ -19,7 +19,7 @@ public class FixesTests
             .Dimension(r => r.Region, "Région")
             .Measure(r => r.Amount, "CA");
 
-        var distinct = await model.GetDistinctValuesAsync("Region");
+        var distinct = (await model.GetDistinctValuesAsync(new("Region"))).Values;
         Assert.Contains(null, distinct);
 
         var onlyNull = new AnalyticQuery([], [new("Amount")],
@@ -143,7 +143,7 @@ public class FixesTests
         var model = SemanticModel.For(source, "m").Dimension(r => r.Region, "Région").Dimension(r => r.Category, "Catégorie").Measure(r => r.Amount, "CA");
         FieldRef[] groupBy = [new("Region"), new("Category")];
 
-        var result = await model.ExecuteAsync(new(groupBy[..fields], [new("Amount")]));
+        var result = await model.ExecuteAsync(new(groupBy.Take(fields).ToArray(), [new("Amount")]));
 
         Assert.Equal(fields == 1 ? 2 : 3, result.Rows.Count);
         var expression = Assert.Single(source.Log.Executed);
@@ -185,7 +185,7 @@ public class FixesTests
             .Dimension(r => r.Region, "Région").Measure(r => r.Amount, "CA");
 
         await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => model.ExecuteAsync(new([new("Region")], [new("Amount")]))));
-        await model.GetDistinctValuesAsync("Region");
+        await model.GetDistinctValuesAsync(new("Region"));
 
         Assert.Equal(5, created);
         Assert.Equal(5, log.Disposed);

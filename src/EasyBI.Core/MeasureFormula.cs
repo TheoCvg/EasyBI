@@ -14,9 +14,10 @@ namespace EasyBI.Core;
 /// + - * /, the comparisons = &lt;&gt; &lt; &lt;= &gt; &gt;=, AND, OR and NOT; numbers take a decimal point, texts and
 /// dates go in double quotes (<c>"2024-12-31"</c>), arguments are separated by <c>;</c> or <c>,</c>. A formula is
 /// stored with field names and shown with captions; a <c>]</c> inside brackets is written <c>]]</c>, a <c>"</c>
-/// inside quotes <c>""</c>.
+/// inside quotes <c>""</c>. A parameter of the report is written <c>[@Name]</c> (<see cref="ReportVariable"/>): its
+/// value replaces it before the query (<see cref="WithValues"/>).
 /// </summary>
-public static class MeasureFormula
+public static partial class MeasureFormula
 {
     /// <summary>The functions of the formulas, in the order the designer offers them.</summary>
     public static IReadOnlyList<FormulaFunction> Functions { get; } =
@@ -38,46 +39,56 @@ public static class MeasureFormula
     /// The name of the measure the formula defines: a measure cannot use itself, even through others, but the
     /// redefinition of a model's measure reads the model's one under its own name.
     /// </param>
+    /// <param name="variables">The report's variables, whose parameters it may use.</param>
     /// <returns>Null when the formula is valid, otherwise the problem worded for the end user.</returns>
-    public static string? Validate(string formula, ModelMetadata metadata, IEnumerable<CalculatedMeasure>? measures = null, string? name = null)
+    public static string? Validate(string formula, ModelMetadata metadata, IEnumerable<CalculatedMeasure>? measures = null, string? name = null,
+        IEnumerable<ReportVariable>? variables = null)
     {
-        var scope = new Scope(metadata, measures, name);
-        try
-        {
-            var tree = Parse(formula);
-            new Checker(formula, metadata, reference => scope.Resolve(reference, byCaption: false)).Check(tree);
-            scope.CheckCycles(tree, reference => scope.Resolve(reference, byCaption: false).Name);
-            return null;
-        }
-        catch (FormulaException ex)
-        {
-            return ex.Message;
-        }
+        var scope = new Scope(metadata, measures, name, variables);
+        return Analyze(formula, metadata, scope, byCaption: false, out _)?.Message;
     }
 
     /// <summary>Whether the formula is only the field <paramref name="name"/>, such as <c>[Amount]</c> (spaces and parentheses aside).</summary>
-    public static bool IsOnly(string formula, string name)
-    {
-        try
-        {
-            return Parse(formula) is FieldNode reference && reference.Text == name;
-        }
-        catch (FormulaException)
-        {
-            return false;
-        }
-    }
+    public static bool IsOnly(string formula, string name) =>
+        Parse(formula, out var tree) is null && tree is FieldNode reference && reference.Text == name;
 
     /// <summary>
     /// The names a stored formula refers to, once each: fields of the model and calculated measures of the report.
     /// It accepts a formula that is not valid.
     /// </summary>
     public static IReadOnlyList<string> References(string formula) =>
+        Names(formula).Where(n => !IsVariable(n)).ToArray();
+
+    /// <summary>The names of the variables a stored formula uses (<c>[@Rate]</c>: Rate), once each.</summary>
+    public static IReadOnlyList<string> Variables(string formula) =>
+        Names(formula).Where(IsVariable).Select(n => n.Substring(1)).ToArray();
+
+    /// <summary>
+    /// The formula with each variable (<c>[@Rate]</c>) replaced by the text <paramref name="literal"/> gives for its name:
+    /// a number, a text in quotes...
+    /// </summary>
+    public static string WithValues(string formula, Func<string, string> literal)
+    {
+        var text = new StringBuilder();
+        var position = 0;
+        foreach (var token in FormulaEditing.Tokenize(formula).Where(t => t.Kind == FormulaTokenKind.Field))
+        {
+            var name = FieldText(formula.Substring(token.Start, token.Length));
+            if (!IsVariable(name)) continue;
+            text.Append(formula, position, token.Start - position).Append(literal(name.Substring(1)));
+            position = token.Start + token.Length;
+        }
+        return text.Append(formula, position, formula.Length - position).ToString();
+    }
+
+    // A reference to a variable of the report rather than to a field: [@Rate]
+    private static bool IsVariable(string reference) => reference.StartsWith("@", StringComparison.Ordinal);
+
+    private static IEnumerable<string> Names(string formula) =>
         FormulaEditing.Tokenize(formula)
             .Where(t => t.Kind == FormulaTokenKind.Field)
             .Select(t => FieldText(formula.Substring(t.Start, t.Length)))
-            .Distinct()
-            .ToArray();
+            .Distinct();
 
     /// <summary>
     /// The formula as the user reads it: names replaced by captions, those of the report's <paramref name="measures"/>
@@ -101,14 +112,15 @@ public static class MeasureFormula
         ModelMetadata metadata,
         out string? error,
         IEnumerable<CalculatedMeasure>? measures = null,
-        string? name = null)
+        string? name = null,
+        IEnumerable<ReportVariable>? variables = null)
     {
-        error = Check(text, metadata, out var stored, measures, name)?.Message;
+        error = Check(text, metadata, out var stored, measures, name, variables)?.Message;
         return stored;
     }
 
     /// <summary>
-    /// Checks the formula typed by the user (see <see cref="FromDisplay(string, ModelMetadata, out string?, IEnumerable{CalculatedMeasure}?, string?)"/>
+    /// Checks the formula typed by the user (see <see cref="FromDisplay(string, ModelMetadata, out string?, IEnumerable{CalculatedMeasure}?, string?, IEnumerable{ReportVariable}?)"/>
     /// and <see cref="Validate"/>).
     /// </summary>
     /// <returns>
@@ -120,30 +132,33 @@ public static class MeasureFormula
         ModelMetadata metadata,
         out string? stored,
         IEnumerable<CalculatedMeasure>? measures = null,
-        string? name = null)
+        string? name = null,
+        IEnumerable<ReportVariable>? variables = null)
     {
-        var scope = new Scope(metadata, measures, name);
-        FormulaProblem? problem;
-        try
+        var scope = new Scope(metadata, measures, name, variables);
+        // Checked as typed, so that the problems name the fields by their captions
+        if (Analyze(text, metadata, scope, byCaption: true, out var tree) is { } fault)
         {
-            var tree = Parse(text);
-            // Checked as typed, so that the problems name the fields by their captions
-            new Checker(text, metadata, reference => scope.Resolve(reference, byCaption: true)).Check(tree);
-            scope.CheckCycles(tree, reference => scope.Resolve(reference, byCaption: true).Name);
-            var references = References(tree).Select(r => r.Text).Distinct()
-                .ToDictionary(reference => reference, reference => scope.Resolve(reference, byCaption: true).Name);
-            stored = Rewrite(text, reference => references[reference]);
-            return null;
-        }
-        catch (FormulaException ex)
-        {
+            stored = null;
             // Without a place, the whole formula is concerned
-            problem = ex.Start < 0
-                ? new FormulaProblem(ex.Message, 0, text.Length)
-                : new FormulaProblem(ex.Message, ex.Start, Math.Max(ex.End - ex.Start, 0));
+            return fault.Start < 0
+                ? new FormulaProblem(fault.Message, 0, text.Length)
+                : new FormulaProblem(fault.Message, fault.Start, Math.Max(fault.End - fault.Start, 0));
         }
-        stored = null;
-        return problem;
+        var references = References(tree!).Select(r => r.Text).Where(r => !IsVariable(r)).Distinct()
+            .ToDictionary(reference => reference, reference => scope.Resolve(reference, byCaption: true, out _)!.Name);
+        stored = Rewrite(text, reference => references.TryGetValue(reference, out var named) ? named : reference);
+        return null;
+    }
+
+    // The first problem of the formula: how it is written, then the kinds of its values, then loops between measures
+    private static Fault? Analyze(string formula, ModelMetadata metadata, Scope scope, bool byCaption, out Node? tree)
+    {
+        if (Parse(formula, out tree) is { } fault) return fault;
+        fault = new Checker(formula, metadata, (string reference, out string? problem) => scope.Resolve(reference, byCaption, out problem), scope.Variable).Check(tree!)
+            ?? scope.CheckCycles(tree!, byCaption);
+        if (fault is not null) tree = null;
+        return fault;
     }
 
     /// <summary>
@@ -158,7 +173,9 @@ public static class MeasureFormula
         Type rowType,
         Func<string, Expression> measure,
         Func<string, LambdaExpression> selector) =>
-        new Builder(rows, rowType, measure, selector).Group(Parse(formula));
+        Parse(formula, out var tree) is { } fault
+            ? throw new InvalidOperationException(fault.Message)
+            : new Builder(rows, rowType, measure, selector).Group(tree!);
 
     // "[Région]" → "Région" ("]]" stands for "]")
     private static string FieldText(string token) => token.TrimStart('[').TrimEnd(']').Replace("]]", "]").Trim();
@@ -173,10 +190,13 @@ public static class MeasureFormula
         private readonly string? _name;
         private readonly CalculatedMeasure[] _measures;
 
-        public Scope(ModelMetadata metadata, IEnumerable<CalculatedMeasure>? measures, string? name)
+        private readonly ReportVariable[] _variables;
+
+        public Scope(ModelMetadata metadata, IEnumerable<CalculatedMeasure>? measures, string? name, IEnumerable<ReportVariable>? variables = null)
         {
             _metadata = metadata;
             _name = name;
+            _variables = variables?.ToArray() ?? [];
             _measures = (measures ?? []).Where(m => m.Model == metadata.Name && m.Name != name).ToArray();
             Fields =
             [
@@ -189,30 +209,43 @@ public static class MeasureFormula
 
         public IReadOnlyList<FieldDescriptor> Fields { get; }
 
-        public FieldDescriptor Resolve(string reference, bool byCaption)
+        /// <returns>What the variable named by a reference (<c>@Rate</c>) holds, or null when there is none.</returns>
+        public VariableDefinition? Variable(string reference) =>
+            _variables.FirstOrDefault(v => v.Name == reference.Substring(1)) is { } variable ? VariableFormula.Definition(variable) : null;
+
+        /// <returns>The field, or null with the <paramref name="problem"/> of an unknown or ambiguous reference.</returns>
+        public FieldDescriptor? Resolve(string reference, bool byCaption, out string? problem)
         {
+            problem = null;
             var byName = Fields.FirstOrDefault(f => f.Name == reference);
             if (byCaption)
             {
                 var captioned = Fields.Where(f => string.Equals(f.Caption, reference, StringComparison.CurrentCultureIgnoreCase)).ToArray();
-                if (captioned.Length > 1) throw new FormulaException(Strings.Format(Strings.FormulaAmbiguous, reference));
+                if (captioned.Length > 1)
+                {
+                    problem = Strings.Format(Strings.FormulaAmbiguous, reference);
+                    return null;
+                }
                 byName = captioned.SingleOrDefault() ?? byName;
             }
-            return byName ?? throw new FormulaException(Strings.Format(Strings.FormulaUnknownField, reference));
+            if (byName is null) problem = Strings.Format(Strings.FormulaUnknownField, reference);
+            return byName;
         }
 
         /// <summary>
         /// Refuses a measure that uses itself through others. Under its own name, the redefinition of a model's measure
         /// reads the model's one, as the query does: only the report's own measures can loop.
         /// </summary>
-        public void CheckCycles(Node tree, Func<string, string> nameOf)
+        public Fault? CheckCycles(Node tree, bool byCaption)
         {
-            foreach (var reference in References(tree))
+            foreach (var reference in References(tree).Where(r => !IsVariable(r.Text)))
             {
                 List<string> path = _name is null ? [] : [_name];
-                if (Cycle(nameOf(reference.Text), path) is { } cycle)
-                    throw new FormulaException(Strings.Format(Strings.FormulaCycle, string.Join(" → ", cycle.Select(Caption))), reference.Start, reference.End);
+                // Checked once every reference resolves
+                if (Cycle(Resolve(reference.Text, byCaption, out _)!.Name, path) is { } cycle)
+                    return new Fault(Strings.Format(Strings.FormulaCycle, string.Join(" → ", cycle.Select(Caption))), reference.Start, reference.End);
             }
+            return null;
         }
 
         private List<string>? Cycle(string current, List<string> path)
@@ -241,7 +274,9 @@ public static class MeasureFormula
     {
         var text = new StringBuilder();
         var position = 0;
-        foreach (var token in Tokenize(formula).Where(t => t.Kind == TokenKind.Field))
+        // The fields after a problem stay as written
+        Tokenize(formula, out var tokens);
+        foreach (var token in tokens.Where(t => t.Kind == TokenKind.Field))
         {
             text.Append(formula, position, token.Start - position).Append('[').Append(replace(token.Text).Replace("]", "]]")).Append(']');
             position = token.End;
@@ -255,7 +290,7 @@ public static class MeasureFormula
         NegateNode negate => References(negate.Operand),
         NotNode not => References(not.Operand),
         BinaryNode binary => References(binary.Left).Concat(References(binary.Right)),
-        CallNode call => call.Arguments.SelectMany(References),
+        CallNode call => call.Arguments.SelectMany(References).Concat(call.By is { } by ? [by] : []),
         _ => [],
     };
 
@@ -265,15 +300,31 @@ public static class MeasureFormula
 
     /// <summary>
     /// Checks the kinds of values: a formula gives a number, a condition is a comparison, a dimension is only read row
-    /// by row inside an aggregation function.
+    /// by row inside an aggregation function. With <c>groupsBy</c>, as in a variable's value computed once, an aggregation
+    /// may read its value for each value of a dimension: <c>MAX([Revenue] BY [Customer])</c>.
     /// </summary>
-    private sealed class Checker(string formula, ModelMetadata metadata, Func<string, FieldDescriptor> resolve)
+    private sealed class Checker(string formula, ModelMetadata metadata, Resolver resolve, Func<string, VariableDefinition?> variable, bool groupsBy = false)
     {
-        public void Check(Node node) => Require(node, Kind(node, null), ValueKind.Number);
+        // The first problem found: once it is, the checking only unwinds
+        private Fault? _fault;
+
+        public Fault? Check(Node node)
+        {
+            Require(node, Kind(node, null), ValueKind.Number);
+            return _fault;
+        }
+
+        /// <summary>Checks a condition on the groups, or read row by row with an <paramref name="aggregation"/>.</summary>
+        public Fault? CheckCondition(Node node, string? aggregation)
+        {
+            Require(node, Kind(node, aggregation), ValueKind.Boolean);
+            return _fault;
+        }
 
         // aggregation: the function whose rows are being read, null at the level of the group
         private ValueKind Kind(Node node, string? aggregation)
         {
+            if (_fault is not null) return ValueKind.Number;
             switch (node)
             {
                 case NumberNode:
@@ -282,19 +333,31 @@ public static class MeasureFormula
                     return ValueKind.Text;
                 case BooleanNode:
                     return ValueKind.Boolean;
+                case FieldNode reference when IsVariable(reference.Text):
+                    // A variable's value, the same for every row and every group
+                    return variable(reference.Text) switch
+                    {
+                        null => Fail(Strings.Format(Strings.VariableUnknown, reference.Text.Substring(1)), reference),
+                        { Kind: VariableKind.Set } => Fail(Strings.Format(Strings.FormulaSetVariable, reference.Text.Substring(1)), reference),
+                        { DataType: DataType.Text } => ValueKind.Text,
+                        { DataType: DataType.Date } => ValueKind.Date,
+                        { DataType: DataType.Boolean } => ValueKind.Boolean,
+                        _ => ValueKind.Number,
+                    };
                 case FieldNode reference:
-                    var field = Resolve(reference);
+                    // An unknown or ambiguous field is shown where it is written
+                    if (resolve(reference.Text, out var unknown) is not { } field) return Fail(unknown!, reference);
                     if (aggregation is null)
                     {
                         if (field.Kind == FieldKind.Dimension)
-                            throw Fail(Strings.Format(Strings.FormulaDimensionOutsideFunction, Text(node)), node);
+                            return Fail(Strings.Format(Strings.FormulaDimensionOutsideFunction, Text(node)), node);
                         return ValueKind.Number;
                     }
                     // Read row by row, a measure is the model's: what the report redefines is the measure of the group
                     field = metadata.Fields.FirstOrDefault(f => f.Name == field.Name) ?? field;
                     if (field.Kind == FieldKind.Measure)
                     {
-                        if (field.IsCalculated) throw Fail(Strings.Format(Strings.FormulaNotAggregatable, Text(node), aggregation), node);
+                        if (field.IsCalculated) return Fail(Strings.Format(Strings.FormulaNotAggregatable, Text(node), aggregation), node);
                         return ValueKind.Number;
                     }
                     return field.DataType switch
@@ -332,14 +395,15 @@ public static class MeasureFormula
         {
             var function = call.Function;
             if (call.Arguments.Count < function.MinArguments || call.Arguments.Count > function.MaxArguments)
-                throw Fail(Strings.Format(Strings.FormulaUsage, function.Usage), call);
+                return Fail(Strings.Format(Strings.FormulaUsage, function.Usage), call);
+            if (call.By is { } by) return GroupedBy(call, by, aggregation);
             if (function.Name == "IF")
             {
                 Require(call.Arguments[0], Kind(call.Arguments[0], aggregation), ValueKind.Boolean);
                 foreach (var result in call.Arguments.Skip(1)) Require(result, Kind(result, aggregation), ValueKind.Number);
                 return ValueKind.Number;
             }
-            if (aggregation is not null) throw Fail(Strings.Format(Strings.FormulaNestedAggregation, function.Name, aggregation), call);
+            if (aggregation is not null) return Fail(Strings.Format(Strings.FormulaNestedAggregation, function.Name, aggregation), call);
 
             // The condition (COUNT's only argument, the others' second) selects the rows
             var hasValue = function.Name != "COUNT";
@@ -347,10 +411,25 @@ public static class MeasureFormula
             {
                 var value = Kind(call.Arguments[0], function.Name);
                 if (function.Name != "DISTINCTCOUNT") Require(call.Arguments[0], value, ValueKind.Number);
-                else if (value == ValueKind.Boolean) throw Fail(Strings.Format(Strings.FormulaUsage, function.Usage), call.Arguments[0]);
+                else if (value == ValueKind.Boolean) return Fail(Strings.Format(Strings.FormulaUsage, function.Usage), call.Arguments[0]);
             }
             if (call.Arguments.Skip(hasValue ? 1 : 0).FirstOrDefault() is { } condition)
                 Require(condition, Kind(condition, function.Name), ValueKind.Boolean);
+            return ValueKind.Number;
+        }
+
+        // AGGREGATION(value BY [dimension]): the value of each of the dimension's values, aggregated
+        private ValueKind GroupedBy(CallNode call, FieldNode by, string? aggregation)
+        {
+            var function = call.Function;
+            if (!groupsBy) return Fail(Strings.FormulaByInVariables, by);
+            if (function.Name is not ("SUM" or "AVERAGE" or "MIN" or "MAX")) return Fail(Strings.FormulaByFunction, by);
+            if (call.Arguments.Count != 1) return Fail(Strings.Format(Strings.FormulaByUsage, function.Name), call);
+            if (aggregation is not null) return Fail(Strings.Format(Strings.FormulaNestedAggregation, function.Name, aggregation), call);
+            if (resolve(by.Text, out var unknown) is not { } field) return Fail(unknown!, by);
+            if (field.Kind != FieldKind.Dimension) return Fail(Strings.Format(Strings.FormulaByNotDimension, Text(by)), by);
+            // The value is read for each of the dimension's values, as a measure is for each group
+            Require(call.Arguments[0], Kind(call.Arguments[0], null), ValueKind.Number);
             return ValueKind.Number;
         }
 
@@ -359,42 +438,37 @@ public static class MeasureFormula
             // A date is written as a text: "2024-12-31"
             if (left == ValueKind.Date && comparison.Right is TextNode rightDate) { RequireDate(rightDate); right = ValueKind.Date; }
             if (right == ValueKind.Date && comparison.Left is TextNode leftDate) { RequireDate(leftDate); left = ValueKind.Date; }
+            if (_fault is not null) return;
             if (left != right)
-                throw Fail(Strings.Format(Strings.FormulaMismatch, Text(comparison.Left), Text(comparison.Right)), comparison);
-            if (left is ValueKind.Text or ValueKind.Boolean && comparison.Operator is not ("=" or "<>"))
-                throw Fail(Strings.Format(Strings.FormulaEqualityOnly, Text(comparison)), comparison);
+                Fail(Strings.Format(Strings.FormulaMismatch, Text(comparison.Left), Text(comparison.Right)), comparison);
+            else if (left is ValueKind.Text or ValueKind.Boolean && comparison.Operator is not ("=" or "<>"))
+                Fail(Strings.Format(Strings.FormulaEqualityOnly, Text(comparison)), comparison);
         }
 
         private void RequireDate(TextNode text)
         {
             if (!DateTime.TryParse(text.Value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out _))
-                throw Fail(Strings.Format(Strings.FormulaNotADate, Text(text)), text);
+                Fail(Strings.Format(Strings.FormulaNotADate, Text(text)), text);
         }
 
         private void Require(Node node, ValueKind actual, ValueKind expected)
         {
-            if (actual == expected) return;
-            throw Fail(Strings.Format(
+            if (_fault is not null || actual == expected) return;
+            Fail(Strings.Format(
                 expected == ValueKind.Boolean ? Strings.FormulaNotACondition : Strings.FormulaNotANumber, Text(node)), node);
         }
 
         private string Text(Node node) => formula[node.Start..node.End].Trim();
 
-        // An unknown or ambiguous field is shown where it is written
-        private FieldDescriptor Resolve(FieldNode reference)
+        // Only the first problem is kept, as when checking stopped there
+        private ValueKind Fail(string message, Node node)
         {
-            try
-            {
-                return resolve(reference.Text);
-            }
-            catch (FormulaException ex) when (ex.Start < 0)
-            {
-                throw Fail(ex.Message, reference);
-            }
+            _fault ??= new Fault(message, node.Start, node.End);
+            return ValueKind.Number;
         }
-
-        private static FormulaException Fail(string message, Node node) => new(message, node.Start, node.End);
     }
+
+    private delegate FieldDescriptor? Resolver(string reference, out string? problem);
 
     // --- Building: the checked formula as an expression of the query
 
@@ -554,21 +628,28 @@ public static class MeasureFormula
     //     factor     := number | "text" | TRUE | FALSE | [field] | FUNCTION '(' (condition (';' condition)*)? ')'
     //                 | '(' condition ')' | '-' factor
 
-    private static Node Parse(string formula)
+    // Problems are returned rather than thrown: a formula is checked at every key typed, and a debugger slows down, or
+    // stops, at every exception thrown
+    private static Fault? Parse(string formula, out Node? tree)
     {
-        var tokens = Tokenize(formula);
-        if (tokens.Count == 1) throw new FormulaException(Strings.FormulaEmpty, 0, formula.Length);
+        tree = null;
+        if (Tokenize(formula, out var tokens) is { } fault) return fault;
+        if (tokens.Count == 1) return new Fault(Strings.FormulaEmpty, 0, formula.Length);
         var parser = new Parser(tokens);
         var node = parser.Condition();
-        if (parser.Current.Kind != TokenKind.End) throw parser.Unexpected();
-        return node;
+        if (parser.Current.Kind != TokenKind.End) parser.Unexpected();
+        if (parser.Fault is null) tree = node;
+        return parser.Fault;
     }
 
     private sealed class Parser(List<Token> tokens)
     {
         private int _index;
 
-        public Token Current => tokens[_index];
+        /// <summary>The first problem found: from then on, the parser only sees the end of the formula, and unwinds.</summary>
+        public Fault? Fault { get; private set; }
+
+        public Token Current => Fault is null ? tokens[_index] : tokens[^1];
 
         private int End => _index == 0 ? 0 : tokens[_index - 1].End;
 
@@ -658,51 +739,75 @@ public static class MeasureFormula
                 case TokenKind.Open:
                     Next();
                     var inner = Condition();
-                    if (Current.Kind != TokenKind.Close) throw Current.Kind == TokenKind.End ? new FormulaException(Strings.FormulaMissingParenthesis, Current.Start, Current.End) : Unexpected();
+                    if (Current.Kind != TokenKind.Close) return MissingParenthesis();
                     Next();
                     return inner;
                 case TokenKind.End:
-                    throw new FormulaException(Strings.Format(Strings.FormulaExpectedOperand, token.Start + 1), token.Start, token.End);
+                    return Fail(Strings.Format(Strings.FormulaExpectedOperand, token.Start + 1), token);
                 default:
-                    throw Unexpected();
+                    return Unexpected();
             }
         }
 
         private Node Call()
         {
             var name = Next();
-            var function = FindFunction(name.Text) ?? throw new FormulaException(Strings.Format(Strings.FormulaUnknownFunction, name.Text), name.Start, name.End);
-            if (Current.Kind != TokenKind.Open) throw new FormulaException(Strings.Format(Strings.FormulaUsage, function.Usage), name.Start, name.End);
+            if (FindFunction(name.Text) is not { } function) return Fail(Strings.Format(Strings.FormulaUnknownFunction, name.Text), name);
+            if (Current.Kind != TokenKind.Open) return Fail(Strings.Format(Strings.FormulaUsage, function.Usage), name);
             Next();
             var arguments = new List<Node>();
+            FieldNode? by = null;
             if (Current.Kind != TokenKind.Close)
             {
                 arguments.Add(Condition());
+                if (IsWord("BY"))
+                {
+                    Next();
+                    if (Current.Kind != TokenKind.Field) return Fail(Strings.Format(Strings.FormulaByUsage, function.Name), Current);
+                    var dimension = Next();
+                    by = new FieldNode(dimension.Text, dimension.Start, dimension.End);
+                }
                 while (Current.Kind == TokenKind.Separator)
                 {
                     Next();
                     arguments.Add(Condition());
                 }
             }
-            if (Current.Kind != TokenKind.Close) throw Current.Kind == TokenKind.End ? new FormulaException(Strings.FormulaMissingParenthesis, Current.Start, Current.End) : Unexpected();
+            if (Current.Kind != TokenKind.Close) return MissingParenthesis();
             Next();
-            return new CallNode(function, arguments, name.Start, End);
+            return new CallNode(function, arguments, name.Start, End) { By = by };
         }
 
-        public FormulaException Unexpected() =>
-            new(Strings.Format(Strings.FormulaUnexpected, Current.Text, Current.Start + 1), Current.Start, Current.End);
+        private Node MissingParenthesis() =>
+            Current.Kind == TokenKind.End ? Fail(Strings.FormulaMissingParenthesis, Current) : Unexpected();
+
+        public Node Unexpected() => Fail(Strings.Format(Strings.FormulaUnexpected, Current.Text, Current.Start + 1), Current);
+
+        // Only the first problem is kept; the node returned stands for what could not be read
+        private Node Fail(string message, Token token)
+        {
+            Fault ??= new Fault(message, token.Start, token.End);
+            return new NumberNode(0, token.Start, token.End);
+        }
 
         private bool IsWord(string word, Token? token = null) =>
             (token ?? Current) is { Kind: TokenKind.Word } t && string.Equals(t.Text, word, StringComparison.OrdinalIgnoreCase);
 
-        private Token Next() => tokens[_index++];
+        private Token Next()
+        {
+            var token = Current;
+            if (Fault is null) _index++;
+            return token;
+        }
     }
 
-    private static List<Token> Tokenize(string formula)
+    // The tokens, ending with End; with a problem, those read before it
+    private static Fault? Tokenize(string formula, out List<Token> tokens)
     {
-        var tokens = new List<Token>();
+        tokens = [];
+        Fault? fault = null;
         var i = 0;
-        while (i < formula.Length)
+        while (fault is null && i < formula.Length)
         {
             var c = formula[i];
             var start = i;
@@ -711,15 +816,17 @@ public static class MeasureFormula
                 i++;
                 continue;
             }
-            if (char.IsAsciiDigit(c) || (c == '.' && i + 1 < formula.Length && char.IsAsciiDigit(formula[i + 1])))
+            if (Compat.IsAsciiDigit(c) || (c == '.' && i + 1 < formula.Length && Compat.IsAsciiDigit(formula[i + 1])))
             {
-                while (i < formula.Length && (char.IsAsciiDigit(formula[i]) || formula[i] == '.')) i++;
-                // "0,5" is a decimal comma rather than two arguments
-                if (i + 1 < formula.Length && formula[i] == ',' && char.IsAsciiDigit(formula[i + 1]))
-                    throw new FormulaException(Strings.FormulaDecimalComma, start, i + 2);
+                while (i < formula.Length && (Compat.IsAsciiDigit(formula[i]) || formula[i] == '.')) i++;
                 var number = formula[start..i];
-                if (number.Count(ch => ch == '.') > 1) throw new FormulaException(Strings.Format(Strings.FormulaUnexpected, number, start + 1), start, i);
-                tokens.Add(new Token(TokenKind.Number, number, start, i));
+                // "0,5" is a decimal comma rather than two arguments
+                if (i + 1 < formula.Length && formula[i] == ',' && Compat.IsAsciiDigit(formula[i + 1]))
+                    fault = new Fault(Strings.FormulaDecimalComma, start, i + 2);
+                else if (number.Count(ch => ch == '.') > 1)
+                    fault = new Fault(Strings.Format(Strings.FormulaUnexpected, number, start + 1), start, i);
+                else
+                    tokens.Add(new Token(TokenKind.Number, number, start, i));
             }
             else if (c is '[' or '"')
             {
@@ -729,7 +836,11 @@ public static class MeasureFormula
                 i++;
                 while (true)
                 {
-                    if (i >= formula.Length) throw new FormulaException(c == '[' ? Strings.FormulaMissingBracket : Strings.FormulaMissingQuote, start, formula.Length);
+                    if (i >= formula.Length)
+                    {
+                        fault = new Fault(c == '[' ? Strings.FormulaMissingBracket : Strings.FormulaMissingQuote, start, formula.Length);
+                        break;
+                    }
                     if (formula[i] == close)
                     {
                         if (i + 1 < formula.Length && formula[i + 1] == close)
@@ -743,11 +854,12 @@ public static class MeasureFormula
                     }
                     text.Append(formula[i++]);
                 }
-                tokens.Add(c == '[' ? new Token(TokenKind.Field, text.ToString().Trim(), start, i) : new Token(TokenKind.Text, text.ToString(), start, i));
+                if (fault is null)
+                    tokens.Add(c == '[' ? new Token(TokenKind.Field, text.ToString().Trim(), start, i) : new Token(TokenKind.Text, text.ToString(), start, i));
             }
-            else if (char.IsAsciiLetter(c))
+            else if (Compat.IsAsciiLetter(c))
             {
-                while (i < formula.Length && (char.IsAsciiLetterOrDigit(formula[i]) || formula[i] == '_')) i++;
+                while (i < formula.Length && (Compat.IsAsciiLetterOrDigit(formula[i]) || formula[i] == '_')) i++;
                 tokens.Add(new Token(TokenKind.Word, formula[start..i], start, i));
             }
             else if (c is '<' or '>' or '=')
@@ -758,19 +870,20 @@ public static class MeasureFormula
             }
             else
             {
-                var kind = c switch
+                TokenKind? kind = c switch
                 {
                     '+' or '-' or '*' or '/' => TokenKind.Operator,
                     '(' => TokenKind.Open,
                     ')' => TokenKind.Close,
                     ';' or ',' => TokenKind.Separator,
-                    _ => throw new FormulaException(Strings.Format(Strings.FormulaUnexpected, c, i + 1), i, i + 1),
+                    _ => null,
                 };
-                tokens.Add(new Token(kind, c.ToString(), start, ++i));
+                if (kind is null) fault = new Fault(Strings.Format(Strings.FormulaUnexpected, c, i + 1), i, i + 1);
+                else tokens.Add(new Token(kind.Value, c.ToString(), start, ++i));
             }
         }
         tokens.Add(new Token(TokenKind.End, "", formula.Length, formula.Length));
-        return tokens;
+        return fault;
     }
 
     private enum TokenKind { Number, Text, Field, Word, Operator, Comparison, Open, Close, Separator, End }
@@ -795,15 +908,14 @@ public static class MeasureFormula
     /// <summary>An arithmetic operator, a comparison, AND or OR.</summary>
     private sealed record BinaryNode(string Operator, Node Left, Node Right, int Start, int End) : Node(Start, End);
 
-    private sealed record CallNode(FormulaFunction Function, IReadOnlyList<Node> Arguments, int Start, int End) : Node(Start, End);
+    private sealed record CallNode(FormulaFunction Function, IReadOnlyList<Node> Arguments, int Start, int End) : Node(Start, End)
+    {
+        /// <summary>The dimension for each value of which the argument is read: <c>MAX([Revenue] BY [Customer])</c>.</summary>
+        public FieldNode? By { get; init; }
+    }
 
     /// <summary>A problem of the formula, worded for the end user, with where it is written (-1 when unknown).</summary>
-    private sealed class FormulaException(string message, int start = -1, int end = -1) : Exception(message)
-    {
-        public int Start => start;
-
-        public int End => end;
-    }
+    private sealed record Fault(string Message, int Start = -1, int End = -1);
 }
 
 /// <summary>A function of the <see cref="MeasureFormula"/> formulas, with its usage and description for the end user.</summary>

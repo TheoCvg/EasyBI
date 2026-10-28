@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Sales" xml:space="preserve">
+    <value>Ventes</value>
+  </data>
+  <data name="Date" xml:space="preserve">
+    <value>Date</value>
+  </data>
+  <data name="Region" xml:space="preserve">
+    <value>Région</value>
+  </data>
+  <data name="Channel" xml:space="preserve">
+    <value>Canal</value>
+  </data>
+  <data name="Category" xml:space="preserve">
+    <value>Catégorie</value>
+  </data>
+  <data name="Customer" xml:space="preserve">
+    <value>Client</value>
+  </data>
+  <data name="Product" xml:space="preserve">
+    <value>Produit</value>
+  </data>
+  <data name="Revenue" xml:space="preserve">
+    <value>Chiffre d'affaires</value>
+  </data>
+  <data name="Margin" xml:space="preserve">
+    <value>Marge</value>
+  </data>
+  <data name="Quantity" xml:space="preserve">
+    <value>Quantité</value>
+  </data>
+  <data name="SalesCount" xml:space="preserve">
+    <value>Nombre de ventes</value>
+  </data>
+  <data name="MarginRate" xml:space="preserve">
+    <value>Taux de marge</value>
+  </data>
+  <data name="AverageBasket" xml:space="preserve">
+    <value>Panier moyen</value>
+  </data>
+  <data name="WebShare" xml:space="preserve">
+    <value>Part du Web</value>
+  </data>
+</root>

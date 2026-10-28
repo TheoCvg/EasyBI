@@ -194,8 +194,92 @@ context.VisualFailed += (_, e) =>
 `e.Stage` is `Query` or `Render` (with `e.Renderer`), and `e.Details` is the text the details show. The sample shows it
 with its *Unavailable source* data source.
 
-## Your own model
+## Your own data source
 
-`SemanticModel.For` covers any `IQueryable`. For another kind of source (a web API, an OLAP cube...), implement
-`ISemanticModel`: its `Metadata` (the fields), `ExecuteAsync` (an `AnalyticQuery` in, a `ResultSet` out) and
-`GetDistinctValuesAsync` (the values filters offer).
+A visual asks its model for **its data**, not for queries: `ISemanticModel.GetDataAsync` receives a
+`VisualDataRequest` and answers with a `VisualData`. Where the data comes from, and how the request travels, is up to
+the model: `SemanticModel.For` runs it in the application over an `IQueryable`; another model can send it to a server,
+which answers with the visual's result.
+
+| `VisualDataRequest` | |
+|---|---|
+| `Visual` | The visual, with the filters of its page and the selections of other visuals applied |
+| `Measures` | The end user's calculated measures it uses, with those they use |
+| `HasTooltips` | Whether its type shows tooltips, whose measures are queried with it |
+| `Today` | The user's date: relative periods (this year, last 12 months) and comparisons with a year earlier |
+| `UICulture`, `FormatCulture` | The cultures of the captions and of the texts of values in the result (null for the model's own) |
+
+`VisualData` holds the visual's `ResultSet` and, for a matrix, its pivoted `MatrixData`. The request only holds data
+that serializes; the drawing (chart data, theme, renderer) always stays in the application.
+
+=== "A source that runs queries"
+
+    ```csharp
+    public sealed class SqlSalesModel : QuerySemanticModel
+    {
+        public override ModelMetadata Metadata { get; } = ...;
+
+        public override Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default)
+            => ...; // filters, groups, aggregates, sort, Top and calculated measures
+
+        public override Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default)
+            => ...; // at most request.Limit values, those containing request.Search when it is given
+    }
+    ```
+
+    `QuerySemanticModel` turns the request into `AnalyticQuery`s and composes their results: comparisons with a year
+    earlier, year-to-date totals, the levels and totals of a matrix. Periods relative to today reach `ExecuteAsync` as
+    date ranges, on the request's date.
+
+=== "A source that answers visuals"
+
+    ```csharp
+    public sealed class RemoteSalesModel(HttpClient http, ModelMetadata metadata) : ISemanticModel
+    {
+        public ModelMetadata Metadata { get; } = metadata; // (1)!
+
+        public async Task<VisualData> GetDataAsync(VisualDataRequest request, CancellationToken cancellationToken = default)
+        {
+            using var content = new StringContent(DataSerializer.Serialize(request), Encoding.UTF8, "application/json");
+            using var response = await http.PostAsync("sales/data", content, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return DataSerializer.DeserializeData(await response.Content.ReadAsStringAsync());
+        }
+
+        public async Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default)
+        {
+            using var content = new StringContent(DataSerializer.Serialize(request), Encoding.UTF8, "application/json");
+            using var response = await http.PostAsync("sales/values", content, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return DataSerializer.DeserializeValues(await response.Content.ReadAsStringAsync(), Metadata.GetField(request.Field).DataType);
+        }
+    }
+    ```
+
+    1. Read once from the server: `DataSerializer.DeserializeMetadata(await http.GetStringAsync("sales/metadata"))`.
+
+    The server answers with any `ISemanticModel`, here ASP.NET Core over EF Core:
+
+    ```csharp
+    var sales = SemanticModel.For(() => new SalesDbContext(options), db => db.Sales, "sales", "Sales")...;
+
+    app.MapGet("/sales/metadata", () => Results.Json(sales.Metadata, DataSerializer.Options));
+    app.MapPost("/sales/data", async (HttpRequest http, CancellationToken cancellationToken) =>
+    {
+        var request = await JsonSerializer.DeserializeAsync<VisualDataRequest>(http.Body, DataSerializer.Options, cancellationToken);
+        return Results.Json(await sales.GetDataAsync(request!, cancellationToken), DataSerializer.Options);
+    });
+    app.MapPost("/sales/values", async (HttpRequest http, CancellationToken cancellationToken) =>
+    {
+        var request = await JsonSerializer.DeserializeAsync<DistinctValuesRequest>(http.Body, DataSerializer.Options, cancellationToken);
+        return Results.Json(await sales.GetDistinctValuesAsync(request!, cancellationToken), DataSerializer.Options);
+    });
+    ```
+
+    `DataSerializer` writes the request, the data, the metadata and the distinct values as plain JSON (see
+    [Data format](../reference/data-format.md)): the server can be written in another language. The routes, the
+    transport (HTTP, gRPC, a message bus...) and its security are yours. The sample does exactly this: see
+    `samples/EasyBI.Sample.Server` and the *Server over HTTP* data source.
+
+`VisualPipeline.PrepareAsync` asks a model for a visual's data and builds what renderers draw; `VisualPipeline.Prepare`
+does it with data obtained otherwise.

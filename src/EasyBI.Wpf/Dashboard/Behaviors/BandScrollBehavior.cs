@@ -75,7 +75,7 @@ public sealed class BandScrollBehavior : DashboardBehavior
         var band = Panel.BandAt(e.GetPosition(Panel).Y);
         if (band >= Panel.Bands.Count || !Panel.Bands[band].CanScroll) return;
         var definition = Panel.Bands[band];
-        definition.HorizontalOffset = Math.Clamp(definition.HorizontalOffset - e.Delta / 120.0 * WheelStep, 0, definition.ExtentWidth - definition.ViewportWidth);
+        definition.HorizontalOffset = Compat.Clamp(definition.HorizontalOffset - e.Delta / 120.0 * WheelStep, 0, definition.ExtentWidth - definition.ViewportWidth);
         e.Handled = true;
     }
 }

@@ -7,11 +7,11 @@ namespace EasyBI.Core;
 /// <summary>Chains: visual definition → query → execution → pivoted data.</summary>
 public static class VisualPipeline
 {
-    private static readonly IReadOnlySet<VisualType> Cartesian =
+    private static readonly HashSet<VisualType> Cartesian =
         new HashSet<VisualType> { VisualType.Bar, VisualType.StackedBar, VisualType.Line, VisualType.Area, VisualType.Scatter };
 
-    /// <summary>True for the types that show their own content (text, image) instead of querying a model.</summary>
-    public static bool IsContent(this VisualType type) => type == VisualType.Text || type == VisualType.Image;
+    /// <summary>True for the types that show their own content (text, image, variable) instead of querying a model.</summary>
+    public static bool IsContent(this VisualType type) => type == VisualType.Text || type == VisualType.Image || type == VisualType.Variable;
 
     /// <summary>True for the types drawn on category and value axes, which can be mixed in one chart.</summary>
     public static bool IsCartesian(this VisualType type) => Cartesian.Contains(type);
@@ -24,7 +24,7 @@ public static class VisualPipeline
         visual.Type.IsCartesian() && measure.SeriesType is { } type && type.IsCartesian() ? type : visual.Type;
 
     /// <summary>Every type a renderer must support to draw the visual: its own and those of its measures.</summary>
-    public static IReadOnlySet<VisualType> TypesOf(VisualDefinition visual) =>
+    public static IReadOnlyCollection<VisualType> TypesOf(VisualDefinition visual) =>
         visual.Values.Select(visual.SeriesType).Append(visual.Type).ToHashSet();
 
     /// <summary>Render request of a text or image visual: no query, empty data.</summary>
@@ -37,11 +37,15 @@ public static class VisualPipeline
     /// whether it has tooltips, whose measures are queried with it (EasyBI's types when null).
     /// </summary>
     public static AnalyticQuery ToQuery(this VisualDefinition visual, IEnumerable<CalculatedMeasure>? measures = null, ModelMetadata? metadata = null,
-        VisualTypeCatalog? types = null)
+        VisualTypeCatalog? types = null) =>
+        visual.ToQuery(measures, metadata, Tooltips.Has(visual.Type, types));
+
+    /// <summary>The query of a visual, with the measures of its tooltips when it <paramref name="hasTooltips"/>.</summary>
+    public static AnalyticQuery ToQuery(this VisualDefinition visual, IEnumerable<CalculatedMeasure>? measures, ModelMetadata? metadata, bool hasTooltips)
     {
         var groupBy = visual.Legend is null ? visual.Axis : [.. visual.Axis, visual.Legend];
         // A chart's tooltips may show other measures: they are queried with it, not drawn
-        IEnumerable<MeasureRef> tooltip = Tooltips.Has(visual.Type, types) ? visual.Tooltip?.Values ?? [] : [];
+        IEnumerable<MeasureRef> tooltip = hasTooltips ? visual.Tooltip?.Values ?? [] : [];
         // Shown, in a tooltip, or filtered on, and what they use
         var names = visual.Values.Concat(tooltip).Select(v => v.Measure)
             .Concat(visual.Filters.Where(f => f.Operator.IsComparison()).Select(f => f.Field));
@@ -66,7 +70,24 @@ public static class VisualPipeline
     public static RenderRequest Redraw(RenderRequest previous, VisualDefinition visual) =>
         previous with { Visual = visual, Chart = ChartDataBuilder.Build(visual, previous.Result) };
 
-    /// <summary>Queries the model for a visual, with the end user's calculated <c>measures</c> it may show.</summary>
+    /// <summary>
+    /// What <paramref name="visual"/> asks its model for: the end user's calculated <c>measures</c> it uses, whether its
+    /// type has tooltips (EasyBI's <paramref name="types"/> when null), today's date and EasyBI's cultures.
+    /// </summary>
+    public static VisualDataRequest ToDataRequest(this VisualDefinition visual, ModelMetadata? metadata = null,
+        IEnumerable<CalculatedMeasure>? measures = null, VisualTypeCatalog? types = null)
+    {
+        var hasTooltips = Tooltips.Has(visual.Type, types);
+        return new(visual)
+        {
+            Measures = measures is null ? [] : visual.ToQuery(measures, metadata, hasTooltips).Calculations ?? [],
+            HasTooltips = hasTooltips,
+            UICulture = EasyBILocalization.UICulture.Name,
+            FormatCulture = EasyBILocalization.FormatCulture.Name,
+        };
+    }
+
+    /// <summary>Asks the model for a visual's data, with the end user's calculated <c>measures</c> it may show.</summary>
     public static async Task<RenderRequest> PrepareAsync(
         ISemanticModel model,
         VisualDefinition visual,
@@ -75,14 +96,13 @@ public static class VisualPipeline
         VisualTypeCatalog? types = null,
         CancellationToken cancellationToken = default)
     {
-        if (visual.Type == VisualType.Matrix)
-        {
-            var (cells, matrix) = await MatrixBuilder.ExecuteAsync(model, visual, measures, cancellationToken).ConfigureAwait(false);
-            return new RenderRequest(visual, cells, ChartDataBuilder.Build(visual, cells), theme ?? BiTheme.Default) { Matrix = matrix };
-        }
-        var result = await model.ExecuteWithTimeAsync(visual.ToQuery(measures, model.Metadata, types), cancellationToken).ConfigureAwait(false);
-        return new RenderRequest(visual, result, ChartDataBuilder.Build(visual, result), theme ?? BiTheme.Default);
+        var data = await model.GetDataAsync(visual.ToDataRequest(model.Metadata, measures, types), cancellationToken).ConfigureAwait(false);
+        return Prepare(visual, data, theme);
     }
+
+    /// <summary>The request for drawing a visual with its data, wherever they come from.</summary>
+    public static RenderRequest Prepare(VisualDefinition visual, VisualData data, BiTheme? theme = null) =>
+        new(visual, data.Result, ChartDataBuilder.Build(visual, data.Result), theme ?? BiTheme.Default) { Matrix = data.Matrix };
 }
 
 public static class ChartDataBuilder

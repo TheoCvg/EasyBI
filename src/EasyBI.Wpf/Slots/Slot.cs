@@ -96,14 +96,14 @@ public sealed class SlotCollection : ObservableCollection<Slot>
 {
     protected override void InsertItem(int index, Slot item)
     {
-        ArgumentNullException.ThrowIfNull(item);
+        if (item is null) throw new ArgumentNullException(nameof(item));
         item.PropertyChanged += OnSlotChanged;
         base.InsertItem(index, item);
     }
 
     protected override void SetItem(int index, Slot item)
     {
-        ArgumentNullException.ThrowIfNull(item);
+        if (item is null) throw new ArgumentNullException(nameof(item));
         this[index].PropertyChanged -= OnSlotChanged;
         item.PropertyChanged += OnSlotChanged;
         base.SetItem(index, item);

@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using EasyBI.Abstractions;
 using EasyBI.Wpf.Resources;
 
 namespace EasyBI.Wpf.Designer;
@@ -12,7 +13,7 @@ namespace EasyBI.Wpf.Designer;
 /// Built-in dialog of a <see cref="CalculatedMeasureEditor"/>: the formula on the left (colored, its problem underlined,
 /// suggestions of what can be written as it is typed, the function at the caret) with the operator keypad; the
 /// functions, measures and dimensions to search and insert on the right, each in its tab.
-/// Saves the measure in its context on OK.
+/// Saves the measure, or the variable (<see cref="CalculatedMeasureEditor.ForVariable"/>), in its context on OK.
 /// </summary>
 internal partial class CalculatedMeasureWindow : Window
 {
@@ -37,6 +38,13 @@ internal partial class CalculatedMeasureWindow : Window
         FormulaBox.LostKeyboardFocus += (_, _) => CloseSuggestions();
         FormulaBox.PreviewMouseDown += (_, _) => CloseSuggestions();
 
+        if (editor.IsVariable)
+        {
+            Title = Strings.VariableEditorTitle;
+            CaptionLabel.Text = Strings.VariableName;
+            FormulaHint.Text = Strings.VariableFormulaHint;
+            FormulaPlaceholder.Text = Strings.VariableFormulaPlaceholder;
+        }
         ResetButton.Visibility = editor.CanReset ? Visibility.Visible : Visibility.Collapsed;
         if (editor.DeclaredFormula is { } declared) RedefinitionHint.Text = Strings.Format(Strings.MeasureRedefinitionHint, declared);
         else RedefinitionBanner.Visibility = Visibility.Collapsed;
@@ -69,7 +77,9 @@ internal partial class CalculatedMeasureWindow : Window
     {
         var problem = _editor.Error;
         StatusIcon.Text = problem is null ? "✓" : "!";
-        Status.Text = problem ?? (_editor.Preview is { } total ? Strings.Format(Strings.MeasurePreview, total) : Strings.FormulaValid);
+        Status.Text = problem ?? (_editor.Preview is { } total
+            ? Strings.Format(_editor.IsVariable ? Strings.VariablePreview : Strings.MeasurePreview, total)
+            : Strings.FormulaValid);
         var brush = problem is null ? EasyBITheme.SuccessBrushKey : EasyBITheme.ErrorBrushKey;
         StatusIcon.SetResourceReference(TextBlock.ForegroundProperty, brush);
         Status.SetResourceReference(TextBlock.ForegroundProperty, problem is null ? EasyBITheme.ForegroundBrushKey : EasyBITheme.ErrorBrushKey);
@@ -218,6 +228,14 @@ internal partial class CalculatedMeasureWindow : Window
     {
         _editor.Reset();
         DialogResult = true;
+    }
+
+    /// <summary>Opens the editor of a variable (a new one when <paramref name="variable"/> is null) and saves it on OK.</summary>
+    /// <returns>The variable saved, or null when the user cancelled.</returns>
+    public static ReportVariable? EditVariable(EasyBIContext context, ISemanticModel model, Window? owner, ReportVariable? variable = null)
+    {
+        var editor = CalculatedMeasureEditor.ForVariable(context, model, variable);
+        return new CalculatedMeasureWindow(editor) { Owner = owner }.ShowDialog() == true ? editor.VariableResult : null;
     }
 
     private void OnOk(object sender, RoutedEventArgs e)

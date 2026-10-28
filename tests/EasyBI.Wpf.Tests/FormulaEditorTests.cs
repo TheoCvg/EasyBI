@@ -37,6 +37,40 @@ public class FormulaEditorTests
         return editor.Suggestions.Select(s => s.Caption).ToArray();
     }
 
+    [Fact]
+    public async Task Typing_the_name_and_the_formula_throws_no_exception()
+    {
+        // A debugger slows down, or stops, at every exception thrown, even caught: once per key typed
+        var thread = Environment.CurrentManagedThreadId;
+        var thrown = new List<string>();
+        void OnThrown(object? sender, System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs e)
+        {
+            if (Environment.CurrentManagedThreadId == thread) thrown.Add(e.Exception.GetType().Name + ": " + e.Exception.Message);
+        }
+        var editor = Editor();
+        editor.Caption = "";
+        AppDomain.CurrentDomain.FirstChanceException += OnThrown;
+        try
+        {
+            const string caption = "Ventes du Nord";
+            for (var length = 1; length <= caption.Length; length++) editor.Caption = caption[..length];
+            const string formula = "SUM([Chiffre d'affaires]; [Région] = \"Nord\") / IF([Prix] > 0,5; 1; 2) + TOTAL(";
+            for (var length = 1; length <= formula.Length; length++)
+            {
+                editor.Formula = formula[..length];
+                editor.CaretIndex = length;
+                editor.Suggest(length);
+                await editor.SuggestionsTask;
+                await editor.PreviewTask;
+            }
+        }
+        finally
+        {
+            AppDomain.CurrentDomain.FirstChanceException -= OnThrown;
+        }
+        Assert.Empty(thrown);
+    }
+
     // --- Catalog and operators
 
     [Fact]

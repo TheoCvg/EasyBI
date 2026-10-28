@@ -291,27 +291,27 @@ public class CalculatedMeasureUiTests
 
     // --- Visuals
 
-    /// <summary>Counts the queries of the model it wraps.</summary>
+    /// <summary>Counts the data requests of the model it wraps.</summary>
     private sealed class CountingModel(ISemanticModel inner) : ISemanticModel
     {
         public int Queries { get; private set; }
 
         public ModelMetadata Metadata => inner.Metadata;
 
-        public Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default)
+        public Task<VisualData> GetDataAsync(VisualDataRequest request, CancellationToken cancellationToken = default)
         {
             Queries++;
-            return inner.ExecuteAsync(query, cancellationToken);
+            return inner.GetDataAsync(request, cancellationToken);
         }
 
-        public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default) =>
-            inner.GetDistinctValuesAsync(field, cancellationToken);
+        public Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default) =>
+            inner.GetDistinctValuesAsync(request, cancellationToken);
     }
 
     /// <summary>Holds its queries until released, recording their cancellation tokens.</summary>
     private sealed class GatedModel(ISemanticModel inner) : ISemanticModel
     {
-        private readonly TaskCompletionSource _gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<bool> _gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public int Queries => Tokens.Count;
 
@@ -319,17 +319,17 @@ public class CalculatedMeasureUiTests
 
         public ModelMetadata Metadata => inner.Metadata;
 
-        public void Release() => _gate.SetResult();
+        public void Release() => _gate.SetResult(true);
 
-        public async Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default)
+        public async Task<VisualData> GetDataAsync(VisualDataRequest request, CancellationToken cancellationToken = default)
         {
             Tokens.Add(cancellationToken);
             await _gate.Task;
-            return await inner.ExecuteAsync(query, cancellationToken);
+            return await inner.GetDataAsync(request, cancellationToken);
         }
 
-        public Task<IReadOnlyList<object?>> GetDistinctValuesAsync(string field, CancellationToken cancellationToken = default) =>
-            inner.GetDistinctValuesAsync(field, cancellationToken);
+        public Task<DistinctValues> GetDistinctValuesAsync(DistinctValuesRequest request, CancellationToken cancellationToken = default) =>
+            inner.GetDistinctValuesAsync(request, cancellationToken);
     }
 
     [Fact]

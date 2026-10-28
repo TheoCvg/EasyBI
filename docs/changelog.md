@@ -4,6 +4,72 @@ Every version, with its breaking changes. EasyBI follows [Semantic Versioning](h
 breaking changes bump the minor version. The report format (`easybi/v1`) stays backward compatible: a newer version
 opens older reports, and a report using a newer feature cannot be opened by an older version.
 
+## 0.6.0-beta.1 — 2026-10-28
+
+### Added
+
+- **.NET Framework and .NET Standard**: the WPF packages (`EasyBI.Wpf`, renderers, themes) also target .NET Framework
+  4.6.2, and `EasyBI.Abstractions` and `EasyBI.Core` target .NET Standard 2.0, besides .NET 8. On these older targets,
+  they depend on Microsoft's packages that bring the newer APIs (`System.Text.Json`, `Microsoft.Bcl.AsyncInterfaces`,
+  `Microsoft.Bcl.HashCode`, `System.ValueTuple`) and on `Portable.System.DateTimeOnly` for `DateOnly`; on .NET 8 they
+  have no new dependency. EF Core 8 needs .NET 8: on .NET Framework, a model runs over another `IQueryable` (in memory,
+  EF Core 3.1...) (#76).
+- **Data sources at the level of the visual**: a visual asks its model for its data (`ISemanticModel.GetDataAsync`, a
+  `VisualDataRequest` in, a `VisualData` out) rather than running queries, so that a model can answer it from anywhere
+  (a server, a cache...). `QuerySemanticModel` is the base of models that run `AnalyticQuery`s, from which EasyBI
+  composes comparisons with a year earlier, year-to-date totals and matrices; `QueryableSemanticModel<T>` derives from
+  it. `VisualPipeline.Prepare` draws data obtained otherwise (#77).
+- **Data format for remote sources**: `DataSerializer` writes and reads, as transport-neutral JSON, what travels
+  between an application and a data source it reaches remotely: the `VisualDataRequest` of a visual, its `VisualData`,
+  a model's `ModelMetadata` and the distinct values of a dimension, with dates, date periods and numbers keeping their
+  type. The sample gets the results of its visuals from an ASP.NET Core server (`samples/EasyBI.Sample.Server`).
+  `ModelMetadata.Dimensions` and `Measures` are not serialized (#78).
+- **Value filters like Excel**: every value checked at first, a **(Select all)** box checked, unchecked or partly
+  checked, **(Select all search results)** and **Add current selection to filter** while searching. Lists of thousands
+  of values (suppliers...) open and search without delay, and checking them all changes the filter once (#80).
+- **Long lists of values**: a filter lists up to 10,000 values of a dimension instead of 1,000, says when there are
+  more, and then searches them in the model (`DistinctValuesRequest.Search`), translated to SQL by EF Core. The sample
+  has 2,500 customers to filter on (#80).
+- **Variables**, written as formulas in the formula editor (`VariableFormula`): parameters (`10 BETWEEN 3 AND 25`, a
+  slider; `"Web" IN ("Web"; "Store")`, a list; a text, a date, yes/no), sets of a dimension's values
+  (`SELECT TOP [@N] [Customer] WHERE [Region] = "North" ORDER BY [Revenue] DESC`, conditions on dimensions keeping rows
+  and on measures keeping values; `SELECT [Customer] IN (...)`) and values computed once (`AVERAGE([Revenue])`, or by a dimension:
+  `MAX([Revenue] BY [Customer])`), saved
+  with the report (`ReportDefinition.Variables`) with the values the end user gave. Visuals use them in their Top
+  (`VisualDefinition.TopVariable`), their formulas (`[@Rate]`), their titles and texts (`{N}`), and sets dragged onto
+  Filters (their values) or onto Axis and Legend (the set's values and the others, `FieldRef.Set`); dragged onto a
+  dashboard, a variable shows its control or its values, and a set filters or groups the visual it is dropped on. The new `Variable`
+  visual type (`VariableView`) shows a parameter's control, a computed value or a set's values. Models never see
+  variables: `VariableContext` (`EasyBIContext.Variables`) replaces them before asking for data, inside the
+  `IQueryable`. See [Variables](guide/variables.md) (#81).
+
+### Fixed
+
+- Designer: typing the name or the formula of a calculated measure no longer freezes an application being debugged;
+  checking a formula throws no exception anymore, where it threw one per key typed (#79).
+
+### Breaking changes
+
+- `FilterContext.SetFilter` keeps a filter `In` without values, which keeps no row (every value unchecked), instead of
+  removing it; a filter `NotIn` without values is still removed. A value filter is saved as the shorter list of values,
+  `In` or `NotIn`, whatever operator it was created with (#80).
+- `ISemanticModel.GetDistinctValuesAsync(string field)` becomes `GetDistinctValuesAsync(DistinctValuesRequest request)`
+  and returns `DistinctValues` (the values and whether there are more): a model gives at most `request.Limit` values,
+  those containing `request.Search` for a dimension of texts when it is given. `DataSerializer.SerializeValues` becomes
+  `Serialize(DistinctValues)`, `DeserializeValues` returns `DistinctValues`, and `Serialize(DistinctValuesRequest)` /
+  `DeserializeValuesRequest` carry the request (#80).
+- `ISemanticModel.ExecuteAsync(AnalyticQuery)` is replaced by `GetDataAsync(VisualDataRequest)`. A model that runs
+  queries derives from `QuerySemanticModel` and overrides `ExecuteAsync` as before (with `override`); code that queried
+  a model directly calls `ExecuteAsync` on a `QuerySemanticModel` (`QueryableSemanticModel<T>` is one), or
+  `GetDataAsync`. `TimeCalculations.ExecuteWithTimeAsync` and `MatrixBuilder.ExecuteAsync` take a
+  `QuerySemanticModel` (#77).
+- Sets of the public API are `IReadOnlyCollection<T>` instead of `IReadOnlySet<T>`, which .NET Standard 2.0 and .NET
+  Framework lack: `RendererCapabilities.Types`, `VisualPipeline.TypesOf`, `DashboardLayoutEngine.Extract`,
+  `MaterialDesignTheme.KeptKeys` and `WpfUiTheme.KeptKeys`. Code passing a `HashSet<T>` compiles as before; code
+  calling set methods (`IsSubsetOf`...) on them uses LINQ instead (#76).
+- `IDropHandler.RefusalReason` has no default implementation anymore (.NET Framework does not support them): a handler
+  that does not explain its refusals returns `null` (#76).
+
 ## 0.5.0-beta.1 — 2026-10-26
 
 ### Added

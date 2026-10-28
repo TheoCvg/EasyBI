@@ -15,7 +15,6 @@ namespace EasyBI.Core;
 internal static class QueryEngine<T>
 {
     private const int MaxGroupFields = 4;
-    private const int MaxDistinctValues = 1000;
 
     private static readonly Type[] GroupKeyTypes = [typeof(GroupKey<>), typeof(GroupKey<,>), typeof(GroupKey<,,>), typeof(GroupKey<,,,>)];
 
@@ -41,11 +40,15 @@ internal static class QueryEngine<T>
         foreach (var fieldRef in query.GroupBy)
         {
             var field = RequireKind(metadata.GetField(fieldRef.Field), FieldKind.Dimension);
-            var body = ApplyGrain(field, Rebind(selectors[field.Name], parameter), fieldRef.Grain);
-            var dataType = fieldRef.Grain switch
+            // Grouped by a set: true for its values, false for the others
+            var body = fieldRef.Set is not null
+                ? Predicate(metadata, selectors, new FilterSpec(field.Name, FilterOperator.In, fieldRef.SetMembers ?? [], fieldRef.Grain), parameter)
+                : ApplyGrain(field, Rebind(selectors[field.Name], parameter), fieldRef.Grain);
+            var dataType = (fieldRef.Set, fieldRef.Grain) switch
             {
-                DateGrain.None => field.DataType,
-                DateGrain.Day => DataType.Date,
+                ({ }, _) => DataType.Boolean,
+                (_, DateGrain.None) => field.DataType,
+                (_, DateGrain.Day) => DataType.Date,
                 _ => DataType.Text,
             };
             keyBodies.Add(body);
@@ -113,15 +116,31 @@ internal static class QueryEngine<T>
         return new ResultSet(columns, rows);
     }
 
-    public static Task<IReadOnlyList<object?>> DistinctValuesAsync(
-        IQueryable<T> source, LambdaExpression selector, CancellationToken cancellationToken) =>
-        (Task<IReadOnlyList<object?>>)Invoke(nameof(DistinctAsync), [selector.ReturnType], source, selector, cancellationToken);
+    public static Task<DistinctValues> DistinctValuesAsync(
+        IQueryable<T> source, LambdaExpression selector, DistinctValuesRequest request, CancellationToken cancellationToken) =>
+        (Task<DistinctValues>)Invoke(nameof(DistinctAsync), [selector.ReturnType], source, selector, request, cancellationToken);
 
-    private static async Task<IReadOnlyList<object?>> DistinctAsync<TValue>(
-        IQueryable<T> source, Expression<Func<T, TValue>> selector, CancellationToken cancellationToken)
+    private static async Task<DistinctValues> DistinctAsync<TValue>(
+        IQueryable<T> source, Expression<Func<T, TValue>> selector, DistinctValuesRequest request, CancellationToken cancellationToken)
     {
-        var values = Cancellable(source, cancellationToken).Select(selector).Distinct().OrderBy(v => v).Take(MaxDistinctValues);
-        return (await ToListAsync(values, cancellationToken).ConfigureAwait(false)).Select(v => (object?)v).ToList();
+        var values = Cancellable(source, cancellationToken).Select(selector);
+        if (typeof(TValue) == typeof(string) && request.Search?.Trim() is { Length: > 0 } search)
+            values = values.Where(Containing<TValue>(search));
+        var limit = Math.Max(0, request.Limit);
+        // One more than the limit tells whether there are more
+        var found = await ToListAsync(values.Distinct().OrderBy(v => v).Take(limit + 1), cancellationToken).ConfigureAwait(false);
+        return new DistinctValues(found.Take(limit).Select(v => (object?)v).ToList(), found.Count > limit);
+    }
+
+    // value != null && value.ToLower().Contains("search"): translated by providers (LOWER and LIKE or INSTR in SQL)
+    private static Expression<Func<TValue, bool>> Containing<TValue>(string search)
+    {
+        var value = Expression.Parameter(typeof(TValue), "value");
+        var lowered = Expression.Call(value, typeof(string).GetMethod(nameof(string.ToLower), Type.EmptyTypes)!);
+        var contains = Expression.Call(lowered, typeof(string).GetMethod(nameof(string.Contains), [typeof(string)])!,
+            Expression.Constant(search.ToLowerInvariant()));
+        return Expression.Lambda<Func<TValue, bool>>(
+            Expression.AndAlso(Expression.NotEqual(value, Expression.Constant(null, typeof(TValue))), contains), value);
     }
 
     /// <summary>
@@ -171,7 +190,8 @@ internal static class QueryEngine<T>
         List<Expression> cells,
         AnalyticQuery query)
     {
-        var sorts = query.Sort is { Count: > 0 } ? query.Sort : query.GroupBy.Select(g => new SortSpec(g.Key)).ToList();
+        // The values of a set come before the others
+        var sorts = query.Sort is { Count: > 0 } ? query.Sort : query.GroupBy.Select(g => new SortSpec(g.Key, Descending: g.Set is not null)).ToList();
         var result = grouped;
         var first = true;
         foreach (var sort in sorts)
@@ -400,7 +420,7 @@ internal static class QueryEngine<T>
         for (var i = 0; i < groupBy.Count; i++)
         {
             var grain = groupBy[i].Grain;
-            if (grain is DateGrain.None or DateGrain.Day) continue;
+            if (grain is DateGrain.None or DateGrain.Day || groupBy[i].Set is not null) continue;
             foreach (var row in rows)
                 row[i] = row[i] is int key ? new DatePeriod(grain, key) : null;
         }

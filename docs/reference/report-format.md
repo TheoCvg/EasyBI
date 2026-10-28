@@ -27,7 +27,7 @@
 ```
 
 A visual's `type` is the id of its visual type: one of EasyBI's (`Bar`, `StackedBar`, `Line`, `Area`, `Scatter`, `Pie`,
-`Donut`, `Waterfall`, `Kpi`, `Gauge`, `Table`, `Matrix`, `Text`, `Image`, read whatever their case) or one an application
+`Donut`, `Waterfall`, `Kpi`, `Gauge`, `Table`, `Matrix`, `Text`, `Image`, `Variable`, read whatever their case) or one an application
 declares. A measure's `seriesType` draws its series with another cartesian type than the visual's.
 
 `null` in `values` means a missing value. Besides `In` and `NotIn`, a date filter's `operator` can be `Between`
@@ -52,6 +52,22 @@ and visuals reference them by name like a field:
 
 A measure named like a measure of its model (the second one) redefines it in the report; an empty `caption` keeps the
 model's.
+
+The report's [variables](../guide/variables.md) are saved with their current values (the property is omitted when
+there are none). Values are invariant, like filter values:
+
+```json
+"variables": [
+  { "name": "N", "model": "sales", "formula": "10 BETWEEN 3 AND 25", "value": "12", "format": "N0" },
+  { "name": "TopCustomers", "model": "sales", "formula": "SELECT TOP [@N] [Customer] ORDER BY [Amount] DESC" }
+]
+```
+
+A variable is its `formula`, stored with field names (see [the formulas of variables](../guide/variables.md#what-a-formula-gives));
+`value` is the value the end user gave a parameter, omitted while it is its formula's. Visuals reference
+variables by name: a filter value `"[@N]"` (a set's values with `In` and `NotIn`), `"topVariable": "N"`, a field
+`{ "field": "Customer", "set": "TopCustomers" }` grouped in true (the set's values) and false (the others), `[@N]` in a
+formula, `{N}` in a title or a text, and `{ "type": "Variable", "variable": "N" }` shows one on the dashboard.
 
 Text and image visuals carry their content and no model:
 

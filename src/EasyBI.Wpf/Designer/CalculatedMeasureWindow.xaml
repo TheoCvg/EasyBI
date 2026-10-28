@@ -48,6 +48,9 @@
                     <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.FormulaDimensionBrushKey}}" />
                     <Setter TargetName="Glyph" Property="FontSize" Value="10" />
                 </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Variable">
+                    <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.AccentBrushKey}}" />
+                </DataTrigger>
                 <DataTrigger Binding="{Binding Kind}" Value="Value">
                     <Setter TargetName="Glyph" Property="Text" Value="&quot;" />
                     <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource {x:Static bi:EasyBITheme.FormulaTextBrushKey}}" />
@@ -91,7 +94,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="220" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="{bi:Localize MeasureCaption}" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold" />
+            <TextBlock x:Name="CaptionLabel" Text="{bi:Localize MeasureCaption}" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold" />
             <TextBox x:Name="CaptionBox" Grid.Column="1" Padding="6,4" FontSize="14" Text="{Binding Caption, UpdateSourceTrigger=PropertyChanged}" />
             <TextBlock Grid.Column="2" Text="{bi:Localize MeasureFormat}" VerticalAlignment="Center" Margin="20,0,10,0" FontWeight="SemiBold" />
             <ComboBox Grid.Column="3" ItemsSource="{Binding FormatOptions}" SelectedItem="{Binding Format}" DisplayMemberPath="Label" VerticalContentAlignment="Center" />
@@ -131,7 +134,7 @@
                         <Border.ToolTip>
                             <ToolTip>
                                 <StackPanel MaxWidth="380">
-                                    <TextBlock Text="{bi:Localize MeasureFormulaHint}" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="FormulaHint" Text="{bi:Localize MeasureFormulaHint}" TextWrapping="Wrap" />
                                     <TextBlock Text="{bi:Localize FormulaShortcutsHint}" Margin="0,8,0,0" TextWrapping="Wrap" Opacity="0.8" />
                                 </StackPanel>
                             </ToolTip>
@@ -146,7 +149,7 @@
                     <TextBox x:Name="FormulaBox" Padding="8,8" AcceptsReturn="False" TextWrapping="Wrap" VerticalContentAlignment="Top"
                              VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="15"
                              Text="{Binding Formula, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Text="{bi:Localize FormulaPlaceholder}" Margin="12,10,12,0" FontSize="13" TextWrapping="Wrap">
+                    <TextBlock x:Name="FormulaPlaceholder" Text="{bi:Localize FormulaPlaceholder}" Margin="12,10,12,0" FontSize="13" TextWrapping="Wrap">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource Placeholder}">
                                 <Style.Triggers>

@@ -63,6 +63,9 @@ public static class FormulaEditing
     /// <summary>The words of the formulas other than the functions.</summary>
     public static IReadOnlyList<string> Keywords { get; } = ["AND", "OR", "NOT", "TRUE", "FALSE"];
 
+    /// <summary>The words of the variables' formulas (see <see cref="VariableFormula"/>), colored as keywords.</summary>
+    public static IReadOnlyList<string> VariableKeywords { get; } = ["SELECT", "TOP", "WHERE", "ORDER", "BY", "ASC", "DESC", "IN", "BETWEEN", "STEP"];
+
     /// <summary>The parts of a formula, in order; spaces are left out.</summary>
     public static IReadOnlyList<FormulaToken> Tokenize(string text)
     {
@@ -95,17 +98,18 @@ public static class FormulaEditing
                 }
                 kind = c == '[' ? FormulaTokenKind.Field : FormulaTokenKind.Text;
             }
-            else if (char.IsAsciiDigit(c) || (c == '.' && i + 1 < text.Length && char.IsAsciiDigit(text[i + 1])))
+            else if (Compat.IsAsciiDigit(c) || (c == '.' && i + 1 < text.Length && Compat.IsAsciiDigit(text[i + 1])))
             {
-                while (i < text.Length && (char.IsAsciiDigit(text[i]) || text[i] == '.')) i++;
+                while (i < text.Length && (Compat.IsAsciiDigit(text[i]) || text[i] == '.')) i++;
                 kind = FormulaTokenKind.Number;
             }
-            else if (char.IsAsciiLetter(c))
+            else if (Compat.IsAsciiLetter(c))
             {
-                while (i < text.Length && (char.IsAsciiLetterOrDigit(text[i]) || text[i] == '_')) i++;
+                while (i < text.Length && (Compat.IsAsciiLetterOrDigit(text[i]) || text[i] == '_')) i++;
                 var word = text[start..i];
                 kind = MeasureFormula.FindFunction(word) is not null ? FormulaTokenKind.Function
-                    : Keywords.Contains(word, StringComparer.OrdinalIgnoreCase) ? FormulaTokenKind.Keyword
+                    : Keywords.Contains(word, StringComparer.OrdinalIgnoreCase) || VariableKeywords.Contains(word, StringComparer.OrdinalIgnoreCase)
+                        ? FormulaTokenKind.Keyword
                     : FormulaTokenKind.Unknown;
             }
             else
@@ -168,7 +172,7 @@ public static class FormulaEditing
     /// </summary>
     public static FormulaContext ContextAt(string text, int position)
     {
-        position = Math.Clamp(position, 0, text.Length);
+        position = Compat.Clamp(position, 0, text.Length);
         var tokens = Tokenize(text);
         // What is already typed there: a name, or a value (a text or a number) being typed
         var completion = CompletionAt(text, position);
@@ -235,7 +239,7 @@ public static class FormulaEditing
     /// <summary>What is being typed at <paramref name="position"/>, or null (in a text, after a space or an operator...).</summary>
     public static FormulaCompletion? CompletionAt(string text, int position)
     {
-        position = Math.Clamp(position, 0, text.Length);
+        position = Compat.Clamp(position, 0, text.Length);
         var token = Tokenize(text).LastOrDefault(t => t.Start < position && position <= t.Start + t.Length);
         if (token == default) return null;
         var typed = text[token.Start..position];
@@ -247,7 +251,7 @@ public static class FormulaEditing
                 if (whole.EndsWith(']') && position == token.Start + token.Length && whole.Length > 1) return null;
                 var length = whole.EndsWith(']') ? token.Length : position - token.Start;
                 return new FormulaCompletion(token.Start, length, typed[1..], IsField: true);
-            case FormulaTokenKind.Function or FormulaTokenKind.Keyword or FormulaTokenKind.Unknown when char.IsAsciiLetter(typed[0]):
+            case FormulaTokenKind.Function or FormulaTokenKind.Keyword or FormulaTokenKind.Unknown when Compat.IsAsciiLetter(typed[0]):
                 return new FormulaCompletion(token.Start, token.Length, typed, IsField: false);
             default:
                 return null;

@@ -45,7 +45,7 @@ public sealed class ValueStyler
     {
         _format = format;
         _theme = theme;
-        var shown = values.OfType<double>().Where(double.IsFinite).ToList();
+        var shown = values.OfType<double>().Where(Compat.IsFinite).ToList();
         (_min, _max) = shown.Count == 0 ? (0, 0) : (shown.Min(), shown.Max());
     }
 
@@ -72,7 +72,7 @@ public sealed class ValueStyler
         if (_format.Bar is { } bar)
         {
             var largest = Math.Max(Math.Abs(_min), Math.Abs(_max));
-            var length = largest == 0 ? 0 : Math.Clamp(number / largest, -1, 1);
+            var length = largest == 0 ? 0 : Compat.Clamp(number / largest, -1, 1);
             style = style with { Bar = length, BarColor = _theme.Resolve(length < 0 ? bar.NegativeColor : bar.Color) };
         }
         if (_format.Icons is { } icons)
@@ -138,7 +138,7 @@ public sealed class ValueStyler
     {
         if (Parse(from) is not { } a) return to;
         if (Parse(to) is not { } b) return from;
-        ratio = Math.Clamp(ratio, 0, 1);
+        ratio = Compat.Clamp(ratio, 0, 1);
         int Channel(int x, int y) => (int)Math.Round(x + (y - x) * ratio);
         return $"#{Channel(a.R, b.R):X2}{Channel(a.G, b.G):X2}{Channel(a.B, b.B):X2}";
     }

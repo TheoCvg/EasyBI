@@ -50,6 +50,22 @@ public static class PeriodFilters
         };
     }
 
+    /// <summary>
+    /// The filters with their periods relative to today (this year, the last 12 months) turned into the days they keep on
+    /// <paramref name="today"/>: a source then runs the query without knowing the user's date.
+    /// </summary>
+    public static IReadOnlyList<FilterSpec>? OnDay(IReadOnlyList<FilterSpec>? filters, DateOnly today) =>
+        filters?.Select(f => OnDay(f, today)).ToArray();
+
+    private static FilterSpec OnDay(FilterSpec filter, DateOnly today)
+    {
+        if (filter.Operator == FilterOperator.AnyOf)
+            return filter with { Alternatives = filter.Alternatives?.Select(group => (IReadOnlyList<FilterSpec>)[.. group.Select(f => OnDay(f, today))]).ToArray() };
+        if (filter.Operator is not (FilterOperator.Current or FilterOperator.Last or FilterOperator.Previous)) return filter;
+        var (start, end) = Range(filter, today);
+        return Between(filter.Field, start is { } s ? DateOnly.FromDateTime(s) : null, end is { } e ? DateOnly.FromDateTime(e.AddDays(-1)) : null);
+    }
+
     /// <summary>The filter as the user reads it: "Last 12 months", "Since 01/03/2024"...</summary>
     public static string Describe(FilterSpec filter)
     {

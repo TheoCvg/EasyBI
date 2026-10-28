@@ -23,6 +23,7 @@ nav = [
     ] },
     { "Calculated measures" = "guide/calculated-measures.md" },
     { "Filters" = "guide/filtering.md" },
+    { "Variables" = "guide/variables.md" },
     { "Cross-filtering" = "guide/cross-filtering.md" },
   ] },
   { "Visuals" = [
@@ -52,6 +53,7 @@ nav = [
   ] },
   { "Reference" = [
     { "Report format" = "reference/report-format.md" },
+    { "Data format" = "reference/data-format.md" },
     { "Known limitations" = "reference/limitations.md" },
   ] },
   { "Changelog" = "changelog.md" },

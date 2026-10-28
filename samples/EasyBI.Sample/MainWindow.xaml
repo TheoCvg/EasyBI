@@ -38,12 +38,14 @@
                     <ComboBox x:Name="LanguagePicker" Width="150" DisplayMemberPath="NativeName" SelectionChanged="OnLanguageChanged" />
                     <TextBlock Text="{bi:Localize Renderer, Source={x:Static local:App.Texts}}" VerticalAlignment="Center" Margin="18,0,8,0" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
                     <ComboBox x:Name="RendererPicker" Width="140" DisplayMemberPath="Name" SelectionChanged="OnRendererChanged" />
-                    <!-- Data source: the same sales in memory or in a SQLite database of millions of rows -->
+                    <!-- Data source: the same sales in memory, in a SQLite database of millions of rows or behind a server -->
                     <TextBlock Text="{bi:Localize DataSource, Source={x:Static local:App.Texts}}" VerticalAlignment="Center" Margin="18,0,8,0" Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" />
                     <ComboBox x:Name="SourcePicker" Width="220" SelectionChanged="OnSourceChanged">
                         <ComboBoxItem Tag="0" Content="{bi:Localize DataSourceMemory, Source={x:Static local:App.Texts}}" IsSelected="True" />
                         <ComboBoxItem Tag="1000000" Content="{bi:Localize DataSourceSqlite1M, Source={x:Static local:App.Texts}}" />
                         <ComboBoxItem Tag="5000000" Content="{bi:Localize DataSourceSqlite5M, Source={x:Static local:App.Texts}}" />
+                        <!-- The sales stay on samples/EasyBI.Sample.Server: visuals receive their results as JSON (see RemoteModel) -->
+                        <ComboBoxItem Tag="server" Content="{bi:Localize DataSourceServer, Source={x:Static local:App.Texts}}" />
                         <!-- Every query fails: how visuals show a failure (see VisualFailed in MainWindow.xaml.cs) -->
                         <ComboBoxItem Tag="-1" Content="{bi:Localize DataSourceUnavailableDemo, Source={x:Static local:App.Texts}}" />
                     </ComboBox>

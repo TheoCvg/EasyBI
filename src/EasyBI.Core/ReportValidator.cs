@@ -15,12 +15,17 @@ public static class ReportValidator
         var byName = models.ToDictionary(m => m.Name);
         var problems = new List<string>();
 
-        // Text and image visuals carry their content and reference no model
-        foreach (var visual in report.Visuals.Where(v => !v.Type.IsContent()))
+        foreach (var visual in report.Visuals)
         {
             var where = string.IsNullOrWhiteSpace(visual.Title)
                 ? Strings.Format(Strings.ReportUntitledVisual, visual.Type)
                 : Strings.Format(Strings.ReportTitledVisual, visual.Title);
+            // A text may write braces: only the other references must name a variable
+            var used = VariableReferences.UsedBy(visual with { Title = "", Text = null });
+            foreach (var name in used.Where(n => !report.Variables.Any(v => v.Name == n)))
+                problems.Add(Strings.Format(Strings.ReportUnknownVariable, where, name));
+            // Text, image and variable visuals carry their content and reference no model
+            if (visual.Type.IsContent()) continue;
             if (!byName.TryGetValue(visual.Model, out var model))
             {
                 problems.Add(Strings.Format(Strings.ReportUnknownModel, where, visual.Model));
@@ -57,7 +62,26 @@ public static class ReportValidator
             var where = Strings.Format(Strings.ReportCalculatedMeasure, measure.Caption.Length > 0 ? measure.Caption : measure.Name);
             if (!byName.TryGetValue(measure.Model, out var model))
                 problems.Add(Strings.Format(Strings.ReportUnknownModel, where, measure.Model));
-            else if (MeasureFormula.Validate(measure.Formula, model, report.Measures, measure.Name) is { } problem)
+            else if (MeasureFormula.Validate(measure.Formula, model, report.Measures, measure.Name, report.Variables) is { } problem)
+                problems.Add(Strings.Format(Strings.ReportInvalidFormula, where, problem));
+        }
+
+        foreach (var variable in report.Variables)
+        {
+            var where = Strings.Format(Strings.ReportVariable, variable.Name);
+            if (!ReportVariable.IsValidName(variable.Name))
+                problems.Add(Strings.Format(Strings.ReportInvalidVariableName, where));
+            // A parameter reads no field: its model does not matter
+            if (!byName.TryGetValue(variable.Model, out var model))
+            {
+                if (VariableFormula.Read(variable.Formula)?.Kind != VariableKind.Parameter)
+                {
+                    problems.Add(Strings.Format(Strings.ReportUnknownModel, where, variable.Model));
+                    continue;
+                }
+                model = new ModelMetadata(variable.Model, "", []);
+            }
+            if (VariableFormula.Validate(variable.Formula, model, report.Measures, variable.Name, report.Variables) is { } problem)
                 problems.Add(Strings.Format(Strings.ReportInvalidFormula, where, problem));
         }
         return problems;

@@ -37,11 +37,23 @@ Filters.Load(report.Filters);                                                   
 
 ### Values
 
-Any dimension can be filtered on a list of values, checked in a list that users can search.
+Any dimension can be filtered on a list of values, checked as in Excel: every value is checked at first (no filter),
+unchecking one leaves it out, and **(Select all)** is checked, unchecked or partly checked. The list shows thousands of
+values without slowing down and offers a search from 8 values on; while searching, **(Select all search results)**
+and checking a value found filter on the values found, unless **Add current selection to filter** keeps the others.
+A selection is saved as the shorter list: the values kept (`In`) or those left out (`NotIn`). Every value unchecked
+keeps no row (`In` without values).
+
+A filter lists the first 10,000 values (`DistinctValuesRequest.DefaultLimit`). Beyond, it says so, and its search asks
+the model for the values containing the longest word typed (`DistinctValuesRequest.Search`): a dimension of a million
+customers stays searchable. The values not listed keep the state of the filter: kept when it filters "all except",
+left out when it filters "one of". `QueryableSemanticModel` searches in the `IQueryable` (`value.ToLower().Contains(...)`,
+translated to SQL by EF Core), so the model's search follows the database's rules for accents.
 
 ```csharp
 new FilterSpec("Region", FilterOperator.In, ["Nord", "Sud"])
 new FilterSpec("Channel", FilterOperator.NotIn, ["Web"])
+new FilterSpec("Channel", FilterOperator.In, [])          // no row
 ```
 
 ### Periods

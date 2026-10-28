@@ -62,6 +62,23 @@ public sealed class EasyBIContext
     public MeasureContext Measures { get; } = new();
 
     /// <summary>
+    /// The variables of the open report (parameters and sets of values): visuals replace the references to them before
+    /// querying, <see cref="VisualType.Variable"/> visuals let the end user change them. A
+    /// <see cref="Dashboard.DashboardView"/> loads and saves them with its document.
+    /// </summary>
+    public VariableContext Variables { get; } = new();
+
+    /// <summary>
+    /// Where the sets chosen by a rule find their values: the models of the context, the report's filters of
+    /// <paramref name="filters"/>, the calculated measures.
+    /// </summary>
+    public SetSource SetSource(FilterContext? filters) => new(name => _models.FirstOrDefault(m => m.Metadata.Name == name))
+    {
+        Filters = model => filters?.Filters.Where(f => f.Model == model).Select(f => f.Filter) ?? [],
+        Measures = Measures.Measures,
+    };
+
+    /// <summary>
     /// The visual types the designer offers and the visuals follow: EasyBI's, and those the application adds
     /// (<see cref="AddVisualType"/>) or the renderers bring. Change it before showing the designer.
     /// </summary>
@@ -121,9 +138,14 @@ public sealed class EasyBIContext
 
     /// <summary>
     /// Tells the visuals that the data behind a model changed (rows added, source replaced): they query again, although
-    /// their query is the same. Without a model name, every visual queries again. Can be called from any thread.
+    /// their query is the same, and the sets of values chosen by a rule are computed again. Without a model name, every
+    /// visual queries again. Can be called from any thread.
     /// </summary>
-    public void RefreshData(string? model = null) => DataChanged?.Invoke(this, new DataChangedEventArgs(model));
+    public void RefreshData(string? model = null)
+    {
+        Variables.Refresh();
+        DataChanged?.Invoke(this, new DataChangedEventArgs(model));
+    }
 
     /// <summary>
     /// The measures a user can pick in a model: the model's own, as the report redefines them, then the calculated
@@ -154,10 +176,11 @@ public sealed class EasyBIContext
     /// </summary>
     public IVisualRenderer? ResolveRenderer(VisualDefinition visual) => Resolve(VisualPipeline.TypesOf(visual));
 
-    private IVisualRenderer? Resolve(IReadOnlySet<VisualType> types)
+    private IVisualRenderer? Resolve(IReadOnlyCollection<VisualType> types)
     {
-        if (_activeRenderer is not null && types.IsSubsetOf(_activeRenderer.Capabilities.Types)) return _activeRenderer;
-        return _renderers.Concat(BuiltInRenderers).FirstOrDefault(r => types.IsSubsetOf(r.Capabilities.Types));
+        bool Draws(IVisualRenderer renderer) => types.All(renderer.Capabilities.Types.Contains);
+        if (_activeRenderer is not null && Draws(_activeRenderer)) return _activeRenderer;
+        return _renderers.Concat(BuiltInRenderers).FirstOrDefault(Draws);
     }
 }
 

@@ -10,7 +10,7 @@ public sealed record SelectedElement(IReadOnlyList<FieldRef> Fields, IReadOnlyLi
     public IReadOnlyList<string?> Keys { get; } = [.. Values.Select(InvariantValue.Format)];
 
     /// <summary>Equality filters on each dimension.</summary>
-    public IReadOnlyList<FilterSpec> Filters => [.. Fields.Select((f, i) => new FilterSpec(f.Field, FilterOperator.In, [Keys[i]], f.Grain))];
+    public IReadOnlyList<FilterSpec> Filters => [.. Fields.Select((f, i) => f.Matching([Keys[i]]))];
 
     /// <summary>True when both designate the same element (same dimensions, same values).</summary>
     public bool SameAs(SelectedElement other) => Fields.SequenceEqual(other.Fields) && Keys.SequenceEqual(other.Keys);
@@ -38,8 +38,7 @@ public sealed record CrossFilter(string SourceVisualId, string Model, IReadOnlyL
         {
             if (Elements.Count == 1) return Elements[0].Filters;
             if (VaryingField() is { } varying)
-                return [.. Elements[0].Fields.Select((f, i) => new FilterSpec(f.Field, FilterOperator.In,
-                    i == varying ? [.. Elements.Select(e => e.Keys[i]).Distinct()] : [Elements[0].Keys[i]], f.Grain))];
+                return [.. Elements[0].Fields.Select((f, i) => f.Matching(i == varying ? [.. Elements.Select(e => e.Keys[i]).Distinct()] : [Elements[0].Keys[i]]))];
             return [FilterSpec.AnyOf([.. Elements.Select(e => e.Filters)])];
         }
     }
@@ -91,11 +90,14 @@ public sealed class FilterContext
     /// <summary>The selection made in a visual, if any.</summary>
     public CrossFilter? SelectionOf(string visualId) => _selections.FirstOrDefault(s => s.SourceVisualId == visualId);
 
-    /// <summary>Adds or replaces the global filter on this field; a filter without values is removed.</summary>
+    /// <summary>
+    /// Adds or replaces the global filter on this field. A filter without values is removed, except "one of no value"
+    /// (<see cref="FilterOperator.In"/>), which keeps no row: every value unchecked.
+    /// </summary>
     public void SetFilter(string model, FilterSpec filter)
     {
         var index = _filters.FindIndex(f => f.Model == model && f.Filter.Field == filter.Field);
-        if (filter.Values.Count == 0)
+        if (filter.Values.Count == 0 && filter.Operator != FilterOperator.In)
         {
             if (index >= 0) RemoveFilter(model, filter.Field);
             return;

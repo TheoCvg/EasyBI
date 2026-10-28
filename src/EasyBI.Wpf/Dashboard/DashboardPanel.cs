@@ -100,7 +100,7 @@ public class DashboardPanel : Panel
 
     /// <summary>A width in columns shown (<see cref="ActiveColumns"/>) as a width in columns of the layout.</summary>
     public int ToLayoutSpan(int activeSpan) =>
-        ActiveColumns == Columns ? activeSpan : Math.Clamp((int)Math.Round(activeSpan * (double)Columns / ActiveColumns), 1, Columns);
+        ActiveColumns == Columns ? activeSpan : Compat.Clamp((int)Math.Round(activeSpan * (double)Columns / ActiveColumns), 1, Columns);
 
     private int ColumnsAt(double width) => ColumnTier.ColumnsFor(ColumnTiers ?? ColumnTier.Defaults, width, Columns);
 
@@ -286,7 +286,7 @@ public class DashboardPanel : Panel
                 {
                     state.ExtentWidth = arrangement.ExtentWidth;
                     state.ViewportWidth = width;
-                    state.HorizontalOffset = Math.Clamp(state.HorizontalOffset, 0, Math.Max(0, arrangement.ExtentWidth - width));
+                    state.HorizontalOffset = Compat.Clamp(state.HorizontalOffset, 0, Math.Max(0, arrangement.ExtentWidth - width));
                 }
                 _bandBounds.Add(new Rect(0, top, width, arrangement.Height));
                 _lineBounds.Add(arrangement.Lines.Select(l => new Rect(l.X, l.Y + top, l.Width, l.Height)).ToArray());

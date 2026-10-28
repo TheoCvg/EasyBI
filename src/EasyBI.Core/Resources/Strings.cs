@@ -80,6 +80,10 @@ internal static class Strings
     public static string FormulaNotAggregatable => Get();
     public static string FormulaNestedAggregation => Get();
     public static string FormulaUsage => Get();
+    public static string FormulaByUsage => Get();
+    public static string FormulaByFunction => Get();
+    public static string FormulaByNotDimension => Get();
+    public static string FormulaByInVariables => Get();
     public static string FormulaUnknownFunction => Get();
     public static string FormulaMismatch => Get();
     public static string FormulaEqualityOnly => Get();
@@ -103,6 +107,29 @@ internal static class Strings
     public static string CompareLessThan => Get();
     public static string CompareLessThanOrEqual => Get();
     public static string CompareRange => Get();
+    public static string VariableUnknown => Get();
+    public static string VariableNotParameter => Get();
+    public static string VariableNotSet => Get();
+    public static string VariableNotNumber => Get();
+    public static string FormulaSetVariable => Get();
+    public static string SetOthers => Get();
+    public static string VisualTypeVariable => Get();
+    public static string ValidationNoVariable => Get();
+    public static string ReportUnknownVariable => Get();
+    public static string ReportVariable => Get();
+    public static string ReportInvalidVariableName => Get();
+    public static string VariableTop => Get();
+    public static string VariableSelectField => Get();
+    public static string VariableExpected => Get();
+    public static string VariableSetNotDimension => Get();
+    public static string VariableMemberType => Get();
+    public static string VariableCycle => Get();
+    public static string VariableRowCondition => Get();
+    public static string VariableBetweenNumbers => Get();
+    public static string VariableBetween => Get();
+    public static string VariableOutOfRange => Get();
+    public static string VariableChoiceType => Get();
+    public static string VariableNotAChoice => Get();
 
     /// <summary>A text whose key is built (PeriodLastMonth...).</summary>
     public static string Named(string key) => Get(key);

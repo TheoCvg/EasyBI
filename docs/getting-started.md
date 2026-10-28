@@ -21,7 +21,8 @@ In ten minutes: a WPF window that shows a chart of your data, then a designer wh
     <PackageReference Include="EasyBI.Renderers.LiveCharts2" Version="*" />
     ```
 
-`EasyBI.Wpf` brings `EasyBI.Core` and `EasyBI.Abstractions`. Pick the charting library you prefer: `EasyBI.Renderers.OxyPlot`
+EasyBI runs on .NET 8 and on .NET Framework 4.6.2 or later. `EasyBI.Wpf` brings `EasyBI.Core` and
+`EasyBI.Abstractions`. Pick the charting library you prefer: `EasyBI.Renderers.OxyPlot`
 draws the same charts with OxyPlot.
 
 !!! tip "Your application uses WPF UI or Material Design?"
@@ -165,4 +166,6 @@ See the [report format](reference/report-format.md).
 ??? info "About the sample"
     The sample starts in your system language (English or French) and has a language picker in its toolbar. Its data
     picker switches the same sales between memory (20,000 rows) and a SQLite database of 1 or 5 million rows, created
-    once in `%LOCALAPPDATA%\EasyBI.Sample`; the toolbar shows how long the last refresh took.
+    once in `%LOCALAPPDATA%\EasyBI.Sample`; the toolbar shows how long the last refresh took. Its *Server over HTTP*
+    source gets the results of visuals from `samples/EasyBI.Sample.Server`: start it first with
+    `dotnet run --project samples/EasyBI.Sample.Server`.

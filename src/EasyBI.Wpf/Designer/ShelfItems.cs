@@ -14,7 +14,7 @@ public enum Shelf { Axis, Legend, Values, Tooltip, Filters }
 public sealed class ShelfItemViewModel : ObservableObject
 {
     public static IReadOnlyList<Option<DateGrain>> GrainOptions { get; } =
-        Enum.GetValues<DateGrain>().Select(g => new Option<DateGrain>(g, () => DateGrains.Caption(g))).ToArray();
+        Compat.GetValues<DateGrain>().Select(g => new Option<DateGrain>(g, () => DateGrains.Caption(g))).ToArray();
 
     public static IReadOnlyList<Option<Aggregation>> AggregationOptions { get; } =
         new[] { Aggregation.Sum, Aggregation.Average, Aggregation.Min, Aggregation.Max, Aggregation.Count }
@@ -59,6 +59,7 @@ public sealed class ShelfItemViewModel : ObservableObject
     private VisualType? _seriesType;
     private bool _secondaryAxis;
     private bool _showSeriesOptions;
+    private string? _set;
 
     public ShelfItemViewModel(FieldDescriptor field, Shelf shelf, Action changed)
     {
@@ -110,6 +111,7 @@ public sealed class ShelfItemViewModel : ObservableObject
             if (ShowSeriesOptions && SeriesType is not null) badges.Add(SeriesTypeOption.Label);
             if (ShowSeriesOptions && SecondaryAxis) badges.Add(Strings.SecondaryAxis);
             if (CanSort && SortDirection is not null) badges.Add(SortOption.Symbol);
+            if (Set is not null) badges.Add("{ }");
             return badges;
         }
     }
@@ -118,7 +120,8 @@ public sealed class ShelfItemViewModel : ObservableObject
 
     public Shelf Shelf { get; }
 
-    public string Caption => Field.Caption;
+    /// <summary>The field's caption, or the name of the set grouping it.</summary>
+    public string Caption => Set ?? Field.Caption;
 
     public bool HasGrain => Field.Kind == FieldKind.Dimension && Field.DataType == DataType.Date;
 
@@ -214,7 +217,22 @@ public sealed class ShelfItemViewModel : ObservableObject
         internal set => SetProperty(ref _showSeriesOptions, value);
     }
 
-    public FieldRef ToFieldRef() => new(Field.Name, Grain) { Labels = _labels };
+    public FieldRef ToFieldRef() => new(Field.Name, Grain) { Labels = _labels, Set = _set };
+
+    /// <summary>
+    /// A set of the report grouping the values of this dimension in two, the set's and the others (see
+    /// <see cref="FieldRef.Set"/>): the chip of a set dropped on Axis or Legend. Null for the values themselves.
+    /// </summary>
+    public string? Set
+    {
+        get => _set;
+        set
+        {
+            if (!SetProperty(ref _set, value)) return;
+            OnPropertyChanged(nameof(Caption));
+            _changed();
+        }
+    }
 
     /// <summary>
     /// The texts the visual shows instead of some values of this dimension (keyed by the value's invariant text).
@@ -265,13 +283,15 @@ public sealed class SortOption(ListSortDirection? direction, string symbol, Func
 }
 
 /// <summary>
-/// A filter on a dimension. Most dimensions list their values to check: "one of" (In) or, for an existing filter
-/// loaded as-is, "all except" (NotIn). A date dimension filters on a period instead: between two dates, or relative to
-/// today (the current, last or previous months...).
+/// A filter on a dimension. Most dimensions list their values to check, as in Excel: every value checked does not
+/// filter, unchecking one leaves it out, and "(Select all)" checks or unchecks every value shown. The filter is the
+/// shorter list: "one of" the checked values (In) or "all except" the others (NotIn). A date dimension filters on a
+/// period instead: between two dates, or relative to today (the current, last or previous months...).
 /// </summary>
 public sealed class FilterItemViewModel : ObservableObject
 {
     private readonly Action _changed;
+    private readonly ISemanticModel _model;
     private bool _isSelected;
     private ICommand? _selectCommand;
     private HashSet<string?>? _pendingSelection;
@@ -282,9 +302,20 @@ public sealed class FilterItemViewModel : ObservableObject
     private int _count = 12;
     private Option<DateGrain> _unit;
     private string _search = "";
+    private IReadOnlyList<FilterValueViewModel>? _visibleValues;
+    private bool _addToFilter;
+    // Checking several values at once changes the filter once
+    private bool _toggling;
+    private bool _isTruncated;
+    // Whether the values not listed (beyond a truncated list) are kept by the filter
+    private bool _othersChecked = true;
+    // Values found by a search are announced once
+    private bool _merging;
+    private CancellationTokenSource? _searching;
     private Option<FilterOperator?> _condition;
     private string _number = "";
     private string _secondNumber = "";
+    private bool _excludeSet;
 
     /// <summary>A list of values shows a search box from this number of values on.</summary>
     public const int SearchThreshold = 8;
@@ -295,13 +326,17 @@ public sealed class FilterItemViewModel : ObservableObject
         Action changed,
         IEnumerable<string?>? selection = null,
         FilterOperator @operator = FilterOperator.In,
-        DateGrain grain = DateGrain.None)
+        DateGrain grain = DateGrain.None,
+        string? set = null)
     {
         Field = field;
         Operator = @operator;
+        Set = set;
+        _excludeSet = @operator == FilterOperator.NotIn;
         _changed = changed;
+        _model = model;
         // While loading, the values are announced once at the end
-        Values.CollectionChanged += (_, _) => { if (!IsLoading) OnValuesChanged(); };
+        Values.CollectionChanged += (_, _) => { if (!IsLoading && !_merging) OnValuesChanged(); };
         PeriodKinds =
         [
             new(null, () => Strings.PeriodKindAny),
@@ -315,7 +350,7 @@ public sealed class FilterItemViewModel : ObservableObject
         _periodKind = PeriodKinds[0];
         _unit = Units[1];
         // A number dimension is filtered on a list of values or compared; a measure is only compared
-        Conditions = field.DataType != DataType.Number ? [] :
+        Conditions = field.DataType != DataType.Number || set is not null ? [] :
         [
             IsMeasure ? new(null, () => Strings.ConditionAny) : new(@operator.IsComparison() ? FilterOperator.In : @operator, () => Strings.ConditionValues),
             new(FilterOperator.Range, () => Strings.ConditionRange),
@@ -325,6 +360,12 @@ public sealed class FilterItemViewModel : ObservableObject
             new(FilterOperator.LessThanOrEqual, () => Strings.ConditionLessThanOrEqual),
         ];
         _condition = Conditions.FirstOrDefault(c => c.Value == @operator) ?? Conditions.FirstOrDefault()!;
+        if (IsSet)
+        {
+            // The set gives the values
+            _isLoading = false;
+            return;
+        }
         if (IsPeriod)
         {
             LoadPeriod(new FilterSpec(field.Name, @operator, selection?.ToArray() ?? [], grain));
@@ -345,6 +386,27 @@ public sealed class FilterItemViewModel : ObservableObject
 
     public FieldDescriptor Field { get; }
 
+    /// <summary>
+    /// The set of the report whose values the filter keeps, or leaves out with <see cref="ExcludeSet"/> (a set dropped
+    /// on Filters); null for a filter on the values of <see cref="Field"/>.
+    /// </summary>
+    public string? Set { get; }
+
+    /// <summary>A filter on the values of a <see cref="Set"/>.</summary>
+    public bool IsSet => Set is not null;
+
+    /// <summary>Whether the filter leaves out the values of its <see cref="Set"/> rather than keeping them.</summary>
+    public bool ExcludeSet
+    {
+        get => _excludeSet;
+        set
+        {
+            if (!SetProperty(ref _excludeSet, value)) return;
+            OnPropertyChanged(nameof(Summary));
+            _changed();
+        }
+    }
+
     /// <summary>True while the filter is the designer's <see cref="DesignerViewModel.SelectedItem"/>.</summary>
     public bool IsSelected
     {
@@ -360,15 +422,16 @@ public sealed class FilterItemViewModel : ObservableObject
     /// <summary>The operator the filter was created with; <see cref="Condition"/> tells how it filters now.</summary>
     public FilterOperator Operator { get; }
 
-    public string Caption => Field.Caption;
+    /// <summary>The field's caption, or the name of its <see cref="Set"/>.</summary>
+    public string Caption => Set ?? Field.Caption;
 
     /// <summary>A date dimension: filtered on a period rather than on a list of values.</summary>
-    public bool IsPeriod => Field.DataType == DataType.Date;
+    public bool IsPeriod => !IsSet && Field.DataType == DataType.Date;
 
     /// <summary>A measure of the visual: its groups are kept by comparing the measure with numbers.</summary>
     public bool IsMeasure => Field.Kind == FieldKind.Measure;
 
-    public bool IsValueList => !IsPeriod && !IsMeasure && !IsComparison;
+    public bool IsValueList => !IsSet && !IsPeriod && !IsMeasure && !IsComparison;
 
     /// <summary>Compared with numbers (see <see cref="Condition"/>).</summary>
     public bool IsComparison => Condition?.Value?.IsComparison() == true;
@@ -410,8 +473,11 @@ public sealed class FilterItemViewModel : ObservableObject
 
     public ObservableCollection<FilterValueViewModel> Values { get; } = [];
 
-    /// <summary>The <see cref="Values"/> matching <see cref="Search"/>: the checked values that do not match stay checked.</summary>
-    public IReadOnlyList<FilterValueViewModel> VisibleValues => Values.Where(v => TextMatch.Matches(v.Label, _search)).ToArray();
+    /// <summary>
+    /// The <see cref="Values"/> matching <see cref="Search"/>, computed once per search: the values that do not match
+    /// keep their state until a value found is checked or unchecked (see <see cref="AddToFilter"/>).
+    /// </summary>
+    public IReadOnlyList<FilterValueViewModel> VisibleValues => _visibleValues ??= Values.Where(v => TextMatch.Matches(v.Label, _search)).ToArray();
 
     /// <summary>Text searched in the values (see <see cref="TextMatch"/>).</summary>
     public string Search
@@ -419,8 +485,63 @@ public sealed class FilterItemViewModel : ObservableObject
         get => _search;
         set
         {
-            if (SetProperty(ref _search, value ?? "")) OnPropertyChanged(nameof(VisibleValues));
+            if (!SetProperty(ref _search, value ?? "")) return;
+            OnPropertyChanged(nameof(IsSearching));
+            OnVisibleValuesChanged();
+            // The values beyond a truncated list are searched in the model
+            if (IsTruncated) SearchTask = SearchModelAsync(_search);
         }
+    }
+
+    /// <summary>The values being searched in the model (tests wait for it).</summary>
+    public Task SearchTask { get; private set; } = Task.CompletedTask;
+
+    /// <summary>
+    /// Whether the model has more values than listed (<see cref="DistinctValuesRequest.DefaultLimit"/>): a search
+    /// asks the model for those containing it, and the values not listed keep the state of the filter.
+    /// </summary>
+    public bool IsTruncated
+    {
+        get => _isTruncated;
+        private set => SetProperty(ref _isTruncated, value);
+    }
+
+    public bool IsSearching => _search.Trim().Length > 0;
+
+    /// <summary>
+    /// Whether every value shown is checked (true), none (false), or some (null): the "(Select all)" box, or "(Select
+    /// all search results)" while searching. Setting it checks or unchecks every value shown, with one change of the
+    /// filter.
+    /// </summary>
+    public bool? AllChecked
+    {
+        get
+        {
+            var visible = VisibleValues;
+            if (visible.Count == 0) return false;
+            var checkedCount = visible.Count(v => v.IsChecked);
+            return checkedCount == visible.Count ? true : checkedCount == 0 ? false : null;
+        }
+        set
+        {
+            // A click on a box partly checked checks everything, as in Excel (WPF would uncheck)
+            var isChecked = value == true || AllChecked is null;
+            Toggle(() =>
+            {
+                foreach (var item in VisibleValues) item.SetChecked(isChecked);
+                if (!IsSearching) _othersChecked = isChecked;
+            });
+        }
+    }
+
+    /// <summary>
+    /// While searching, as Excel's "Add current selection to filter": when false, checking or unchecking a value found
+    /// filters on the checked values found only, the others are unchecked; when true, the others keep their state.
+    /// </summary>
+    public bool AddToFilter
+    {
+        get => _addToFilter;
+        set => SetProperty(ref _addToFilter, value);
     }
 
     /// <summary>Whether the values are many enough to need a search box (<see cref="SearchThreshold"/>).</summary>
@@ -485,21 +606,22 @@ public sealed class FilterItemViewModel : ObservableObject
     {
         get
         {
+            if (IsSet) return Strings.Format(ExcludeSet ? Strings.FilterSetExcluded : Strings.FilterSetKept, Field.Caption);
             if (IsPeriod) return ToFilterSpec() is { } period ? PeriodFilters.Describe(period) : Strings.FilterAll;
             if (IsComparison || IsMeasure) return ToFilterSpec() is { } comparison ? NumericFilters.Describe(comparison, Field.Format) : Strings.FilterAll;
-            var selected = Values.Where(v => v.IsChecked).Select(v => v.Label).ToList();
-            var summary = selected.Count switch
-            {
-                0 => Strings.FilterAll,
-                <= 2 => string.Join(", ", selected),
-                _ => $"{selected[0]}, {selected[1]} +{selected.Count - 2}",
-            };
-            return Operator == FilterOperator.NotIn && selected.Count > 0 ? Strings.Format(Strings.FilterExcept, summary) : summary;
+            if (ToFilterSpec() is not { } filter) return Strings.FilterAll;
+            if (filter.Values.Count == 0) return Strings.FilterNone;
+            // Captions of the loaded values, the stored texts while loading
+            var labels = Values.ToDictionary(v => InvariantValue.Format(v.Value) ?? "", v => v.Label);
+            var listed = filter.Values.Select(v => labels.TryGetValue(v ?? "", out var label) ? label : v ?? "").ToList();
+            var summary = listed.Count <= 2 ? string.Join(", ", listed) : $"{listed[0]}, {listed[1]} +{listed.Count - 2}";
+            return filter.Operator == FilterOperator.NotIn ? Strings.Format(Strings.FilterExcept, summary) : summary;
         }
     }
 
     public FilterSpec? ToFilterSpec()
     {
+        if (Set is { } set) return new FilterSpec(Field.Name, ExcludeSet ? FilterOperator.NotIn : FilterOperator.In, [VariableReferences.Reference(set)]);
         if (IsPeriod)
         {
             return PeriodKind.Value switch
@@ -521,10 +643,16 @@ public sealed class FilterItemViewModel : ObservableObject
             };
         }
         if (IsMeasure) return null;
-        // While values are loading, keep the original selection
-        var selected = _pendingSelection?.ToArray()
-            ?? Values.Where(v => v.IsChecked).Select(v => InvariantValue.Format(v.Value)).ToArray();
-        return selected.Length == 0 ? null : new FilterSpec(Field.Name, Operator, selected);
+        // While values are loading, keep the original filter
+        if (IsLoading) return _pendingSelection is { } pending ? new FilterSpec(Field.Name, Operator, [.. pending]) : null;
+        // As in Excel, every value checked does not filter; otherwise the shorter list: the values kept, or those left out
+        var (kept, left) = (Values.Where(v => v.IsChecked).ToArray(), Values.Where(v => !v.IsChecked).ToArray());
+        // Beyond a truncated list, the values not listed keep their state: "all except" when they are kept
+        var allExcept = IsTruncated ? _othersChecked : left.Length < kept.Length;
+        if (left.Length == 0 && (allExcept || !IsTruncated)) return null;
+        return allExcept
+            ? new FilterSpec(Field.Name, FilterOperator.NotIn, left.Select(v => InvariantValue.Format(v.Value)).ToArray())
+            : new FilterSpec(Field.Name, FilterOperator.In, kept.Select(v => InvariantValue.Format(v.Value)).ToArray());
     }
 
     private static DateOnly? Day(DateTime? date) => date is { } d ? DateOnly.FromDateTime(d) : null;
@@ -573,29 +701,119 @@ public sealed class FilterItemViewModel : ObservableObject
     {
         try
         {
-            foreach (var value in await model.GetDistinctValuesAsync(Field.Name))
+            var found = await model.GetDistinctValuesAsync(new DistinctValuesRequest(Field.Name));
+            IsTruncated = found.IsTruncated;
+            // Without a filter, every value is checked; "one of" leaves out the others, "all except" keeps them
+            _othersChecked = _pendingSelection is null || Operator == FilterOperator.NotIn;
+            foreach (var value in found.Values)
+                Values.Add(new FilterValueViewModel(value, ValueFormatter.Display(value), IsCheckedByFilter(value), OnValueToggled));
+            // A truncated list may miss values of the filter: listed too, so that a change keeps them
+            if (found.IsTruncated && _pendingSelection is { } pending)
             {
-                var isChecked = _pendingSelection?.Contains(InvariantValue.Format(value)) == true;
-                Values.Add(new FilterValueViewModel(value, ValueFormatter.Display(value), isChecked, OnValueToggled));
+                var listed = Values.Select(v => InvariantValue.Format(v.Value)).ToHashSet();
+                var type = Field.DataType switch { DataType.Number => typeof(double), DataType.Boolean => typeof(bool), _ => typeof(string) };
+                foreach (var value in pending.Where(t => !listed.Contains(t)).Select(t => InvariantValue.Parse(t, type)))
+                    Insert(new FilterValueViewModel(value, ValueFormatter.Display(value), IsCheckedByFilter(value), OnValueToggled));
             }
         }
         finally
         {
-            _pendingSelection = null;
             IsLoading = false;
+            _pendingSelection = null;
             OnPropertyChanged(nameof(Summary));
             OnValuesChanged();
         }
     }
 
+    private bool IsCheckedByFilter(object? value) =>
+        _pendingSelection is not { } pending || pending.Contains(InvariantValue.Format(value)) != (Operator == FilterOperator.NotIn);
+
+    // In the order of the values, as the model gives them
+    private void Insert(FilterValueViewModel item)
+    {
+        var index = 0;
+        while (index < Values.Count && Compare(Values[index].Value, item.Value) <= 0) index++;
+        Values.Insert(index, item);
+    }
+
+    private static int Compare(object? a, object? b) => (a, b) switch
+    {
+        (null, null) => 0,
+        (null, _) => -1,
+        (_, null) => 1,
+        (string x, string y) => string.CompareOrdinal(x, y),
+        _ when a.GetType() == b.GetType() && a is IComparable comparable => comparable.CompareTo(b),
+        _ => string.CompareOrdinal(a.ToString(), b.ToString()),
+    };
+
+    // The model's values containing the longest word searched: the list keeps those matching every word
+    private async Task SearchModelAsync(string search)
+    {
+        _searching?.Cancel();
+        if (search.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).OrderByDescending(w => w.Length).FirstOrDefault() is not { } word)
+            return;
+        var cancellation = _searching = new CancellationTokenSource();
+        try
+        {
+            var found = await _model.GetDistinctValuesAsync(new DistinctValuesRequest(Field.Name) { Search = word }, cancellation.Token);
+            if (cancellation.IsCancellationRequested) return;
+            var listed = Values.Select(v => InvariantValue.Format(v.Value)).ToHashSet();
+            _merging = true;
+            try
+            {
+                foreach (var value in found.Values.Where(v => !listed.Contains(InvariantValue.Format(v))))
+                    Insert(new FilterValueViewModel(value, ValueFormatter.Display(value), _othersChecked, OnValueToggled));
+            }
+            finally
+            {
+                _merging = false;
+            }
+            OnValuesChanged();
+        }
+        catch (Exception) when (cancellation.IsCancellationRequested)
+        {
+            // A newer search replaces it
+        }
+    }
+
     private void OnValuesChanged()
     {
-        OnPropertyChanged(nameof(VisibleValues));
+        OnVisibleValuesChanged();
         OnPropertyChanged(nameof(ShowSearch));
+    }
+
+    private void OnVisibleValuesChanged()
+    {
+        _visibleValues = null;
+        OnPropertyChanged(nameof(VisibleValues));
+        OnPropertyChanged(nameof(AllChecked));
     }
 
     private void OnValueToggled()
     {
+        if (_toggling) return;
+        Toggle(() => { });
+    }
+
+    // Checks or unchecks values, then changes the filter once: while searching, on the values found only (AddToFilter)
+    private void Toggle(Action change)
+    {
+        _toggling = true;
+        try
+        {
+            change();
+            if (IsSearching && !AddToFilter)
+            {
+                var found = VisibleValues.ToHashSet();
+                foreach (var item in Values.Where(v => !found.Contains(v))) item.SetChecked(false);
+                _othersChecked = false;
+            }
+        }
+        finally
+        {
+            _toggling = false;
+        }
+        OnPropertyChanged(nameof(AllChecked));
         OnPropertyChanged(nameof(Summary));
         _changed();
     }
@@ -614,4 +832,7 @@ public sealed class FilterValueViewModel(object? value, string label, bool isChe
         get => _isChecked;
         set { if (SetProperty(ref _isChecked, value)) toggled(); }
     }
+
+    // Checked by its filter: the filter announces the change
+    internal void SetChecked(bool isChecked) => SetProperty(ref _isChecked, isChecked, nameof(IsChecked));
 }

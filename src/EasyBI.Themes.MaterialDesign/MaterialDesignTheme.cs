@@ -48,7 +48,7 @@ public sealed class MaterialDesignTheme : EasyBIThemeMapping
     /// Material Design has no success or warning color (conditional formats), nor colors for the parts of a formula:
     /// EasyBI's light or dark ones apply.
     /// </summary>
-    public static IReadOnlySet<ComponentResourceKey> KeptKeys { get; } = new HashSet<ComponentResourceKey>
+    public static IReadOnlyCollection<ComponentResourceKey> KeptKeys { get; } = new HashSet<ComponentResourceKey>
     {
         EasyBITheme.SuccessBrushKey,
         EasyBITheme.WarningBrushKey,

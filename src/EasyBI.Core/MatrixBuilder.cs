@@ -14,10 +14,19 @@ public static class MatrixBuilder
     /// rows; the cells and the totals of the columns then only count those rows.
     /// </summary>
     /// <returns>The cells' result (one row per row and column), and the pivoted matrix.</returns>
-    public static async Task<(ResultSet Cells, MatrixData Matrix)> ExecuteAsync(
-        ISemanticModel model,
+    public static Task<(ResultSet Cells, MatrixData Matrix)> ExecuteAsync(
+        QuerySemanticModel model,
         VisualDefinition visual,
         IEnumerable<CalculatedMeasure>? measures = null,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(model, visual, measures, DateOnly.FromDateTime(DateTime.Today), cancellationToken);
+
+    /// <summary>Runs the queries of a matrix on <paramref name="today"/>.</summary>
+    public static async Task<(ResultSet Cells, MatrixData Matrix)> ExecuteAsync(
+        QuerySemanticModel model,
+        VisualDefinition visual,
+        IEnumerable<CalculatedMeasure>? measures,
+        DateOnly today,
         CancellationToken cancellationToken = default)
     {
         var query = visual.ToQuery(measures, model.Metadata);
@@ -32,16 +41,16 @@ public static class MatrixBuilder
             GroupBy = visual.Axis,
             Sort = query.Sort?.Where(s => rowKeys.Contains(s.Key)).ToArray() is { Length: > 0 } sort ? sort : null,
         };
-        var rows = visual.Axis.Count > 0 ? await model.ExecuteWithTimeAsync(rowsQuery, cancellationToken).ConfigureAwait(false) : null;
+        var rows = visual.Axis.Count > 0 ? await model.ExecuteWithTimeAsync(rowsQuery, today, cancellationToken).ConfigureAwait(false) : null;
         if (rows is not null && (query.Top is not null || rowFilters.Count < (query.Filters?.Count ?? 0)))
             rowFilters.Add(RowsFilter(visual.Axis, rows));
 
         var detailQuery = query with { Filters = rowFilters, Sort = null, Top = null };
-        var cells = await model.ExecuteWithTimeAsync(detailQuery, cancellationToken).ConfigureAwait(false);
+        var cells = await model.ExecuteWithTimeAsync(detailQuery, today, cancellationToken).ConfigureAwait(false);
         var columns = columnFields.Count > 0
-            ? await model.ExecuteWithTimeAsync(detailQuery with { GroupBy = columnFields }, cancellationToken).ConfigureAwait(false)
+            ? await model.ExecuteWithTimeAsync(detailQuery with { GroupBy = columnFields }, today, cancellationToken).ConfigureAwait(false)
             : null;
-        var total = await model.ExecuteWithTimeAsync(detailQuery with { GroupBy = [] }, cancellationToken).ConfigureAwait(false);
+        var total = await model.ExecuteWithTimeAsync(detailQuery with { GroupBy = [] }, today, cancellationToken).ConfigureAwait(false);
 
         return (cells, Pivot(visual, query.Measures, rows, cells, columns, total));
     }
@@ -51,8 +60,8 @@ public static class MatrixBuilder
     {
         var keys = rows.Rows.Select(r => axis.Select((_, i) => InvariantValue.Format(r[i])).ToArray()).ToList();
         if (axis.Count == 1)
-            return new FilterSpec(axis[0].Field, FilterOperator.In, [.. keys.Select(k => k[0])], axis[0].Grain);
-        return FilterSpec.AnyOf([.. keys.Select(k => (IReadOnlyList<FilterSpec>)[.. axis.Select((a, i) => new FilterSpec(a.Field, FilterOperator.In, [k[i]], a.Grain))])]);
+            return axis[0].Matching([.. keys.Select(k => k[0])], members: true);
+        return FilterSpec.AnyOf([.. keys.Select(k => (IReadOnlyList<FilterSpec>)[.. axis.Select((a, i) => a.Matching([k[i]], members: true))])]);
     }
 
     private static MatrixData Pivot(

@@ -1,9 +1,7 @@
-using System.IO;
-using System.Resources;
 using EasyBI.Core;
 using Microsoft.EntityFrameworkCore;
 
-namespace EasyBI.Sample;
+namespace EasyBI.Sample.Sales;
 
 public sealed class ProductRow
 {
@@ -11,6 +9,12 @@ public sealed class ProductRow
     public string Name { get; set; } = "";
     public string Category { get; set; } = "";
     public double UnitPrice { get; set; }
+}
+
+public sealed class CustomerRow
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
 }
 
 /// <summary>A sale stored in the database (SQLite cannot sum decimals: amounts are doubles).</summary>
@@ -22,6 +26,8 @@ public sealed class SaleRow
     public string Channel { get; set; } = "";
     public int ProductId { get; set; }
     public ProductRow Product { get; set; } = null!;
+    public int CustomerId { get; set; }
+    public CustomerRow Customer { get; set; } = null!;
     public int Quantity { get; set; }
     public double Amount { get; set; }
     public double Margin { get; set; }
@@ -31,6 +37,7 @@ public sealed class SalesDbContext(DbContextOptions<SalesDbContext> options) : D
 {
     public DbSet<SaleRow> Sales => Set<SaleRow>();
     public DbSet<ProductRow> Products => Set<ProductRow>();
+    public DbSet<CustomerRow> Customers => Set<CustomerRow>();
 }
 
 /// <summary>
@@ -40,7 +47,7 @@ public sealed class SalesDbContext(DbContextOptions<SalesDbContext> options) : D
 public static class SalesDatabase
 {
     private static string PathFor(int rows) =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EasyBI.Sample", $"sales-{rows}.db");
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EasyBI.Sample", $"sales-customers-{rows}.db");
 
     private static DbContextOptions<SalesDbContext> Options(int rows) =>
         new DbContextOptionsBuilder<SalesDbContext>().UseSqlite($"Data Source={PathFor(rows)}").Options;
@@ -65,20 +72,24 @@ public static class SalesDatabase
                 ('Casque', 'Équipement', 70), ('Antivol', 'Équipement', 45), ('Gants', 'Équipement', 25),
                 ('Révision', 'Services', 90), ('Location', 'Services', 35)
                 """, cancellationToken);
+            // Names are the demo's own (no quote in them), not user input
+            await db.Database.ExecuteSqlRawAsync(
+                "INSERT INTO Customers (Name) VALUES " + string.Join(", ", SalesData.Customers.Select(c => $"('{c}')")), cancellationToken);
             // Same shape as the in-memory data: regions and channels unevenly spread, yearly growth, a summer peak
             await db.Database.ExecuteSqlAsync($"""
                 WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < {rows}),
                 draws AS (
                     SELECT date('2023-01-01', '+' || (abs(random()) % 1095) || ' days') AS d,
-                           abs(random()) % 100 AS r, abs(random()) % 10 AS c, 1 + abs(random()) % 8 AS p, abs(random()) % 5 AS q
+                           abs(random()) % 100 AS r, abs(random()) % 10 AS c, 1 + abs(random()) % 8 AS p, abs(random()) % 5 AS q,
+                           1 + abs(random()) % {SalesData.Customers.Count} AS k
                     FROM n)
-                INSERT INTO Sales (Date, Region, Channel, ProductId, Quantity, Amount, Margin)
+                INSERT INTO Sales (Date, Region, Channel, ProductId, CustomerId, Quantity, Amount, Margin)
                 SELECT d || ' 00:00:00',
                        CASE WHEN r < 35 THEN 'Île-de-France' WHEN r < 55 THEN 'Nord' WHEN r < 72 THEN 'Sud' WHEN r < 87 THEN 'Est' ELSE 'Ouest' END,
                        CASE WHEN c < 5 THEN 'Magasin' WHEN c < 8 THEN 'Web' ELSE 'Partenaires' END,
-                       p, quantity, round(amount, 2), round(amount * CASE WHEN category = 'Services' THEN 0.55 ELSE 0.28 END, 2)
+                       p, k, quantity, round(amount, 2), round(amount * CASE WHEN category = 'Services' THEN 0.55 ELSE 0.28 END, 2)
                 FROM (
-                    SELECT d, r, c, p, Category AS category,
+                    SELECT d, r, c, p, k, Category AS category,
                            1 + q % CASE WHEN Category = 'Vélos' THEN 2 ELSE 5 END AS quantity,
                            UnitPrice * (1 + q % CASE WHEN Category = 'Vélos' THEN 2 ELSE 5 END)
                                * (1 + (CAST(strftime('%Y', d) AS INTEGER) - 2023) * 0.12
@@ -93,7 +104,7 @@ public static class SalesDatabase
     /// The model over the database, with the same fields as <see cref="SalesData.CreateModel"/>. One context per
     /// query: the visuals of a dashboard run in parallel.
     /// </summary>
-    public static QueryableSemanticModel<SaleRow> CreateModel(int rows, ResourceManager captions)
+    public static QueryableSemanticModel<SaleRow> CreateModel(int rows)
     {
         var options = Options(rows);
         return SemanticModel.For(() => new SalesDbContext(options), db => db.Sales.AsNoTracking(), "sales", "Sales")
@@ -102,6 +113,7 @@ public static class SalesDatabase
             .Dimension(s => s.Channel, "Channel")
             .Dimension(s => s.Product.Category, "Category")
             .Dimension(s => s.Product.Name, "Product")
+            .Dimension(s => s.Customer.Name, "Customer", "Customer")
             .Measure(s => s.Amount, "Revenue", format: "#,##0 €")
             .Measure(s => s.Margin, "Margin", format: "#,##0 €")
             .Measure(s => s.Quantity, "Quantity", format: "N0")
@@ -111,6 +123,6 @@ public static class SalesDatabase
             .Ratio(s => s.Amount, s => 1, "AverageBasket", "AverageBasket", format: "#,##0 €")
             // A formula, as end users write them: they can rewrite it in the application
             .Formula("SUM([Amount]; [Channel] = \"Web\") / [Amount]", "WebShare", "WebShare", format: "P1")
-            .Localize(captions);
+            .Localize(SalesData.Captions);
     }
 }

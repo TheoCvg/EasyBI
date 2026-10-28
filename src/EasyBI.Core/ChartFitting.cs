@@ -84,7 +84,7 @@ public static class ChartFitting
 
     /// <summary>Width of a legend on the right, from its longest entry.</summary>
     public static double LegendWidth(IEnumerable<string> entries) =>
-        Math.Clamp(entries.Select(e => e.Length).DefaultIfEmpty(0).Max() * CharWidth + 36, 90, 220);
+        Compat.Clamp(entries.Select(e => e.Length).DefaultIfEmpty(0).Max() * CharWidth + 36, 90, 220);
 
     /// <summary>
     /// The pages of a legend on <paramref name="side"/> in a chart of the given size: one page when every entry fits

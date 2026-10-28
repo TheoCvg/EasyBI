@@ -78,4 +78,30 @@ public sealed class EfCoreTranslationTests : IDisposable
 
         Assert.Equal(3, result.Rows.Count);
     }
+
+    [Fact]
+    public async Task A_set_chosen_by_conditions_and_an_order_runs_in_the_database()
+    {
+        var model = Model();
+        var variables = new VariableContext();
+        variables.Load([new ReportVariable
+        {
+            Name = "s",
+            Model = "m",
+            Formula = "SELECT TOP 1 [Day] WHERE [Day] >= \"2024-01-01\" AND NOT [Day] = \"2024-03-01\" AND [Amount] > 0 ORDER BY [Amount] / 2 DESC",
+        }]);
+
+        var members = await variables.MembersAsync("s", new SetSource(_ => model));
+
+        Assert.Equal(["2025-05-03"], members);
+    }
+
+    [Fact]
+    public async Task A_field_grouped_by_a_set_runs_in_the_database()
+    {
+        var result = await Model().ExecuteAsync(new([new("Day") { Set = "s", SetMembers = ["2024-02-10"] }], [new("Amount")]));
+
+        Assert.Equal([true, false], result.Rows.Select(r => r[0]));
+        Assert.Equal([1d, 6d], result.Rows.Select(r => r[1]));
+    }
 }

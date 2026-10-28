@@ -84,6 +84,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     private bool _suspended;
 
     private int? _top;
+    private string? _topVariable;
     private GaugeSettings? _gauge;
     private TooltipSettings _tooltip = new();
     private ChartLegend _legendPosition;
@@ -332,6 +333,20 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         set { if (SetProperty(ref _top, value is > 0 ? value : null)) Rebuild(); }
     }
 
+    /// <summary>A number variable of the report giving <see cref="Top"/>; null for <see cref="Top"/> itself.</summary>
+    public string? TopVariable
+    {
+        get => _topVariable;
+        set { if (SetProperty(ref _topVariable, value)) Rebuild(); }
+    }
+
+    /// <summary>The number variables that can give <see cref="Top"/>, after "a number".</summary>
+    private IReadOnlyList<Option<string?>> TopVariableOptions() =>
+    [
+        new(null, () => Strings.TopFixed),
+        .. Context.Variables.Values.Where(v => VariableFormula.Definition(v).DataType == DataType.Number).Select(v => new Option<string?>(v.Name, () => v.Name)),
+    ];
+
     /// <summary>The minimum of a gauge; null: 0.</summary>
     public double? GaugeMinimum
     {
@@ -484,6 +499,14 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             _ => false,
         },
         FilterItemViewModel filter => shelf == Shelf.Filters && Filters.Contains(filter),
+        // A set: like its dimension, once per well
+        VariableItem set => SetField(set) is not null && shelf switch
+        {
+            Shelf.Axis => Axis.Count < Limit(shelf) && Axis.All(a => a.Set != set.Variable.Name),
+            Shelf.Legend => true,
+            Shelf.Filters => Filters.All(f => f.Set != set.Variable.Name),
+            _ => false,
+        },
         _ => false,
     };
 
@@ -500,6 +523,12 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             case FieldDescriptor field when shelf == Shelf.Filters:
                 Insert(Filters, index, new FilterItemViewModel(field, _selectedModel, Rebuild));
                 break;
+            case VariableItem set when shelf == Shelf.Filters:
+                Insert(Filters, index, new FilterItemViewModel(SetField(set)!, _selectedModel, Rebuild, set: set.Variable.Name));
+                break;
+            case VariableItem set:
+                Insert(Collection(shelf), index, new ShelfItemViewModel(SetField(set)!, shelf, Rebuild) { Set = set.Variable.Name });
+                break;
             case FieldDescriptor field:
                 Insert(Collection(shelf), index, new ShelfItemViewModel(field, shelf, Rebuild));
                 break;
@@ -508,7 +537,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
                 break;
             case ShelfItemViewModel chip:
                 Collection(chip.Shelf).Remove(chip);
-                Insert(Collection(shelf), index, new ShelfItemViewModel(chip.Field, shelf, Rebuild) { Grain = chip.Grain, SortDirection = chip.SortDirection, Labels = chip.Labels });
+                Insert(Collection(shelf), index, new ShelfItemViewModel(chip.Field, shelf, Rebuild) { Grain = chip.Grain, SortDirection = chip.SortDirection, Labels = chip.Labels, Set = chip.Set });
                 break;
             case FilterItemViewModel filter:
                 Move(Filters, filter, index);
@@ -519,8 +548,21 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
 
     DragDropEffects IDropHandler.DragOver(DropInfo drop) =>
         drop.Key is Shelf shelf && drop.Item is { } item && CanDrop(item, shelf)
-            ? Unwrap(item) is FieldDescriptor ? DragDropEffects.Copy : DragDropEffects.Move
+            ? Unwrap(item) is FieldDescriptor or VariableItem ? DragDropEffects.Copy : DragDropEffects.Move
             : DragDropEffects.None;
+
+    // The set a filter keeps or leaves out (a set dropped on Filters): "one of" or "none of" its values
+    private string? SetFilter(FilterSpec filter) =>
+        filter is { Operator: FilterOperator.In or FilterOperator.NotIn, Values: [var value] } && VariableReferences.NameOf(value) is { } name
+        && Context.Variables.Definition(name) is SetDefinition { } set && set.Field == filter.Field
+            ? name
+            : null;
+
+    // The dimension of a set of the selected model, null for another variable
+    private FieldDescriptor? SetField(VariableItem item) =>
+        VariableFormula.Definition(item.Variable) is SetDefinition set && item.Variable.Model == _selectedModel?.Metadata.Name
+            ? _selectedModel.Metadata.Fields.FirstOrDefault(f => f.Name == set.Field && f.Kind == FieldKind.Dimension)
+            : null;
 
     void IDropHandler.Drop(DropInfo drop)
     {
@@ -546,6 +588,10 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             ShelfItemViewModel chip when Collection(chip.Shelf).Contains(chip) => FieldRefusal(chip.Field, shelf)
                 ?? (shelf == Shelf.Filters ? Strings.Format(Strings.DropFilterFromList, chip.Caption) : null),
             FilterItemViewModel => Strings.DropFilterStays,
+            VariableItem { IsSet: false } value => Strings.Format(Strings.DropVariableValue, value.Variable.Name),
+            VariableItem set when set.Variable.Model != _selectedModel?.Metadata.Name => Strings.DropSetOtherModel,
+            VariableItem set when shelf is Shelf.Values or Shelf.Tooltip => Strings.DropMeasuresOnly,
+            VariableItem set => Strings.Format(Strings.DropAlreadyThere, set.Caption, ShelfName(shelf)),
             _ => null,
         };
     }
@@ -593,17 +639,17 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
     {
         // Legend shows one field: a new one replaces it
         if (items == Legend) items.Clear();
-        items.Insert(Math.Clamp(index, 0, items.Count), item);
+        items.Insert(Compat.Clamp(index, 0, items.Count), item);
     }
 
     private static void Insert(ObservableCollection<FilterItemViewModel> items, int index, FilterItemViewModel item) =>
-        items.Insert(Math.Clamp(index, 0, items.Count), item);
+        items.Insert(Compat.Clamp(index, 0, items.Count), item);
 
     // The index is a position among the items before the move, the moved one included
     private static void Move<T>(ObservableCollection<T> items, T item, int index)
     {
         var from = items.IndexOf(item);
-        var to = Math.Clamp(index > from ? index - 1 : index, 0, items.Count - 1);
+        var to = Compat.Clamp(index > from ? index - 1 : index, 0, items.Count - 1);
         if (from != to) items.Move(from, to);
     }
 
@@ -631,11 +677,13 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         OnPropertyChanged(nameof(Title));
         _visualId = NewId();
         _top = null;
+        _topVariable = null;
         _gauge = null;
         _tooltip = new();
         _legendPosition = ChartLegend.Auto;
         OnPropertyChanged(nameof(LegendPosition));
         OnPropertyChanged(nameof(Top));
+        OnPropertyChanged(nameof(TopVariable));
         _extensions = null;
         _hiddenFilters = [];
         _suspended = false;
@@ -662,6 +710,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         _title = visual.Title;
         _selectedType = visual.Type;
         _top = visual.Top;
+        _topVariable = visual.TopVariable;
         _gauge = visual.Gauge;
         _tooltip = (visual.Tooltip ?? new()) with { Values = [] };
         _legendPosition = visual.LegendPosition;
@@ -671,10 +720,11 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         OnPropertyChanged(nameof(SelectedType));
         SyncSelectedType();
         OnPropertyChanged(nameof(Top));
+        OnPropertyChanged(nameof(TopVariable));
         foreach (var a in visual.Axis)
-            Axis.Add(new(metadata.GetField(a.Field), Shelf.Axis, Rebuild) { Grain = a.Grain, Labels = a.Labels });
+            Axis.Add(new(metadata.GetField(a.Field), Shelf.Axis, Rebuild) { Grain = a.Grain, Labels = a.Labels, Set = a.Set });
         if (visual.Legend is { } legend)
-            Legend.Add(new(metadata.GetField(legend.Field), Shelf.Legend, Rebuild) { Grain = legend.Grain, Labels = legend.Labels });
+            Legend.Add(new(metadata.GetField(legend.Field), Shelf.Legend, Rebuild) { Grain = legend.Grain, Labels = legend.Labels, Set = legend.Set });
         foreach (var v in visual.Values)
         {
             var field = Context.GetField(model, v.Measure);
@@ -698,8 +748,12 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             sorted.SortDirection = sort.Descending ? ListSortDirection.Descending : ListSortDirection.Ascending;
         foreach (var f in visual.Filters)
         {
-            // Filters on period keys (a clicked quarter...) or on several fields have no shelf: they are kept without being shown
-            if (f.Operator != FilterOperator.AnyOf && (f.Grain == DateGrain.None || f.Operator.IsPeriod()))
+            // Filters on period keys (a clicked quarter...), on several fields or on a variable's value (written in code) have
+            // no shelf: they are kept without being shown
+            if (SetFilter(f) is { } set)
+                Filters.Add(new(Context.GetField(model, f.Field), model, Rebuild, f.Values, f.Operator, set: set));
+            else if (f.Operator != FilterOperator.AnyOf && (f.Grain == DateGrain.None || f.Operator.IsPeriod())
+                     && !f.Values.Any(v => VariableReferences.NameOf(v) is not null))
                 Filters.Add(new(Context.GetField(model, f.Field), model, Rebuild, f.Values, f.Operator, f.Grain));
             else
                 _hiddenFilters = [.. _hiddenFilters, f];
@@ -769,6 +823,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             Filters = [.. filters.Select(f => f.ToFilterSpec()).OfType<FilterSpec>(), .. _hiddenFilters],
             Sort = sorted is null ? null : new SortSpec(sorted.Key, sorted.SortDirection == ListSortDirection.Descending),
             Top = _top,
+            TopVariable = _topVariable,
             Gauge = type == VisualType.Gauge ? _gauge : null,
             Tooltip = hasTooltip ? tooltip : null,
             LegendPosition = type.IsCartesian() || type.IsCircular() ? _legendPosition : ChartLegend.Auto,
@@ -799,9 +854,12 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             case FieldDescriptor field:
                 lists[shelf].Add(new ShelfItemViewModel(field, shelf, () => { }));
                 break;
+            case VariableItem set:
+                lists[shelf].Add(new ShelfItemViewModel(SetField(set)!, shelf, () => { }) { Set = set.Variable.Name });
+                break;
             case ShelfItemViewModel chip when chip.Shelf != shelf:
                 lists[chip.Shelf].Remove(chip);
-                lists[shelf].Add(new ShelfItemViewModel(chip.Field, shelf, () => { }) { Grain = chip.Grain, Labels = chip.Labels });
+                lists[shelf].Add(new ShelfItemViewModel(chip.Field, shelf, () => { }) { Grain = chip.Grain, Labels = chip.Labels, Set = chip.Set });
                 break;
             default:
                 return null;
@@ -913,9 +971,13 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         }
         sections.Add(new DesignerPropertySection(DesignerPropertySections.Visual, () => Strings.PropertiesVisual,
         [
-            DesignerProperty.Text("Title", () => Strings.VisualTitle, () => Title, v => Title = v),
+            DesignerProperty.Text("Title", () => Strings.VisualTitle, () => Title, v => Title = v,
+                description: () => Context.Variables.Variables.Count > 0 ? Strings.Format(Strings.TitleVariablesHint, "{" + Context.Variables.Variables[0].Name + "}") : ""),
             DesignerProperty.Info("Sort", () => Strings.Sort, () => SortSummary ?? Strings.NoSort),
-            DesignerProperty.Number("Top", () => Strings.Top, () => Top, v => Top = v is { } top ? (int)Math.Round(top) : null, description: () => Strings.TopHint),
+            DesignerProperty.Choice("TopVariable", () => Strings.Top, TopVariableOptions(), () => TopVariable, v => TopVariable = v,
+                () => TopVariable is not null || TopVariableOptions().Count > 1, () => Strings.TopVariableHint),
+            DesignerProperty.Number("Top", () => TopVariable is null && TopVariableOptions().Count > 1 ? "" : Strings.Top, () => Top,
+                v => Top = v is { } top ? (int)Math.Round(top) : null, () => TopVariable is null, () => Strings.TopHint),
             DesignerProperty.Choice("LegendPosition", () => Strings.PropertyLegendPosition, LegendPositionOptions,
                 () => LegendPosition, v => LegendPosition = v, HasLegend, () => Strings.LegendPositionHint),
             DesignerProperty.Number("GaugeMinimum", () => Strings.GaugeMinimum, () => GaugeMinimum, v => GaugeMinimum = v, IsGauge, () => Strings.GaugeScaleHint),
@@ -1047,7 +1109,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         var chips = Chips;
         if (chips.Count == 0) return;
         var index = _selectedItem is null ? -1 : chips.ToList().IndexOf(_selectedItem);
-        SelectedItem = index < 0 ? chips[forward ? 0 : ^1] : chips[Math.Clamp(index + (forward ? 1 : -1), 0, chips.Count - 1)];
+        SelectedItem = index < 0 ? chips[forward ? 0 : ^1] : chips[Compat.Clamp(index + (forward ? 1 : -1), 0, chips.Count - 1)];
     }
 
     /// <summary>Selects a chip of the next well holding some (the previous one when <paramref name="down"/> is false), at the same place if it can.</summary>
@@ -1060,7 +1122,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         }
         var shelf = ShelfOf(_selectedItem);
         var index = Items(shelf).IndexOf(_selectedItem);
-        var wells = down ? Enum.GetValues<Shelf>().Where(s => s > shelf) : Enum.GetValues<Shelf>().Where(s => s < shelf).Reverse();
+        var wells = down ? Compat.GetValues<Shelf>().Where(s => s > shelf) : Compat.GetValues<Shelf>().Where(s => s < shelf).Reverse();
         if (wells.Select(Items).FirstOrDefault(items => items.Count > 0) is { } next)
             SelectedItem = next[Math.Min(index, next.Count - 1)];
     }

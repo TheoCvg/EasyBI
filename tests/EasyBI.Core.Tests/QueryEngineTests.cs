@@ -97,7 +97,7 @@ public class QueryEngineTests
     [Fact]
     public async Task Distinct_values_are_sorted()
     {
-        var values = await Model().GetDistinctValuesAsync("Product.Category");
+        var values = (await Model().GetDistinctValuesAsync(new("Product.Category"))).Values;
         Assert.Equal(["Casques", "Vélos"], values);
     }
 

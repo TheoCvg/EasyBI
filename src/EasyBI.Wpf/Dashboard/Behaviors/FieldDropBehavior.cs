@@ -7,8 +7,8 @@ using EasyBI.Wpf.DragAndDrop;
 namespace EasyBI.Wpf.Dashboard.Behaviors;
 
 /// <summary>
-/// Makes visuals from fields dragged onto the dashboard (a <see cref="ModelField"/>, as a <see cref="FieldList"/>
-/// drags them). Dropped where an item could go (an item's edge, between two lines, a free space, a scrolling or
+/// Makes visuals from fields and variables dragged onto the dashboard (a <see cref="ModelField"/> or a
+/// <see cref="VariableItem"/>, as a <see cref="FieldList"/> drags them). Dropped where an item could go (an item's edge, between two lines, a free space, a scrolling or
 /// wrapping band), the field makes a new visual (<see cref="CreateVisual"/>), the other items making room live around a
 /// placeholder; dropped on an empty item, it fills it; dropped on a visual, it is added to it (<see cref="AddField"/>).
 /// Everything a drop changes is one undo step; leaving the dashboard or Escape cancels it.
@@ -27,17 +27,45 @@ public sealed class FieldDropBehavior : DashboardBehavior
     /// <summary>Distance from an item's edge within which the field goes next to it rather than into it.</summary>
     public double EdgeZone { get; set; } = 40;
 
-    /// <summary>The visual a field dropped on a free place makes; null refuses the drop. <see cref="FieldVisuals.Create"/> by default.</summary>
+    /// <summary>The visual a field dropped on a free place makes; null refuses the drop. <see cref="FieldVisuals.Create(ISemanticModel, FieldDescriptor)"/> by default.</summary>
     public Func<ModelField, VisualDefinition?> CreateVisual { get; set; } = field => FieldVisuals.Create(field.Model, field.Field);
 
-    public FieldDropBehavior() =>
+    /// <summary>The visual a variable dropped on a free place makes; null refuses the drop. <see cref="FieldVisuals.Create(ReportVariable)"/> by default.</summary>
+    public Func<ReportVariable, VisualDefinition?> CreateVariableVisual { get; set; } = FieldVisuals.Create;
+
+    public FieldDropBehavior()
+    {
         AddField = (visual, field) => FieldVisuals.AddField(visual, field.Model, field.Field, AssociatedObject?.Context?.VisualTypes);
+        AddVariable = (visual, variable) => FieldVisuals.AddVariable(visual, variable, AssociatedObject?.Context?.VisualTypes);
+    }
 
     /// <summary>
     /// A visual with a field dropped on it; null refuses the drop. <see cref="FieldVisuals.AddField"/> by default, with
     /// the visual types of the dashboard's context.
     /// </summary>
     public Func<VisualDefinition, ModelField, VisualDefinition?> AddField { get; set; }
+
+    /// <summary>
+    /// A visual with a variable dropped on it; null refuses the drop. <see cref="FieldVisuals.AddVariable"/> by default:
+    /// a set filters a visual showing its dimension, or is added to it grouped into its values and the others.
+    /// </summary>
+    public Func<VisualDefinition, ReportVariable, VisualDefinition?> AddVariable { get; set; }
+
+    private VisualDefinition? Create(object dragged) => dragged switch
+    {
+        ModelField field => CreateVisual(field),
+        VariableItem variable => CreateVariableVisual(variable.Variable),
+        _ => null,
+    };
+
+    private VisualDefinition? Add(VisualDefinition visual, object dragged) => dragged switch
+    {
+        ModelField field => AddField(visual, field),
+        VariableItem variable => AddVariable(visual, variable.Variable),
+        _ => null,
+    };
+
+    private static object? Dragged(DragEventArgs e) => DragSource.ItemOf(e.Data) is { } item and (ModelField or VariableItem) ? item : null;
 
     protected override void OnAttach()
     {
@@ -70,7 +98,7 @@ public sealed class FieldDropBehavior : DashboardBehavior
 
     private void OnDragOver(object sender, DragEventArgs e)
     {
-        if (e.Handled || !CanEdit || DragSource.ItemOf(e.Data) is not ModelField field) return;
+        if (e.Handled || !CanEdit || Dragged(e) is not { } field) return;
         e.Handled = true;
         if (_edit is null)
         {
@@ -85,14 +113,14 @@ public sealed class FieldDropBehavior : DashboardBehavior
     }
 
     /// <summary>Finds and previews where the field goes; false when it cannot be dropped here.</summary>
-    private bool Aim(ModelField field, Point position)
+    private bool Aim(object field, Point position)
     {
         // The place made for the new visual holds while the pointer is over it, since the items around it moved
         if (_target is { Kind: not DashboardDropKind.Flow } && Widened(Panel.GetItemBounds(_pending)).Contains(position)) return true;
 
         if (DashboardDropTarget.Find(_before!, Panel, position, EdgeZone) is { } target)
         {
-            if (CreateVisual(field) is null) return Clear();
+            if (Create(field) is null) return Clear();
             if (target != _target)
             {
                 Restore();
@@ -107,8 +135,8 @@ public sealed class FieldDropBehavior : DashboardBehavior
         var item = _before!.ChildrenOf(_before.BandAt(position.Y)).FirstOrDefault(c => c.Bounds.Contains(position)).Element as DashboardItem;
         var accepted = item switch
         {
-            { Kind: DashboardItemKind.Empty } => CreateVisual(field) is not null,
-            { Visual: { } visual } => AddField(visual, field) is not null,
+            { Kind: DashboardItemKind.Empty } => Create(field) is not null,
+            { Visual: { } visual } => Add(visual, field) is not null,
             _ => false,
         };
         if (!accepted) return Clear();
@@ -140,17 +168,17 @@ public sealed class FieldDropBehavior : DashboardBehavior
 
     private void OnDrop(object sender, DragEventArgs e)
     {
-        if (e.Handled || _edit is null || DragSource.ItemOf(e.Data) is not ModelField field) return;
+        if (e.Handled || _edit is null || Dragged(e) is not { } field) return;
         e.Handled = true;
         var target = _target;
         var item = _onItem;
         Restore();
-        if (target is not null && CreateVisual(field) is { } visual)
+        if (target is not null && Create(field) is { } visual)
         {
             View.SetVisual(View.AddAt(target), visual);
             e.Effects = DragDropEffects.Copy;
         }
-        else if (item is not null && (item.Kind == DashboardItemKind.Empty ? CreateVisual(field) : AddField(item.Visual!, field)) is { } changed)
+        else if (item is not null && (item.Kind == DashboardItemKind.Empty ? Create(field) : Add(item.Visual!, field)) is { } changed)
         {
             View.SetVisual(item, changed);
             e.Effects = DragDropEffects.Copy;

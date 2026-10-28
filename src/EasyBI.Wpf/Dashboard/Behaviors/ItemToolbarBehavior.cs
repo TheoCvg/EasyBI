@@ -64,6 +64,7 @@ public class ItemToolbarBehavior : DashboardBehavior
         {
             DashboardItemKind.Text => "EditText",
             DashboardItemKind.Image => "ChangeImage",
+            DashboardItemKind.Variable => "EditVariable",
             DashboardItemKind.Visual => "EditVisual",
             _ => null,
         };

@@ -15,6 +15,21 @@
   <data name="FilterAll" xml:space="preserve">
     <value>(all)</value>
   </data>
+  <data name="FilterNone" xml:space="preserve">
+    <value>(none)</value>
+  </data>
+  <data name="FilterSelectAll" xml:space="preserve">
+    <value>(Select all)</value>
+  </data>
+  <data name="FilterSelectAllResults" xml:space="preserve">
+    <value>(Select all search results)</value>
+  </data>
+  <data name="FilterAddToFilter" xml:space="preserve">
+    <value>Add current selection to filter</value>
+  </data>
+  <data name="FilterTruncated" xml:space="preserve">
+    <value>Not every value is listed: search to find the others.</value>
+  </data>
   <data name="FilterExcept" xml:space="preserve">
     <value>all except {0}</value>
   </data>
@@ -824,5 +839,125 @@
   </data>
   <data name="Close" xml:space="preserve">
     <value>Close</value>
+  </data>
+  <data name="VariableMissing" xml:space="preserve">
+    <value>The variable "{0}" does not exist</value>
+  </data>
+  <data name="NewVariable" xml:space="preserve">
+    <value>New variable…</value>
+  </data>
+  <data name="AddVariable" xml:space="preserve">
+    <value>Variable</value>
+  </data>
+  <data name="EditVariable" xml:space="preserve">
+    <value>Edit the variable</value>
+  </data>
+  <data name="DeleteVariable" xml:space="preserve">
+    <value>Delete the variable</value>
+  </data>
+  <data name="DeleteVariableConfirm" xml:space="preserve">
+    <value>Delete the variable "{0}"? The visuals and formulas using it will show an error.</value>
+  </data>
+  <data name="VariablesHeader" xml:space="preserve">
+    <value>VARIABLES</value>
+  </data>
+  <data name="VariableInvalidName" xml:space="preserve">
+    <value>A name has no space around it, nor [ ] { } @ "</value>
+  </data>
+  <data name="VariableNameTaken" xml:space="preserve">
+    <value>A variable is already named "{0}"</value>
+  </data>
+  <data name="VariableName" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="TopFixed" xml:space="preserve">
+    <value>Number typed</value>
+  </data>
+  <data name="TopVariableHint" xml:space="preserve">
+    <value>Only show the first rows, as many as typed or as a parameter says</value>
+  </data>
+  <data name="TitleVariablesHint" xml:space="preserve">
+    <value>Variables are shown by their name in braces: {0}</value>
+  </data>
+  <data name="FormulaTabVariables" xml:space="preserve">
+    <value>Variables</value>
+  </data>
+  <data name="FormulaVariableHelp" xml:space="preserve">
+    <value>A parameter of the report, which the dashboard changes (now {0})</value>
+  </data>
+  <data name="FormulaTabKeywords" xml:space="preserve">
+    <value>Words</value>
+  </data>
+  <data name="VariableNameRequired" xml:space="preserve">
+    <value>Give the variable a name</value>
+  </data>
+  <data name="SetEmpty" xml:space="preserve">
+    <value>No value</value>
+  </data>
+  <data name="SetPreview" xml:space="preserve">
+    <value>{0} ({1} values)</value>
+  </data>
+  <data name="VariableEditorTitle" xml:space="preserve">
+    <value>Variable</value>
+  </data>
+  <data name="VariableFormulaHint" xml:space="preserve">
+    <value>A value is a parameter the dashboard changes: 10, "Web", "2025-01-01", TRUE; with BETWEEN minimum AND maximum, a slider; with IN (...), a list. SELECT keeps values of a dimension: SELECT TOP 10 [Customer] WHERE [Region] = "North" ORDER BY [Revenue] DESC; a condition on dimensions keeps rows, on measures values. Any other formula is a number computed once: AVERAGE([Revenue]). Other variables are written [@Name].</value>
+  </data>
+  <data name="VariableFormulaPlaceholder" xml:space="preserve">
+    <value>10 BETWEEN 3 AND 25    or    SELECT TOP [@N] [Customer] ORDER BY [Revenue] DESC</value>
+  </data>
+  <data name="VariablePreview" xml:space="preserve">
+    <value>Gives: {0}</value>
+  </data>
+  <data name="DropVariableValue" xml:space="preserve">
+    <value>{0} is a value: use it in a formula as [@{0}], or in a title as {{{0}}}</value>
+  </data>
+  <data name="DropSetOtherModel" xml:space="preserve">
+    <value>This set is over another model</value>
+  </data>
+  <data name="FormulaComputedVariableHelp" xml:space="preserve">
+    <value>A value computed once over the report's data</value>
+  </data>
+  <data name="FilterSetKept" xml:space="preserve">
+    <value>{0} in the set</value>
+  </data>
+  <data name="FilterSetExcluded" xml:space="preserve">
+    <value>{0} not in the set</value>
+  </data>
+  <data name="FilterExcludeSet" xml:space="preserve">
+    <value>Leave out the values of the set</value>
+  </data>
+  <data name="NewVariableButton" xml:space="preserve">
+    <value>+ Variable</value>
+  </data>
+  <data name="FormulaKeywordSELECT" xml:space="preserve">
+    <value>Starts a set: values of a dimension</value>
+  </data>
+  <data name="FormulaKeywordTOP" xml:space="preserve">
+    <value>Keeps the first values, as many as a number or a variable says</value>
+  </data>
+  <data name="FormulaKeywordWHERE" xml:space="preserve">
+    <value>Keeps the values matching conditions: on dimensions, the rows; on measures, the values</value>
+  </data>
+  <data name="FormulaKeywordORDERBY" xml:space="preserve">
+    <value>Orders the values by an expression, for TOP</value>
+  </data>
+  <data name="FormulaKeywordDESC" xml:space="preserve">
+    <value>From the largest</value>
+  </data>
+  <data name="FormulaKeywordASC" xml:space="preserve">
+    <value>From the smallest</value>
+  </data>
+  <data name="FormulaKeywordIN" xml:space="preserve">
+    <value>The values to choose from, or those a set lists</value>
+  </data>
+  <data name="FormulaKeywordBETWEEN" xml:space="preserve">
+    <value>The bounds of a number: the dashboard shows a slider</value>
+  </data>
+  <data name="FormulaKeywordSTEP" xml:space="preserve">
+    <value>The step of the slider</value>
+  </data>
+  <data name="FormulaKeywordBY" xml:space="preserve">
+    <value>Reads a value for each value of a dimension, then aggregates them: the highest revenue of a customer</value>
   </data>
 </root>

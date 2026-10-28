@@ -19,7 +19,7 @@ public static class GaugeScale
 
     /// <summary>Where a value falls on the scale, from 0 (the minimum) to 1 (the maximum), kept within it.</summary>
     public static double Position(double value, double minimum, double maximum) =>
-        maximum <= minimum ? 0 : Math.Clamp((value - minimum) / (maximum - minimum), 0, 1);
+        maximum <= minimum ? 0 : Compat.Clamp((value - minimum) / (maximum - minimum), 0, 1);
 
     // The next round number: 1, 2, 2.5 or 5 times a power of ten
     private static double Round(double value)

@@ -21,4 +21,7 @@ public static class FieldListSlots
 
     /// <summary>The button adding a calculated measure.</summary>
     public const string AddMeasureButton = "FieldList.AddMeasureButton";
+
+    /// <summary>The "Variables" header, the list of the report's variables and the buttons adding one.</summary>
+    public const string Variables = "FieldList.Variables";
 }

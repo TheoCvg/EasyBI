@@ -12,36 +12,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Sales" xml:space="preserve">
-    <value>Sales</value>
-  </data>
-  <data name="Date" xml:space="preserve">
-    <value>Date</value>
-  </data>
-  <data name="Region" xml:space="preserve">
-    <value>Region</value>
-  </data>
-  <data name="Channel" xml:space="preserve">
-    <value>Channel</value>
-  </data>
-  <data name="Category" xml:space="preserve">
-    <value>Category</value>
-  </data>
-  <data name="Product" xml:space="preserve">
-    <value>Product</value>
-  </data>
-  <data name="Revenue" xml:space="preserve">
-    <value>Revenue</value>
-  </data>
-  <data name="Margin" xml:space="preserve">
-    <value>Margin</value>
-  </data>
-  <data name="Quantity" xml:space="preserve">
-    <value>Quantity</value>
-  </data>
-  <data name="SalesCount" xml:space="preserve">
-    <value>Number of sales</value>
-  </data>
   <data name="WindowTitle" xml:space="preserve">
     <value>EasyBI – demo</value>
   </data>
@@ -165,17 +135,8 @@
   <data name="DataSourceUnavailable" xml:space="preserve">
     <value>Data source unavailable</value>
   </data>
-  <data name="MarginRate" xml:space="preserve">
-    <value>Margin rate</value>
-  </data>
-  <data name="AverageBasket" xml:space="preserve">
-    <value>Average basket</value>
-  </data>
   <data name="LastYearComparison" xml:space="preserve">
     <value>2025 compared with 2024</value>
-  </data>
-  <data name="WebShare" xml:space="preserve">
-    <value>Web share</value>
   </data>
   <data name="Ranking" xml:space="preserve">
     <value>Ranking</value>
@@ -206,5 +167,26 @@
   </data>
   <data name="SalesDatabaseNotAnswering" xml:space="preserve">
     <value>The sales database is not answering. Try again in a moment.</value>
+  </data>
+  <data name="DataSourceServer" xml:space="preserve">
+    <value>Server over HTTP (EasyBI.Sample.Server)</value>
+  </data>
+  <data name="ServerNotRunning" xml:space="preserve">
+    <value>The demo's server does not answer at {0}. Start it with: dotnet run --project samples/EasyBI.Sample.Server</value>
+  </data>
+  <data name="SalesServerNotAnswering" xml:space="preserve">
+    <value>The sales server is not answering. Try again in a moment.</value>
+  </data>
+  <data name="CustomerCount" xml:space="preserve">
+    <value>Number of customers</value>
+  </data>
+  <data name="TopCustomersSet" xml:space="preserve">
+    <value>Top customers</value>
+  </data>
+  <data name="TopCustomersChart" xml:space="preserve">
+    <value>Top {0} customers</value>
+  </data>
+  <data name="TopCustomersShare" xml:space="preserve">
+    <value>Share of the top {0} customers</value>
   </data>
 </root>

@@ -7,6 +7,7 @@ using EasyBI.Abstractions;
 using EasyBI.Core;
 using EasyBI.Renderers.LiveCharts2;
 using EasyBI.Renderers.OxyPlot;
+using EasyBI.Sample.Sales;
 using EasyBI.Wpf;
 using EasyBI.Wpf.Dashboard;
 using Microsoft.Win32;
@@ -17,11 +18,12 @@ public partial class MainWindow : Window
 {
     private readonly ISemanticModel _memorySales;
     private readonly SwitchableModel _sales;
+    private RemoteModel? _remoteSales;
 
     public MainWindow()
     {
         // The demo switches between data sources and times the queries; an application would add its model directly
-        _memorySales = SalesData.CreateModel(SalesData.Generate(), App.TextResources);
+        _memorySales = SalesData.CreateModel(SalesData.Generate());
         _sales = new SwitchableModel(_memorySales);
         _sales.RunningChanged += (_, running) => Dispatcher.BeginInvoke(() =>
         {
@@ -45,6 +47,7 @@ public partial class MainWindow : Window
         {
             System.Diagnostics.Trace.TraceError($"Visual '{e.Visual.Title}' failed ({e.Stage}): {e.Exception}");
             if (e.Exception is TimeoutException) e.Message = Text("SalesDatabaseNotAnswering");
+            else if (e.Exception is System.Net.Http.HttpRequestException) e.Message = Text("SalesServerNotAnswering");
         };
 
         InitializeComponent();
@@ -82,29 +85,40 @@ public partial class MainWindow : Window
     private async void OnSourceChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!IsLoaded || SourcePicker.SelectedItem is not ComboBoxItem { Tag: string tag }) return;
-        var rows = int.Parse(tag, CultureInfo.InvariantCulture);
         SourcePicker.IsEnabled = false;
         try
         {
-            if (rows > 0 && !SalesDatabase.Exists(rows))
+            if (tag == "server")
             {
-                QueryStatus.Text = string.Format(EasyBILocalization.FormatCulture, Text("GeneratingDatabase"), rows);
-                // SQLite runs synchronously even through the async API: keep the UI responsive
-                await Task.Run(() => SalesDatabase.EnsureCreatedAsync(rows));
+                _remoteSales ??= await RemoteModel.ConnectAsync(RemoteModel.DefaultServer, App.Languages);
+                _sales.Source = _remoteSales;
             }
-            _sales.Source = rows switch
+            else
             {
-                0 => _memorySales,
-                < 0 => new UnavailableModel(_memorySales.Metadata),
-                _ => SalesDatabase.CreateModel(rows, App.TextResources),
-            };
+                var rows = int.Parse(tag, CultureInfo.InvariantCulture);
+                if (rows > 0 && !SalesDatabase.Exists(rows))
+                {
+                    QueryStatus.Text = string.Format(EasyBILocalization.FormatCulture, Text("GeneratingDatabase"), rows);
+                    // SQLite runs synchronously even through the async API: keep the UI responsive
+                    await Task.Run(() => SalesDatabase.EnsureCreatedAsync(rows));
+                }
+                _sales.Source = rows switch
+                {
+                    0 => _memorySales,
+                    < 0 => new UnavailableModel(_memorySales.Metadata),
+                    _ => SalesDatabase.CreateModel(rows),
+                };
+            }
             // Same queries, other data: the dashboard and the designer's preview query again
             Context.RefreshData(_sales.Metadata.Name);
         }
         catch (Exception ex)
         {
             QueryStatus.Text = "";
-            MessageBox.Show(this, ex.Message, Text("DataSourceUnavailable"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            var message = ex is System.Net.Http.HttpRequestException
+                ? string.Format(EasyBILocalization.FormatCulture, Text("ServerNotRunning"), RemoteModel.DefaultServer)
+                : ex.Message;
+            MessageBox.Show(this, message, Text("DataSourceUnavailable"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         finally
         {
@@ -252,9 +266,46 @@ public partial class MainWindow : Window
             Filters = [PeriodFilters.Between("Date", new DateOnly(2025, 1, 1), new DateOnly(2025, 12, 31))],
         };
 
+        // Variables, written as formulas: a number of customers, a slider on the dashboard, and the set of the best
+        // customers by revenue it gives
+        ReportVariable customerCount = new() { Name = Text("CustomerCount"), Model = "sales", Formula = "10 BETWEEN 3 AND 25", Format = "N0" };
+        ReportVariable topCustomers = new()
+        {
+            Name = Text("TopCustomersSet"),
+            Model = "sales",
+            Formula = $"SELECT TOP [@{customerCount.Name}] [Customer] ORDER BY [Amount] DESC",
+        };
+        var shownCount = "{" + customerCount.Name + "}";
+        VisualDefinition countControl = new() { Type = VisualType.Variable, Variable = customerCount.Name };
+        VisualDefinition customers = new()
+        {
+            Title = string.Format(CultureInfo.InvariantCulture, Text("TopCustomersChart"), shownCount),
+            Model = "sales",
+            Type = VisualType.Bar,
+            Axis = [new("Customer")],
+            Values = [new("Amount")],
+            Sort = new("Amount", Descending: true),
+            TopVariable = customerCount.Name,
+        };
+        // The set's customers on one side, all the others on the other
+        VisualDefinition customerShare = new()
+        {
+            Title = string.Format(CultureInfo.InvariantCulture, Text("TopCustomersShare"), shownCount),
+            Model = "sales",
+            Type = VisualType.Donut,
+            Axis = [new("Customer") { Set = topCustomers.Name }],
+            Values = [new("Amount")],
+        };
+        VisualDefinition customerList = new() { Type = VisualType.Variable, Variable = topCustomers.Name };
+
         return new DashboardDocument
         {
-            Report = new ReportDefinition { Title = Text("ReportTitle"), Visuals = [title, kpis, quarters, regions, categories, topProducts, lastYear, matrix, note] },
+            Report = new ReportDefinition
+            {
+                Title = Text("ReportTitle"),
+                Visuals = [title, kpis, quarters, regions, categories, topProducts, lastYear, matrix, note, countControl, customers, customerShare, customerList],
+                Variables = [customerCount, topCustomers],
+            },
             Layout = new DashboardLayoutDefinition
             {
                 Bands =
@@ -273,6 +324,16 @@ public partial class MainWindow : Window
                     {
                         Mode = BandMode.Scroll,
                         Items = [LayoutNode.Item(categories.Id), LayoutNode.Item(topProducts.Id), LayoutNode.Item(lastYear.Id), new LayoutNode { VisualId = note.Id, Width = 360 }],
+                    },
+                    new BandLayout
+                    {
+                        Items =
+                        [
+                            LayoutNode.Row(
+                                LayoutNode.Column(new LayoutNode { VisualId = countControl.Id, RowSpan = 1 }, LayoutNode.Item(customerList.Id)) with { ColumnSpan = 3 },
+                                new LayoutNode { VisualId = customers.Id, RowSpan = 4 },
+                                LayoutNode.Item(customerShare.Id)),
+                        ],
                     },
                 ],
             },

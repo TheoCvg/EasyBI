@@ -8,8 +8,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Large data source of the demo: millions of sales in a SQLite database -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.11" />
+    <!-- The demo's sales and their model, in memory or in a SQLite database of millions of rows -->
+    <ProjectReference Include="..\EasyBI.Sample.Sales\EasyBI.Sample.Sales.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
