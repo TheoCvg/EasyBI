@@ -5,7 +5,7 @@
   <!-- NuGet packages: every library under src/ is published -->
   <PropertyGroup>
     <IsPackable>true</IsPackable>
-    <VersionPrefix>0.5.0</VersionPrefix>
+    <VersionPrefix>0.6.0</VersionPrefix>
     <Authors>TheoCvg</Authors>
     <Copyright>Copyright (c) 2026 TheoCvg</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
