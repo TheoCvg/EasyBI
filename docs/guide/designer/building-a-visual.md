@@ -51,7 +51,7 @@ The **wells follow the type**: their names and limits change, and the wells a ty
 
 ## Arrange the chips
 
-A field in a well is a **chip**. Its badges sum its settings up: `Σ` or `avg` (aggregation), `Quarter` (grain), `PY`
+A field in a well is a **chip**. Its badges sum its settings up: `Σ` or `avg` (aggregation), `Quarter` (grain), `Δ% Y-1`
 (time comparison), `Y2` (secondary axis), `↓` (sort).
 
 - **Move** a chip by dragging it, within its well (the order of the axis or of the series) or to another well.
@@ -71,7 +71,7 @@ The properties panel shows the settings of the selected chip, in sections:
 
 | Selection | Sections |
 |---|---|
-| A measure | Aggregation, [time comparison](../../visuals/time-comparisons.md), [chart type and secondary axis](../../visuals/combined-charts.md), sort, [formatting](../../visuals/conditional-formatting.md) |
+| A measure | Aggregation, [chart type and secondary axis](../../visuals/combined-charts.md), sort; [over time](../../visuals/time-comparisons.md) (added up, compared, favorable direction); [formatting](../../visuals/conditional-formatting.md) |
 | A dimension | Grain (dates), sort, [value labels](../../visuals/value-labels.md) |
 | A filter | Its values, or a period for a date |
 | Nothing (Escape) | Title, sort, Top N, [legend](../../visuals/legends.md), [tooltips](../../visuals/tooltips.md), the renderer's options |

@@ -192,18 +192,6 @@
   <data name="ReportPeriodOnNonDate" xml:space="preserve">
     <value>{0}: period filter on &apos;{1}&apos;, which is not a date.</value>
   </data>
-  <data name="TimePreviousYear" xml:space="preserve">
-    <value>{0}, previous year</value>
-  </data>
-  <data name="TimeChangeFromPreviousYear" xml:space="preserve">
-    <value>{0}, change vs previous year</value>
-  </data>
-  <data name="TimePercentChangeFromPreviousYear" xml:space="preserve">
-    <value>{0}, % change vs previous year</value>
-  </data>
-  <data name="TimeYearToDate" xml:space="preserve">
-    <value>{0}, year to date</value>
-  </data>
   <data name="SelectionAnd" xml:space="preserve">
     <value>and</value>
   </data>
@@ -500,5 +488,80 @@
   </data>
   <data name="VariableNotAChoice" xml:space="preserve">
     <value>{0} is not one of the choices</value>
+  </data>
+  <data name="TimePeriodPrevious" xml:space="preserve">
+    <value>Previous period</value>
+  </data>
+  <data name="TimePeriodLastYear" xml:space="preserve">
+    <value>Same period last year</value>
+  </data>
+  <data name="TimePeriodOffset" xml:space="preserve">
+    <value>Earlier by…</value>
+  </data>
+  <data name="TimeOutputValue" xml:space="preserve">
+    <value>Compared value</value>
+  </data>
+  <data name="TimeOutputChange" xml:space="preserve">
+    <value>Change</value>
+  </data>
+  <data name="TimeOutputPercentChange" xml:space="preserve">
+    <value>% change</value>
+  </data>
+  <data name="TimeOutputValueColumn" xml:space="preserve">
+    <value>{0} {1}</value>
+  </data>
+  <data name="TimeOutputChangeColumn" xml:space="preserve">
+    <value>{0} Δ vs {1}</value>
+  </data>
+  <data name="TimeOutputPercentChangeColumn" xml:space="preserve">
+    <value>{0} Δ% vs {1}</value>
+  </data>
+  <data name="TimeAccumulationYearToDate" xml:space="preserve">
+    <value>Year to date</value>
+  </data>
+  <data name="TimeAccumulationQuarterToDate" xml:space="preserve">
+    <value>Quarter to date</value>
+  </data>
+  <data name="TimeAccumulationMonthToDate" xml:space="preserve">
+    <value>Month to date</value>
+  </data>
+  <data name="TimeAccumulationRunning" xml:space="preserve">
+    <value>Running total</value>
+  </data>
+  <data name="TimeAccumulationYearToDateColumn" xml:space="preserve">
+    <value>{0} YTD</value>
+  </data>
+  <data name="TimeAccumulationQuarterToDateColumn" xml:space="preserve">
+    <value>{0} QTD</value>
+  </data>
+  <data name="TimeAccumulationMonthToDateColumn" xml:space="preserve">
+    <value>{0} MTD</value>
+  </data>
+  <data name="TimeAccumulationRunningColumn" xml:space="preserve">
+    <value>{0} running total</value>
+  </data>
+  <data name="TimeShortCaption" xml:space="preserve">
+    <value>{0}-{1}</value>
+  </data>
+  <data name="TimeLetterDay" xml:space="preserve">
+    <value>D</value>
+  </data>
+  <data name="TimeLetterWeek" xml:space="preserve">
+    <value>W</value>
+  </data>
+  <data name="TimeLetterMonth" xml:space="preserve">
+    <value>M</value>
+  </data>
+  <data name="TimeLetterQuarter" xml:space="preserve">
+    <value>Q</value>
+  </data>
+  <data name="TimeLetterYear" xml:space="preserve">
+    <value>Y</value>
+  </data>
+  <data name="TimeLetterPeriod" xml:space="preserve">
+    <value>P</value>
+  </data>
+  <data name="TimeBadgeAccumulation" xml:space="preserve">
+    <value>Cum.</value>
   </data>
 </root>

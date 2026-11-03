@@ -106,7 +106,8 @@ Properties come in six kinds, each with its editor:
 Labels are functions (`() => "Notes"`) so that they follow a change of language: return a localized string.
 Each factory also takes `isAvailable` (to grey the property) and `description` (its tooltip).
 
-EasyBI's sections have constant keys, to find or remove them:
+EasyBI's sections have constant keys (`DesignerPropertySections`: `Field`, `Time`, `Formatting`, `ValueLabels`, `Filter`,
+`Visual`, `Tooltips`, `Options`), to find or remove them:
 
 ```csharp
 var tooltips = e.Sections.FirstOrDefault(s => s.Key == DesignerPropertySections.Tooltips);

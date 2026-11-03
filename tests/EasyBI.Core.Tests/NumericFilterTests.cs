@@ -112,7 +112,7 @@ public class NumericFilterTests
         // 2024: Nord 300, Sud 90, Est 400; 2023: Sud 500, Est 10
         var query = new AnalyticQuery(
             [new("Region")],
-            [new("Amount"), new("Amount") { Time = TimeCalculation.PreviousYear }],
+            [new("Amount"), new("Amount") { Time = MeasureTime.PreviousYear }],
             [PeriodFilters.Between("Date", new(2024, 1, 1), new(2024, 12, 31)), NumericFilters.Compare("Amount", FilterOperator.LessThan, 100)]);
 
         var result = await Model().ExecuteWithTimeAsync(query);

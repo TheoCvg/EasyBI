@@ -273,23 +273,8 @@
   <data name="PeriodCount" xml:space="preserve">
     <value>Number</value>
   </data>
-  <data name="TimeNone" xml:space="preserve">
-    <value>Value</value>
-  </data>
-  <data name="TimePreviousYear" xml:space="preserve">
-    <value>Previous year</value>
-  </data>
-  <data name="TimeChangeFromPreviousYear" xml:space="preserve">
-    <value>Change vs previous year</value>
-  </data>
-  <data name="TimePercentChangeFromPreviousYear" xml:space="preserve">
-    <value>% change vs previous year</value>
-  </data>
-  <data name="TimeYearToDate" xml:space="preserve">
-    <value>Year to date</value>
-  </data>
   <data name="TimeHint" xml:space="preserve">
-    <value>The measure seen through time: a year earlier needs a date on the axis or a date filter.</value>
+    <value>The period the measure is compared with: a comparison needs a date on the axis or a date filter.</value>
   </data>
   <data name="RendererOptions" xml:space="preserve">
     <value>Options</value>
@@ -380,18 +365,6 @@
   </data>
   <data name="BadgeCount" xml:space="preserve">
     <value>count</value>
-  </data>
-  <data name="BadgePreviousYear" xml:space="preserve">
-    <value>PY</value>
-  </data>
-  <data name="BadgeChange" xml:space="preserve">
-    <value>Δ PY</value>
-  </data>
-  <data name="BadgePercentChange" xml:space="preserve">
-    <value>Δ% PY</value>
-  </data>
-  <data name="BadgeYearToDate" xml:space="preserve">
-    <value>YTD</value>
   </data>
   <data name="Properties" xml:space="preserve">
     <value>Properties</value>
@@ -959,5 +932,59 @@
   </data>
   <data name="FormulaKeywordBY" xml:space="preserve">
     <value>Reads a value for each value of a dimension, then aggregates them: the highest revenue of a customer</value>
+  </data>
+  <data name="PropertyTimeAccumulation" xml:space="preserve">
+    <value>Add up</value>
+  </data>
+  <data name="PropertyTimePeriod" xml:space="preserve">
+    <value>Compare with</value>
+  </data>
+  <data name="PropertyTimeCount" xml:space="preserve">
+    <value>How many</value>
+  </data>
+  <data name="PropertyTimeUnit" xml:space="preserve">
+    <value>Unit</value>
+  </data>
+  <data name="PropertyTimeShow" xml:space="preserve">
+    <value>Show</value>
+  </data>
+  <data name="PropertyFavorable" xml:space="preserve">
+    <value>Favorable direction</value>
+  </data>
+  <data name="TimeNoAccumulation" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="TimeNoComparison" xml:space="preserve">
+    <value>Nothing</value>
+  </data>
+  <data name="TimeAccumulationHint" xml:space="preserve">
+    <value>The values added up along the dates of the axis, starting again with each period.</value>
+  </data>
+  <data name="TimeOffsetHint" xml:space="preserve">
+    <value>How far back the compared period is.</value>
+  </data>
+  <data name="FavorableHint" xml:space="preserve">
+    <value>Whether a rise of the measure is good news (revenue) or bad news (costs): it gives the color of its changes.</value>
+  </data>
+  <data name="FavorableHigher" xml:space="preserve">
+    <value>Higher is better</value>
+  </data>
+  <data name="FavorableLower" xml:space="preserve">
+    <value>Lower is better</value>
+  </data>
+  <data name="TimeUnitDay" xml:space="preserve">
+    <value>days</value>
+  </data>
+  <data name="TimeUnitWeek" xml:space="preserve">
+    <value>weeks</value>
+  </data>
+  <data name="TimeUnitMonth" xml:space="preserve">
+    <value>months</value>
+  </data>
+  <data name="TimeUnitQuarter" xml:space="preserve">
+    <value>quarters</value>
+  </data>
+  <data name="TimeUnitYear" xml:space="preserve">
+    <value>years</value>
   </data>
 </root>

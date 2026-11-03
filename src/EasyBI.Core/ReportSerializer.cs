@@ -33,6 +33,21 @@ public static class ReportSerializer
             ?? throw new JsonException("Empty report.");
         if (report.Schema != ReportDefinition.CurrentSchema)
             throw new NotSupportedException($"Unsupported schema '{report.Schema}' (expected: {ReportDefinition.CurrentSchema}).");
-        return report;
+        return report with { Visuals = [.. report.Visuals.Select(WithTimeSortKey)] };
     }
+
+    // Keys of time columns written before time calculations were made of catalogs (Amount.PreviousYear): a sort on one
+    // refers to the same column under its key of today
+    private static readonly (string Old, MeasureTime Time)[] LegacyTimeKeys =
+    [
+        (".PreviousYear", MeasureTime.PreviousYear),
+        (".ChangeFromPreviousYear", MeasureTime.ChangeFromPreviousYear),
+        (".PercentChangeFromPreviousYear", MeasureTime.PercentChangeFromPreviousYear),
+        (".YearToDate", MeasureTime.YearToDate),
+    ];
+
+    private static VisualDefinition WithTimeSortKey(VisualDefinition visual) =>
+        visual.Sort is { } sort && LegacyTimeKeys.FirstOrDefault(k => sort.Key.EndsWith(k.Old, StringComparison.Ordinal)) is { Time: not null } legacy
+            ? visual with { Sort = sort with { Key = sort.Key.Substring(0, sort.Key.Length - legacy.Old.Length) + "." + legacy.Time.Key } }
+            : visual;
 }

@@ -262,7 +262,7 @@ public partial class MainWindow : Window
             Title = Text("LastYearComparison"),
             Model = "sales",
             Type = VisualType.Kpi,
-            Values = [new("Amount"), new("Amount") { Time = TimeCalculation.PercentChangeFromPreviousYear }],
+            Values = [new("Amount"), new("Amount") { Time = MeasureTime.PercentChangeFromPreviousYear }],
             Filters = [PeriodFilters.Between("Date", new DateOnly(2025, 1, 1), new DateOnly(2025, 12, 31))],
         };
 

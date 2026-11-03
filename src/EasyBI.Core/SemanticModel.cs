@@ -103,9 +103,10 @@ public sealed class QueryableSemanticModel<T> : QuerySemanticModel
         string caption,
         Aggregation aggregation = Aggregation.Sum,
         string? format = null,
-        string? name = null)
+        string? name = null,
+        Favorable favorable = Favorable.Higher)
     {
-        return Add(new FieldDescriptor(name ?? NameOf(selector), caption, FieldKind.Measure, DataType.Number, aggregation, format), selector);
+        return Add(new FieldDescriptor(name ?? NameOf(selector), caption, FieldKind.Measure, DataType.Number, aggregation, format) { Favorable = favorable }, selector);
     }
 
     /// <summary>
@@ -118,8 +119,9 @@ public sealed class QueryableSemanticModel<T> : QuerySemanticModel
         Expression<Func<IEnumerable<T>, TValue>> aggregate,
         string caption,
         string name,
-        string? format = null) =>
-        Add(new FieldDescriptor(name, caption, FieldKind.Measure, DataType.Number, Format: format, IsCalculated: true), aggregate);
+        string? format = null,
+        Favorable favorable = Favorable.Higher) =>
+        Add(new FieldDescriptor(name, caption, FieldKind.Measure, DataType.Number, Format: format, IsCalculated: true) { Favorable = favorable }, aggregate);
 
     /// <summary>
     /// Ratio of two sums for each group: margin rate (margin / revenue), average basket (revenue / <c>_ => 1</c>)...
@@ -131,7 +133,8 @@ public sealed class QueryableSemanticModel<T> : QuerySemanticModel
         Expression<Func<T, TDenominator>> denominator,
         string caption,
         string name,
-        string? format = null)
+        string? format = null,
+        Favorable favorable = Favorable.Higher)
     {
         var rows = Expression.Parameter(typeof(IEnumerable<T>), "g");
         Expression Sum(LambdaExpression selector) => Expression.Convert(
@@ -141,7 +144,7 @@ public sealed class QueryableSemanticModel<T> : QuerySemanticModel
             Expression.Equal(bottom, Expression.Constant(0d, typeof(double?))),
             Expression.Constant(null, typeof(double?)),
             Expression.Divide(top, bottom));
-        return Calculated(Expression.Lambda<Func<IEnumerable<T>, double?>>(ratio, rows), caption, name, format);
+        return Calculated(Expression.Lambda<Func<IEnumerable<T>, double?>>(ratio, rows), caption, name, format, favorable);
     }
 
     /// <summary>
@@ -151,11 +154,11 @@ public sealed class QueryableSemanticModel<T> : QuerySemanticModel
     /// application (the rewritten formula is saved with the report).
     /// </summary>
     /// <exception cref="ArgumentException">The formula is not valid for the fields declared so far.</exception>
-    public QueryableSemanticModel<T> Formula(string formula, string caption, string name, string? format = null)
+    public QueryableSemanticModel<T> Formula(string formula, string caption, string name, string? format = null, Favorable favorable = Favorable.Higher)
     {
         if (MeasureFormula.Validate(formula, new ModelMetadata(_name, _caption, _fields)) is { } problem)
             throw new ArgumentException($"Invalid formula for '{name}': {problem}", nameof(formula));
-        return Add(new FieldDescriptor(name, caption, FieldKind.Measure, DataType.Number, Format: format, IsCalculated: true, Formula: formula), null);
+        return Add(new FieldDescriptor(name, caption, FieldKind.Measure, DataType.Number, Format: format, IsCalculated: true, Formula: formula) { Favorable = favorable }, null);
     }
 
     /// <summary>Measure that counts rows.</summary>

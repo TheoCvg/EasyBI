@@ -55,12 +55,12 @@ public class DataSerializerTests
 
     public static TheoryData<string, VisualDefinition> Visuals => new()
     {
-        { "bars by month with the previous year", Visual(VisualType.Bar, [new("Date", DateGrain.Month)], null, new MeasureRef("Amount"), new MeasureRef("Amount") { Time = TimeCalculation.PreviousYear }) },
+        { "bars by month with the previous year", Visual(VisualType.Bar, [new("Date", DateGrain.Month)], null, new MeasureRef("Amount"), new MeasureRef("Amount") { Time = MeasureTime.PreviousYear }) },
         { "lines by day", Visual(VisualType.Line, [new("Date", DateGrain.Day)], null, new MeasureRef("Amount")) },
         { "dates without grain and a ratio", Visual(VisualType.Bar, [new("Shipped")], null, new MeasureRef("CostRate")) },
         { "numbers and booleans", Visual(VisualType.Bar, [new("Store")], new FieldRef("Online"), new MeasureRef("Amount")) },
         { "quarters and regions", Visual(VisualType.Bar, [new("Date", DateGrain.Quarter)], new FieldRef("Region"), new MeasureRef("Amount")) },
-        { "year to date", Visual(VisualType.Line, [new("Date", DateGrain.Month)], null, new MeasureRef("Amount") { Time = TimeCalculation.YearToDate }) },
+        { "year to date", Visual(VisualType.Line, [new("Date", DateGrain.Month)], null, new MeasureRef("Amount") { Time = MeasureTime.YearToDate }) },
     };
 
     [Theory]

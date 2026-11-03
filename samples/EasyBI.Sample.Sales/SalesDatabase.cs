@@ -1,3 +1,4 @@
+using EasyBI.Abstractions;
 using EasyBI.Core;
 using Microsoft.EntityFrameworkCore;
 
@@ -123,6 +124,8 @@ public static class SalesDatabase
             .Ratio(s => s.Amount, s => 1, "AverageBasket", "AverageBasket", format: "#,##0 €")
             // A formula, as end users write them: they can rewrite it in the application
             .Formula("SUM([Amount]; [Channel] = \"Web\") / [Amount]", "WebShare", "WebShare", format: "P1")
+            // Costs: a rise is bad news, which the trends of a KPI show in the error color
+            .Formula("[Amount] - [Margin]", "Cost", "Cost", format: "#,##0 €", favorable: Favorable.Lower)
             .Localize(SalesData.Captions);
     }
 }

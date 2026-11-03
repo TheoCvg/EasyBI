@@ -87,13 +87,13 @@ public class VisualDataSourceTests
     [Fact]
     public async Task A_query_source_answers_in_the_language_of_the_request()
     {
-        var visual = ByRegion with { Values = [new("Amount") { Time = TimeCalculation.PreviousYear }], Axis = [new("Date", DateGrain.Year)] };
+        var visual = ByRegion with { Values = [new("Amount") { Time = MeasureTime.PreviousYear }], Axis = [new("Date", DateGrain.Year)] };
 
         var french = await Model().GetDataAsync(new VisualDataRequest(visual) { UICulture = "fr-FR", FormatCulture = "fr-FR" });
         var english = await Model().GetDataAsync(new VisualDataRequest(visual) { UICulture = "en-US", FormatCulture = "en-US" });
 
         Assert.Equal("CA N-1", french.Result.Columns[1].Caption);
-        Assert.Equal("CA, previous year", english.Result.Columns[1].Caption);
+        Assert.Equal("CA Y-1", english.Result.Columns[1].Caption);
         Assert.Equal(CultureInfo.InvariantCulture, EasyBILocalization.UICulture); // the application's culture is left as it was
     }
 
