@@ -92,6 +92,14 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         var axis = (CategoryAxis)model.Axes.First(a => a.Key == CategoryAxisKey);
         if (axis.Angle != fit.LabelRotation) (axis.Angle, changed) = (fit.LabelRotation, true);
         if (axis.MajorStep != fit.LabelStep) (axis.MajorStep, changed) = (fit.LabelStep, true);
+        // Long labels shortened to their room (tooltips keep the whole category)
+        var texts = displayed.Categories.Select(c => ChartFitting.Shorten(c, fit)).ToList();
+        if (!axis.Labels.SequenceEqual(texts))
+        {
+            axis.Labels.Clear();
+            axis.Labels.AddRange(texts);
+            changed = true;
+        }
         if (levels is not null)
         {
             // Fewer than two labels a group would repeat one name: the groups' labels say enough

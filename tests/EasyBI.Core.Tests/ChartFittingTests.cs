@@ -53,14 +53,44 @@ public class ChartFittingTests
         var crowded = ChartFitting.Cartesian(Chart(12, 1, "Long category"), 600, 400);
         Assert.Equal((-45d, 1), (crowded.LabelRotation, crowded.LabelStep));
 
+        // Upright labels need the least room along the axis: every n-th one of the fewest
         var packed = ChartFitting.Cartesian(Chart(60, 1, "Long category"), 400, 400);
-        Assert.Equal(-45d, packed.LabelRotation);
+        Assert.Equal(-90d, packed.LabelRotation);
         Assert.True(packed.LabelStep > 1);
 
         // Too short to rotate: horizontal labels, every n-th one
         var flat = ChartFitting.Cartesian(Chart(12, 1, "Long category"), 600, 150);
         Assert.Equal(0d, flat.LabelRotation);
         Assert.True(flat.LabelStep > 1);
+    }
+
+    [Fact]
+    public void Labels_stand_upright_when_at_45_degrees_only_every_other_one_would_show()
+    {
+        // 18 px a label: too close for labels at 45° (22 px), enough for upright ones (16 px)
+        var fit = ChartFitting.Cartesian(Chart(20, 1, "Île-de-France"), 70 + 20 * 18, 300);
+
+        Assert.Equal((-90d, 1, 0), (fit.LabelRotation, fit.LabelStep, fit.LabelLength));
+    }
+
+    [Fact]
+    public void Long_labels_are_shortened_rather_than_skipped_when_the_chart_is_low()
+    {
+        // 100 px of height for the labels: 16 characters at 45°, 12 upright, 4 horizontally (too few to say anything)
+        var fit = ChartFitting.Cartesian(Chart(12, 1, "Very long category name"), 600, 220);
+
+        Assert.Equal((-45d, 1, 16), (fit.LabelRotation, fit.LabelStep, fit.LabelLength));
+        Assert.Equal("Very long categ…", ChartFitting.Shorten("Very long category name 3", fit));
+        Assert.Equal("Short", ChartFitting.Shorten("Short", fit));
+    }
+
+    [Fact]
+    public void Labels_that_fit_keep_their_whole_text()
+    {
+        var fit = ChartFitting.Cartesian(Chart(12, 1, "Long category"), 600, 400);
+
+        Assert.Equal(0, fit.LabelLength);
+        Assert.Equal("Long category 11", ChartFitting.Shorten("Long category 11", fit));
     }
 
     [Fact]

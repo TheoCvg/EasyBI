@@ -385,7 +385,7 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         // groups that stay flat are each shown where they do not overlap the previous one (more of them than a step)
         var labels = levels is not null && fit.LabelRotation == 0
             ? Spaced(view, categoryAxis, chart.Categories)
-            : chart.Categories.Select((c, i) => i % fit.LabelStep == 0 ? c : "").ToArray();
+            : chart.Categories.Select((c, i) => i % fit.LabelStep == 0 ? ChartFitting.Shorten(c, fit) : "").ToArray();
         // Under groups, fewer than two labels a group would repeat one name: the groups' labels say enough
         if (levels is not null && labels.Count(l => l.Length > 0) < Math.Min(2, (double)chart.Categories.Count / levels.Groups[0].Count) * levels.Groups[0].Count * 0.9)
             labels = [.. labels.Select(_ => "")];

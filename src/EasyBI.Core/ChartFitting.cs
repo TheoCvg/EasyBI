@@ -14,11 +14,17 @@ public sealed record ChartFit
     /// </summary>
     public IReadOnlyList<LegendPage> LegendPages { get; init; } = [];
 
-    /// <summary>Angle of the category labels, in degrees (0 = horizontal).</summary>
+    /// <summary>Angle of the category labels, in degrees: 0 (horizontal), -45 or -90 (upright).</summary>
     public double LabelRotation { get; init; }
 
     /// <summary>Only every n-th category label is shown, so that labels never overlap.</summary>
     public int LabelStep { get; init; } = 1;
+
+    /// <summary>
+    /// The characters a category label keeps, ellipsis included, when longer labels are shortened (see
+    /// <see cref="ChartFitting.Shorten"/>); 0 when they keep their whole text.
+    /// </summary>
+    public int LabelLength { get; init; }
 
     /// <summary>False when there is no room for the axis titles.</summary>
     public bool ShowAxisTitles { get; init; } = true;
@@ -49,16 +55,24 @@ public sealed record LegendPage(int First, int Count)
 /// <summary>
 /// Renderer-independent rules that keep a chart readable whatever its size: the legend goes from the right to the
 /// bottom, then disappears (a visual can prefer a side, kept while there is room for it); a legend with more entries
-/// than its room shows them by pages; category labels rotate, then skip; axis titles are dropped; a donut keeps its
-/// proportions. A connector calls them with the actual size of its chart (and again when it changes).
+/// than its room shows them by pages; category labels rotate (45°, then upright), are shortened, then skip; axis titles
+/// are dropped; a donut keeps its proportions. A connector calls them with the actual size of its chart (and again when it changes).
 /// </summary>
 public static class ChartFitting
 {
     /// <summary>Approximate width of a character of the chart texts (12-13 px fonts).</summary>
     private const double CharWidth = 7;
 
-    /// <summary>Room a rotated label needs along the axis (one line of text, plus spacing).</summary>
-    private const double RotatedLabelPitch = 22;
+    /// <summary>Room a label at 45° needs along the axis: its line of text crosses the axis on a longer stretch.</summary>
+    private const double SlantedLabelPitch = 22;
+
+    /// <summary>Room an upright label needs along the axis (one line of text, plus spacing).</summary>
+    private const double UprightLabelPitch = 16;
+
+    /// <summary>A shortened label keeps at least this many characters (ellipsis included), or it says too little.</summary>
+    private const int MinShortenedLength = 6;
+
+    private const string Ellipsis = "…";
 
     private const double ValueAxisWidth = 70;
     private const double MinPlotWidth = 300;
@@ -161,23 +175,7 @@ public static class ChartFitting
         var axes = chart.Series.Any(s => s.SecondaryAxis) ? 2 : 1;
         var plotWidth = Math.Max(40, width - axes * ValueAxisWidth - (side != ChartLegend.Hidden ? legendWidth : 0));
         var perLabel = plotWidth / Math.Max(1, chart.Categories.Count);
-        var longest = chart.Categories.Select(c => c.Length).DefaultIfEmpty(1).Max() * CharWidth + 8;
-        // At 45 degrees, a label takes about 0.71 of its length in height
-        var rotatedHeight = longest * 0.71 + 10;
-
-        double rotation = 0, labelsHeight = HorizontalLabelsHeight;
-        int step;
-        if (perLabel >= longest)
-            step = 1;
-        else if (height - rotatedHeight >= MinPlotHeight)
-        {
-            // Rotated labels only need one text line of room each
-            rotation = -45;
-            labelsHeight = rotatedHeight;
-            step = (int)Math.Ceiling(RotatedLabelPitch / perLabel);
-        }
-        else
-            step = (int)Math.Ceiling(longest / perLabel); // no room to rotate: skip horizontal labels
+        var (rotation, step, length, labelsHeight) = Labels(chart.Categories, perLabel, height - MinPlotHeight);
 
         // Above or below the plot, the legend (one row, by pages) and the axis title only take height the plot can spare
         var spare = height - labelsHeight - MinPlotHeight;
@@ -191,9 +189,52 @@ public static class ChartFitting
             Legend = legend,
             LegendPages = LegendPages(entries, legend, width, height, metrics),
             LabelRotation = rotation,
-            LabelStep = Math.Max(1, step),
+            LabelStep = step,
+            LabelLength = length,
             ShowAxisTitles = spare >= AxisTitleHeight && width >= 260,
         };
+    }
+
+    /// <summary>
+    /// The text a category label shows in a fit: shortened with an ellipsis when it is longer than
+    /// <see cref="ChartFit.LabelLength"/> (tooltips keep the whole category).
+    /// </summary>
+    public static string Shorten(string label, ChartFit fit) =>
+        fit.LabelLength <= 0 || label.Length <= fit.LabelLength ? label : label.Substring(0, fit.LabelLength - 1).TrimEnd() + Ellipsis;
+
+    /// <summary>
+    /// How the category labels show along <paramref name="perLabel"/> pixels each, with <paramref name="room"/> pixels of
+    /// height the plot can spare: horizontal, at 45° or upright, whole or shortened, each one or every n-th one. Showing
+    /// every label comes first, then whole labels, then the longest text, then the flattest angle: a label shortened to
+    /// fit beats one shown out of two, the tooltip keeping its whole text.
+    /// </summary>
+    private static (double Rotation, int Step, int Length, double Height) Labels(IReadOnlyList<string> categories, double perLabel, double room)
+    {
+        var longest = categories.Select(c => c.Length).DefaultIfEmpty(1).Max();
+        double Width(int characters) => characters * CharWidth + 8;
+        // The characters fitting in a stretch of text, at most the longest label's
+        int Fitting(double stretch) => Math.Min(longest, (int)Math.Floor((stretch - 8) / CharWidth));
+        int Step(double pitch) => Math.Max(1, (int)Math.Ceiling(pitch / perLabel));
+
+        // Horizontal labels take one row: shortened to their slot, or whole every n-th one
+        var horizontal = Fitting(perLabel - 4);
+        var candidates = new List<(double Rotation, int Step, int Length, double Height)>
+        {
+            (0, Step(Width(longest)), longest, HorizontalLabelsHeight),
+            (0, 1, horizontal, HorizontalLabelsHeight),
+            // At 45°, a label takes about 0.71 of its length in height; upright, all of it
+            (-45, Step(SlantedLabelPitch), Fitting((room - 10) / 0.71), 0),
+            (-90, Step(UprightLabelPitch), Fitting(room - 6), 0),
+        };
+        var best = candidates
+            .Where(c => c.Length >= Math.Min(longest, MinShortenedLength))
+            .Select(c => c with { Height = c.Rotation == 0 ? c.Height : Width(c.Length) * (c.Rotation == -45 ? 0.71 : 1) + (c.Rotation == -45 ? 10 : 6) })
+            .OrderBy(c => c.Step)
+            .ThenBy(c => c.Length < longest)
+            .ThenByDescending(c => c.Length)
+            .ThenBy(c => -c.Rotation)
+            .First();
+        return best with { Length = best.Length < longest ? best.Length : 0 };
     }
 
     /// <summary>The fit of a pie, or of a donut (<paramref name="donut"/>), whose hole keeps half of the radius.</summary>

@@ -65,6 +65,15 @@ view.SizeChanged += (_, _) => Fit();
 if (request.LegendPager is { } pager) pager.Changed += (_, _) => Fit();
 ```
 
+The same fit says how the **category labels** show: at an angle (`LabelRotation`: 0, -45 or -90 for upright), every
+n-th one (`LabelStep`), and shortened with an ellipsis when that is the only way to show them all
+(`ChartFitting.Shorten(label, fit)`, which keeps a label that fits as it is):
+
+```csharp
+axis.LabelsAngle = fit.LabelRotation;
+axis.Labels = [.. request.Chart.Categories.Select((c, i) => i % fit.LabelStep == 0 ? ChartFitting.Shorten(c, fit) : "")];
+```
+
 `EasyBIContext.ResolveRenderer` negotiates capabilities: the active renderer if it supports every type the
 visual uses (the visual's and its measures'), otherwise another plugged-in renderer, otherwise a built-in one. The designer disables
 the types that no renderer can draw.
