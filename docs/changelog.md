@@ -4,6 +4,16 @@ Every version, with its breaking changes. EasyBI follows [Semantic Versioning](h
 breaking changes bump the minor version. The report format (`easybi/v1`) stays backward compatible: a newer version
 opens older reports, and a report using a newer feature cannot be opened by an older version.
 
+## Unreleased
+
+### Added
+
+- **Text renderer options**: `RendererOption.Text` offers a text, edited in a text box of the properties panel and saved
+  with the visual like the other options.
+- **Settings of the application saved with the visual**: `DesignerViewModel.GetSetting` and `SetSetting` read and write
+  values of the application's own properties in `VisualDefinition.Extensions`, under a name of its own; setting one can be
+  undone and refused by a rule. `RendererSettings.GetRendererOption` also reads a dictionary of extensions.
+
 ## 0.6.0-beta.1 — 2026-10-28
 
 ### Added

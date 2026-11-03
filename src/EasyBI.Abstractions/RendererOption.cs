@@ -10,6 +10,9 @@ public enum RendererOptionKind
 
     /// <summary>A number; the value is a <see cref="double"/>.</summary>
     Number,
+
+    /// <summary>A text (a text box); the value is a <see cref="string"/>.</summary>
+    Text,
 }
 
 /// <summary>A value offered by a <see cref="RendererOptionKind.Choice"/> option.</summary>
@@ -30,7 +33,7 @@ public sealed record RendererOption(string Key, RendererOptionKind Kind, Func<st
     /// <summary>Longer explanation (tooltip); null for none.</summary>
     public Func<string>? Description { get; init; }
 
-    /// <summary>Value used while the user has not set one: a bool, a choice's value or a double, by <see cref="Kind"/>.</summary>
+    /// <summary>Value used while the user has not set one: a bool, a choice's value, a double or a text, by <see cref="Kind"/>.</summary>
     public object? Default { get; init; }
 
     public IReadOnlyList<RendererChoice> Choices { get; init; } = [];
@@ -52,4 +55,7 @@ public sealed record RendererOption(string Key, RendererOptionKind Kind, Func<st
     public static RendererOption Number(string key, Func<string> label, double @default, double? minimum = null, double? maximum = null,
         Func<VisualDefinition, bool>? appliesTo = null) =>
         new(key, RendererOptionKind.Number, label) { Default = @default, Minimum = minimum, Maximum = maximum, AppliesTo = appliesTo };
+
+    public static RendererOption Text(string key, Func<string> label, string @default = "", Func<VisualDefinition, bool>? appliesTo = null) =>
+        new(key, RendererOptionKind.Text, label) { Default = @default, AppliesTo = appliesTo };
 }

@@ -1007,6 +1007,8 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
             description: () => option.Description ?? ""),
         RendererOptionKind.Choice => DesignerProperty.Choice(option.Option.Key, () => option.Label, option.Choices,
             () => option.Value as string ?? "", v => option.Value = v, description: () => option.Description ?? ""),
+        RendererOptionKind.Text => DesignerProperty.Text(option.Option.Key, () => option.Label, () => option.Text, v => option.Text = v,
+            description: () => option.Description ?? ""),
         _ => DesignerProperty.Number(option.Option.Key, () => option.Label, () => option.Value as double?, v => option.Value = v,
             description: () => option.Description ?? ""),
     };
@@ -1055,6 +1057,25 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         foreach (var (owner, option) in options)
             RendererOptions.Add(new(owner, option, visual!.GetRendererOption(owner, option), OnRendererOptionChanged));
         OnPropertyChanged(nameof(HasRendererOptions));
+    }
+
+    /// <summary>
+    /// A setting of the application saved with the visual being designed, such as a property it adds to the panel
+    /// (<see cref="PropertiesBuilding"/>): its value under <paramref name="owner"/> (a name of the application's, unlike
+    /// the renderers' and the visual types'), or <paramref name="default"/> when it is not set. See
+    /// <see cref="RendererSettings"/>.
+    /// </summary>
+    public T? GetSetting<T>(string owner, string key, T? @default = default) =>
+        RendererSettings.GetRendererOption(_extensions, owner, key, @default);
+
+    /// <summary>
+    /// Saves a setting of the application with the visual being designed (a bool, a string or a number; null removes it),
+    /// like any change of the visual: it can be undone, and a rule can refuse it.
+    /// </summary>
+    public void SetSetting(string owner, string key, object? value)
+    {
+        _extensions = RendererSettings.WithRendererOption(_extensions, owner, key, value);
+        Rebuild();
     }
 
     private void OnRendererOptionChanged(RendererOptionViewModel option)

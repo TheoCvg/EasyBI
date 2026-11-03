@@ -83,6 +83,19 @@ designer.ViewModel!.PropertiesBuilding += (_, e) =>
 };
 ```
 
+To save a value **with the visual** rather than in your own store, use `GetSetting` and `SetSetting`: the value goes in
+`VisualDefinition.Extensions`, under a name of yours (here `notes`), as renderer options do. Setting it is a change of the
+visual like the others: it can be undone, and a [rule](rules.md) can refuse it.
+
+```csharp
+var designer = e.Designer;
+DesignerProperty.Text("Comment", () => "Comment",
+    get: () => designer.GetSetting("notes", "comment", ""),
+    set: text => designer.SetSetting("notes", "comment", text.Length == 0 ? null : text));   // null removes it
+```
+
+In the application, `visual.GetRendererOption<string>("notes", "comment")` (EasyBI.Core) reads it back.
+
 ![A Notes section with a Comment box, above the settings of the Revenue measure](../../images/designer/custom-section.png#only-light){ width="300" }
 ![A Notes section with a Comment box, above the settings of the Revenue measure](../../images/designer/custom-section-dark.png#only-dark){ width="300" }
 
