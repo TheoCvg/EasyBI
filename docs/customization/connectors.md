@@ -73,7 +73,7 @@ the types that no renderer can draw.
 
 A connector offers settings of its own to the end user by declaring them in its capabilities: the designer shows them
 in the "Options" section of its properties panel (`DesignerPropertySections.Options`) for the visuals they apply to, as
-a check box, a list or a number box, and saves their values with the visual.
+a check box, a list, a number box or a text box, and saves their values with the visual.
 
 ```csharp
 public RendererCapabilities Capabilities { get; } = new(marks)
@@ -83,6 +83,7 @@ public RendererCapabilities Capabilities { get; } = new(marks)
         RendererOption.Toggle("scrollable", () => Strings.Scrollable, appliesTo: v => v.Type.IsCartesian()),
         RendererOption.Choice("curve", () => Strings.Curve, [new("straight", () => Strings.Straight), new("smooth", () => Strings.Smooth)]),
         RendererOption.Number("barWidth", () => Strings.BarWidth, 48, minimum: 4, maximum: 120),
+        RendererOption.Text("watermark", () => Strings.Watermark),
     ],
 };
 

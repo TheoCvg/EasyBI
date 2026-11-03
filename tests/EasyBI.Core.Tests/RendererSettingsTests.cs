@@ -32,6 +32,15 @@ public class RendererSettingsTests
     }
 
     [Fact]
+    public void A_text_option_reads_its_text_or_its_default()
+    {
+        var option = RendererOption.Text("caption", () => "Caption", "none");
+
+        Assert.Equal("none", Visual.GetRendererOption("LiveCharts2", option));
+        Assert.Equal("Sales", Visual.WithRendererOption("LiveCharts2", "caption", "Sales").GetRendererOption("LiveCharts2", option));
+    }
+
+    [Fact]
     public void A_value_of_another_type_reads_as_the_default()
     {
         var visual = Visual.WithRendererOption("LiveCharts2", "scrollable", "yes");

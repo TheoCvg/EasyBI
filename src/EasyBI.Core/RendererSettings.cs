@@ -12,9 +12,13 @@ namespace EasyBI.Core;
 public static class RendererSettings
 {
     /// <summary>The value of an option, or <paramref name="default"/> when it is not set or not a <typeparamref name="T"/>.</summary>
-    public static T? GetRendererOption<T>(this VisualDefinition visual, string renderer, string key, T? @default = default)
+    public static T? GetRendererOption<T>(this VisualDefinition visual, string renderer, string key, T? @default = default) =>
+        GetRendererOption(visual.Extensions, renderer, key, @default);
+
+    /// <inheritdoc cref="GetRendererOption{T}(VisualDefinition, string, string, T)"/>
+    public static T? GetRendererOption<T>(IReadOnlyDictionary<string, string>? extensions, string renderer, string key, T? @default = default)
     {
-        if (Read(visual.Extensions, renderer)?[key] is not JsonValue value) return @default;
+        if (Read(extensions, renderer)?[key] is not JsonValue value) return @default;
         try
         {
             return value.Deserialize<T>() is { } result ? result : @default;

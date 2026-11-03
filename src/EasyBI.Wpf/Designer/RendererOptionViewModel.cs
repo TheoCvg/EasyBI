@@ -6,8 +6,8 @@ using EasyBI.Core;
 namespace EasyBI.Wpf.Designer;
 
 /// <summary>
-/// A <see cref="RendererOption"/> of the visual being designed, edited with a check box, a list or a number box
-/// depending on its kind. Changing its value reports it to the designer, which saves it with the visual.
+/// A <see cref="RendererOption"/> of the visual being designed, edited with a check box, a list, a number box or a text
+/// box depending on its kind. Changing its value reports it to the designer, which saves it with the visual.
 /// </summary>
 public sealed class RendererOptionViewModel : ObservableObject
 {
@@ -40,7 +40,9 @@ public sealed class RendererOptionViewModel : ObservableObject
 
     public bool IsNumber => Option.Kind == RendererOptionKind.Number;
 
-    /// <summary>The current value: a bool, a choice's value or a double, by kind.</summary>
+    public bool IsText => Option.Kind == RendererOptionKind.Text;
+
+    /// <summary>The current value: a bool, a choice's value, a double or a text, by kind.</summary>
     public object? Value
     {
         get => _value;
@@ -55,6 +57,12 @@ public sealed class RendererOptionViewModel : ObservableObject
     public bool IsOn
     {
         get => _value as bool? ?? false;
+        set => Value = value;
+    }
+
+    public string Text
+    {
+        get => _value as string ?? "";
         set => Value = value;
     }
 
@@ -90,6 +98,7 @@ public sealed class RendererOptionViewModel : ObservableObject
         OnPropertyChanged(nameof(IsOn));
         OnPropertyChanged(nameof(SelectedChoice));
         OnPropertyChanged(nameof(NumberText));
+        OnPropertyChanged(nameof(Text));
     }
 
     private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e)

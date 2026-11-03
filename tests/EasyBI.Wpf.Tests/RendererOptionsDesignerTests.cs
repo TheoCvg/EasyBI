@@ -26,6 +26,7 @@ public class RendererOptionsDesignerTests
                     appliesTo: v => v.Type.IsCartesian()),
                 RendererOption.Choice("style", () => "Style", [new("flat", () => "Flat"), new("smooth", () => "Smooth")]),
                 RendererOption.Number("size", () => "Size", 8, minimum: 1, maximum: 20),
+                RendererOption.Text("caption", () => "Caption", "none"),
             ],
         };
 
@@ -52,8 +53,9 @@ public class RendererOptionsDesignerTests
         var designer = Designer();
 
         Assert.True(designer.HasRendererOptions);
-        Assert.Equal(["scrollable", "style", "size"], designer.RendererOptions.Select(o => o.Option.Key));
-        Assert.Equal([false, true, false], designer.RendererOptions.Select(o => o.IsChoice));
+        Assert.Equal(["scrollable", "style", "size", "caption"], designer.RendererOptions.Select(o => o.Option.Key));
+        Assert.Equal([false, true, false, false], designer.RendererOptions.Select(o => o.IsChoice));
+        Assert.Equal("none", Option(designer, "caption").Text);
         Assert.Equal("flat", Option(designer, "style").SelectedChoice!.Value);
         Assert.Equal("8", Option(designer, "size").NumberText);
     }
@@ -80,6 +82,46 @@ public class RendererOptionsDesignerTests
 
         Assert.True(designer.Visual!.GetRendererOption<bool>("Test", "scrollable"));
         Assert.Equal("smooth", designer.Visual!.GetRendererOption<string>("Test", "style"));
+    }
+
+    [Fact]
+    public void A_text_option_is_edited_in_a_text_box_and_saved_with_the_visual()
+    {
+        var designer = Designer();
+        var caption = Assert.Single(designer.Properties.Single(s => s.Key == DesignerPropertySections.Options).Properties, p => p.Key == "caption");
+        Assert.Equal(PropertyKind.Text, caption.Kind);
+
+        caption.Value = "Sales by region";
+
+        Assert.Equal("Sales by region", designer.Visual!.GetRendererOption<string>("Test", "caption"));
+        Assert.Equal("Sales by region", Option(designer, "caption").Text);
+    }
+
+    [Fact]
+    public void The_application_saves_its_own_settings_with_the_visual_and_they_can_be_undone()
+    {
+        var designer = Designer();
+        Assert.Equal("", designer.GetSetting("notes", "comment", ""));
+
+        designer.SetSetting("notes", "comment", "Checked with finance");
+
+        Assert.Equal("Checked with finance", designer.Visual!.GetRendererOption<string>("notes", "comment"));
+        Assert.Equal("Checked with finance", designer.GetSetting<string>("notes", "comment"));
+        designer.UndoCommand.Execute(null);
+        Assert.Null(designer.GetSetting<string>("notes", "comment"));
+        Assert.Null(designer.Visual!.Extensions);
+    }
+
+    [Fact]
+    public void A_setting_a_rule_refuses_is_not_saved()
+    {
+        var designer = Designer();
+        designer.Rules.Add(change => change.Changes(v => v.Extensions) ? "Locked" : null);
+
+        designer.SetSetting("notes", "comment", "Checked with finance");
+
+        Assert.Null(designer.GetSetting<string>("notes", "comment"));
+        Assert.Null(designer.Visual!.Extensions);
     }
 
     [Fact]
@@ -164,7 +206,7 @@ public class RendererOptionsDesignerTests
         Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle); // bindings
 
         var options = Assert.Single(designer.ViewModel!.Properties, s => s.Key == DesignerPropertySections.Options);
-        Assert.Equal(["scrollable", "style", "size"], options.Properties.Select(p => p.Key));
+        Assert.Equal(["scrollable", "style", "size", "caption"], options.Properties.Select(p => p.Key));
         // One editor per kind of option: a check box, a list, a number box
         var panel = (FrameworkElement)designer.Template.FindName("PropertiesPanel", designer);
         Assert.Equal(Visibility.Visible, panel.Visibility);
