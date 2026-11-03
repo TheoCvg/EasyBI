@@ -52,10 +52,10 @@ public class DesignerPropertiesTests
         designer.SelectCommand.Execute(amount);
 
         Assert.True(amount.IsSelected);
-        Assert.Equal([DesignerPropertySections.Field, DesignerPropertySections.Formatting, DesignerPropertySections.Visual, DesignerPropertySections.Tooltips], designer.Properties.Select(s => s.Key));
+        Assert.Equal([DesignerPropertySections.Field, DesignerPropertySections.Time, DesignerPropertySections.Formatting, DesignerPropertySections.Visual, DesignerPropertySections.Tooltips], designer.Properties.Select(s => s.Key));
         var field = designer.Properties[0];
         Assert.Equal("Amount", field.Header);
-        Assert.Equal(["Aggregation", "Time", "SeriesType", "SecondaryAxis", "Sort"], Keys(field));
+        Assert.Equal(["Aggregation", "SeriesType", "SecondaryAxis", "Sort"], Keys(field));
 
         var aggregation = field["Aggregation"]!;
         aggregation.SelectedChoice = aggregation.Choices.Single(c => Equals(c.Value, Aggregation.Average));
@@ -100,13 +100,13 @@ public class DesignerPropertiesTests
         var designer = Designer();
         var amount = designer.Values.Single();
         designer.SelectedItem = amount;
-        var time = designer.Properties[0]["Time"]!;
+        var time = designer.Properties.Single(s => s.Key == DesignerPropertySections.Time)["Accumulation"]!;
         var changed = new List<string?>();
         time.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
 
-        amount.Time = TimeCalculation.YearToDate;
+        amount.Time = MeasureTime.YearToDate;
 
-        Assert.Equal(TimeCalculation.YearToDate, time.Value);
+        Assert.Equal(TimeIds.YearToDate, time.Value);
         Assert.NotEmpty(changed);
     }
 
@@ -121,7 +121,7 @@ public class DesignerPropertiesTests
         };
 
         designer.SelectedItem = designer.Values.Single();
-        Assert.Equal([DesignerPropertySections.Field, DesignerPropertySections.Formatting, DesignerPropertySections.Visual, DesignerPropertySections.Tooltips, "Notes"], designer.Properties.Select(s => s.Key));
+        Assert.Equal([DesignerPropertySections.Field, DesignerPropertySections.Time, DesignerPropertySections.Formatting, DesignerPropertySections.Visual, DesignerPropertySections.Tooltips, "Notes"], designer.Properties.Select(s => s.Key));
         Assert.Null(designer.Properties[0]["Time"]);
 
         designer.Properties.Single(s => s.Key == DesignerPropertySections.Visual).IsExpanded = false;
@@ -155,10 +155,10 @@ public class DesignerPropertiesTests
         Assert.Empty(designer.Axis.Single().Badges);
 
         amount.Aggregation = Aggregation.Average;
-        amount.Time = TimeCalculation.PreviousYear;
+        amount.Time = MeasureTime.PreviousYear;
         amount.SortDirection = ListSortDirection.Descending;
 
-        Assert.Equal(["avg", "PY", "↓"], amount.Badges);
+        Assert.Equal(["avg", "Y-1", "↓"], amount.Badges);
         designer.Drop(designer.Dimensions.Single(d => d.Name == "Date"), Shelf.Legend);
         Assert.Equal(["Month"], designer.Legend.Single().Badges);
     }
@@ -298,11 +298,11 @@ public class DesignerPropertiesTests
     {
         var designer = Designer();
         designer.SelectedItem = designer.Values.Single();
-        designer.Values.Single().Time = TimeCalculation.PreviousYear;
+        designer.Values.Single().Time = MeasureTime.PreviousYear;
 
         designer.UndoCommand.Execute(null);
 
-        Assert.Equal(TimeCalculation.None, designer.Values.Single().Time);
+        Assert.Null(designer.Values.Single().Time);
         Assert.Same(designer.Values.Single(), designer.SelectedItem);
         Assert.Equal(DesignerPropertySections.Field, designer.Properties[0].Key);
     }

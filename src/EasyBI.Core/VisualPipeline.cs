@@ -117,7 +117,7 @@ public static class ChartDataBuilder
         // two distinct values with the same display text do not merge.
         var categories = new List<object?[]>();
         var categoryIndex = new Dictionary<object?[], int>(ValuesComparer.Instance);
-        var series = new List<(string Name, string? Format, object? LegendValue, int Measure, Dictionary<int, double?> Values)>();
+        var series = new List<(string Name, string? Format, Favorable? Change, object? LegendValue, int Measure, Dictionary<int, double?> Values)>();
         var seriesIndex = new Dictionary<object?[], int>(ValuesComparer.Instance);
 
         foreach (var row in result.Rows)
@@ -140,7 +140,7 @@ public static class ChartDataBuilder
                         : measures.Length == 1 ? visual.Legend!.Display(legendValue)
                         : $"{visual.Legend!.Display(legendValue)} · {column.Caption}";
                     seriesIndex[seriesKey] = s = series.Count;
-                    series.Add((name, column.Format, legendValue, m, []));
+                    series.Add((name, column.Format, column.Change, legendValue, m, []));
                 }
                 var value = row[measures[m]];
                 series[s].Values[c] = value is null ? null : Convert.ToDouble(value, CultureInfo.InvariantCulture);
@@ -162,6 +162,7 @@ public static class ChartDataBuilder
                 SeriesType = visual.SeriesType(visual.Values[s.Measure]),
                 SecondaryAxis = visual.Type.IsCartesian() && visual.Values[s.Measure].SecondaryAxis,
                 MeasureKey = visual.Values[s.Measure].Key,
+                Change = s.Change,
             }).ToArray())
         {
             CategoryValues = categories,

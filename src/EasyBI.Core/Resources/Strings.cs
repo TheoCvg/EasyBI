@@ -130,6 +130,31 @@ internal static class Strings
     public static string VariableOutOfRange => Get();
     public static string VariableChoiceType => Get();
     public static string VariableNotAChoice => Get();
+    public static string TimePeriodPrevious => Get();
+    public static string TimePeriodLastYear => Get();
+    public static string TimePeriodOffset => Get();
+    public static string TimeOutputValue => Get();
+    public static string TimeOutputChange => Get();
+    public static string TimeOutputPercentChange => Get();
+    public static string TimeOutputValueColumn => Get();
+    public static string TimeOutputChangeColumn => Get();
+    public static string TimeOutputPercentChangeColumn => Get();
+    public static string TimeAccumulationYearToDate => Get();
+    public static string TimeAccumulationQuarterToDate => Get();
+    public static string TimeAccumulationMonthToDate => Get();
+    public static string TimeAccumulationRunning => Get();
+    public static string TimeAccumulationYearToDateColumn => Get();
+    public static string TimeAccumulationQuarterToDateColumn => Get();
+    public static string TimeAccumulationMonthToDateColumn => Get();
+    public static string TimeAccumulationRunningColumn => Get();
+    public static string TimeShortCaption => Get();
+    public static string TimeLetterDay => Get();
+    public static string TimeLetterWeek => Get();
+    public static string TimeLetterMonth => Get();
+    public static string TimeLetterQuarter => Get();
+    public static string TimeLetterYear => Get();
+    public static string TimeLetterPeriod => Get();
+    public static string TimeBadgeAccumulation => Get();
 
     /// <summary>A text whose key is built (PeriodLastMonth...).</summary>
     public static string Named(string key) => Get(key);

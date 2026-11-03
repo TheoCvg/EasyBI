@@ -185,8 +185,11 @@ public sealed class DesignerPropertySection : ObservableObject
 /// <summary>Keys of the built-in sections and properties of the properties panel.</summary>
 public static class DesignerPropertySections
 {
-    /// <summary>The selected field: aggregation, granularity, time, series, axis, sort.</summary>
+    /// <summary>The selected field: aggregation, granularity, series, axis, sort.</summary>
     public const string Field = "Field";
+
+    /// <summary>The selected measure seen through time: accumulation, comparison with a period, favorable direction.</summary>
+    public const string Time = "Time";
 
     /// <summary>The selected measure's format: fixed style and conditional formats (tables, matrices, KPIs).</summary>
     public const string Formatting = "Formatting";

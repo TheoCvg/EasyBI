@@ -38,23 +38,22 @@ public sealed record FieldRef(string Field, DateGrain Grain = DateGrain.None)
     public override int GetHashCode() => HashCode.Combine(Field, Grain, Set);
 }
 
-/// <summary>
-/// A measure seen through time: its value, its value a year earlier, how it changed since, or its total since the start
-/// of the year along a date axis.
-/// </summary>
-public enum TimeCalculation { None, PreviousYear, ChangeFromPreviousYear, PercentChangeFromPreviousYear, YearToDate }
-
 /// <summary>Reference to a measure; the model's default aggregation can be overridden.</summary>
 public sealed record MeasureRef(string Measure, Aggregation? Aggregation = null)
 {
-    public string Key => (Aggregation is null ? Measure : $"{Measure}.{Aggregation}") + (Time == TimeCalculation.None ? "" : $".{Time}");
+    public string Key => (Aggregation is null ? Measure : $"{Measure}.{Aggregation}") + (Time is { } time ? $".{time.Key}" : "");
 
     /// <summary>
-    /// How the measure is seen through time (see <see cref="TimeCalculation"/>). A year earlier means the same groups and
-    /// filters shifted by one year: it needs a date on the axis or a date filter, and is empty otherwise.
+    /// How the measure is seen through time (see <see cref="MeasureTime"/>): added up along the dates, compared with
+    /// another period, or both; null for its plain value. A comparison runs the query again on the other period's
+    /// dates: it needs a date on the axis or a date filter, and is empty otherwise.
     /// </summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public TimeCalculation Time { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public MeasureTime? Time { get; init; }
+
+    /// <summary>Which way a change of the measure is good; null for the model's (<see cref="FieldDescriptor.Favorable"/>).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Favorable? Favorable { get; init; }
 
     /// <summary>
     /// Chart type of this measure's series in a cartesian chart (bars, stacked bars, line, area, points); null follows

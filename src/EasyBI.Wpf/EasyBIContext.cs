@@ -84,6 +84,12 @@ public sealed class EasyBIContext
     /// </summary>
     public VisualTypeCatalog VisualTypes { get; } = new();
 
+    /// <summary>
+    /// The periods, presentations and accumulations the designer offers for the measures (see <see cref="TimeCatalog"/>):
+    /// <see cref="TimeCatalog.Default"/>, the one models compute with, unless the application gives another one.
+    /// </summary>
+    public TimeCatalog Time { get; set; } = TimeCatalog.Default;
+
     public IReadOnlyList<IVisualRenderer> Renderers => _renderers;
 
     public IVisualRenderer? ActiveRenderer

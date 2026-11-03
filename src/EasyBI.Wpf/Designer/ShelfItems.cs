@@ -29,14 +29,21 @@ public sealed class ShelfItemViewModel : ObservableObject
             .Select(type => new Option<VisualType?>(type, VisualTypeCatalog.Default.Get(type).Caption)),
     ];
 
-    /// <summary>How a measure can be seen through time.</summary>
-    public static IReadOnlyList<Option<TimeCalculation>> TimeOptions { get; } =
+    /// <summary>The units an offset in time counts in.</summary>
+    public static IReadOnlyList<Option<TimeUnit>> TimeUnitOptions { get; } =
     [
-        new(TimeCalculation.None, () => Strings.TimeNone),
-        new(TimeCalculation.PreviousYear, () => Strings.TimePreviousYear),
-        new(TimeCalculation.ChangeFromPreviousYear, () => Strings.TimeChangeFromPreviousYear),
-        new(TimeCalculation.PercentChangeFromPreviousYear, () => Strings.TimePercentChangeFromPreviousYear),
-        new(TimeCalculation.YearToDate, () => Strings.TimeYearToDate),
+        new(TimeUnit.Day, () => Strings.TimeUnitDay),
+        new(TimeUnit.Week, () => Strings.TimeUnitWeek),
+        new(TimeUnit.Month, () => Strings.TimeUnitMonth),
+        new(TimeUnit.Quarter, () => Strings.TimeUnitQuarter),
+        new(TimeUnit.Year, () => Strings.TimeUnitYear),
+    ];
+
+    /// <summary>Which way a change of a measure is good.</summary>
+    public static IReadOnlyList<Option<Favorable>> FavorableOptions { get; } =
+    [
+        new(Abstractions.Favorable.Higher, () => Strings.FavorableHigher),
+        new(Abstractions.Favorable.Lower, () => Strings.FavorableLower),
     ];
 
     /// <summary>How the visual can be sorted on a field: not at all, ascending or descending.</summary>
@@ -54,7 +61,8 @@ public sealed class ShelfItemViewModel : ObservableObject
     private DateGrain _grain;
     private IReadOnlyDictionary<string, string>? _labels;
     private ValueLabelsViewModel? _valueLabels;
-    private TimeCalculation _time;
+    private MeasureTime? _time;
+    private Favorable? _favorable;
     private Aggregation _aggregation;
     private VisualType? _seriesType;
     private bool _secondaryAxis;
@@ -101,13 +109,7 @@ public sealed class ShelfItemViewModel : ObservableObject
                 _ => "Σ",
             });
             if (HasGrain) badges.Add(DateGrains.Caption(Grain));
-            if (IsValue && Time != TimeCalculation.None) badges.Add(Time switch
-            {
-                TimeCalculation.PreviousYear => Strings.BadgePreviousYear,
-                TimeCalculation.ChangeFromPreviousYear => Strings.BadgeChange,
-                TimeCalculation.PercentChangeFromPreviousYear => Strings.BadgePercentChange,
-                _ => Strings.BadgeYearToDate,
-            });
+            if (IsValue && Time is { } time) badges.Add(TimeCatalog.Badge(time));
             if (ShowSeriesOptions && SeriesType is not null) badges.Add(SeriesTypeOption.Label);
             if (ShowSeriesOptions && SecondaryAxis) badges.Add(Strings.SecondaryAxis);
             if (CanSort && SortDirection is not null) badges.Add(SortOption.Symbol);
@@ -163,10 +165,75 @@ public sealed class ShelfItemViewModel : ObservableObject
     /// <summary>A measure of the Values shelf: it can be seen through time.</summary>
     public bool IsValue => Field.Kind == FieldKind.Measure && Shelf == Shelf.Values;
 
-    public TimeCalculation Time
+    /// <summary>How the measure is seen through time; null for its plain value. The Time… properties edit its parts.</summary>
+    public MeasureTime? Time
     {
         get => _time;
-        set { if (SetProperty(ref _time, value)) _changed(); }
+        set
+        {
+            if (!SetProperty(ref _time, value)) return;
+            OnPropertyChanged(nameof(TimeAccumulation));
+            OnPropertyChanged(nameof(TimePeriod));
+            OnPropertyChanged(nameof(TimeCount));
+            OnPropertyChanged(nameof(TimeUnit));
+            OnPropertyChanged(nameof(TimeShow));
+            OnPropertyChanged(nameof(HasTimeOffset));
+            _changed();
+        }
+    }
+
+    /// <summary>The catalog the time calculations come from: the designer's context's.</summary>
+    internal TimeCatalog TimeCatalog { get; set; } = TimeCatalog.Default;
+
+    /// <summary>The id of the accumulation; null for none.</summary>
+    public string? TimeAccumulation
+    {
+        get => _time?.Accumulation;
+        set => Time = WithTime(t => t with { Accumulation = value });
+    }
+
+    /// <summary>The id of the period the measure is compared with; null for none.</summary>
+    public string? TimePeriod
+    {
+        get => _time?.Period;
+        set => Time = WithTime(t => t with { Period = value });
+    }
+
+    /// <summary>How many units back, for a period that takes an offset (<see cref="HasTimeOffset"/>).</summary>
+    public int TimeCount
+    {
+        get => _time?.Count ?? 1;
+        set => Time = WithTime(t => t with { Count = Math.Max(1, value) });
+    }
+
+    public TimeUnit TimeUnit
+    {
+        get => _time?.Unit ?? TimeUnit.Year;
+        set => Time = WithTime(t => t with { Unit = value });
+    }
+
+    /// <summary>The id of what the comparison shows.</summary>
+    public string TimeShow
+    {
+        get => _time?.Show ?? TimeIds.Value;
+        set => Time = WithTime(t => t with { Show = value });
+    }
+
+    /// <summary>True when the compared period takes an offset: the designer asks for <see cref="TimeCount"/> and <see cref="TimeUnit"/>.</summary>
+    public bool HasTimeOffset => _time?.Period is { } period && TimeCatalog.Period(period)?.HasOffset == true;
+
+    // The calculation with a part changed; null when it no longer does anything
+    private MeasureTime? WithTime(Func<MeasureTime, MeasureTime> change)
+    {
+        var time = change(_time ?? new MeasureTime());
+        return time is { Accumulation: null, Period: null } ? null : time;
+    }
+
+    /// <summary>Which way a change of the measure is good; null for the model's (<see cref="FieldDescriptor.Favorable"/>).</summary>
+    public Favorable? Favorable
+    {
+        get => _favorable;
+        set { if (SetProperty(ref _favorable, value == Field.Favorable ? null : value)) _changed(); }
     }
 
     // A row count and a calculated measure (ratio...) have no other meaningful aggregation
@@ -272,6 +339,7 @@ public sealed class ShelfItemViewModel : ObservableObject
         SeriesType = SeriesType,
         SecondaryAxis = SecondaryAxis,
         Time = Time,
+        Favorable = Favorable,
         Format = _format?.ToFormat(),
     };
 }

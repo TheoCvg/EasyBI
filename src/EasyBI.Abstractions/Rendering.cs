@@ -14,6 +14,9 @@ public sealed record ChartSeries(string Name, IReadOnlyList<double?> Values, str
 
     /// <summary>The <see cref="MeasureRef.Key"/> of the measure the series shows (its format applies to it).</summary>
     public string? MeasureKey { get; init; }
+
+    /// <summary>For the changes of a measure, which way is good (<see cref="ResultColumn.Change"/>); null for other values.</summary>
+    public Favorable? Change { get; init; }
 }
 
 /// <summary>

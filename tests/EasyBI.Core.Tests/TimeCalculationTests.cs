@@ -23,7 +23,7 @@ public class TimeCalculationTests
             .Dimension(s => s.Region, "Région")
             .Measure(s => s.Amount, "CA", format: "N0");
 
-    private static MeasureRef Amount(TimeCalculation time = TimeCalculation.None) => new("Amount") { Time = time };
+    private static MeasureRef Amount(MeasureTime? time = null) => new("Amount") { Time = time };
 
     private static Task<ResultSet> Run(AnalyticQuery query, IQueryable<Sale>? source = null) => Model(source).ExecuteWithTimeAsync(query);
 
@@ -33,7 +33,7 @@ public class TimeCalculationTests
     public async Task Each_year_is_compared_with_the_previous_one()
     {
         var result = await Run(new([new("Date", DateGrain.Year)],
-            [Amount(), Amount(TimeCalculation.PreviousYear), Amount(TimeCalculation.ChangeFromPreviousYear), Amount(TimeCalculation.PercentChangeFromPreviousYear)]));
+            [Amount(), Amount(MeasureTime.PreviousYear), Amount(MeasureTime.ChangeFromPreviousYear), Amount(MeasureTime.PercentChangeFromPreviousYear)]));
 
         Assert.Equal(new DatePeriod(DateGrain.Year, 2023), result.Rows[0][0]);
         Assert.All(result.Rows[0].Skip(2), Assert.Null); // 2022 is not in the data
@@ -44,7 +44,7 @@ public class TimeCalculationTests
     [Fact]
     public async Task Months_are_compared_with_the_same_month_a_year_earlier_for_each_series()
     {
-        var result = await Run(new([new("Date", DateGrain.Month), new("Region")], [Amount(), Amount(TimeCalculation.PreviousYear)]));
+        var result = await Run(new([new("Date", DateGrain.Month), new("Region")], [Amount(), Amount(MeasureTime.PreviousYear)]));
 
         var byKey = result.Rows.ToDictionary(r => $"{((DatePeriod)r[0]!).Key} {r[1]}", r => Num(r[3]));
         Assert.Equal(100d, byKey["202401 Nord"]);
@@ -55,9 +55,9 @@ public class TimeCalculationTests
     [Fact]
     public async Task A_kpi_filtered_on_a_period_is_compared_with_the_same_period_a_year_earlier()
     {
-        var thisYear = await Run(new([], [Amount(), Amount(TimeCalculation.PercentChangeFromPreviousYear)],
+        var thisYear = await Run(new([], [Amount(), Amount(MeasureTime.PercentChangeFromPreviousYear)],
             [PeriodFilters.Between("Date", new(2024, 1, 1), new(2024, 12, 31))]));
-        var clickedYear = await Run(new([], [Amount(TimeCalculation.PreviousYear)], [new FilterSpec("Date", FilterOperator.In, ["2024"], DateGrain.Year)]));
+        var clickedYear = await Run(new([], [Amount(MeasureTime.PreviousYear)], [new FilterSpec("Date", FilterOperator.In, ["2024"], DateGrain.Year)]));
 
         Assert.Equal(45d / 190d, Num(Assert.Single(thisYear.Rows)[1])!.Value, 10);
         Assert.Equal(190d, Num(Assert.Single(clickedYear.Rows)[0]));
@@ -84,9 +84,9 @@ public class TimeCalculationTests
     [Fact]
     public async Task A_range_ending_later_is_compared_up_to_the_same_day_and_a_past_range_whole()
     {
-        var underWay = await RunOn(Today, new([], [Amount(), Amount(TimeCalculation.PreviousYear)], [PeriodFilters.Between("Date", new(2026, 1, 1), new(2026, 12, 31))]));
-        var since = await RunOn(Today, new([], [Amount(TimeCalculation.PreviousYear)], [PeriodFilters.Between("Date", new(2026, 1, 1), null)]));
-        var past = await RunOn(Today, new([], [Amount(TimeCalculation.PreviousYear)], [PeriodFilters.Between("Date", new(2025, 1, 1), new(2025, 12, 31))]));
+        var underWay = await RunOn(Today, new([], [Amount(), Amount(MeasureTime.PreviousYear)], [PeriodFilters.Between("Date", new(2026, 1, 1), new(2026, 12, 31))]));
+        var since = await RunOn(Today, new([], [Amount(MeasureTime.PreviousYear)], [PeriodFilters.Between("Date", new(2026, 1, 1), null)]));
+        var past = await RunOn(Today, new([], [Amount(MeasureTime.PreviousYear)], [PeriodFilters.Between("Date", new(2025, 1, 1), new(2025, 12, 31))]));
 
         Assert.Equal((160d, 130d), (Num(underWay.Rows[0][0])!.Value, Num(underWay.Rows[0][1])!.Value));
         Assert.Equal(130d, Num(since.Rows[0][0])); // not this year's sales, a year earlier than an open end
@@ -96,7 +96,7 @@ public class TimeCalculationTests
     [Fact]
     public async Task The_month_under_way_is_compared_with_the_same_days_a_year_earlier_and_past_months_whole()
     {
-        var result = await RunOn(Today, new([new("Date", DateGrain.Month)], [Amount(), Amount(TimeCalculation.PreviousYear)],
+        var result = await RunOn(Today, new([new("Date", DateGrain.Month)], [Amount(), Amount(MeasureTime.PreviousYear)],
             [PeriodFilters.Between("Date", new(2026, 1, 1), new(2026, 12, 31))]));
 
         var byMonth = result.Rows.ToDictionary(r => ((DatePeriod)r[0]!).Key, r => Num(r[2]));
@@ -110,7 +110,7 @@ public class TimeCalculationTests
     [InlineData(DateGrain.Year, "2025", null)] // a past year: compared whole (2024)
     public async Task A_clicked_period_under_way_is_compared_up_to_the_same_day(DateGrain grain, string period, double? expected)
     {
-        var result = await RunOn(Today, new([], [Amount(TimeCalculation.PreviousYear)], [new FilterSpec("Date", FilterOperator.In, [period], grain)]));
+        var result = await RunOn(Today, new([], [Amount(MeasureTime.PreviousYear)], [new FilterSpec("Date", FilterOperator.In, [period], grain)]));
 
         Assert.Equal(expected, Num(result.Rows[0][0]));
     }
@@ -124,7 +124,7 @@ public class TimeCalculationTests
             [new FilterSpec("Date", FilterOperator.In, ["2024"], DateGrain.Year), new FilterSpec("Region", FilterOperator.In, ["Sud"])],
         ]);
 
-        var result = await Run(new([], [Amount(), Amount(TimeCalculation.PreviousYear)], [filter]));
+        var result = await Run(new([], [Amount(), Amount(MeasureTime.PreviousYear)], [filter]));
 
         Assert.Equal((235d, 190d), (Num(result.Rows[0][0])!.Value, Num(result.Rows[0][1])!.Value));
     }
@@ -132,7 +132,7 @@ public class TimeCalculationTests
     [Fact]
     public async Task Without_any_date_the_previous_year_is_left_empty()
     {
-        var result = await Run(new([new("Region")], [Amount(), Amount(TimeCalculation.PreviousYear)]));
+        var result = await Run(new([new("Region")], [Amount(), Amount(MeasureTime.PreviousYear)]));
 
         Assert.All(result.Rows, r => Assert.Null(r[2]));
     }
@@ -140,7 +140,7 @@ public class TimeCalculationTests
     [Fact]
     public async Task The_year_to_date_total_adds_up_along_the_date_axis_and_starts_again_each_year()
     {
-        var result = await Run(new([new("Date", DateGrain.Month)], [Amount(TimeCalculation.YearToDate)]));
+        var result = await Run(new([new("Date", DateGrain.Month)], [Amount(MeasureTime.YearToDate)]));
 
         Assert.Equal([140d, 190d, 150d, 175d, 235d], result.Rows.Select(r => Num(r[1])));
     }
@@ -148,7 +148,7 @@ public class TimeCalculationTests
     [Fact]
     public async Task Sorting_and_top_apply_to_time_columns()
     {
-        var result = await Run(new([new("Region")], [Amount(TimeCalculation.YearToDate)], Sort: [new(Amount(TimeCalculation.YearToDate).Key, true)], Top: 1));
+        var result = await Run(new([new("Region")], [Amount(MeasureTime.YearToDate)], Sort: [new(Amount(MeasureTime.YearToDate).Key, true)], Top: 1));
 
         Assert.Equal("Nord", Assert.Single(result.Rows)[0]);
     }
@@ -156,11 +156,11 @@ public class TimeCalculationTests
     [Fact]
     public async Task Time_columns_are_named_and_formatted_for_the_user()
     {
-        var result = await Run(new([new("Date", DateGrain.Year)], [Amount(TimeCalculation.PreviousYear), Amount(TimeCalculation.PercentChangeFromPreviousYear)]));
+        var result = await Run(new([new("Date", DateGrain.Year)], [Amount(MeasureTime.PreviousYear), Amount(MeasureTime.PercentChangeFromPreviousYear)]));
 
-        Assert.Equal(["CA, previous year", "CA, % change vs previous year"], result.Columns.Skip(1).Select(c => c.Caption));
+        Assert.Equal(["CA Y-1", "CA Δ% vs Y-1"], result.Columns.Skip(1).Select(c => c.Caption));
         Assert.Equal(["N0", "P1"], result.Columns.Skip(1).Select(c => c.Format));
-        Assert.Equal(["Amount.PreviousYear", "Amount.PercentChangeFromPreviousYear"], result.Columns.Skip(1).Select(c => c.Key));
+        Assert.Equal(["Amount.lastYear.value", "Amount.lastYear.percentChange"], result.Columns.Skip(1).Select(c => c.Key));
     }
 
     [Fact]
@@ -169,7 +169,7 @@ public class TimeCalculationTests
         var plain = new RecordingQueryable<Sale>(Sales);
         await Run(new([new("Date", DateGrain.Year)], [Amount()]), plain);
         var compared = new RecordingQueryable<Sale>(Sales);
-        await Run(new([new("Date", DateGrain.Year)], [Amount(), Amount(TimeCalculation.PreviousYear), Amount(TimeCalculation.ChangeFromPreviousYear)]), compared);
+        await Run(new([new("Date", DateGrain.Year)], [Amount(), Amount(MeasureTime.PreviousYear), Amount(MeasureTime.ChangeFromPreviousYear)]), compared);
 
         Assert.Single(plain.Log.Executed);
         Assert.Equal(2, compared.Log.Executed.Count);
@@ -178,11 +178,11 @@ public class TimeCalculationTests
     [Fact]
     public async Task Visuals_draw_time_columns_like_any_measure()
     {
-        var visual = new VisualDefinition { Model = "m", Type = VisualType.Line, Axis = [new("Date", DateGrain.Year)], Values = [Amount(), Amount(TimeCalculation.PreviousYear)] };
+        var visual = new VisualDefinition { Model = "m", Type = VisualType.Line, Axis = [new("Date", DateGrain.Year)], Values = [Amount(), Amount(MeasureTime.PreviousYear)] };
 
         var chart = (await VisualPipeline.PrepareAsync(Model(), visual)).Chart;
 
-        Assert.Equal(["CA", "CA, previous year"], chart.Series.Select(s => s.Name));
+        Assert.Equal(["CA", "CA Y-1"], chart.Series.Select(s => s.Name));
         Assert.Equal([null, 190d], chart.Series[1].Values);
     }
 
@@ -198,7 +198,7 @@ public class TimeCalculationTests
             .Measure(s => s.Amount, "CA");
 
         var result = await model.ExecuteWithTimeAsync(new([new("Shipped", grain)],
-            [Amount(), Amount(TimeCalculation.PreviousYear), Amount(TimeCalculation.PercentChangeFromPreviousYear)]));
+            [Amount(), Amount(MeasureTime.PreviousYear), Amount(MeasureTime.PercentChangeFromPreviousYear)]));
 
         var missing = Assert.Single(result.Rows, r => r[0] is null);
         Assert.Equal([2m, null, null], missing.Skip(1));
@@ -207,11 +207,11 @@ public class TimeCalculationTests
     [Fact]
     public void Reports_only_mention_a_time_calculation_when_there_is_one()
     {
-        var report = new ReportDefinition { Visuals = [new VisualDefinition { Model = "m", Values = [Amount(), Amount(TimeCalculation.YearToDate)] }] };
+        var report = new ReportDefinition { Visuals = [new VisualDefinition { Model = "m", Values = [Amount(), Amount(MeasureTime.YearToDate)] }] };
 
         var json = ReportSerializer.Serialize(report);
 
         Assert.Single(System.Text.RegularExpressions.Regex.Matches(json, "\"time\""));
-        Assert.Equal(TimeCalculation.YearToDate, ReportSerializer.Deserialize(json).Visuals[0].Values[1].Time);
+        Assert.Equal(MeasureTime.YearToDate, ReportSerializer.Deserialize(json).Visuals[0].Values[1].Time);
     }
 }

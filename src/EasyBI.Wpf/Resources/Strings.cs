@@ -138,11 +138,6 @@ internal static class Strings
     public static string EditorTitle => Get();
     public static string Ok => Get();
     public static string Cancel => Get();
-    public static string TimeNone => Get();
-    public static string TimePreviousYear => Get();
-    public static string TimeChangeFromPreviousYear => Get();
-    public static string TimePercentChangeFromPreviousYear => Get();
-    public static string TimeYearToDate => Get();
     public static string TimeHint => Get();
     public static string PeriodKindAny => Get();
     public static string ConditionValues => Get();
@@ -197,10 +192,6 @@ internal static class Strings
     public static string BadgeMin => Get();
     public static string BadgeMax => Get();
     public static string BadgeCount => Get();
-    public static string BadgePreviousYear => Get();
-    public static string BadgeChange => Get();
-    public static string BadgePercentChange => Get();
-    public static string BadgeYearToDate => Get();
     public static string Properties => Get();
     public static string ToggleFieldPanel => Get();
     public static string TogglePropertiesPanel => Get();
@@ -284,6 +275,24 @@ internal static class Strings
     public static string FilterSetExcluded => Get();
     public static string FilterExcludeSet => Get();
     public static string NewVariableButton => Get();
+    public static string PropertyTimeAccumulation => Get();
+    public static string PropertyTimePeriod => Get();
+    public static string PropertyTimeCount => Get();
+    public static string PropertyTimeUnit => Get();
+    public static string PropertyTimeShow => Get();
+    public static string PropertyFavorable => Get();
+    public static string TimeNoAccumulation => Get();
+    public static string TimeNoComparison => Get();
+    public static string TimeAccumulationHint => Get();
+    public static string TimeOffsetHint => Get();
+    public static string FavorableHint => Get();
+    public static string FavorableHigher => Get();
+    public static string FavorableLower => Get();
+    public static string TimeUnitDay => Get();
+    public static string TimeUnitWeek => Get();
+    public static string TimeUnitMonth => Get();
+    public static string TimeUnitQuarter => Get();
+    public static string TimeUnitYear => Get();
 
     /// <summary>A text whose key is built (OperatorAdd, FormulaKeywordAND...).</summary>
     public static string Named(string key) => Get(key);

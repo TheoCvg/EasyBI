@@ -74,7 +74,7 @@ public sealed class EfCoreTranslationTests : IDisposable
     public async Task Time_calculations_on_a_nullable_date_run_in_the_database()
     {
         var result = await Model().ExecuteWithTimeAsync(new([new("Shipped", DateGrain.Month)],
-            [new("Amount"), new("Amount") { Time = TimeCalculation.PreviousYear }]));
+            [new("Amount"), new("Amount") { Time = MeasureTime.PreviousYear }]));
 
         Assert.Equal(3, result.Rows.Count);
     }

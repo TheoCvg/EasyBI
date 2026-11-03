@@ -24,7 +24,11 @@ public sealed record FieldDescriptor(
     Aggregation? DefaultAggregation = null,
     string? Format = null,
     bool IsCalculated = false,
-    string? Formula = null);
+    string? Formula = null)
+{
+    /// <summary>Which way a change of a measure is good: up (revenue) or down (costs).</summary>
+    public Favorable Favorable { get; init; }
+}
 
 /// <summary>Metadata of a semantic model: what the user is allowed to analyze.</summary>
 public sealed record ModelMetadata(string Name, string Caption, IReadOnlyList<FieldDescriptor> Fields)

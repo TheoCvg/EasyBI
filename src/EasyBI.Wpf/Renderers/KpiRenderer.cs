@@ -30,12 +30,13 @@ public sealed class KpiRenderer : IVisualRenderer
                 Foreground = new SolidColorBrush(accent),
                 HorizontalAlignment = HorizontalAlignment.Center,
             };
-            // A change since the previous year shows its trend: up in the measures' color, down in the error color
+            // A change shows its trend: in the measures' color when it goes the measure's favorable way, in the error color otherwise
             var measure = request.Visual.Values.ElementAtOrDefault(i);
-            if (measure?.Time is TimeCalculation.ChangeFromPreviousYear or TimeCalculation.PercentChangeFromPreviousYear && value is { } change && change != 0)
+            if (series.Change is { } favorable && value is { } change && change != 0)
             {
                 text.Text = (change > 0 ? "▲ " : "▼ ") + text.Text;
-                text.Themed(TextBlock.ForegroundProperty, change > 0 ? EasyBITheme.MeasureBrushKey : EasyBITheme.ErrorBrushKey);
+                var good = change > 0 == (favorable == Favorable.Higher);
+                text.Themed(TextBlock.ForegroundProperty, good ? EasyBITheme.MeasureBrushKey : EasyBITheme.ErrorBrushKey);
             }
             // The measure's format: its color (a matching rule's first), weight and icon; scales and bars need several values
             if (ValueStyler.For(measure, [value], request.Theme)?.Style(value) is { } style)

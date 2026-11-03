@@ -734,6 +734,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
                 SeriesType = v.SeriesType,
                 SecondaryAxis = v.SecondaryAxis,
                 Time = v.Time,
+                Favorable = v.Favorable,
             };
             chip.LoadFormat(v.Format);
             Values.Add(chip);
@@ -945,8 +946,6 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
                         () => chip.Aggregation, v => chip.Aggregation = v, () => chip.HasAggregation),
                     DesignerProperty.Choice("Grain", () => Strings.PropertyGrain, ShelfItemViewModel.GrainOptions,
                         () => chip.Grain, v => chip.Grain = v, () => chip.HasGrain),
-                    DesignerProperty.Choice("Time", () => Strings.PropertyTime, ShelfItemViewModel.TimeOptions,
-                        () => chip.Time, v => chip.Time = v, () => chip.IsValue, () => Strings.TimeHint),
                     DesignerProperty.Choice("SeriesType", () => Strings.PropertySeriesMark, ShelfItemViewModel.SeriesTypeOptions,
                         () => chip.SeriesType, v => chip.SeriesType = v, () => chip.ShowSeriesOptions, () => Strings.SeriesMarkHint),
                     DesignerProperty.Toggle("SecondaryAxis", () => Strings.PropertySecondaryAxis,
@@ -954,6 +953,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
                     DesignerProperty.Choice("Sort", () => Strings.Sort, ShelfItemViewModel.SortOptions,
                         () => chip.SortDirection, v => chip.SortDirection = v, () => chip.CanSort, () => Strings.SortHint),
                 ]));
+                if (chip.IsValue) sections.Add(TimeSection(chip));
                 if (chip.HasValueLabels && _selectedModel is { } model)
                     sections.Add(new DesignerPropertySection(DesignerPropertySections.ValueLabels, () => Strings.PropertiesValueLabels,
                         [DesignerProperty.Custom("Labels", () => Strings.PropertiesValueLabels, chip.ValueLabels(model))]));
@@ -1001,6 +1001,33 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
 
     private bool IsGauge() => SelectedType == VisualType.Gauge;
 
+    /// <summary>
+    /// How a measure is seen through time, from the entries of the context's catalog: added up, compared with a period
+    /// (how far back, for an offset) and what the comparison shows, and which way its changes are good.
+    /// </summary>
+    private DesignerPropertySection TimeSection(ShelfItemViewModel chip)
+    {
+        var time = Context.Time;
+        IReadOnlyList<Option<string?>> accumulations = [new(null, () => Strings.TimeNoAccumulation), .. time.Accumulations.Select(a => new Option<string?>(a.Id, a.Caption))];
+        IReadOnlyList<Option<string?>> periods = [new(null, () => Strings.TimeNoComparison), .. time.Periods.Select(p => new Option<string?>(p.Id, p.Caption))];
+        var outputs = time.Outputs.Select(o => new Option<string>(o.Id, o.Caption)).ToArray();
+        return new DesignerPropertySection(DesignerPropertySections.Time, () => Strings.PropertyTime,
+        [
+            DesignerProperty.Choice("Accumulation", () => Strings.PropertyTimeAccumulation, accumulations,
+                () => chip.TimeAccumulation, v => chip.TimeAccumulation = v, description: () => Strings.TimeAccumulationHint),
+            DesignerProperty.Choice("Period", () => Strings.PropertyTimePeriod, periods,
+                () => chip.TimePeriod, v => chip.TimePeriod = v, description: () => Strings.TimeHint),
+            DesignerProperty.Number("Count", () => Strings.PropertyTimeCount, () => chip.TimeCount, v => chip.TimeCount = (int)Math.Round(v ?? 1),
+                () => chip.HasTimeOffset, () => Strings.TimeOffsetHint),
+            DesignerProperty.Choice("Unit", () => Strings.PropertyTimeUnit, ShelfItemViewModel.TimeUnitOptions,
+                () => chip.TimeUnit, v => chip.TimeUnit = v, () => chip.HasTimeOffset),
+            DesignerProperty.Choice("Show", () => Strings.PropertyTimeShow, outputs,
+                () => chip.TimeShow, v => chip.TimeShow = v, () => chip.TimePeriod is not null),
+            DesignerProperty.Choice("Favorable", () => Strings.PropertyFavorable, ShelfItemViewModel.FavorableOptions,
+                () => chip.Favorable ?? chip.Field.Favorable, v => chip.Favorable = v, description: () => Strings.FavorableHint),
+        ]);
+    }
+
     private static DesignerProperty OptionProperty(RendererOptionViewModel option) => option.Option.Kind switch
     {
         RendererOptionKind.Toggle => DesignerProperty.Toggle(option.Option.Key, () => option.Label, () => option.IsOn, v => option.IsOn = v,
@@ -1017,6 +1044,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         {
             chip.PropertyChanged += OnChipPropertyChanged;
             chip.Selecting = item => SelectedItem = item;
+            chip.TimeCatalog = Context.Time;
         }
         foreach (var chip in e.OldItems?.OfType<ShelfItemViewModel>() ?? []) chip.PropertyChanged -= OnChipPropertyChanged;
     }

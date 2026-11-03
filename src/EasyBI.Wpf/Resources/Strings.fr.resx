@@ -273,23 +273,8 @@
   <data name="PeriodCount" xml:space="preserve">
     <value>Nombre</value>
   </data>
-  <data name="TimeNone" xml:space="preserve">
-    <value>Valeur</value>
-  </data>
-  <data name="TimePreviousYear" xml:space="preserve">
-    <value>N-1</value>
-  </data>
-  <data name="TimeChangeFromPreviousYear" xml:space="preserve">
-    <value>Évolution vs N-1</value>
-  </data>
-  <data name="TimePercentChangeFromPreviousYear" xml:space="preserve">
-    <value>Évolution % vs N-1</value>
-  </data>
-  <data name="TimeYearToDate" xml:space="preserve">
-    <value>Cumul annuel</value>
-  </data>
   <data name="TimeHint" xml:space="preserve">
-    <value>La mesure vue dans le temps : comparer à N-1 demande une date sur l&apos;axe ou un filtre de date.</value>
+    <value>La période à laquelle la mesure est comparée : une comparaison demande une date sur l&apos;axe ou un filtre de date.</value>
   </data>
   <data name="RendererOptions" xml:space="preserve">
     <value>Options</value>
@@ -380,18 +365,6 @@
   </data>
   <data name="BadgeCount" xml:space="preserve">
     <value>nb</value>
-  </data>
-  <data name="BadgePreviousYear" xml:space="preserve">
-    <value>N-1</value>
-  </data>
-  <data name="BadgeChange" xml:space="preserve">
-    <value>Δ N-1</value>
-  </data>
-  <data name="BadgePercentChange" xml:space="preserve">
-    <value>Δ% N-1</value>
-  </data>
-  <data name="BadgeYearToDate" xml:space="preserve">
-    <value>Cumul</value>
   </data>
   <data name="Properties" xml:space="preserve">
     <value>Propriétés</value>
@@ -959,5 +932,59 @@
   </data>
   <data name="FormulaKeywordBY" xml:space="preserve">
     <value>Lit une valeur pour chaque valeur d'une dimension, puis les agrège : le plus haut CA d'un client</value>
+  </data>
+  <data name="PropertyTimeAccumulation" xml:space="preserve">
+    <value>Cumuler</value>
+  </data>
+  <data name="PropertyTimePeriod" xml:space="preserve">
+    <value>Comparer à</value>
+  </data>
+  <data name="PropertyTimeCount" xml:space="preserve">
+    <value>Combien</value>
+  </data>
+  <data name="PropertyTimeUnit" xml:space="preserve">
+    <value>Unité</value>
+  </data>
+  <data name="PropertyTimeShow" xml:space="preserve">
+    <value>Afficher</value>
+  </data>
+  <data name="PropertyFavorable" xml:space="preserve">
+    <value>Sens favorable</value>
+  </data>
+  <data name="TimeNoAccumulation" xml:space="preserve">
+    <value>Non</value>
+  </data>
+  <data name="TimeNoComparison" xml:space="preserve">
+    <value>Rien</value>
+  </data>
+  <data name="TimeAccumulationHint" xml:space="preserve">
+    <value>Les valeurs additionnées le long des dates de l'axe, en repartant de zéro à chaque période.</value>
+  </data>
+  <data name="TimeOffsetHint" xml:space="preserve">
+    <value>À quelle distance en arrière se trouve la période comparée.</value>
+  </data>
+  <data name="FavorableHint" xml:space="preserve">
+    <value>Si une hausse de la mesure est une bonne nouvelle (chiffre d'affaires) ou une mauvaise (coûts) : elle donne la couleur de ses écarts.</value>
+  </data>
+  <data name="FavorableHigher" xml:space="preserve">
+    <value>La hausse</value>
+  </data>
+  <data name="FavorableLower" xml:space="preserve">
+    <value>La baisse</value>
+  </data>
+  <data name="TimeUnitDay" xml:space="preserve">
+    <value>jours</value>
+  </data>
+  <data name="TimeUnitWeek" xml:space="preserve">
+    <value>semaines</value>
+  </data>
+  <data name="TimeUnitMonth" xml:space="preserve">
+    <value>mois</value>
+  </data>
+  <data name="TimeUnitQuarter" xml:space="preserve">
+    <value>trimestres</value>
+  </data>
+  <data name="TimeUnitYear" xml:space="preserve">
+    <value>années</value>
   </data>
 </root>

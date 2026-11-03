@@ -12,6 +12,12 @@ public abstract class QuerySemanticModel : ISemanticModel
 {
     public abstract ModelMetadata Metadata { get; }
 
+    /// <summary>
+    /// The periods, presentations and accumulations the measures of a visual are computed with (<see cref="MeasureTime"/>):
+    /// <see cref="TimeCatalog.Default"/> unless the application gives the model its own.
+    /// </summary>
+    public TimeCatalog Time { get; set; } = TimeCatalog.Default;
+
     /// <summary>Runs a query: its filters, groups, aggregates, sort and Top, and the calculated measures it defines.</summary>
     public abstract Task<ResultSet> ExecuteAsync(AnalyticQuery query, CancellationToken cancellationToken = default);
 

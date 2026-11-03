@@ -4,6 +4,39 @@ Every version, with its breaking changes. EasyBI follows [Semantic Versioning](h
 breaking changes bump the minor version. The report format (`easybi/v1`) stays backward compatible: a newer version
 opens older reports, and a report using a newer feature cannot be opened by an older version.
 
+## Unreleased
+
+### Added
+
+- **Comparisons over time made of catalogs**: a measure is compared with the previous period (the month before each
+  month of the axis, or a period as long as the filtered one), the same period last year, or *n* days, weeks, months,
+  quarters or years earlier; it shows the compared value, the change or the change in %; it is added up since the start
+  of the year, the quarter or the month, or as a running total, and added up totals can be compared. The designer edits
+  them in an **Over time** section of the chip (`DesignerPropertySections.Time`). Every choice comes from a
+  `TimeCatalog` (`TimeCatalog.Default`, `EasyBIContext.Time`, `QuerySemanticModel.Time`) to which an application adds
+  its own periods (`ComparisonPeriod`), presentations (`ComparisonOutput`) and accumulations (`Accumulation`), or from
+  which it removes EasyBI's. See [Comparisons over time](visuals/time-comparisons.md).
+- **Favorable direction of a measure**: a model declares that a rise of a measure is bad news
+  (`favorable: Favorable.Lower`, on costs), a visual can say otherwise (`MeasureRef.Favorable`); a KPI shows the trend
+  of a change in the measure's color when it goes the good way, in the error color otherwise. Result columns and chart
+  series of changes tell it (`ResultColumn.Change`, `ChartSeries.Change`).
+- The sample's model has a **Cost** measure, whose rise is bad news.
+
+### Changed
+
+- Columns of time calculations have shorter captions, which a KPI card shows whole: « Revenue Y-1 »,
+  « Revenue Δ% vs Y-1 », « Revenue YTD » (« CA N-1 », « CA écart % vs N-1 », « CA cumul annuel » in French).
+
+### Breaking changes
+
+- `MeasureRef.Time` is a `MeasureTime` (null for none) instead of the `TimeCalculation` enum, which is removed:
+  `TimeCalculation.PreviousYear` becomes `MeasureTime.PreviousYear`, and so on. Reports keep opening:
+  `"time": "PreviousYear"` reads as the same calculation; they are saved as an object
+  (`"time": {"period": "lastYear"}`). The keys of time columns change (`Amount.lastYear.value` instead of
+  `Amount.PreviousYear`); a report's sort on a time column is read with its new key.
+- `ShelfItemViewModel.TimeOptions` is replaced by the entries of the context's catalog, and the chip's time settings
+  move from the *Field* section to the *Time* section of the properties panel.
+
 ## 0.6.0-beta.1 — 2026-10-28
 
 ### Added

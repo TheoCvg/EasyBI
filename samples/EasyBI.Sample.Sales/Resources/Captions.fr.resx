@@ -54,4 +54,7 @@
   <data name="WebShare" xml:space="preserve">
     <value>Part du Web</value>
   </data>
+  <data name="Cost" xml:space="preserve">
+    <value>Coûts</value>
+  </data>
 </root>
