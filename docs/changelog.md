@@ -4,6 +4,15 @@ Every version, with its breaking changes. EasyBI follows [Semantic Versioning](h
 breaking changes bump the minor version. The report format (`easybi/v1`) stays backward compatible: a newer version
 opens older reports, and a report using a newer feature cannot be opened by an older version.
 
+## Unreleased
+
+### Changed
+
+- **Category labels** stand upright when that shows more of them than at 45°, and are shortened with an ellipsis
+  (« Very long categ… ») rather than skipped when a chart is too low for their whole text; tooltips keep the whole
+  category. `ChartFit.LabelLength` and `ChartFitting.Shorten` give connectors the shortened text; LiveCharts2 and OxyPlot
+  use them.
+
 ## 0.6.0-beta.1 — 2026-10-28
 
 ### Added

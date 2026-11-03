@@ -125,9 +125,9 @@ public class LiveCharts2OptionsTests
     });
 
     [Fact]
-    public void A_short_scrollable_chart_keeps_flat_labels_under_its_groups_where_they_fit() => Sta.Run(() =>
+    public void A_short_scrollable_chart_turns_and_shortens_the_labels_under_its_groups_rather_than_skipping_them() => Sta.Run(() =>
     {
-        // 36 months of 5 regions, 20 bars at a time: too short to turn the labels
+        // 36 months of 5 regions, 20 bars at a time: too short for whole labels at 45°, too narrow for flat ones
         string[] regions = ["Est", "Île-de-France", "Nord", "Ouest", "Sud"];
         object?[][] keys = [.. Enumerable.Range(1, 36).SelectMany(m => regions.Select(r => new object?[] { $"M{m:00}", r }))];
         var chart = new ChartData("Month / Region", [.. keys.Select(k => string.Join(" / ", k))], [new ChartSeries("Amount", new double?[keys.Length], null) { SeriesType = VisualType.Bar }])
@@ -144,11 +144,11 @@ public class LiveCharts2OptionsTests
             System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
 
             var axis = (Axis)grid.Children.OfType<CartesianChart>().First().XAxes.Last();
-            Assert.Equal(0, axis.LabelsRotation);
-            // At least two regions a month among the 20 bars shown, each one whole
-            var shown = axis.Labels!.Take(20).Where(l => l.Length > 0).ToArray();
-            Assert.True(shown.Length >= 8, string.Join(", ", shown));
-            Assert.All(shown, l => Assert.Contains(l, regions));
+            Assert.Equal(-45, axis.LabelsRotation);
+            // Every region of the 20 bars shown, the long one shortened
+            var shown = axis.Labels!.Take(20).ToArray();
+            Assert.All(shown, l => Assert.True(regions.Contains(l) || l.EndsWith("…") && regions.Any(r => r.StartsWith(l.TrimEnd('…'))), l));
+            Assert.Contains(shown, l => l.EndsWith("…"));
         }
         finally
         {
