@@ -130,9 +130,11 @@ public class DashboardNavigationTests
     [Fact]
     public void The_menu_of_a_visual_of_the_dashboard_offers_the_links_that_apply() => Sta.Run(() =>
     {
-        var context = EasyBIContext.Create().AddModel(Model());
-        var dashboard = new DashboardView { Context = context };
+        // The context comes after the navigation, as through a binding
+        var dashboard = new DashboardView();
         var navigation = new DashboardNavigation(dashboard, new FilterContext(), id => Report(id));
+        var context = EasyBIContext.Create().AddModel(Model());
+        dashboard.Context = context;
         navigation.Links.Add(new ReportLink("details", "Details") { Model = "sales" });
         navigation.Links.Add(new ReportLink("elsewhere", "Elsewhere") { Model = "other" });
         navigation.Start("start");

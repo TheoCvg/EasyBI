@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows.Controls;
 using EasyBI.Abstractions;
 using EasyBI.Core;
@@ -19,8 +20,12 @@ public sealed class DashboardNavigation
     private readonly DashboardView _dashboard;
     private readonly FilterContext _filters;
     private readonly Func<string, DashboardDocument?> _load;
+    private EasyBIContext? _context;
 
-    /// <param name="dashboard">The dashboard showing the reports; its <see cref="DashboardView.Context"/> is set.</param>
+    /// <param name="dashboard">
+    /// The dashboard showing the reports. Its <see cref="DashboardView.Context"/> may come later (a binding): the menus
+    /// of the visuals follow it.
+    /// </param>
     /// <param name="filters">The filters of the dashboard's page, which the reports' filters are loaded into.</param>
     /// <param name="load">Gives the report of an id, as saved (null when there is none).</param>
     public DashboardNavigation(DashboardView dashboard, FilterContext filters, Func<string, DashboardDocument?> load)
@@ -28,10 +33,19 @@ public sealed class DashboardNavigation
         _dashboard = dashboard;
         _filters = filters;
         _load = load;
-        Context.VisualMenuOpening += OnMenuOpening;
+        Follow(dashboard.Context);
+        DependencyPropertyDescriptor.FromProperty(DashboardView.ContextProperty, typeof(DashboardView))
+            .AddValueChanged(dashboard, (_, _) => Follow(dashboard.Context));
     }
 
-    private EasyBIContext Context => _dashboard.Context ?? throw new InvalidOperationException("The dashboard has no context.");
+    // The menus of the visuals are those of the dashboard's current context
+    private void Follow(EasyBIContext? context)
+    {
+        if (_context == context) return;
+        if (_context is not null) _context.VisualMenuOpening -= OnMenuOpening;
+        _context = context;
+        if (_context is not null) _context.VisualMenuOpening += OnMenuOpening;
+    }
 
     /// <summary>The links offered in the menu of the visuals.</summary>
     public IList<ReportLink> Links { get; } = [];
@@ -62,7 +76,7 @@ public sealed class DashboardNavigation
     {
         if (_load(link.Target) is not { } document) return false;
         var model = link.TargetModel ?? interaction.Visual.Model;
-        var arguments = link.ArgumentsFor(interaction, Context.Models.FirstOrDefault(m => m.Metadata.Name == model)?.Metadata);
+        var arguments = link.ArgumentsFor(interaction, _dashboard.Context?.Models.FirstOrDefault(m => m.Metadata.Name == model)?.Metadata);
         var left = Capture();
         Show(document, arguments);
         History.Push(new NavigationEntry(link.Target, document.Report.Title, arguments), left);
@@ -94,7 +108,8 @@ public sealed class DashboardNavigation
         _filters.Load(document.Report.Filters);
         _dashboard.Load(document);
         if (arguments.Filters.Count > 0) _filters.Impose(arguments.Filters);
-        if (arguments.Parameters.Count > 0) Context.Variables.Impose(arguments.Parameters);
+        // Without a context yet, the dashboard keeps the report's variables until it gets one: nothing to impose on
+        if (arguments.Parameters.Count > 0) _dashboard.Context?.Variables.Impose(arguments.Parameters);
     }
 
     // "Go to ›" and the links that apply, in the menu of the visuals of this dashboard
