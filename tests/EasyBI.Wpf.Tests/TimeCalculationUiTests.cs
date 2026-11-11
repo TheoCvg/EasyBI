@@ -83,9 +83,108 @@ public class TimeCalculationUiTests
         var (_, form) = TimeForm(catalog);
 
         Assert.Contains("retail.week364", form["Period"]!.Choices.Select(c => c.Value));
-        Assert.Equal(["Nothing", "Previous period", "Same period last year", "Earlier by…", "Same weekday last year"], form["Period"]!.Choices.Select(c => c.Label));
+        Assert.Equal(["Nothing", "Previous period", "Same period last year", "Earlier by…", "Same weekday last year", "New named period…"], form["Period"]!.Choices.Select(c => c.Label));
         Assert.DoesNotContain(TimeIds.Running, form["Accumulation"]!.Choices.Select(c => c.Value));
     }
+
+    // --- Entries of the report
+
+    private static DesignerPropertySection Section(DesignerViewModel designer) =>
+        designer.Properties.Single(s => s.Key == DesignerPropertySections.Time);
+
+    [Fact]
+    public void A_named_period_created_in_the_designer_is_saved_in_the_report_and_shared()
+    {
+        var (designer, form) = TimeForm();
+
+        form["Period"]!.Value = "newPeriod";
+
+        var period = Assert.Single(designer.Context.Comparisons.Periods);
+        Assert.StartsWith(TimeIds.ReportPrefix, period.Id);
+        Assert.Equal(period.Id, designer.Visual!.Values[0].Time!.Period);
+        form = Section(designer);
+        Assert.Contains(period.Id, form["Period"]!.Choices.Select(c => c.Value));
+        Assert.True(form["PeriodName"]!.IsAvailable);
+        Assert.False(form["Count"]!.IsAvailable);
+
+        form["PeriodName"]!.Value = "Il y a 3 ans";
+        form["PeriodCount"]!.Value = 3d;
+
+        Assert.Equal(("Il y a 3 ans", 3, TimeUnit.Year), (designer.Context.Comparisons.Periods[0].Caption, designer.Context.Comparisons.Periods[0].Count, designer.Context.Comparisons.Periods[0].Unit));
+        // Renaming does not rebuild the panel: the text box being typed in stays
+        Assert.Same(form, Section(designer));
+        Assert.Contains("Il y a 3 ans", designer.Values[0].Badges);
+        Assert.Equal("Il y a 3 ans", form["Period"]!.SelectedChoice!.Label);
+    }
+
+    [Fact]
+    public void Deleting_a_period_of_the_report_stops_the_comparison()
+    {
+        var (designer, form) = TimeForm();
+        form["Period"]!.Value = "newPeriod";
+
+        ((DesignerAction)Section(designer)["RemovePeriod"]!.Value!).Command.Execute(null);
+
+        Assert.Empty(designer.Context.Comparisons.Periods);
+        Assert.Null(designer.Visual!.Values[0].Time);
+        Assert.False(Section(designer)["PeriodName"]!.IsAvailable);
+    }
+
+    [Fact]
+    public void A_presentation_created_in_the_designer_is_written_as_a_formula_checked_as_typed()
+    {
+        var (designer, form) = TimeForm();
+        form["Period"]!.Value = TimeIds.LastYear;
+        Section(designer)["Show"]!.Value = "newOutput";
+
+        var output = Assert.Single(designer.Context.Comparisons.Outputs);
+        Assert.Equal(output.Id, designer.Visual!.Values[0].Time!.Show);
+        form = Section(designer);
+        Assert.Equal("[Value] / [Compared] * 100", form["Formula"]!.Value);
+
+        form["Formula"]!.Value = "[Value] - [Amount]";
+
+        Assert.Equal(output.Formula, designer.Context.Comparisons.Outputs[0].Formula);
+        Assert.Equal("[Value] - [Amount]", form["Formula"]!.Value);
+        Assert.True(form["FormulaProblem"]!.IsAvailable);
+        Assert.Contains("Amount", (string)form["FormulaProblem"]!.Value!);
+
+        form["Formula"]!.Value = "[Value] - [Compared]";
+        form["OutputIsChange"]!.Value = true;
+        form["OutputFormat"]!.Value = "P1";
+
+        Assert.Equal(output with { Formula = "[Value] - [Compared]", IsChange = true, Format = "P1" }, designer.Context.Comparisons.Outputs[0]);
+        Assert.False(form["FormulaProblem"]!.IsAvailable);
+
+        ((DesignerAction)form["RemoveOutput"]!.Value!).Command.Execute(null);
+
+        Assert.Empty(designer.Context.Comparisons.Outputs);
+        Assert.Equal(TimeIds.Value, designer.Visual!.Values[0].Time!.Show);
+    }
+
+    [Fact]
+    public void A_dashboard_loads_and_saves_the_entries_of_the_report() => Sta.Run(() =>
+    {
+        var period = new ReportComparisonPeriod { Id = "report.p", Caption = "P", Count = 2 };
+        var output = new ReportComparisonOutput { Id = "report.o", Caption = "O", Formula = "[Value]" };
+        var context = EasyBIContext.Create();
+        var view = new Dashboard.DashboardView { Context = context };
+
+        view.Load(new Dashboard.DashboardDocument { Report = new ReportDefinition { ComparisonPeriods = [period], ComparisonOutputs = [output] } });
+        Assert.Equal([period], context.Comparisons.Periods);
+
+        context.Comparisons.Set(output with { Caption = "O2" });
+        var saved = view.Capture().Report;
+        Assert.Equal([period], saved.ComparisonPeriods);
+        Assert.Equal("O2", Assert.Single(saved.ComparisonOutputs).Caption);
+
+        var early = new Dashboard.DashboardView();
+        early.Load(new Dashboard.DashboardDocument { Report = new ReportDefinition { ComparisonPeriods = [period] } });
+        Assert.Equal([period], early.Capture().Report.ComparisonPeriods);
+        var later = EasyBIContext.Create();
+        early.Context = later;
+        Assert.Equal([period], later.Comparisons.Periods);
+    });
 
     [Fact]
     public void The_favorable_direction_starts_as_the_model_declares_it_and_is_saved_when_it_differs()

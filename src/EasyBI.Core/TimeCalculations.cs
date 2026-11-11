@@ -23,7 +23,16 @@ public static class TimeCalculations
     /// Runs a query whose measures may be seen through time, on <paramref name="today"/>: its periods relative to today
     /// are the days they keep on that date.
     /// </summary>
-    public static async Task<ResultSet> ExecuteWithTimeAsync(this QuerySemanticModel model, AnalyticQuery query, DateOnly today, CancellationToken cancellationToken)
+    public static Task<ResultSet> ExecuteWithTimeAsync(this QuerySemanticModel model, AnalyticQuery query, DateOnly today, CancellationToken cancellationToken) =>
+        model.ExecuteWithTimeAsync(query, today, model.Time, cancellationToken);
+
+    /// <summary>
+    /// Runs a query whose measures may be seen through time, on <paramref name="today"/>, with the entries of
+    /// <paramref name="time"/> rather than the model's catalog: the model's with those of the report
+    /// (<see cref="TimeCatalog.With"/>).
+    /// </summary>
+    public static async Task<ResultSet> ExecuteWithTimeAsync(this QuerySemanticModel model, AnalyticQuery query, DateOnly today, TimeCatalog time,
+        CancellationToken cancellationToken)
     {
         query = query with { Filters = PeriodFilters.OnDay(query.Filters, today) };
         if (query.Measures.All(m => m.Time is null))
@@ -42,7 +51,7 @@ public static class TimeCalculations
 
         // One more query for each period the measures are compared with
         var metadata = model.Metadata;
-        var catalog = model.Time;
+        var catalog = time;
         var context = Context(metadata, query, today);
         var shifts = new Dictionary<MeasureRef, TimeShift?>();
         var compared = new Dictionary<TimeShift, ResultSet>();

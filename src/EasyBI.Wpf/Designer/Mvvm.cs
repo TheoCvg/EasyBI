@@ -75,6 +75,9 @@ public class Option<T> : ObservableObject
 
     public string Label => _label();
 
+    /// <summary>Reads <see cref="Label"/> again: what it shows changed (an entry of the report renamed...).</summary>
+    internal void RefreshLabel() => OnPropertyChanged(nameof(Label));
+
     // What screen readers and UI Automation announce for an item of a combo box
     public override string ToString() => Label;
 

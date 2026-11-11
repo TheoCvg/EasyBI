@@ -90,6 +90,16 @@ public sealed class EasyBIContext
     /// </summary>
     public TimeCatalog Time { get; set; } = TimeCatalog.Default;
 
+    /// <summary>
+    /// The periods of comparison and the presentations the end user added to the open report: the designer offers them
+    /// after those of <see cref="Time"/>, and visuals send those they use to their model. A
+    /// <see cref="Dashboard.DashboardView"/> loads and saves them with its document.
+    /// </summary>
+    public ComparisonContext Comparisons { get; } = new();
+
+    /// <summary>The catalog the designer offers: <see cref="Time"/> with the entries of the report (<see cref="Comparisons"/>).</summary>
+    public TimeCatalog ReportTime => Comparisons.Apply(Time);
+
     public IReadOnlyList<IVisualRenderer> Renderers => _renderers;
 
     public IVisualRenderer? ActiveRenderer

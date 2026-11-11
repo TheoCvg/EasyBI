@@ -86,6 +86,7 @@ public class DashboardView : Control
     private ReportDefinition _report = new();
     private IReadOnlyList<CalculatedMeasure>? _pendingMeasures;
     private IReadOnlyList<ReportVariable>? _pendingVariables;
+    private ReportDefinition? _pendingComparisons;
     private DashboardDocument _committed = new();
     private int _editDepth;
     private bool _pushing;
@@ -229,13 +230,14 @@ public class DashboardView : Control
     /// </summary>
     public void Load(DashboardDocument document)
     {
-        // The report's calculated measures and variables become the context's, before its visuals query them
+        // The report's calculated measures, variables and comparisons become the context's, before its visuals query them
         if (Context is { } context)
         {
             context.Measures.Load(document.Report.Measures);
             context.Variables.Load(document.Report.Variables);
+            context.Comparisons.Load(document.Report.ComparisonPeriods, document.Report.ComparisonOutputs);
         }
-        else (_pendingMeasures, _pendingVariables) = (document.Report.Measures, document.Report.Variables);
+        else (_pendingMeasures, _pendingVariables, _pendingComparisons) = (document.Report.Measures, document.Report.Variables, document.Report);
         Show(document);
         DocumentLoaded?.Invoke(this, EventArgs.Empty);
     }
@@ -292,7 +294,13 @@ public class DashboardView : Control
             .OfType<DashboardItem>().Select(i => i.Visual).OfType<VisualDefinition>().ToArray();
         var measures = Context?.Measures.Measures.ToArray() ?? _pendingMeasures ?? _report.Measures;
         var variables = Context?.Variables.Variables.ToArray() ?? _pendingVariables ?? _report.Variables;
-        return new DashboardDocument { Report = _report with { Visuals = visuals, Measures = measures, Variables = variables }, Layout = layout };
+        var periods = Context?.Comparisons.Periods.ToArray() ?? (_pendingComparisons ?? _report).ComparisonPeriods;
+        var outputs = Context?.Comparisons.Outputs.ToArray() ?? (_pendingComparisons ?? _report).ComparisonOutputs;
+        return new DashboardDocument
+        {
+            Report = _report with { Visuals = visuals, Measures = measures, Variables = variables, ComparisonPeriods = periods, ComparisonOutputs = outputs },
+            Layout = layout,
+        };
     }
 
     /// <summary>
@@ -356,6 +364,11 @@ public class DashboardView : Control
         {
             _pendingVariables = null;
             context.Variables.Load(variables);
+        }
+        if (context is not null && _pendingComparisons is { } comparisons)
+        {
+            _pendingComparisons = null;
+            context.Comparisons.Load(comparisons.ComparisonPeriods, comparisons.ComparisonOutputs);
         }
         foreach (var item in Items) item.Context = context;
     }
@@ -692,7 +705,7 @@ public class DashboardView : Control
         if (visuals.Length == 0) return null;
         var data = new DataObject();
         data.SetData(VisualTransfer.ClipboardFormat, VisualTransfer.Copy(visuals, Context?.Measures ?? new MeasureContext(),
-            model => Context?.Models.FirstOrDefault(m => m.Metadata.Name == model)?.Metadata, Context?.Variables));
+            model => Context?.Models.FirstOrDefault(m => m.Metadata.Name == model)?.Metadata, Context?.Variables, Context?.Comparisons));
         data.SetText(string.Join(Environment.NewLine, visuals.Select(v => v.Title).Where(t => !string.IsNullOrEmpty(t))));
         // Their arrangement and sizes, so that they are pasted as they were laid out
         var layout = DashboardLayoutEngine.Extract(Capture().Layout ?? new DashboardLayoutDefinition(), visuals.Select(v => v.Id).ToHashSet());
@@ -728,14 +741,14 @@ public class DashboardView : Control
     /// one change, and selects them. Copied with their layout, they keep their arrangement and sizes and go after the
     /// line of the last selected item, or at the end (see <see cref="DashboardLayoutEngine.Insert"/>); otherwise each one
     /// goes to the right of the previous one. Visuals of a model the <see cref="Context"/> does not know are left out;
-    /// the calculated measures and variables they use are added (see <see cref="VisualTransfer.Paste"/>). Returns the new items.
+    /// the calculated measures, variables and comparisons they use are added (see <see cref="VisualTransfer.Paste"/>). Returns the new items.
     /// </summary>
     public IReadOnlyList<DashboardItem> Paste(IDataObject? data = null)
     {
         if (IsReadOnly || Copied(data) is not { } json) return [];
         var measures = Context?.Measures ?? new MeasureContext();
         var visuals = VisualTransfer.Paste(json, measures, model => Context?.Models.Any(m => m.Metadata.Name == model) ?? false,
-            model => Context?.Models.FirstOrDefault(m => m.Metadata.Name == model)?.Metadata, Context?.Variables);
+            model => Context?.Models.FirstOrDefault(m => m.Metadata.Name == model)?.Metadata, Context?.Variables, Context?.Comparisons);
         if (visuals.Count == 0) return [];
         if (CopiedLayout(data) is { } copiedLayout) return PasteWithLayout(visuals, copiedLayout);
 

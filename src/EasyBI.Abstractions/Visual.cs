@@ -170,6 +170,12 @@ public sealed record ReportDefinition
 
     /// <summary>The parameters and sets of values the visuals use, with their current values (see <see cref="ReportVariable"/>).</summary>
     public IReadOnlyList<ReportVariable> Variables { get; init; } = [];
+
+    /// <summary>The periods of comparison the end user named (see <see cref="ReportComparisonPeriod"/>).</summary>
+    public IReadOnlyList<ReportComparisonPeriod> ComparisonPeriods { get; init; } = [];
+
+    /// <summary>What comparisons show, as the end user wrote it (see <see cref="ReportComparisonOutput"/>).</summary>
+    public IReadOnlyList<ReportComparisonOutput> ComparisonOutputs { get; init; } = [];
 }
 
 /// <summary>

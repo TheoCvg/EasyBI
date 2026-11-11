@@ -97,6 +97,12 @@ public sealed record VisualDataRequest(VisualDefinition Visual)
     /// <summary>The end user's calculated measures the visual uses, with those they use.</summary>
     public IReadOnlyList<CalculatedMeasure> Measures { get; init; } = [];
 
+    /// <summary>The end user's periods of comparison the visual uses (<see cref="ReportComparisonPeriod"/>).</summary>
+    public IReadOnlyList<ReportComparisonPeriod> ComparisonPeriods { get; init; } = [];
+
+    /// <summary>The end user's presentations of comparisons the visual uses (<see cref="ReportComparisonOutput"/>).</summary>
+    public IReadOnlyList<ReportComparisonOutput> ComparisonOutputs { get; init; } = [];
+
     /// <summary>
     /// Whether the visual's type shows tooltips, whose measures are then queried with it. Its type may be one of the
     /// application's, which the source does not know.

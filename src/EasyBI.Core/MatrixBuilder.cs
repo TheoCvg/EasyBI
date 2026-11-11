@@ -22,11 +22,24 @@ public static class MatrixBuilder
         ExecuteAsync(model, visual, measures, DateOnly.FromDateTime(DateTime.Today), cancellationToken);
 
     /// <summary>Runs the queries of a matrix on <paramref name="today"/>.</summary>
+    public static Task<(ResultSet Cells, MatrixData Matrix)> ExecuteAsync(
+        QuerySemanticModel model,
+        VisualDefinition visual,
+        IEnumerable<CalculatedMeasure>? measures,
+        DateOnly today,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(model, visual, measures, today, model.Time, cancellationToken);
+
+    /// <summary>
+    /// Runs the queries of a matrix on <paramref name="today"/>, its measures seen through time with the entries of
+    /// <paramref name="time"/> (the model's catalog with those of the report, <see cref="TimeCatalog.With"/>).
+    /// </summary>
     public static async Task<(ResultSet Cells, MatrixData Matrix)> ExecuteAsync(
         QuerySemanticModel model,
         VisualDefinition visual,
         IEnumerable<CalculatedMeasure>? measures,
         DateOnly today,
+        TimeCatalog time,
         CancellationToken cancellationToken = default)
     {
         var query = visual.ToQuery(measures, model.Metadata);
@@ -41,16 +54,16 @@ public static class MatrixBuilder
             GroupBy = visual.Axis,
             Sort = query.Sort?.Where(s => rowKeys.Contains(s.Key)).ToArray() is { Length: > 0 } sort ? sort : null,
         };
-        var rows = visual.Axis.Count > 0 ? await model.ExecuteWithTimeAsync(rowsQuery, today, cancellationToken).ConfigureAwait(false) : null;
+        var rows = visual.Axis.Count > 0 ? await model.ExecuteWithTimeAsync(rowsQuery, today, time, cancellationToken).ConfigureAwait(false) : null;
         if (rows is not null && (query.Top is not null || rowFilters.Count < (query.Filters?.Count ?? 0)))
             rowFilters.Add(RowsFilter(visual.Axis, rows));
 
         var detailQuery = query with { Filters = rowFilters, Sort = null, Top = null };
-        var cells = await model.ExecuteWithTimeAsync(detailQuery, today, cancellationToken).ConfigureAwait(false);
+        var cells = await model.ExecuteWithTimeAsync(detailQuery, today, time, cancellationToken).ConfigureAwait(false);
         var columns = columnFields.Count > 0
-            ? await model.ExecuteWithTimeAsync(detailQuery with { GroupBy = columnFields }, today, cancellationToken).ConfigureAwait(false)
+            ? await model.ExecuteWithTimeAsync(detailQuery with { GroupBy = columnFields }, today, time, cancellationToken).ConfigureAwait(false)
             : null;
-        var total = await model.ExecuteWithTimeAsync(detailQuery with { GroupBy = [] }, today, cancellationToken).ConfigureAwait(false);
+        var total = await model.ExecuteWithTimeAsync(detailQuery with { GroupBy = [] }, today, time, cancellationToken).ConfigureAwait(false);
 
         return (cells, Pivot(visual, query.Measures, rows, cells, columns, total));
     }

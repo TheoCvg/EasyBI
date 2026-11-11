@@ -143,7 +143,11 @@ public sealed class DesignerProperty : ObservableObject
     }
 
     /// <summary>Reads the value again (the designer calls it after each change of the visual).</summary>
-    public void Refresh() => OnPropertyChanged(string.Empty);
+    public void Refresh()
+    {
+        foreach (var choice in Choices) choice.RefreshLabel();
+        OnPropertyChanged(string.Empty);
+    }
 
     private static double? Parse(string text) =>
         double.TryParse(text, System.Globalization.NumberStyles.Float, EasyBILocalization.FormatCulture, out var number) ? number : null;

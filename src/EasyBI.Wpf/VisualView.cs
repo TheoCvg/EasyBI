@@ -180,6 +180,7 @@ public class VisualView : ContentControl
             context.DataChanged += OnDataChanged;
             context.Measures.Changed += OnMeasuresUpdated;
             context.Variables.Changed += OnVariablesUpdated;
+            context.Comparisons.Changed += OnMeasuresUpdated;
         }
         if (filters is not null) filters.Changed += OnFiltersUpdated;
     }
@@ -192,6 +193,7 @@ public class VisualView : ContentControl
             context.DataChanged -= OnDataChanged;
             context.Measures.Changed -= OnMeasuresUpdated;
             context.Variables.Changed -= OnVariablesUpdated;
+            context.Comparisons.Changed -= OnMeasuresUpdated;
         }
         if (filters is not null) filters.Changed -= OnFiltersUpdated;
     }
@@ -209,7 +211,8 @@ public class VisualView : ContentControl
 
     private void OnFiltersUpdated(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Refresh);
 
-    // A calculated measure changed: only the visuals showing it get another query (it is part of the query key)
+    // A calculated measure or a comparison of the report changed: only the visuals showing it get another query (it is
+    // part of the query key)
     private void OnMeasuresUpdated(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Refresh);
 
     // Only the visuals using a variable, directly or through their measures, query again: the others are not even redrawn.
@@ -289,6 +292,9 @@ public class VisualView : ContentControl
         {
             effective.Model,
             Query = effective.ToQuery(measures, context.Models.FirstOrDefault(m => m.Metadata.Name == effective.Model)?.Metadata, context.VisualTypes),
+            // A tuple serializes without its fields
+            Periods = context.Comparisons.UsedBy(effective).Periods,
+            context.Comparisons.UsedBy(effective).Outputs,
             Culture = EasyBILocalization.UICulture.Name,
             Format = EasyBILocalization.FormatCulture.Name,
         }, ReportSerializer.Options);
@@ -305,7 +311,8 @@ public class VisualView : ContentControl
         try
         {
             var model = context.GetModel(visual.Model);
-            var request = await VisualPipeline.PrepareAsync(model, effective, ChartTheme(context), measures, context.VisualTypes, cts.Token);
+            var request = await VisualPipeline.PrepareAsync(model, effective, ChartTheme(context), measures, context.VisualTypes,
+                context.Comparisons, cts.Token);
             if (cts.IsCancellationRequested) return;
             _last = request;
             _pending = null;
