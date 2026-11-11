@@ -291,7 +291,8 @@ public class DashboardView : Control
         var visuals = Enumerable.Range(0, Panel.BandCount).SelectMany(Panel.ChildrenOf)
             .OfType<DashboardItem>().Select(i => i.Visual).OfType<VisualDefinition>().ToArray();
         var measures = Context?.Measures.Measures.ToArray() ?? _pendingMeasures ?? _report.Measures;
-        var variables = Context?.Variables.Variables.ToArray() ?? _pendingVariables ?? _report.Variables;
+        // Values imposed for a while (the report the user came from) are not saved
+        var variables = Context?.Variables.SavedVariables ?? _pendingVariables ?? _report.Variables;
         return new DashboardDocument { Report = _report with { Visuals = visuals, Measures = measures, Variables = variables }, Layout = layout };
     }
 

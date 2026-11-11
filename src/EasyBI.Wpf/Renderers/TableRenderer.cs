@@ -84,6 +84,15 @@ public sealed class TableRenderer : IVisualRenderer
                     select(new RowSelection(row.GetIndex()));
             };
         }
+        if (request.OpenMenu is { } openMenu)
+        {
+            grid.PreviewMouseRightButtonUp += (_, e) =>
+            {
+                var row = ItemsControl.ContainerFromElement(grid, (DependencyObject)e.OriginalSource) as DataGridRow;
+                openMenu(row is null ? null : new RowSelection(row.GetIndex()));
+                e.Handled = true;
+            };
+        }
         return grid;
     }
 

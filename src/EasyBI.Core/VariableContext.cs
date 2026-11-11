@@ -124,6 +124,9 @@ public sealed class VariableContext
     private readonly Dictionary<string, Task<IReadOnlyList<string?>>> _computed = [];
     private readonly object _gate = new();
 
+    // The values imposed ones replaced (null: the formula's), by name, until the user changes them
+    private readonly Dictionary<string, string?> _replaced = [];
+
     // The names of the measures a set or a computed value is queried with
     private const string OrderMeasure = "__variable_order";
     private const string ConditionMeasure = "__variable_condition";
@@ -134,6 +137,47 @@ public sealed class VariableContext
     public event EventHandler? Changed;
 
     public IReadOnlyList<ReportVariable> Variables => _variables;
+
+    /// <summary>
+    /// The variables to save with the report: <see cref="Variables"/> with the values imposed (<see cref="Impose"/>)
+    /// replaced by what they replaced. A value the user changed since is the user's, and saved.
+    /// </summary>
+    public IReadOnlyList<ReportVariable> SavedVariables =>
+        [.. _variables.Select(v => _replaced.TryGetValue(v.Name, out var value) ? v with { Value = value } : v)];
+
+    /// <summary>True when the value of this parameter is imposed (<see cref="Impose"/>) and the user did not change it.</summary>
+    public bool IsImposed(string name) => _replaced.ContainsKey(name);
+
+    /// <summary>
+    /// Imposes values on parameters (in invariant form, null for the formula's), without them being saved
+    /// (<see cref="SavedVariables"/>): those of the report the user came from, a parameter of the application... Names
+    /// of no parameter are left aside. Changing a value makes it the user's; <see cref="Load"/> and
+    /// <see cref="ClearImposed"/> forget them.
+    /// </summary>
+    public void Impose(IReadOnlyDictionary<string, string?> values)
+    {
+        var changed = false;
+        foreach (var (name, value) in values.Select(v => (v.Key, v.Value)))
+        {
+            var index = _variables.FindIndex(v => v.Name == name);
+            if (index < 0 || VariableFormula.Definition(_variables[index]) is not ParameterDefinition definition) continue;
+            if (!_replaced.ContainsKey(name)) _replaced[name] = _variables[index].Value;
+            _variables[index] = _variables[index] with { Value = value == definition.Value ? null : value };
+            changed = true;
+        }
+        if (changed) OnChanged();
+    }
+
+    /// <summary>Puts back the values the imposed ones replaced.</summary>
+    public void ClearImposed()
+    {
+        if (_replaced.Count == 0) return;
+        var saved = SavedVariables;
+        _replaced.Clear();
+        _variables.Clear();
+        _variables.AddRange(saved);
+        OnChanged();
+    }
 
     public ReportVariable? Find(string name) => _variables.FirstOrDefault(v => v.Name == name);
 
@@ -158,6 +202,7 @@ public sealed class VariableContext
     /// <summary>Adds a variable, or replaces the one named <paramref name="previousName"/> (its own name by default).</summary>
     public void Set(ReportVariable variable, string? previousName = null)
     {
+        _replaced.Remove(previousName ?? variable.Name);
         var index = _variables.FindIndex(v => v.Name == (previousName ?? variable.Name));
         if (index >= 0) _variables[index] = variable;
         else _variables.Add(variable);
@@ -174,12 +219,14 @@ public sealed class VariableContext
 
     public void Remove(string name)
     {
+        _replaced.Remove(name);
         if (_variables.RemoveAll(v => v.Name == name) > 0) OnChanged();
     }
 
     /// <summary>Replaces every variable (opening a report).</summary>
     public void Load(IEnumerable<ReportVariable> variables)
     {
+        _replaced.Clear();
         _variables.Clear();
         _variables.AddRange(variables);
         OnChanged();

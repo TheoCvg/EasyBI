@@ -205,15 +205,11 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         view.Tooltip = new EasyBITooltip(view, request, points =>
             points.FirstOrDefault() is { } first ? (first.Index, [.. points.Select(p => Array.IndexOf(series, p.Context.Series)).Where(i => i >= 0)]) : null);
 
-        if (request.Select is { } select)
+        Interact(view, view.FindingStrategy, request, point =>
         {
-            view.Cursor = System.Windows.Input.Cursors.Hand;
-            OnPointClicked(view, view.FindingStrategy, point =>
-            {
-                var index = Array.IndexOf(series, point.Context.Series);
-                select(new CategorySelection(point.Index, index < 0 ? null : index));
-            });
-        }
+            var index = Array.IndexOf(series, point.Context.Series);
+            return new CategorySelection(point.Index, index < 0 ? null : index);
+        });
         return view;
     }
 
@@ -271,15 +267,8 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         view.SizeChanged += (_, _) => FitCartesian(view, categoryAxis, chart, ChartLegend.Hidden, null);
         view.FindingStrategy = FindingStrategy.CompareOnlyXTakeClosest;
         view.Tooltip = new EasyBITooltip(view, request, points => points.FirstOrDefault() is { } step ? (step.Index, [0]) : null);
-        if (request.Select is { } select)
-        {
-            view.Cursor = System.Windows.Input.Cursors.Hand;
-            OnPointClicked(view, FindingStrategy.CompareOnlyXTakeClosest, point =>
-            {
-                // The total is no category: nothing to filter on
-                if (point.Index < categories) select(new CategorySelection(point.Index));
-            });
-        }
+        // The total is no category: nothing to filter on
+        Interact(view, FindingStrategy.CompareOnlyXTakeClosest, request, point => point.Index < categories ? new CategorySelection(point.Index) : null);
         return view;
     }
 
@@ -623,15 +612,8 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
         view.SizeChanged += (_, _) => FitPie(view, slices, chart, donut, request);
         if (request.LegendPager is { } pager)
             pager.Changed += (_, _) => FitPie(view, slices, chart, donut, request);
-        if (request.Select is { } select)
-        {
-            view.Cursor = System.Windows.Input.Cursors.Hand;
-            OnPointClicked(view, FindingStrategy.Automatic, point =>
-            {
-                if (slices.TryGetValue(point.Context.Series, out var category))
-                    select(new CategorySelection(category));
-            });
-        }
+        Interact(view, FindingStrategy.Automatic, request, point =>
+            slices.TryGetValue(point.Context.Series, out var category) ? new CategorySelection(category) : null);
         if (!donut) return view;
 
         var total = source.Values.OfType<double>().Sum();
@@ -664,11 +646,40 @@ public sealed class LiveCharts2Renderer : IVisualRenderer
     /// Reports the clicked point. LiveCharts2 ignores a click made with a modifier key held down, so a Ctrl+click
     /// (adding to the selection) looks for the point itself.
     /// </summary>
+    /// <summary>
+    /// A click on a point selects its element (<see cref="RenderRequest.Select"/>), a right click opens the menu for it
+    /// (<see cref="RenderRequest.OpenMenu"/>); <paramref name="locate"/> gives the element of a point (null for none).
+    /// </summary>
+    private static void Interact<TView>(TView view, FindingStrategy strategy, RenderRequest request, Func<ChartPoint, DataSelection?> locate)
+        where TView : Control, LiveChartsCore.Kernel.Sketches.IChartView
+    {
+        if (request.Select is { } select)
+        {
+            view.Cursor = System.Windows.Input.Cursors.Hand;
+            OnPointClicked(view, strategy, point =>
+            {
+                if (locate(point) is { } element) select(element);
+            });
+        }
+        if (request.OpenMenu is { } openMenu)
+        {
+            view.MouseRightButtonUp += (_, e) =>
+            {
+                var position = e.GetPosition(view);
+                var point = view.GetPointsAt(new LvcPointD(position.X, position.Y), strategy).FirstOrDefault();
+                openMenu(point is null ? null : locate(point));
+                e.Handled = true;
+            };
+        }
+    }
+
     private static void OnPointClicked<TView>(TView view, FindingStrategy strategy, Action<ChartPoint> clicked)
         where TView : Control, LiveChartsCore.Kernel.Sketches.IChartView
     {
         view.DataPointerDown += (_, points) =>
         {
+            // A right click opens the menu: it does not select
+            if (System.Windows.Input.Mouse.RightButton == System.Windows.Input.MouseButtonState.Pressed) return;
             if (points?.FirstOrDefault() is { } point) clicked(point);
         };
         view.MouseLeftButtonDown += (_, e) =>

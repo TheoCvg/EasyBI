@@ -161,7 +161,7 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) != true) return;
         // The report (visuals, filters) stays in the easybi/v1 format; the dashboard adds its layout next to it
         var document = Dashboard.Capture();
-        document = document with { Report = document.Report with { Title = Text("ReportTitle"), Filters = Filters.Filters.ToArray() } };
+        document = document with { Report = document.Report with { Title = Text("ReportTitle"), Filters = Filters.SavedFilters } };
         File.WriteAllText(dialog.FileName, DashboardSerializer.Serialize(document));
     }
 

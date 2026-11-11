@@ -40,7 +40,15 @@ public sealed class OxyPlotRenderer : IVisualRenderer
         view.SizeChanged += (_, _) => Fit(view, model, fitted);
         // The host's pager turns the pages of the legend
         if (request.LegendPager is { } pager) pager.Changed += (_, _) => Fit(view, model, fitted);
-        view.Controller = Controller(model, request.Select);
+        view.Controller = Controller(model, request.Select, request.OpenMenu is not null);
+        // A right click opens the menu for the element under the pointer
+        if (request.OpenMenu is { } openMenu)
+            view.PreviewMouseRightButtonUp += (_, e) =>
+            {
+                var pointer = e.GetPosition(view);
+                openMenu(HitTest(model, new ScreenPoint(pointer.X, pointer.Y)));
+                e.Handled = true;
+            };
         // EasyBI's tooltip over the element under the pointer, instead of OxyPlot's tracker
         var tooltip = new ChartTooltipHost(view);
         view.MouseMove += (_, e) =>
@@ -154,10 +162,12 @@ public sealed class OxyPlotRenderer : IVisualRenderer
     /// Left click selects the element that was hit (OxyPlot's tracker gives way to EasyBI's tooltip). A binding only
     /// applies to its own modifier keys: Ctrl+click (adding to the selection) is bound too.
     /// </summary>
-    private static PlotController Controller(PlotModel model, Action<DataSelection>? select)
+    private static PlotController Controller(PlotModel model, Action<DataSelection>? select, bool hasMenu)
     {
         var controller = new PlotController();
         controller.UnbindMouseDown(OxyMouseButton.Left);
+        // The right button opens the menu rather than panning
+        if (hasMenu) controller.UnbindMouseDown(OxyMouseButton.Right);
         if (select is null) return controller;
         var click = new DelegatePlotCommand<OxyMouseDownEventArgs>((_, _, args) =>
         {
