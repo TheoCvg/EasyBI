@@ -564,4 +564,19 @@
   <data name="TimeBadgeAccumulation" xml:space="preserve">
     <value>Cum.</value>
   </data>
+  <data name="ComparisonFormulaValue" xml:space="preserve">
+    <value>Value</value>
+  </data>
+  <data name="ComparisonFormulaCompared" xml:space="preserve">
+    <value>Compared</value>
+  </data>
+  <data name="ComparisonFormulaUnknown" xml:space="preserve">
+    <value>Unknown value: “{0}”. Use [{1}] or [{2}].</value>
+  </data>
+  <data name="ComparisonFormulaFunction" xml:space="preserve">
+    <value>{0} cannot be used here: only IF computes from the two values.</value>
+  </data>
+  <data name="TimeOutputCustomColumn" xml:space="preserve">
+    <value>{0} {2} vs {1}</value>
+  </data>
 </root>

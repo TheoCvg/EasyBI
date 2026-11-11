@@ -7,8 +7,8 @@ public sealed record PastedVisual(string CopiedId, VisualDefinition Visual);
 
 /// <summary>
 /// Copies visuals from one report to another (copy and paste, possibly between dashboards). The copied content is a
-/// report in the <see cref="ReportDefinition.CurrentSchema"/> format holding the visuals and the calculated measures and
-/// variables they use, so that the target gets everything the visuals need.
+/// report in the <see cref="ReportDefinition.CurrentSchema"/> format holding the visuals and the calculated measures,
+/// variables, periods of comparison and presentations they use, so that the target gets everything the visuals need.
 /// </summary>
 public static class VisualTransfer
 {
@@ -17,18 +17,22 @@ public static class VisualTransfer
 
     /// <summary>
     /// The visuals and the calculated measures they use, with those these use (see <see cref="MeasureContext.UsedBy"/>),
-    /// and the <paramref name="variables"/> the visuals and these measures use, as report JSON.
+    /// the <paramref name="variables"/> the visuals and these measures use, and the <paramref name="comparisons"/> the
+    /// visuals use, as report JSON.
     /// </summary>
     public static string Copy(IEnumerable<VisualDefinition> visuals, MeasureContext measures, Func<string, ModelMetadata?>? metadata = null,
-        VariableContext? variables = null)
+        VariableContext? variables = null, ComparisonContext? comparisons = null)
     {
         var copied = visuals.ToArray();
         var used = copied.SelectMany(v => measures.UsedBy(v, metadata?.Invoke(v.Model))).Distinct().ToArray();
+        var times = comparisons is null ? [] : copied.Select(comparisons.UsedBy).ToArray();
         return ReportSerializer.Serialize(new ReportDefinition
         {
             Visuals = copied,
             Measures = used,
             Variables = variables is null ? [] : UsedVariables(copied, used, variables),
+            ComparisonPeriods = times.SelectMany(t => t.Periods).Distinct().ToArray(),
+            ComparisonOutputs = times.SelectMany(t => t.Outputs).Distinct().ToArray(),
         });
     }
 
@@ -54,14 +58,17 @@ public static class VisualTransfer
     /// which fields a model declares) is added as a calculated measure of its own unless the target redefines the measure
     /// the same way, so that pasting never changes the target's measures. The formulas of the pasted measures follow the
 /// renamed ones. The copied variables the target does not have are added to <paramref name="variables"/>; where it has
-    /// one of the same name, the visuals use it. Content that is not copied visuals gives nothing.
+    /// one of the same name, the visuals use it. The copied periods of comparison and presentations the target does not
+    /// have are added to <paramref name="comparisons"/> (their ids are unique: one the target has is the same entry).
+    /// Content that is not copied visuals gives nothing.
     /// </summary>
     public static IReadOnlyList<PastedVisual> Paste(
         string json,
         MeasureContext measures,
         Func<string, bool> hasModel,
         Func<string, ModelMetadata?>? metadata = null,
-        VariableContext? variables = null)
+        VariableContext? variables = null,
+        ComparisonContext? comparisons = null)
     {
         ReportDefinition copied;
         try
@@ -77,6 +84,13 @@ public static class VisualTransfer
         {
             foreach (var variable in copied.Variables.Where(v => variables.Find(v.Name) is null))
                 variables.Set(variable);
+        }
+        if (comparisons is not null)
+        {
+            foreach (var period in copied.ComparisonPeriods.Where(p => comparisons.Periods.All(e => e.Id != p.Id)))
+                comparisons.Set(period);
+            foreach (var output in copied.ComparisonOutputs.Where(o => comparisons.Outputs.All(e => e.Id != o.Id)))
+                comparisons.Set(output);
         }
 
         // First the names, then the formulas: a pasted measure may use another one that is renamed

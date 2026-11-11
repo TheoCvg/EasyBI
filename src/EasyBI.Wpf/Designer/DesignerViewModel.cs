@@ -74,7 +74,7 @@ public sealed class VisualTypeGroupViewModel(VisualTypeGroup group, IReadOnlyLis
 /// the only object passed to the preview (and saved). As the shelves' <see cref="IDropHandler"/>, it accepts fields
 /// from the field lists and chips moved within or between shelves.
 /// </summary>
-public sealed class DesignerViewModel : ObservableObject, IDropHandler
+public sealed partial class DesignerViewModel : ObservableObject, IDropHandler
 {
     private ISemanticModel? _selectedModel;
     private string _title = "";
@@ -133,6 +133,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         // Weak: a designer (a dialog's) may be shorter-lived than the shared context
         WeakEventManager<EasyBIContext, EventArgs>.AddHandler(context, nameof(EasyBIContext.Changed), OnContextChanged);
         WeakEventManager<MeasureContext, EventArgs>.AddHandler(context.Measures, nameof(MeasureContext.Changed), OnMeasuresChanged);
+        WeakEventManager<ComparisonContext, EventArgs>.AddHandler(context.Comparisons, nameof(ComparisonContext.Changed), OnComparisonsChanged);
         PropertyChangedEventManager.AddHandler(LocalizedStrings.EasyBI, OnLanguageChanged, string.Empty);
         foreach (var chips in new[] { Axis, Legend, Values, TooltipValues }) chips.CollectionChanged += OnChipsChanged;
         AxisWell = new ShelfViewModel(this, Shelf.Axis, Axis);
@@ -1001,33 +1002,6 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
 
     private bool IsGauge() => SelectedType == VisualType.Gauge;
 
-    /// <summary>
-    /// How a measure is seen through time, from the entries of the context's catalog: added up, compared with a period
-    /// (how far back, for an offset) and what the comparison shows, and which way its changes are good.
-    /// </summary>
-    private DesignerPropertySection TimeSection(ShelfItemViewModel chip)
-    {
-        var time = Context.Time;
-        IReadOnlyList<Option<string?>> accumulations = [new(null, () => Strings.TimeNoAccumulation), .. time.Accumulations.Select(a => new Option<string?>(a.Id, a.Caption))];
-        IReadOnlyList<Option<string?>> periods = [new(null, () => Strings.TimeNoComparison), .. time.Periods.Select(p => new Option<string?>(p.Id, p.Caption))];
-        var outputs = time.Outputs.Select(o => new Option<string>(o.Id, o.Caption)).ToArray();
-        return new DesignerPropertySection(DesignerPropertySections.Time, () => Strings.PropertyTime,
-        [
-            DesignerProperty.Choice("Accumulation", () => Strings.PropertyTimeAccumulation, accumulations,
-                () => chip.TimeAccumulation, v => chip.TimeAccumulation = v, description: () => Strings.TimeAccumulationHint),
-            DesignerProperty.Choice("Period", () => Strings.PropertyTimePeriod, periods,
-                () => chip.TimePeriod, v => chip.TimePeriod = v, description: () => Strings.TimeHint),
-            DesignerProperty.Number("Count", () => Strings.PropertyTimeCount, () => chip.TimeCount, v => chip.TimeCount = (int)Math.Round(v ?? 1),
-                () => chip.HasTimeOffset, () => Strings.TimeOffsetHint),
-            DesignerProperty.Choice("Unit", () => Strings.PropertyTimeUnit, ShelfItemViewModel.TimeUnitOptions,
-                () => chip.TimeUnit, v => chip.TimeUnit = v, () => chip.HasTimeOffset),
-            DesignerProperty.Choice("Show", () => Strings.PropertyTimeShow, outputs,
-                () => chip.TimeShow, v => chip.TimeShow = v, () => chip.TimePeriod is not null),
-            DesignerProperty.Choice("Favorable", () => Strings.PropertyFavorable, ShelfItemViewModel.FavorableOptions,
-                () => chip.Favorable ?? chip.Field.Favorable, v => chip.Favorable = v, description: () => Strings.FavorableHint),
-        ]);
-    }
-
     private static DesignerProperty OptionProperty(RendererOptionViewModel option) => option.Option.Kind switch
     {
         RendererOptionKind.Toggle => DesignerProperty.Toggle(option.Option.Key, () => option.Label, () => option.IsOn, v => option.IsOn = v,
@@ -1044,7 +1018,7 @@ public sealed class DesignerViewModel : ObservableObject, IDropHandler
         {
             chip.PropertyChanged += OnChipPropertyChanged;
             chip.Selecting = item => SelectedItem = item;
-            chip.TimeCatalog = Context.Time;
+            chip.TimeCatalog = Context.ReportTime;
         }
         foreach (var chip in e.OldItems?.OfType<ShelfItemViewModel>() ?? []) chip.PropertyChanged -= OnChipPropertyChanged;
     }

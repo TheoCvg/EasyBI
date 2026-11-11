@@ -17,7 +17,21 @@ public sealed class TimeCatalog
     private readonly Entries<Accumulation> _accumulations = new(a => a.Id, "accumulation");
 
     public TimeCatalog()
+        : this(null)
     {
+    }
+
+    // A copy of source, or EasyBI's own entries
+    private TimeCatalog(TimeCatalog? source)
+    {
+        if (source is not null)
+        {
+            foreach (var period in source.Periods) _periods.AddBuiltIn(period);
+            foreach (var output in source.Outputs) _outputs.AddBuiltIn(output);
+            foreach (var accumulation in source.Accumulations) _accumulations.AddBuiltIn(accumulation);
+            return;
+        }
+
         _periods.AddBuiltIn(new(TimeIds.PreviousPeriod, () => Strings.TimePeriodPrevious, PreviousPeriod) { ShortCaption = PreviousPeriodCaption });
         _periods.AddBuiltIn(new(TimeIds.LastYear, () => Strings.TimePeriodLastYear, _ => TimeShift.Of(-1, TimeUnit.Year))
         {
@@ -138,6 +152,41 @@ public sealed class TimeCatalog
         return string.Join(" ", parts);
     }
 
+    /// <summary>
+    /// This catalog with the periods and presentations the end user added to a report, after its own: a copy, this one
+    /// is left as it is (itself when there are none). An entry of the report with the id of one of the catalog
+    /// replaces it.
+    /// </summary>
+    public TimeCatalog With(IEnumerable<ReportComparisonPeriod>? periods, IEnumerable<ReportComparisonOutput>? outputs)
+    {
+        var (addedPeriods, addedOutputs) = (periods?.ToArray() ?? [], outputs?.ToArray() ?? []);
+        if (addedPeriods.Length == 0 && addedOutputs.Length == 0) return this;
+        var catalog = new TimeCatalog(this);
+        foreach (var period in addedPeriods) catalog._periods.Set(ToPeriod(period));
+        foreach (var output in addedOutputs) catalog._outputs.Set(ToOutput(output));
+        return catalog;
+    }
+
+    /// <summary>A period of a report as an entry of a catalog: its count of units back, shown by its name.</summary>
+    public static ComparisonPeriod ToPeriod(ReportComparisonPeriod period) =>
+        new(period.Id, () => period.Caption, _ => TimeShift.Of(-Math.Max(1, period.Count), period.Unit))
+        {
+            ShortCaption = _ => period.Caption,
+        };
+
+    /// <summary>A presentation of a report as an entry of a catalog: its formula, its name in the captions of columns.</summary>
+    public static ComparisonOutput ToOutput(ReportComparisonOutput output)
+    {
+        // The name goes in a template of captions: its braces are kept as they are
+        var name = output.Caption.Replace("{", "{{").Replace("}", "}}");
+        return new(output.Id, () => output.Caption, ComparisonFormula.Compile(output.Formula))
+        {
+            ColumnCaption = () => Strings.Format(Strings.TimeOutputCustomColumn, "{0}", "{1}", name),
+            Format = output.Format,
+            IsChange = output.IsChange,
+        };
+    }
+
     private TimeCatalog Do(Action change)
     {
         change();
@@ -217,5 +266,13 @@ public sealed class TimeCatalog
         }
 
         public bool Remove(string key) => _items.RemoveAll(e => id(e) == key) > 0;
+
+        // An entry of a report: replaces the one with its id, if any
+        public void Set(T entry)
+        {
+            var index = _items.FindIndex(e => id(e) == id(entry));
+            if (index >= 0) _items[index] = entry;
+            else _items.Add(entry);
+        }
     }
 }

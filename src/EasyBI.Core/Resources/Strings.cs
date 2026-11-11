@@ -155,6 +155,11 @@ internal static class Strings
     public static string TimeLetterYear => Get();
     public static string TimeLetterPeriod => Get();
     public static string TimeBadgeAccumulation => Get();
+    public static string TimeOutputCustomColumn => Get();
+    public static string ComparisonFormulaValue => Get();
+    public static string ComparisonFormulaCompared => Get();
+    public static string ComparisonFormulaUnknown => Get();
+    public static string ComparisonFormulaFunction => Get();
 
     /// <summary>A text whose key is built (PeriodLastMonth...).</summary>
     public static string Named(string key) => Get(key);

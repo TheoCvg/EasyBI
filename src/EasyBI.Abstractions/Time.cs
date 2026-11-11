@@ -86,6 +86,12 @@ public static class TimeIds
     public const string QuarterToDate = "quarterToDate";
     public const string MonthToDate = "monthToDate";
     public const string Running = "running";
+
+    /// <summary>
+    /// The prefix of the ids of the periods and presentations the end user adds to a report
+    /// (<see cref="ReportComparisonPeriod"/>, <see cref="ReportComparisonOutput"/>): an application does not use it.
+    /// </summary>
+    public const string ReportPrefix = "report.";
 }
 
 /// <summary>
@@ -140,6 +146,51 @@ public sealed record Accumulation(string Id, Func<string> Caption, Func<DateTime
 {
     /// <summary>The caption of the column, <c>{0}</c> the measure's ("{0} YTD"); "{0}, Caption" when null.</summary>
     public Func<string>? ColumnCaption { get; init; }
+}
+
+/// <summary>
+/// A period of comparison the end user names in a report, such as "Two years ago": <see cref="Count"/>
+/// <see cref="Unit"/>s earlier. Visuals reference it by <see cref="Id"/> (<see cref="MeasureTime.Period"/>), so that
+/// changing it changes every visual comparing with it. Saved in <see cref="ReportDefinition.ComparisonPeriods"/>.
+/// </summary>
+public sealed record ReportComparisonPeriod
+{
+    /// <summary>What visuals reference it by: <see cref="TimeIds.ReportPrefix"/> and a generated part, never shown.</summary>
+    public string Id { get; init; } = "";
+
+    /// <summary>The name the end user gave it, shown in the designer and in the captions of columns.</summary>
+    public string Caption { get; init; } = "";
+
+    /// <summary>How many <see cref="Unit"/>s back.</summary>
+    public int Count { get; init; } = 1;
+
+    public TimeUnit Unit { get; init; } = TimeUnit.Year;
+}
+
+/// <summary>
+/// What a comparison shows, written by the end user as a formula over <c>[Value]</c>, the value of the measure, and
+/// <c>[Compared]</c>, its value in the compared period: <c>[Value] / [Compared] * 100</c> for an index. Visuals
+/// reference it by <see cref="Id"/> (<see cref="MeasureTime.Show"/>). Saved in
+/// <see cref="ReportDefinition.ComparisonOutputs"/>. See EasyBI.Core's <c>ComparisonFormula</c>.
+/// </summary>
+public sealed record ReportComparisonOutput
+{
+    /// <summary>What visuals reference it by: <see cref="TimeIds.ReportPrefix"/> and a generated part, never shown.</summary>
+    public string Id { get; init; } = "";
+
+    /// <summary>The name the end user gave it, shown in the designer and in the captions of columns.</summary>
+    public string Caption { get; init; } = "";
+
+    /// <summary>The formula, with <c>[Value]</c> and <c>[Compared]</c> (shown in the EasyBI language).</summary>
+    public string Formula { get; init; } = "";
+
+    /// <summary>.NET format of the values ("P1"); null keeps the measure's.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Format { get; init; }
+
+    /// <summary>True when the values are changes: a KPI shows their trend, in a color telling whether it is good.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IsChange { get; init; }
 }
 
 /// <summary>

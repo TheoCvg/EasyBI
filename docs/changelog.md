@@ -16,6 +16,14 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   `TimeCatalog` (`TimeCatalog.Default`, `EasyBIContext.Time`, `QuerySemanticModel.Time`) to which an application adds
   its own periods (`ComparisonPeriod`), presentations (`ComparisonOutput`) and accumulations (`Accumulation`), or from
   which it removes EasyBI's. See [Comparisons over time](visuals/time-comparisons.md).
+- **Periods and presentations of the report**: in the designer, the end user names a period of comparison
+  (« Two years earlier »: *n* units back) and writes what a comparison shows as a formula over `[Value]` and
+  `[Compared]` (`[Value] / [Compared] * 100` for an index), with its format and whether it is a change. They are saved
+  in the report (`ReportDefinition.ComparisonPeriods`, `ComparisonOutputs`, optional), shared by its visuals
+  (`EasyBIContext.Comparisons`), copied with the visuals using them, and sent to the model with the data request of a
+  visual (`VisualDataRequest.ComparisonPeriods`, `ComparisonOutputs`). `ComparisonFormula` checks and computes the
+  formulas, `TimeCatalog.With` adds the entries of a report to a catalog. See
+  [Comparisons over time](visuals/time-comparisons.md#periods-and-presentations-of-the-report).
 - **Favorable direction of a measure**: a model declares that a rise of a measure is bad news
   (`favorable: Favorable.Lower`, on costs), a visual can say otherwise (`MeasureRef.Favorable`); a KPI shows the trend
   of a change in the measure's color when it goes the good way, in the error color otherwise. Result columns and chart
@@ -34,6 +42,8 @@ opens older reports, and a report using a newer feature cannot be opened by an o
   `"time": "PreviousYear"` reads as the same calculation; they are saved as an object
   (`"time": {"period": "lastYear"}`). The keys of time columns change (`Amount.lastYear.value` instead of
   `Amount.PreviousYear`); a report's sort on a time column is read with its new key.
+- `VisualPipeline.PrepareAsync` takes the report's `ComparisonContext` before the cancellation token: a call passing
+  the token by position names it (`cancellationToken: token`).
 - `ShelfItemViewModel.TimeOptions` is replaced by the entries of the context's catalog, and the chip's time settings
   move from the *Field* section to the *Time* section of the properties panel.
 

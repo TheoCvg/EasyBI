@@ -183,7 +183,19 @@ public sealed class ShelfItemViewModel : ObservableObject
     }
 
     /// <summary>The catalog the time calculations come from: the designer's context's.</summary>
-    internal TimeCatalog TimeCatalog { get; set; } = TimeCatalog.Default;
+    internal TimeCatalog TimeCatalog
+    {
+        get => _timeCatalog;
+        set
+        {
+            _timeCatalog = value;
+            // An entry of the report renamed: the badge shows its new name
+            OnPropertyChanged(nameof(Badges));
+            OnPropertyChanged(nameof(HasTimeOffset));
+        }
+    }
+
+    private TimeCatalog _timeCatalog = TimeCatalog.Default;
 
     /// <summary>The id of the accumulation; null for none.</summary>
     public string? TimeAccumulation

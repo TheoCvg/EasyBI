@@ -72,31 +72,39 @@ public static class VisualPipeline
 
     /// <summary>
     /// What <paramref name="visual"/> asks its model for: the end user's calculated <c>measures</c> it uses, whether its
-    /// type has tooltips (EasyBI's <paramref name="types"/> when null), today's date and EasyBI's cultures.
+    /// type has tooltips (EasyBI's <paramref name="types"/> when null), the periods and presentations of comparisons of
+    /// the report its measures use (from <paramref name="comparisons"/>), today's date and EasyBI's cultures.
     /// </summary>
     public static VisualDataRequest ToDataRequest(this VisualDefinition visual, ModelMetadata? metadata = null,
-        IEnumerable<CalculatedMeasure>? measures = null, VisualTypeCatalog? types = null)
+        IEnumerable<CalculatedMeasure>? measures = null, VisualTypeCatalog? types = null, ComparisonContext? comparisons = null)
     {
         var hasTooltips = Tooltips.Has(visual.Type, types);
+        var (periods, outputs) = comparisons?.UsedBy(visual) ?? ([], []);
         return new(visual)
         {
             Measures = measures is null ? [] : visual.ToQuery(measures, metadata, hasTooltips).Calculations ?? [],
+            ComparisonPeriods = periods,
+            ComparisonOutputs = outputs,
             HasTooltips = hasTooltips,
             UICulture = EasyBILocalization.UICulture.Name,
             FormatCulture = EasyBILocalization.FormatCulture.Name,
         };
     }
 
-    /// <summary>Asks the model for a visual's data, with the end user's calculated <c>measures</c> it may show.</summary>
+    /// <summary>
+    /// Asks the model for a visual's data, with the end user's calculated <c>measures</c> it may show and the
+    /// <paramref name="comparisons"/> of the report.
+    /// </summary>
     public static async Task<RenderRequest> PrepareAsync(
         ISemanticModel model,
         VisualDefinition visual,
         BiTheme? theme = null,
         IEnumerable<CalculatedMeasure>? measures = null,
         VisualTypeCatalog? types = null,
+        ComparisonContext? comparisons = null,
         CancellationToken cancellationToken = default)
     {
-        var data = await model.GetDataAsync(visual.ToDataRequest(model.Metadata, measures, types), cancellationToken).ConfigureAwait(false);
+        var data = await model.GetDataAsync(visual.ToDataRequest(model.Metadata, measures, types, comparisons), cancellationToken).ConfigureAwait(false);
         return Prepare(visual, data, theme);
     }
 

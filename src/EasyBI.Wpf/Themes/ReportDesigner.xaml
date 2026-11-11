@@ -122,6 +122,11 @@
                 </StackPanel>
             </DataTemplate>
 
+            <!-- A button of the properties panel (removing a period of the report...) -->
+            <DataTemplate DataType="{x:Type local:DesignerAction}">
+                <Button Content="{Binding Label}" Command="{Binding Command}" HorizontalAlignment="Left" Padding="8,3" />
+            </DataTemplate>
+
             <!-- So is the format of the selected measure -->
             <DataTemplate DataType="{x:Type local:ValueFormatViewModel}">
                 <local:ValueFormatEditor />

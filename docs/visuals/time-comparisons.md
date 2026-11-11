@@ -32,6 +32,43 @@ since January 1st of last year, month by month.
 **The favorable direction** gives the color of the changes: a KPI shows ▲ / ▼ in the measure's color when the change
 goes the good way, in the error color otherwise, so that rising costs show in red.
 
+## Periods and presentations of the report
+
+The end user adds their own entries in the designer, saved in the report and offered to every visual of it:
+
+- **Compare with › New named period…** creates a period *n* days, weeks, months, quarters or years earlier, with a
+  name: « Two years earlier », « Last season ». The name shows in the list, on the chip and in the column's caption.
+- **Show › New presentation…** creates a presentation written as a formula over `[Value]`, the value of the measure,
+  and `[Compared]`, its value in the compared period (`[Valeur]` and `[Comparée]` in French):
+
+| Presentation | Formula |
+|---|---|
+| Index | `[Value] / [Compared] * 100` |
+| Gap | `[Compared] - [Value]` |
+| Ratio, empty when the compared value is small | `IF([Compared] > 1000; [Value] / [Compared])` |
+
+  The formula takes numbers, `+ - * /`, parentheses and `IF(condition; value; otherwise)` with comparisons, `AND`,
+  `OR` and `NOT`. A missing value or a division by zero gives an empty value. It is checked as it is typed. A format,
+  and **Shows a change** (a KPI then shows its trend in the color of the favorable direction) complete it.
+
+When a period or a presentation of the report is selected, its settings appear under it: changing them changes every
+visual using it. **Delete** removes it: the other visuals using it show empty values.
+
+```csharp
+var report = new ReportDefinition
+{
+    ComparisonPeriods = [new() { Id = "report.season", Caption = "Last season", Count = 2, Unit = TimeUnit.Quarter }],
+    ComparisonOutputs = [new() { Id = "report.index", Caption = "Index", Formula = "[Value] / [Compared] * 100", Format = "N1" }],
+};
+// A visual references them by id
+new MeasureRef("Amount") { Time = new MeasureTime { Period = "report.season", Show = "report.index" } };
+```
+
+Their ids start with `TimeIds.ReportPrefix` (`report.`), which an application does not use for its own entries. The
+open report's entries are in `EasyBIContext.Comparisons` (a `ComparisonContext`), which a `DashboardView` loads and
+saves with its document; a visual sends those it uses to its model (`VisualDataRequest.ComparisonPeriods` and
+`ComparisonOutputs`), which computes them with its catalog (`TimeCatalog.With`), on a server as well.
+
 ## In code
 
 ```csharp
