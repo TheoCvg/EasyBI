@@ -70,6 +70,8 @@ public class VisualView : ContentControl
     private string? _lastQueryKey;
     // The visual as last queried: filters of the dashboard applied, variables replaced by their values
     private VisualDefinition? _resolved;
+    // What the renderer drew last: the elements of a menu are found in it
+    private RenderRequest? _drawn;
     private int _refreshes;
     private VariableView? _variableView;
 
@@ -77,6 +79,13 @@ public class VisualView : ContentControl
     {
         SetResourceReference(ForegroundProbeProperty, EasyBITheme.ForegroundBrushKey);
         SetResourceReference(PaletteProbeProperty, EasyBITheme.ChartPaletteKey);
+        // The menu key, or a right click the renderer left: the menu of the visual as a whole
+        ContextMenuOpening += (_, e) =>
+        {
+            if (ContextMenu is not null) return;
+            e.Handled = true;
+            OpenMenu(null, fromKeyboard: e.CursorLeft < 0);
+        };
         Loaded += (_, _) =>
         {
             Subscribe(Context, FilterContext);
@@ -383,7 +392,9 @@ public class VisualView : ContentControl
         request = request with { Tooltip = (category, series) => context.TooltipFor(drawn, category, series) };
         // A long legend shows its entries by pages, turned by a pager over the chart
         var pager = visual.Type.IsCartesian() || visual.Type.IsCircular() ? new LegendPager() : null;
-        request = request with { LegendPager = pager };
+        // A right click on an element opens the menu of the visual for it
+        request = request with { LegendPager = pager, OpenMenu = selection => OpenMenu(selection) };
+        _drawn = request;
 
         try
         {
@@ -395,6 +406,30 @@ public class VisualView : ContentControl
         {
             ShowFailure(context, visual, ex, VisualFailureStage.Render, renderer.Name);
         }
+    }
+
+    /// <summary>
+    /// The context of an element of the visual as last drawn (<paramref name="selection"/>, as its renderer reports
+    /// it; null for the visual as a whole): what restricts its data, the page's filters and the report's parameters
+    /// included. Null without a visual.
+    /// </summary>
+    public InteractionContext? InteractionFor(DataSelection? selection) =>
+        Definition is { } visual
+            ? InteractionContext.Create(visual, _drawn is { } drawn && drawn.Visual.Id == visual.Id ? drawn : null, selection, FilterContext, Context?.Variables)
+            : null;
+
+    /// <summary>
+    /// Opens the menu of the visual for an element (null: the visual as a whole), with the application's entries
+    /// (<see cref="EasyBIContext.VisualMenuOpening"/>); returns it, or null when it has none.
+    /// </summary>
+    internal ContextMenu? OpenMenu(DataSelection? selection, bool fromKeyboard = false)
+    {
+        if (Context is not { } context || InteractionFor(selection) is not { } interaction) return null;
+        if (context.MenuFor(this, interaction) is not { } menu) return null;
+        menu.PlacementTarget = this;
+        menu.Placement = fromKeyboard ? System.Windows.Controls.Primitives.PlacementMode.Center : System.Windows.Controls.Primitives.PlacementMode.MousePoint;
+        menu.IsOpen = true;
+        return menu;
     }
 
     /// <summary>The failure the visual shows in place of its content; null while it shows its content or a message.</summary>

@@ -81,6 +81,21 @@ public sealed class MatrixRenderer : IVisualRenderer
                 else if (line.Row is { } r) select(new MatrixSelection(r, null));
             };
         }
+        if (request.OpenMenu is { } openMenu)
+        {
+            grid.PreviewMouseRightButtonUp += (_, e) =>
+            {
+                DataSelection? element = null;
+                if (Ancestor<DataGridCell>(e.OriginalSource as DependencyObject) is { DataContext: Line line } cell)
+                {
+                    var column = columns[cell.Column.DisplayIndex];
+                    if (column.Column is { } c) element = new MatrixSelection(line.Row, c);
+                    else if (line.Row is { } r) element = new MatrixSelection(r, null);
+                }
+                openMenu(element);
+                e.Handled = true;
+            };
+        }
         return grid;
     }
 

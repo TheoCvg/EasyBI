@@ -4,6 +4,26 @@ Every version, with its breaking changes. EasyBI follows [Semantic Versioning](h
 breaking changes bump the minor version. The report format (`easybi/v1`) stays backward compatible: a newer version
 opens older reports, and a report using a newer feature cannot be opened by an older version.
 
+## Unreleased
+
+### Added
+
+- **Menu of a visual**: a right click on a visual or one of its elements (or the menu key) raises
+  `EasyBIContext.VisualMenuOpening`, whose `Menu` the application fills; no menu opens without entries. Renderers
+  report the element under the pointer through `RenderRequest.OpenMenu` (LiveCharts2, OxyPlot, tables and matrices
+  do). See [Visual menu](customization/visual-menu.md).
+- **What the user points at**: `InteractionContext` gives the visual, the element (its dimensions and values), its
+  measure, every filter restricting the visual (its own, the report's, the selections of the other visuals) and the
+  values of the parameters; `VisualView.InteractionFor` gives it without a menu.
+- **Imposed values**: `FilterContext.Impose` and `VariableContext.Impose` apply filters and values of parameters for a
+  while (those of the report the user came from) without saving them: `SavedFilters` and `SavedVariables` give what
+  to save, `ClearImposed` puts back what they replaced, and a value the user changes becomes theirs.
+  `DashboardView` saves `SavedVariables`.
+
+### Changed
+
+- With OxyPlot, the right button opens the menu of the visual instead of panning the chart.
+
 ## 0.6.0-beta.1 — 2026-10-28
 
 ### Added

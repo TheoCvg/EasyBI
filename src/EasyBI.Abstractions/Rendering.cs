@@ -150,6 +150,13 @@ public sealed record RenderRequest(VisualDefinition Visual, ResultSet Result, Ch
     public Action<DataSelection>? Select { get; init; }
 
     /// <summary>
+    /// Called by the renderer when the user asks for the menu of a data element (a right click), with the element under
+    /// the pointer, null for none; the host then opens the menu of the visual for it. A renderer that does not call it
+    /// lets the host open the menu of the visual as a whole. Null when the visual has no menu.
+    /// </summary>
+    public Action<DataSelection?>? OpenMenu { get; init; }
+
+    /// <summary>
     /// Elements selected in this visual (cross-filtering): the renderer draws them as usual and dims the others. A
     /// <see cref="CategorySelection"/> without a series covers every series of its category. Null when nothing is
     /// selected in this visual.

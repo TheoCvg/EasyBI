@@ -37,6 +37,21 @@ public sealed class EasyBIContext
     /// </summary>
     public event EventHandler<VisualFailedEventArgs>? VisualFailed;
 
+    /// <summary>
+    /// The menu of a visual is opening, for the whole visual or one of its elements: the application adds its entries,
+    /// which act on what the user points at (see <see cref="VisualMenuOpeningEventArgs.Interaction"/>). Without entries,
+    /// no menu opens.
+    /// </summary>
+    public event EventHandler<VisualMenuOpeningEventArgs>? VisualMenuOpening;
+
+    /// <summary>The menu of a visual with the application's entries (<see cref="VisualMenuOpening"/>); null when it has none.</summary>
+    internal System.Windows.Controls.ContextMenu? MenuFor(VisualView view, InteractionContext interaction)
+    {
+        var args = new VisualMenuOpeningEventArgs(view, interaction, new System.Windows.Controls.ContextMenu());
+        VisualMenuOpening?.Invoke(this, args);
+        return args.Cancel || args.Menu.Items.Count == 0 ? null : args.Menu;
+    }
+
     public IReadOnlyList<ISemanticModel> Models => _models;
 
     /// <summary>How a failed visual shows its failure: EasyBI's message, then the application's changes (<see cref="VisualFailed"/>).</summary>

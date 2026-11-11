@@ -69,12 +69,17 @@ public sealed record CrossFilter(string SourceVisualId, string Model, IReadOnlyL
 
 /// <summary>
 /// Filtering state of a dashboard: global filters (slicers, saved with the report)
-/// and cross-filtering (transient selections made by clicking in visuals, at most one per visual).
+/// and cross-filtering (transient selections made by clicking in visuals, at most one per visual). Filters can be
+/// imposed for a while (<see cref="Impose"/>), such as those of the report the user came from: they apply and show
+/// like the others, but are not saved (<see cref="SavedFilters"/>).
 /// </summary>
 public sealed class FilterContext
 {
     private readonly List<ReportFilter> _filters = [];
     private readonly List<CrossFilter> _selections = [];
+
+    // The filters an imposed one replaced (null: none), by model and field, until the user changes it
+    private readonly Dictionary<(string Model, string Field), ReportFilter?> _replaced = [];
 
     /// <summary>Raised whenever a global filter or the selection changes.</summary>
     public event EventHandler? Changed;
@@ -91,11 +96,53 @@ public sealed class FilterContext
     public CrossFilter? SelectionOf(string visualId) => _selections.FirstOrDefault(s => s.SourceVisualId == visualId);
 
     /// <summary>
+    /// The filters to save with the report: <see cref="Filters"/> with those imposed (<see cref="Impose"/>) replaced by
+    /// what they replaced. An imposed filter the user changed since is the user's, and saved.
+    /// </summary>
+    public IReadOnlyList<ReportFilter> SavedFilters =>
+        [.. _filters.Select(f => _replaced.TryGetValue((f.Model, f.Filter.Field), out var replaced) ? replaced : f).OfType<ReportFilter>()];
+
+    /// <summary>True when the filter on this field is imposed (<see cref="Impose"/>) and the user did not change it.</summary>
+    public bool IsImposed(string model, string field) => _replaced.ContainsKey((model, field));
+
+    /// <summary>
+    /// Imposes filters, in place of those on the same fields, without them being saved (<see cref="SavedFilters"/>):
+    /// the filters of the report the user came from, a parameter of the application... Changing or removing one makes
+    /// it the user's. <see cref="Load"/> and <see cref="ClearImposed"/> forget them.
+    /// </summary>
+    public void Impose(IEnumerable<ReportFilter> filters)
+    {
+        var changed = false;
+        foreach (var filter in filters)
+        {
+            var key = (filter.Model, filter.Filter.Field);
+            var index = _filters.FindIndex(f => f.Model == filter.Model && f.Filter.Field == filter.Filter.Field);
+            if (!_replaced.ContainsKey(key)) _replaced[key] = index >= 0 ? _filters[index] : null;
+            if (index >= 0) _filters[index] = filter;
+            else _filters.Add(filter);
+            changed = true;
+        }
+        if (changed) OnChanged();
+    }
+
+    /// <summary>Puts back the filters the imposed ones replaced.</summary>
+    public void ClearImposed()
+    {
+        if (_replaced.Count == 0) return;
+        var saved = SavedFilters;
+        _replaced.Clear();
+        _filters.Clear();
+        _filters.AddRange(saved);
+        OnChanged();
+    }
+
+    /// <summary>
     /// Adds or replaces the global filter on this field. A filter without values is removed, except "one of no value"
     /// (<see cref="FilterOperator.In"/>), which keeps no row: every value unchecked.
     /// </summary>
     public void SetFilter(string model, FilterSpec filter)
     {
+        _replaced.Remove((model, filter.Field));
         var index = _filters.FindIndex(f => f.Model == model && f.Filter.Field == filter.Field);
         if (filter.Values.Count == 0 && filter.Operator != FilterOperator.In)
         {
@@ -110,6 +157,8 @@ public sealed class FilterContext
 
     public void RemoveFilter(string model, string field)
     {
+        // Removed by the user: what it replaced stays removed
+        _replaced.Remove((model, field));
         if (_filters.RemoveAll(f => f.Model == model && f.Filter.Field == field) > 0)
             OnChanged();
     }
@@ -117,6 +166,7 @@ public sealed class FilterContext
     /// <summary>Replaces all global filters (when a report is opened) and clears the selection.</summary>
     public void Load(IEnumerable<ReportFilter> filters)
     {
+        _replaced.Clear();
         _filters.Clear();
         _filters.AddRange(filters);
         _selections.Clear();
