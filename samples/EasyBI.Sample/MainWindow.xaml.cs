@@ -10,6 +10,7 @@ using EasyBI.Renderers.OxyPlot;
 using EasyBI.Sample.Sales;
 using EasyBI.Wpf;
 using EasyBI.Wpf.Dashboard;
+using EasyBI.Wpf.Navigation;
 using Microsoft.Win32;
 
 namespace EasyBI.Sample;
@@ -58,8 +59,26 @@ public partial class MainWindow : Window
         LanguagePicker.ItemsSource = App.Languages;
         LanguagePicker.SelectedItem = App.Languages.FirstOrDefault(l => l.Equals(EasyBILocalization.Culture));
         SetPublishLabel("AddToDashboard");
-        Dashboard.Load(DefaultDashboard());
+
+        // Navigation from dashboard to dashboard (EasyBI.Wpf.Navigation): "Go to ›" in the menu of a visual opens
+        // another report on the data the user points at
+        Navigation = new DashboardNavigation(Dashboard, Filters, LoadReport);
+        Navigation.Links.Add(new ReportLink("details", Text("LinkSalesDetails")) { Model = "sales" });
+        Navigation.Links.Add(new ReportLink("products", Text("LinkProducts")) { Model = "sales" });
+        Navigation.Start("overview");
     }
+
+    /// <summary>The path from report to report, and the links of the visuals' menus.</summary>
+    public DashboardNavigation Navigation { get; }
+
+    // The reports the links open, by id: an application would read them from its storage
+    private static DashboardDocument? LoadReport(string id) => id switch
+    {
+        "overview" => DefaultDashboard(),
+        "details" => DetailsDashboard(),
+        "products" => ProductsDashboard(),
+        _ => null,
+    };
 
     private static string Text(string key) => App.Texts[key];
 
@@ -178,8 +197,8 @@ public partial class MainWindow : Window
                 MessageBox.Show(this, Text("ReportIncompleteMessage") + "\n\n• " + string.Join("\n• ", problems),
                     Text("ReportIncomplete"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
-            Filters.Load(document.Report.Filters);
-            Dashboard.Load(document);
+            // A new path starts from the opened report
+            Navigation.Start(dialog.FileName, document);
             Tabs.SelectedIndex = 0;
         }
         catch (Exception ex)
@@ -187,6 +206,52 @@ public partial class MainWindow : Window
             MessageBox.Show(this, ex.Message, Text("ReportUnreadable"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
+
+    private static VisualDefinition Heading(string key) => new()
+    {
+        Type = VisualType.Text,
+        Text = new TextContent { Text = Text(key), FontSize = 24, IsBold = true },
+    };
+
+    // Opened from the menu of a visual, on the data the user points at
+    private static DashboardDocument DetailsDashboard() => new()
+    {
+        Report = new ReportDefinition
+        {
+            Title = Text("DetailsTitle"),
+            Visuals =
+            [
+                Heading("DetailsTitle"),
+                new() { Title = Text("KeyIndicators"), Model = "sales", Type = VisualType.Kpi, Values = [new("Amount"), new("Margin"), new("MarginRate"), new("Count")] },
+                new() { Title = Text("RevenueByMonth"), Model = "sales", Type = VisualType.Line, Axis = [new("Date", DateGrain.Month)], Values = [new("Amount")] },
+                new()
+                {
+                    Title = Text("SalesByCustomerAndProduct"),
+                    Model = "sales",
+                    Type = VisualType.Table,
+                    Axis = [new("Customer"), new("Product.Name")],
+                    Values = [new("Amount"), new("Quantity")],
+                    Sort = new("Amount", Descending: true),
+                    Top = 50,
+                },
+            ],
+        },
+    };
+
+    private static DashboardDocument ProductsDashboard() => new()
+    {
+        Report = new ReportDefinition
+        {
+            Title = Text("ProductsTitle"),
+            Visuals =
+            [
+                Heading("ProductsTitle"),
+                new() { Title = Text("RevenueByProduct"), Model = "sales", Type = VisualType.Bar, Axis = [new("Product.Name")], Values = [new("Amount")], Sort = new("Amount", Descending: true) },
+                new() { Title = Text("RevenueByChannel"), Model = "sales", Type = VisualType.Pie, Axis = [new("Channel")], Values = [new("Amount")] },
+                new() { Title = Text("ProductsByRegion"), Model = "sales", Type = VisualType.Matrix, Axis = [new("Product.Category")], Legend = new("Region"), Values = [new("Amount")] },
+            ],
+        },
+    };
 
     // Titles and texts are user content: they are written once, in the language active at startup
     private static DashboardDocument DefaultDashboard()

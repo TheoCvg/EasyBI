@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\EasyBI.Wpf\EasyBI.Wpf.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFrameworks>net462;net8.0-windows</TargetFrameworks>
+    <UseWPF>true</UseWPF>
+    <Description>Navigation from dashboard to dashboard for EasyBI.Wpf: "Go to" in the menu of a visual opens another report on the data the user points at, with a history and a breadcrumb. Built only with EasyBI's public API, as an example of customization.</Description>
+    <PackageTags>$(PackageTags);navigation;drill-through</PackageTags>
+  </PropertyGroup>
+
+</Project>

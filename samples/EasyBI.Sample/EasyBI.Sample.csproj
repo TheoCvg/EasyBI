@@ -5,6 +5,7 @@
     <ProjectReference Include="..\..\src\EasyBI.Renderers.OxyPlot\EasyBI.Renderers.OxyPlot.csproj" />
     <ProjectReference Include="..\..\src\EasyBI.Themes.MaterialDesign\EasyBI.Themes.MaterialDesign.csproj" />
     <ProjectReference Include="..\..\src\EasyBI.Themes.WpfUi\EasyBI.Themes.WpfUi.csproj" />
+    <ProjectReference Include="..\..\src\EasyBI.Wpf.Navigation\EasyBI.Wpf.Navigation.csproj" />
   </ItemGroup>
 
   <ItemGroup>

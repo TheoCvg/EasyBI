@@ -70,6 +70,8 @@
                                           IsChecked="{Binding IsReadOnly, ElementName=Dashboard}" />
                             </StackPanel>
                             <StackPanel>
+                                <!-- Back and the reports followed from the menu of the visuals (EasyBI.Wpf.Navigation) -->
+                                <bi:NavigationBar Navigation="{Binding Navigation}" Margin="0,0,0,8" />
                                 <bi:FilterBar Context="{Binding Context}" />
                                 <TextBlock Text="{bi:Localize Tip, Source={x:Static local:App.Texts}}" TextWrapping="Wrap"
                                            Foreground="{DynamicResource {x:Static bi:EasyBITheme.MutedForegroundBrushKey}}" FontSize="11" Margin="0,6,0,0" />

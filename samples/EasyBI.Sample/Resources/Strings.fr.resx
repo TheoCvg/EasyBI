@@ -37,7 +37,7 @@
     <value>  Designer  </value>
   </data>
   <data name="Tip" xml:space="preserve">
-    <value>Astuce : cliquez sur une barre, une part ou une ligne de table pour filtrer les autres visuels. Glissez un champ de la gauche sur le tableau de bord pour créer un visuel, ou sur un visuel pour l'y ajouter. Survolez un élément pour le déplacer (⠿), le redimensionner (◢) ou ajouter un élément à côté (+) ; double-cliquez sur un texte pour le modifier.</value>
+    <value>Astuce : cliquez sur une barre, une part ou une ligne de table pour filtrer les autres visuels ; faites un clic droit pour aller à un autre tableau de bord sur ses données. Glissez un champ de la gauche sur le tableau de bord pour créer un visuel, ou sur un visuel pour l'y ajouter. Survolez un élément pour le déplacer (⠿), le redimensionner (◢) ou ajouter un élément à côté (+) ; double-cliquez sur un texte pour le modifier.</value>
   </data>
   <data name="NewVisual" xml:space="preserve">
     <value>Nouveau visuel</value>
@@ -188,5 +188,32 @@
   </data>
   <data name="TopCustomersShare" xml:space="preserve">
     <value>Part des {0} meilleurs clients</value>
+  </data>
+  <data name="LinkSalesDetails" xml:space="preserve">
+    <value>Détail des ventes</value>
+  </data>
+  <data name="LinkProducts" xml:space="preserve">
+    <value>Produits</value>
+  </data>
+  <data name="DetailsTitle" xml:space="preserve">
+    <value>Détail des ventes</value>
+  </data>
+  <data name="ProductsTitle" xml:space="preserve">
+    <value>Produits</value>
+  </data>
+  <data name="RevenueByMonth" xml:space="preserve">
+    <value>CA par mois</value>
+  </data>
+  <data name="SalesByCustomerAndProduct" xml:space="preserve">
+    <value>Ventes par client et produit</value>
+  </data>
+  <data name="RevenueByProduct" xml:space="preserve">
+    <value>CA par produit</value>
+  </data>
+  <data name="RevenueByChannel" xml:space="preserve">
+    <value>CA par canal</value>
+  </data>
+  <data name="ProductsByRegion" xml:space="preserve">
+    <value>Catégories par région</value>
   </data>
 </root>

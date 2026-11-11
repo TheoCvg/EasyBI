@@ -37,7 +37,7 @@
     <value>  Designer  </value>
   </data>
   <data name="Tip" xml:space="preserve">
-    <value>Tip: click a bar, a slice or a table row to filter the other visuals. Drag a field from the left onto the dashboard to make a visual, or onto a visual to add it. Hover an item to move it (⠿), resize it (◢) or add an item next to it (+); double-click a text to edit it.</value>
+    <value>Tip: click a bar, a slice or a table row to filter the other visuals; right-click it to go to another dashboard on its data. Drag a field from the left onto the dashboard to make a visual, or onto a visual to add it. Hover an item to move it (⠿), resize it (◢) or add an item next to it (+); double-click a text to edit it.</value>
   </data>
   <data name="NewVisual" xml:space="preserve">
     <value>New visual</value>
@@ -188,5 +188,32 @@
   </data>
   <data name="TopCustomersShare" xml:space="preserve">
     <value>Share of the top {0} customers</value>
+  </data>
+  <data name="LinkSalesDetails" xml:space="preserve">
+    <value>Sales details</value>
+  </data>
+  <data name="LinkProducts" xml:space="preserve">
+    <value>Products</value>
+  </data>
+  <data name="DetailsTitle" xml:space="preserve">
+    <value>Sales details</value>
+  </data>
+  <data name="ProductsTitle" xml:space="preserve">
+    <value>Products</value>
+  </data>
+  <data name="RevenueByMonth" xml:space="preserve">
+    <value>Revenue by month</value>
+  </data>
+  <data name="SalesByCustomerAndProduct" xml:space="preserve">
+    <value>Sales by customer and product</value>
+  </data>
+  <data name="RevenueByProduct" xml:space="preserve">
+    <value>Revenue by product</value>
+  </data>
+  <data name="RevenueByChannel" xml:space="preserve">
+    <value>Revenue by channel</value>
+  </data>
+  <data name="ProductsByRegion" xml:space="preserve">
+    <value>Categories by region</value>
   </data>
 </root>
